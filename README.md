@@ -11,7 +11,7 @@ intentionally simple: open a page, play, and move on.
 - `site/games/demos/`: Prototype demo pages.
 - `site/guides/`: Guide pages.
 - `site/styles.css`: Shared styles.
-- `build.py`: Helper to auto-add new game entries to `site/games/index.html`.
+- `build.py`: Helper to rebuild the games list in `site/games/index.html`.
 
 ## Local preview
 
@@ -29,16 +29,19 @@ Then visit `http://localhost:8000/`.
    - `site/games/playable/` for playable builds
    - `site/games/demos/` for demos
    - `site/guides/` for guides
-2. Update the arrays in:
+2. Add page metadata in the `<head>` for games (tags should be lowercase and comma-separated):
+   - `<meta name="game-description" content="Short blurb shown on the games list.">`
+   - `<meta name="game-tags" content="comma, separated, tags">`
+3. Update the arrays in:
    - `site/index.html` (home page shelves + stats)
    - `site/games/index.html` (full games library list)
 
-Optional: run the helper to append new game entries in the games library list:
+Optional: run the helper to rebuild the games library list from page metadata:
 
 ```bash
 python3 build.py
 ```
 
-`build.py` scans `site/games/playable/` and `site/games/demos/` for new HTML
-files, pulls their `<title>`, and appends missing entries to the `games` array
-in `site/games/index.html`.
+`build.py` scans `site/games/playable/` and `site/games/demos/`, then rebuilds
+the `games` array in `site/games/index.html` using each page's `<title>`,
+`game-description`, and `game-tags` values.
