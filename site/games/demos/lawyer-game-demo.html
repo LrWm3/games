@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ace of Evidence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;700&family=Inter:wght@400;600;800&display=swap');
+
+        :root {
+            --courtroom-wood: #5d4037;
+            --defense-blue: #1e3a8a;
+            --prosecution-red: #7f1d1d;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .courtroom-bg {
+            background: linear-gradient(to bottom, #2c1e1a 0%, #5d4037 100%);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dialogue-box {
+            background: rgba(0, 0, 0, 0.85);
+            border: 4px solid #d4af37;
+            min-height: 150px;
+            font-family: 'EB Garamond', serif;
+            font-size: 1.5rem;
+        }
+
+        .objection-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(255, 0, 0, 0.3);
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .objection-text {
+            font-size: 8rem;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 0 20px #f00, 5px 5px 0px #000;
+            transform: rotate(-10deg) scale(0);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .objection-active .objection-text {
+            transform: rotate(-10deg) scale(1.2);
+        }
+
+        .character-sprite {
+            transition: transform 0.2s ease;
+        }
+
+        .character-talk {
+            animation: talk 0.2s infinite alternate;
+        }
+
+        @keyframes talk {
+            from { transform: translateY(0); }
+            to { transform: translateY(-5px); }
+        }
+
+        .evidence-card:hover {
+            transform: translateY(-5px);
+            border-color: #fbbf24;
+        }
+
+        .btn-objection {
+            background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+            box-shadow: 0 4px 0 #7f1d1d;
+        }
+
+        .btn-objection:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #7f1d1d;
+        }
+
+        /* Glassmorphism Case File */
+        .case-file-panel {
+            background: rgba(31, 41, 55, 0.95);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container" class="courtroom-bg relative overflow-hidden">
+        
+        <!-- Header / Stats -->
+        <div class="p-4 flex justify-between items-center bg-black/40 border-b border-white/10">
+            <div class="flex items-center space-x-4">
+                <span class="text-yellow-500 font-bold uppercase tracking-widest text-sm">Court in Session</span>
+                <div id="health-meter" class="flex space-x-1">
+                    <i class="fas fa-gavel text-red-500"></i>
+                    <i class="fas fa-gavel text-red-500"></i>
+                    <i class="fas fa-gavel text-red-500"></i>
+                    <i class="fas fa-gavel text-red-500"></i>
+                    <i class="fas fa-gavel text-red-500"></i>
+                </div>
+            </div>
+            <button onclick="toggleCaseFile()" class="bg-blue-600 hover:bg-blue-500 px-4 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-2">
+                <i class="fas fa-briefcase"></i> CASE FILE
+            </button>
+        </div>
+
+        <!-- Main Visual Area -->
+        <div class="flex-grow flex flex-col items-center justify-center relative p-4">
+            
+            <!-- Judge (Static Background Element) -->
+            <div class="absolute top-10 flex flex-col items-center opacity-80">
+                <div class="w-32 h-32 bg-slate-800 rounded-full border-4 border-amber-900 overflow-hidden flex items-center justify-center">
+                    <i class="fas fa-user-tie text-5xl text-slate-400"></i>
+                </div>
+                <div class="bg-amber-900 px-4 py-1 rounded mt-2 text-xs font-bold uppercase">The Judge</div>
+            </div>
+
+            <!-- Witness Stand -->
+            <div id="witness-container" class="relative z-10 text-center transition-all duration-500">
+                <div id="witness-sprite" class="character-sprite w-64 h-64 bg-slate-700 rounded-2xl border-b-8 border-slate-900 mx-auto flex items-end justify-center overflow-hidden">
+                    <!-- Dynamic Witness Icon -->
+                    <i id="witness-icon" class="fas fa-user text-9xl text-slate-400 mb-[-10px]"></i>
+                </div>
+                <div class="mt-4">
+                    <span id="witness-name" class="bg-slate-900/80 px-6 py-1 rounded-full text-lg font-bold border border-white/20">Witness Name</span>
+                </div>
+            </div>
+
+            <!-- Objection Flash Overlay -->
+            <div id="objection-overlay" class="objection-overlay">
+                <div class="objection-text">OBJECTION!</div>
+            </div>
+        </div>
+
+        <!-- Dialogue Area -->
+        <div class="p-4 md:p-8 bg-gradient-to-t from-black to-transparent">
+            <div id="dialogue-box" class="dialogue-box w-full max-w-4xl mx-auto rounded-xl p-6 relative">
+                <div id="speaker-name" class="absolute -top-6 left-6 bg-blue-700 px-4 py-1 rounded border-2 border-yellow-500 text-sm font-bold italic">
+                    DEFENSE
+                </div>
+                <p id="text-content" class="leading-relaxed">
+                    Court is now in session for the trial of Mr. Harrison.
+                </p>
+                
+                <!-- Controls -->
+                <div class="mt-4 flex justify-end items-center space-x-4">
+                    <button id="objection-btn" onclick="handleObjection()" class="btn-objection hidden px-8 py-3 rounded-lg font-black text-xl italic tracking-tighter">
+                        OBJECTION!
+                    </button>
+                    <button id="next-btn" onclick="nextStep()" class="bg-white/10 hover:bg-white/20 border border-white/20 px-6 py-2 rounded-lg font-bold transition-all">
+                        NEXT <i class="fas fa-chevron-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Case File Modal -->
+        <div id="case-file" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+            <div class="case-file-panel w-full max-w-2xl rounded-2xl border-2 border-blue-500 overflow-hidden shadow-2xl">
+                <div class="bg-blue-900 p-4 flex justify-between items-center">
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <i class="fas fa-folder-open"></i> COURT RECORD
+                    </h2>
+                    <button onclick="toggleCaseFile()" class="text-2xl">&times;</button>
+                </div>
+                <div id="evidence-list" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
+                    <!-- Evidence items injected here -->
+                </div>
+                <div class="p-4 bg-black/20 text-center italic text-sm text-blue-300">
+                    Select a piece of evidence to present it during an Objection.
+                </div>
+            </div>
+        </div>
+
+        <!-- Win/Loss Overlay -->
+        <div id="game-over" class="hidden fixed inset-0 z-[200] bg-black/90 flex flex-col items-center justify-center text-center p-6">
+            <h1 id="result-title" class="text-6xl font-black mb-4">GUILTY</h1>
+            <p id="result-desc" class="text-xl mb-8 max-w-md">The prosecution proved their case beyond a reasonable doubt.</p>
+            <button onclick="location.reload()" class="bg-yellow-500 text-black px-10 py-4 rounded-full font-bold text-xl hover:bg-yellow-400">
+                RETRY CASE
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- GAME DATA ---
+        const EVIDENCE = [
+            { id: 'photo', name: 'Safe Photo', desc: 'A photo of the victim\'s safe. The lock is pristine, showing no signs of external damage or forced entry.', icon: 'fa-camera' },
+            { id: 'watch', name: 'Broken Watch', desc: 'Found at the crime scene. The hands are frozen at exactly 10:15 PM.', icon: 'fa-stopwatch' },
+            { id: 'gloves', name: 'Silk Gloves', desc: 'Defendant\'s favorite gloves. They are size Small, but the defendant has very large hands.', icon: 'fa-mitten' }
+        ];
+
+        const SCRIPT = [
+            { speaker: 'JUDGE', text: "The prosecution claims the defendant, Mr. Harrison, forced open the safe at midnight.", next: true },
+            { speaker: 'WITNESS', name: 'Frank "The Rat" Miller', text: "I saw it all! I was walking by the window around 10:00 PM.", next: true, icon: 'fa-user-secret' },
+            { speaker: 'WITNESS', name: 'Frank "The Rat" Miller', text: "Start of Cross-Examination: Please listen to my testimony carefully.", next: true },
+            // Testimony Phase
+            { speaker: 'WITNESS', name: 'Frank "The Rat" Miller', text: "Statement 1: I arrived at the scene just after ten o'clock.", isTestimony: true, id: 0 },
+            { speaker: 'WITNESS', name: 'Frank "The Rat" Miller', text: "Statement 2: I looked through the window and saw Harrison working on that safe.", isTestimony: true, id: 1 },
+            { speaker: 'WITNESS', name: 'Frank "The Rat" Miller', text: "Statement 3: He was using a huge crowbar to scratch and pry the door open!", isTestimony: true, id: 2, contradictWith: 'photo' },
+            { speaker: 'WITNESS', name: 'Frank "The Rat" Miller', text: "Statement 4: He grabbed the diamond and ran off toward the park.", isTestimony: true, id: 3 },
+            { speaker: 'JUDGE', text: "Is that all, Mr. Miller?", next: true }
+        ];
+
+        // --- GAME STATE ---
+        let currentStep = 0;
+        let isCaseFileOpen = false;
+        let isPresentingEvidence = false;
+        let health = 5;
+        let activeTestimonyIndex = -1;
+
+        // --- DOM ELEMENTS ---
+        const textContent = document.getElementById('text-content');
+        const speakerName = document.getElementById('speaker-name');
+        const nextBtn = document.getElementById('next-btn');
+        const objectionBtn = document.getElementById('objection-btn');
+        const witnessName = document.getElementById('witness-name');
+        const witnessSprite = document.getElementById('witness-sprite');
+        const witnessIcon = document.getElementById('witness-icon');
+        const objectionOverlay = document.getElementById('objection-overlay');
+        const healthMeter = document.getElementById('health-meter');
+        const caseFile = document.getElementById('case-file');
+        const evidenceList = document.getElementById('evidence-list');
+        const gameOverScreen = document.getElementById('game-over');
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            renderStep();
+            renderEvidence();
+        };
+
+        function renderEvidence() {
+            evidenceList.innerHTML = '';
+            EVIDENCE.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "evidence-card bg-slate-800 p-4 rounded-xl border-2 border-transparent cursor-pointer transition-all flex items-start space-x-4";
+                div.onclick = () => selectEvidence(item.id);
+                div.innerHTML = `
+                    <div class="bg-blue-600 p-3 rounded-lg">
+                        <i class="fas ${item.icon} text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-yellow-500">${item.name}</h3>
+                        <p class="text-sm text-slate-300">${item.desc}</p>
+                    </div>
+                `;
+                evidenceList.appendChild(div);
+            });
+        }
+
+        function renderStep() {
+            const step = SCRIPT[currentStep];
+            
+            // UI Adjustment based on speaker
+            if (step.speaker === 'JUDGE') {
+                speakerName.innerText = 'THE JUDGE';
+                speakerName.className = "absolute -top-6 left-6 bg-amber-800 px-4 py-1 rounded border-2 border-yellow-500 text-sm font-bold italic";
+                witnessName.parentElement.classList.add('opacity-30');
+                witnessIcon.className = "fas fa-user-tie text-9xl text-slate-500";
+            } else if (step.speaker === 'WITNESS') {
+                speakerName.innerText = 'WITNESS';
+                speakerName.className = "absolute -top-6 left-6 bg-green-800 px-4 py-1 rounded border-2 border-yellow-500 text-sm font-bold italic";
+                witnessName.innerText = step.name || "Witness";
+                witnessName.parentElement.classList.remove('opacity-30');
+                witnessIcon.className = `fas ${step.icon || 'fa-user'} text-9xl text-slate-300`;
+            } else {
+                speakerName.innerText = 'DEFENSE';
+                speakerName.className = "absolute -top-6 left-6 bg-blue-700 px-4 py-1 rounded border-2 border-yellow-500 text-sm font-bold italic";
+            }
+
+            // Handle Objection Visibility
+            if (step.isTestimony) {
+                objectionBtn.classList.remove('hidden');
+                activeTestimonyIndex = currentStep;
+            } else {
+                objectionBtn.classList.add('hidden');
+            }
+
+            // Typewriter effect (simplified)
+            textContent.innerText = step.text;
+            witnessSprite.classList.add('character-talk');
+            setTimeout(() => {
+                witnessSprite.classList.remove('character-talk');
+            }, 500);
+        }
+
+        function nextStep() {
+            if (currentStep < SCRIPT.length - 1) {
+                currentStep++;
+                renderStep();
+            } else {
+                // End of loop/game logic
+                currentStep = 3; // Loop back to testimony if they missed it
+                renderStep();
+            }
+        }
+
+        function toggleCaseFile() {
+            isCaseFileOpen = !isCaseFileOpen;
+            caseFile.classList.toggle('hidden', !isCaseFileOpen);
+        }
+
+        function handleObjection() {
+            isPresentingEvidence = true;
+            
+            // Visual feedback
+            objectionOverlay.style.display = 'flex';
+            objectionOverlay.classList.add('objection-active');
+            
+            setTimeout(() => {
+                objectionOverlay.classList.remove('objection-active');
+                setTimeout(() => {
+                    objectionOverlay.style.display = 'none';
+                    toggleCaseFile();
+                }, 300);
+            }, 800);
+        }
+
+        function selectEvidence(evidenceId) {
+            if (!isPresentingEvidence) return;
+            
+            toggleCaseFile();
+            isPresentingEvidence = false;
+
+            const currentStatement = SCRIPT[activeTestimonyIndex];
+            
+            if (currentStatement.contradictWith === evidenceId) {
+                resolveSuccess();
+            } else {
+                resolveFailure();
+            }
+        }
+
+        function resolveSuccess() {
+            speakerName.innerText = "DEFENSE";
+            textContent.innerHTML = `<span class="text-yellow-400 font-bold">Hold it right there!</span> Look at this photo of the safe. You claim the defendant used a crowbar, but the safe shows absolutely no signs of forced entry!`;
+            
+            objectionBtn.classList.add('hidden');
+            nextBtn.onclick = () => {
+                showGameOver(true);
+            };
+        }
+
+        function resolveFailure() {
+            health--;
+            updateHealth();
+            
+            speakerName.innerText = "JUDGE";
+            textContent.innerText = "Mr. Attorney, that piece of evidence has absolutely no relevance to the witness's statement. Penalty awarded.";
+
+            if (health <= 0) {
+                showGameOver(false);
+            }
+        }
+
+        function updateHealth() {
+            healthMeter.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                const icon = document.createElement('i');
+                icon.className = `fas fa-gavel ${i < health ? 'text-red-500' : 'text-slate-700'}`;
+                healthMeter.appendChild(icon);
+            }
+        }
+
+        function showGameOver(isWin) {
+            gameOverScreen.classList.remove('hidden');
+            const title = document.getElementById('result-title');
+            const desc = document.getElementById('result-desc');
+            
+            if (isWin) {
+                title.innerText = "NOT GUILTY";
+                title.className = "text-6xl font-black mb-4 text-green-500";
+                desc.innerText = "You successfully exposed the witness's lies! Mr. Harrison is a free man.";
+            } else {
+                title.innerText = "GUILTY";
+                title.className = "text-6xl font-black mb-4 text-red-600";
+                desc.innerText = "You failed to find the contradiction. The jury has reached a verdict.";
+            }
+        }
+    </script>
+</body>
+</html>
