@@ -249,10 +249,7 @@
         { title: 'Welcome', body: 'Peppers spawn on the grid and your workers harvest them automatically. Every harvest becomes currency.', target: '#grid-canvas' },
         { title: 'Legion Vault', body: 'Track your pepper stash, rank, and peppers per second in the header.', target: '#ui-header' },
         { title: 'Hire Workers', body: 'Field your first Apostle to start harvesting. The tutorial continues once you hire one.', target: '#unit-card-A', onEnter: () => switchTab('army'), requiresApostle: true },
-        { title: 'Farm: Rift Capacity', body: 'Expand Max raises how many enemies can exist at once, increasing potential income.', target: '#farm-card-capacity', onEnter: () => switchTab('world') },
-        { title: 'Farm: Spawn Frequency', body: 'Accelerate reduces spawn cooldowns so peppers appear more often.', target: '#farm-card-rate', onEnter: () => switchTab('world') },
-        { title: 'Farm: Spawn Quantity', body: 'Burst Spawn adds extra peppers per spawn cycle for faster farming.', target: '#farm-card-count', onEnter: () => switchTab('world') },
-        { title: 'Farm: Evolution', body: 'Unlock Rank increases pepper difficulty and payouts. Use the +/- to set your current rank.', target: '#farm-card-tier', onEnter: () => switchTab('world') },
+        { title: 'Farm Upgrades', body: 'Use the Farm tab to expand capacity, increase spawn frequency and quantity, and evolve rank for bigger payouts.', target: '#shop-world', onEnter: () => switchTab('world') },
         { title: 'Mastery', body: 'Spend peppers on mastery upgrades to boost damage, loot, specials, and caps.', target: '#shop-upgrades', onEnter: () => switchTab('upgrades') },
         { title: 'Emergency Reset', body: 'Use Purge Area to clear projectiles and summons if the grid gets wild.', target: '#purge-btn' }
     ];
