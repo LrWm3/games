@@ -508,9 +508,11 @@
     }
     function buyUnit(id) {
         const u = UNIT_TYPES.find(ut => ut.id === id); const owned = state.upgrades[id].owned; const totalCap = 5 + (state.upgrades[id].cap * 5);
-        let k = Math.min(calcMaxBuy(state.pepper, u.cost, u.ratio, owned), totalCap - owned);
+        const isFirstApostle = id === 'A' && owned === 0;
+        let k = isFirstApostle ? 1 : Math.min(calcMaxBuy(state.pepper, u.cost, u.ratio, owned), totalCap - owned);
         if(k > 0) { 
-            state.pepper -= calcTotalPrice(u.cost, u.ratio, owned, k); state.upgrades[id].owned += k; 
+            if (!isFirstApostle) state.pepper -= calcTotalPrice(u.cost, u.ratio, owned, k);
+            state.upgrades[id].owned += k; 
             if (!state.upgrades[id].isWithdrawn) { for(let j=0; j<k; j++) state.units.push(new Unit(id, id, u.color)); }
             saveState();
         }
@@ -546,9 +548,13 @@
             document.getElementById(`army-loot-${u.id}`).innerText = 'Bty: ' + (stats.loot * 100).toFixed(0) + '%';
             const isW = state.upgrades[u.id].isWithdrawn;
             const dBtn = document.getElementById(`deploy-btn-${u.id}`); dBtn.innerText = isW ? 'Hire' : 'Dismiss'; dBtn.style.color = isW ? 'var(--accent-green)' : 'var(--accent-red)';
-            const b = document.getElementById(`btn-buy-${u.id}`); let k = Math.min(calcMaxBuy(state.pepper, u.cost, u.ratio, owned), totalCap - owned);
-            b.disabled = k <= 0 && owned < totalCap; document.getElementById(`lbl-buy-${u.id}`).innerText = (owned >= totalCap) ? 'CAP REACHED' : (k > 1 ? `Add +${k}` : 'Add +1');
-            document.getElementById(`cost-${u.id}`).innerText = (owned >= totalCap) ? 'MAX' : formatNum(k > 0 ? calcTotalPrice(u.cost, u.ratio, owned, k) : u.cost * Math.pow(u.ratio, owned)) + ' P';
+            const b = document.getElementById(`btn-buy-${u.id}`); const firstFree = u.id === 'A' && owned === 0;
+            let k = firstFree ? 1 : Math.min(calcMaxBuy(state.pepper, u.cost, u.ratio, owned), totalCap - owned);
+            b.disabled = (k <= 0 && owned < totalCap) && !firstFree;
+            document.getElementById(`lbl-buy-${u.id}`).innerText = (owned >= totalCap) ? 'CAP REACHED' : (k > 1 ? `Add +${k}` : 'Add +1');
+            if (owned >= totalCap) document.getElementById(`cost-${u.id}`).innerText = 'MAX';
+            else if (firstFree) document.getElementById(`cost-${u.id}`).innerText = 'FREE';
+            else document.getElementById(`cost-${u.id}`).innerText = formatNum(k > 0 ? calcTotalPrice(u.cost, u.ratio, owned, k) : u.cost * Math.pow(u.ratio, owned)) + ' P';
             ['dmg', 'loot', 'spec', 'cap'].forEach(f => {
                 const btn = document.getElementById(`up-${f}-${u.id}`); if(btn) { const lv = state.upgrades[u.id][f]; let kU = calcMaxBuy(state.pepper, u.cost * 5, 1.5, lv);
                 btn.disabled = kU <= 0; btn.querySelector('span').innerText = (kU > 1 ? `+${kU}` : '') + ` (R ${lv})`; }
