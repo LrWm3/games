@@ -112,6 +112,7 @@
             <div class="flex">
                 <div class="header-stat"><div class="text-[9px] uppercase font-bold text-slate-500">Pop</div><div id="pop-label" class="text-xs font-bold text-blue-400">0/5</div></div>
                 <div class="header-stat"><div class="text-[9px] uppercase font-bold text-slate-500">PPS</div><div id="pps-label" class="text-xs font-bold text-amber-400">0.0</div></div>
+                <div class="header-stat"><div class="text-[9px] uppercase font-bold text-slate-500">$/s</div><div id="cash-label" class="text-xs font-bold text-emerald-400">0</div></div>
                 <div class="header-stat"><div class="text-[9px] uppercase font-bold text-slate-500">Rank</div><div id="rank-label" class="text-xs font-bold text-emerald-400">1</div></div>
             </div>
         </div>
@@ -139,19 +140,19 @@
                     <button onclick="changeTier(1)" class="bg-slate-800 w-10 h-10 rounded border border-slate-600 font-bold text-white text-xl">+</button>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" id="farm-card-capacity">
                 <div class="text-[10px] text-slate-400 font-bold uppercase mb-1">Rift Capacity</div>
                 <button onclick="buyWorldUpgrade('capacity')" id="up-world-capacity" class="buy-btn"><span>Expand Max (Buy Max)</span><span id="cap-cost">0 P</span></button>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" id="farm-card-rate">
                 <div class="text-[10px] text-slate-400 font-bold uppercase mb-1">Spawn Frequency</div>
                 <button onclick="buyWorldUpgrade('rate')" id="up-world-rate" class="buy-btn"><span>Accelerate (Buy Max)</span><span id="rate-cost">0 P</span></button>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" id="farm-card-count">
                 <div class="text-[10px] text-slate-400 font-bold uppercase mb-1">Spawn Quantity</div>
                 <button onclick="buyWorldUpgrade('count')" id="up-world-count" class="buy-btn"><span>Burst Spawn (Buy Max)</span><span id="count-cost">0 P</span></button>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" id="farm-card-tier">
                 <div class="text-[10px] text-slate-400 font-bold uppercase mb-1">Evolution</div>
                 <button onclick="evolveWorld()" id="up-world-tier" class="buy-btn"><span>Unlock Rank (Buy 1)</span><span id="tier-cost">0 P</span></button>
                 <div id="max-rank-hint" class="text-[9px] text-slate-500 mt-1 text-center uppercase tracking-tighter">Unlocked: 1</div>
@@ -204,7 +205,7 @@
         currentEnemyTier: 0, maxEnemyTier: 0, tierBaseCost: 50, tierRatio: 3.5,
         units: [], enemies: [], projectiles: [], visuals: [], traps: [],
         lastSpawn: 0, lastUpdate: performance.now(), lastSave: 0, defeatHistory: [], upgrades: {},
-        enemyColorLoops: []
+        enemyColorLoops: [], pepperHistory: []
     };
     UNIT_TYPES.forEach(u => state.upgrades[u.id] = { dmg: 0, loot: 0, spec: 0, cap: 0, isWithdrawn: false, owned: 0 });
 
@@ -247,8 +248,11 @@
     const tourSteps = [
         { title: 'Welcome', body: 'Peppers spawn on the grid and your workers harvest them automatically. Every harvest becomes currency.', target: '#grid-canvas' },
         { title: 'Legion Vault', body: 'Track your pepper stash, rank, and peppers per second in the header.', target: '#ui-header' },
-        { title: 'Farm Controls', body: 'Boost spawn capacity, frequency, and rank in the Farm tab to scale your harvest.', target: '#shop-world', onEnter: () => switchTab('world') },
-        { title: 'Hire Workers', body: 'Buy workers to grow your squad. Each worker adds new damage patterns.', target: '#shop-army', onEnter: () => switchTab('army') },
+        { title: 'Hire Workers', body: 'Field your first Apostle to start harvesting. The tutorial continues once you hire one.', target: '#unit-card-A', onEnter: () => switchTab('army'), requiresApostle: true },
+        { title: 'Farm: Rift Capacity', body: 'Expand Max raises how many enemies can exist at once, increasing potential income.', target: '#farm-card-capacity', onEnter: () => switchTab('world') },
+        { title: 'Farm: Spawn Frequency', body: 'Accelerate reduces spawn cooldowns so peppers appear more often.', target: '#farm-card-rate', onEnter: () => switchTab('world') },
+        { title: 'Farm: Spawn Quantity', body: 'Burst Spawn adds extra peppers per spawn cycle for faster farming.', target: '#farm-card-count', onEnter: () => switchTab('world') },
+        { title: 'Farm: Evolution', body: 'Unlock Rank increases pepper difficulty and payouts. Use the +/- to set your current rank.', target: '#farm-card-tier', onEnter: () => switchTab('world') },
         { title: 'Mastery', body: 'Spend peppers on mastery upgrades to boost damage, loot, specials, and caps.', target: '#shop-upgrades', onEnter: () => switchTab('upgrades') },
         { title: 'Emergency Reset', body: 'Use Purge Area to clear projectiles and summons if the grid gets wild.', target: '#purge-btn' }
     ];
@@ -270,7 +274,14 @@
         const backBtn = document.getElementById('tour-back');
         const nextBtn = document.getElementById('tour-next');
         backBtn.disabled = tour.index === 0;
-        nextBtn.innerText = tour.index === tourSteps.length - 1 ? 'Finish' : 'Next';
+        if (step.requiresApostle) {
+            const hasApostle = state.upgrades['A'] && state.upgrades['A'].owned > 0;
+            nextBtn.disabled = !hasApostle;
+            nextBtn.innerText = hasApostle ? 'Next' : 'Hire Apostle';
+        } else {
+            nextBtn.disabled = false;
+            nextBtn.innerText = tour.index === tourSteps.length - 1 ? 'Finish' : 'Next';
+        }
     }
 
     function endTour(markSeen) {
@@ -422,14 +433,7 @@
             if (this.isViral) {
                 this.hp -= (this.maxHp * 0.04) * (dt/1000);
                 this.viralTimer -= dt;
-                if (this.viralTimer <= 0) {
-                    const host = state.enemies.find(e => !e.isViral && Math.hypot(e.x-this.x, e.y-this.y) < 3);
-                    if (host) {
-                        host.isViral = true; host.viralTimer = 600;
-                        state.visuals.push({ type: 'viral-thread', x1: this.x, y1: this.y, x2: host.x, y2: host.y, life: 12, color: '#6366f1' });
-                    }
-                    this.viralTimer = 600;
-                }
+                if (this.viralTimer <= 0) { this.isViral = false; this.viralTimer = 0; }
             }
             const speed = Math.hypot(this.vx, this.vy);
             if (speed > MAX_ENEMY_SPEED) {
@@ -647,9 +651,24 @@
                 } break;
                 case 'I': {
                     if (target) {
-                        target.isViral = true; target.viralTimer = 300;
+                        target.isViral = true; target.viralTimer = 5000;
                         this.dealDamage(target, stats.dmg*m, stats.lootMult);
                         state.visuals.push({ type: 'viral-thread', x1: this.x, y1: this.y, x2: target.x, y2: target.y, life: 10, color: this.color });
+                        const infected = enemies.filter(e => e.isViral);
+                        infected.forEach(src => {
+                            let next = null; let dMin = Infinity;
+                            enemies.forEach(e => {
+                                if (e !== src && e.hp > 0) {
+                                    const d2 = Math.hypot(e.x-src.x, e.y-src.y);
+                                    if (d2 < dMin) { dMin = d2; next = e; }
+                                }
+                            });
+                            if (next) {
+                                next.isViral = true; next.viralTimer = 5000;
+                                next.hp -= stats.dmg*m;
+                                state.visuals.push({ type: 'viral-thread', x1: src.x, y1: src.y, x2: next.x, y2: next.y, life: 10, color: this.color });
+                            }
+                        });
                     }
                 } break;
                 case 'W': {
@@ -782,6 +801,7 @@
         if (tierLetter) { tierLetter.innerText = tierVisual.char.toUpperCase(); tierLetter.style.color = tierVisual.color; }
         document.getElementById('max-rank-hint').innerText = `Unlocked: ${state.maxEnemyTier + 1}`;
         document.getElementById('data-hp').innerText = 'HP: ' + formatNum(10 * Math.pow(1.7, state.currentEnemyTier));
+        if (tour.active) renderTourStep();
 
         UNIT_TYPES.forEach((u, i) => {
             const unlocked = (i === 0) || (state.upgrades[UNIT_TYPES[i-1].id].owned > 0);
@@ -841,7 +861,10 @@
             state.lastSpawn = time;
         }
         state.defeatHistory = state.defeatHistory.filter(ts => time - ts < 5000);
+        state.pepperHistory = state.pepperHistory.filter(p => time - p.t < 5000);
+        const pepperRate = state.pepperHistory.reduce((sum, p) => sum + p.amt, 0) / 5;
         document.getElementById('pps-label').innerText = (state.defeatHistory.length/5).toFixed(1);
+        document.getElementById('cash-label').innerText = formatNum(pepperRate);
         document.getElementById('pop-label').innerText = `${state.enemies.length}/${5 + (state.maxEnemiesOwned * 5)}`;
         for (let i = state.projectiles.length-1; i >= 0; i--) {
             const p = state.projectiles[i];
@@ -1010,6 +1033,7 @@
         state.enemies.forEach(e => {
             e.update(dt); if (e.hp <= 0) { 
                 state.pepper += e.value; state.defeatHistory.push(time);
+                state.pepperHistory.push({ t: time, amt: e.value });
                 state.units.filter(u => u.id === 'L').forEach(l => { if(Math.hypot(e.x-l.x, e.y-l.y) < 8) state.traps.push({ x: e.x, y: e.y, damage: 1000, life: 3, color: '#2dd4bf', r: 0.8 }); });
                 state.units.filter(u => u.id === 'X').forEach(x => { if(Math.hypot(e.x-x.x, e.y-x.y) < 6) { state.traps.push({ x: e.x, y: e.y, damage: 1200, life: 1.5, color: '#4ade80', r: 1.2 }); }});
             }
