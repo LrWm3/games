@@ -15,7 +15,7 @@
         }
         body { background-color: var(--bg-dark); color: #e2e8f0; font-family: 'Fira+Code', monospace; margin: 0; overflow: hidden; user-select: none; touch-action: manipulation; }
         #game-wrapper { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
-        #canvas-container { display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; flex: 1; padding: 10px; overflow: hidden; position: relative; }
+        #canvas-container { display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; flex: 1; padding: 10px; overflow: hidden; position: relative; z-index: 0; }
         .shop-panel { background-color: var(--bg-dark); display: flex; flex-direction: column; border-top: 2px solid #334155; height: 40vh; flex-shrink: 0; }
         @media (min-width: 768px) { #game-wrapper { flex-direction: row; } .shop-panel { width: 520px; height: 100vh; border-top: none; border-left: 2px solid #334155; } }
         #grid-canvas { image-rendering: pixelated; background-color: #020617; border: 2px solid #334155; box-shadow: 0 0 30px rgba(0,0,0,0.8); }
@@ -29,6 +29,16 @@
         .unit-name-clickable { cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 4px; }
         #info-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 400px; background: var(--panel-dark); border: 2px solid #334155; padding: 20px; border-radius: 12px; z-index: 1000; display: none; }
         .overlay-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 999; display: none; }
+        .tour-backdrop { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.82); z-index: 2000; display: none; }
+        .tour-dialog { position: fixed; left: 50%; top: 12%; transform: translateX(-50%); width: min(92vw, 420px); background: var(--panel-dark); border: 2px solid #334155; border-radius: 14px; padding: 16px; z-index: 2001; display: none; box-shadow: 0 18px 40px rgba(0,0,0,0.6); }
+        .tour-title { font-size: 16px; font-weight: 800; color: #e2e8f0; margin-bottom: 6px; }
+        .tour-step { font-size: 10px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.08em; }
+        .tour-body { font-size: 12px; color: #cbd5f5; line-height: 1.5; margin-top: 10px; }
+        .tour-actions { display: flex; gap: 8px; margin-top: 14px; }
+        .tour-btn { flex: 1; padding: 8px 10px; font-size: 10px; font-weight: 800; text-transform: uppercase; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #cbd5f5; cursor: pointer; }
+        .tour-btn.primary { background: var(--accent-green); color: #063d2b; border-color: var(--accent-green); }
+        .tour-btn.ghost { background: transparent; color: #94a3b8; }
+        .tour-focus { position: relative; z-index: 2002; border-radius: 10px; box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.8), 0 0 20px rgba(56, 189, 248, 0.35); }
         .header-stat { display: flex; flex-direction: column; align-items: flex-end; margin-left: 14px; }
         .upgrade-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px; }
         @media (min-width: 400px) { .upgrade-grid { grid-template-columns: repeat(4, 1fr); } }
@@ -52,6 +62,21 @@
         <ul id="info-mastery-list" class="text-[11px] text-slate-400 space-y-2"></ul>
     </div>
 </div>
+<div id="tour-backdrop" class="tour-backdrop"></div>
+<div id="tour-dialog" class="tour-dialog">
+    <div class="flex justify-between items-center">
+        <div>
+            <div id="tour-step" class="tour-step">Step 1 of 6</div>
+            <div id="tour-title" class="tour-title">Welcome</div>
+        </div>
+        <button id="tour-skip" class="tour-btn ghost" style="flex: 0 0 auto;">Skip</button>
+    </div>
+    <div id="tour-body" class="tour-body">Learn the basics of building a pepper empire.</div>
+    <div class="tour-actions">
+        <button id="tour-back" class="tour-btn">Back</button>
+        <button id="tour-next" class="tour-btn primary">Next</button>
+    </div>
+</div>
 
 <div id="game-wrapper">
     <div id="canvas-container">
@@ -59,7 +84,8 @@
             <div class="flex flex-col">
                 <div class="flex items-center gap-2">
                     <span class="text-[10px] uppercase font-bold text-blue-400 tracking-tighter">Legion Vault</span>
-                    <button onclick="purgeArea()" class="text-[9px] uppercase font-bold text-slate-500 hover:text-red-400 underline decoration-dotted">Purge Area</button>
+                    <button id="purge-btn" onclick="purgeArea()" class="text-[9px] uppercase font-bold text-slate-500 hover:text-red-400 underline decoration-dotted">Purge Area</button>
+                    <button id="tour-launch" onclick="startTour(true)" class="text-[9px] uppercase font-bold text-slate-500 hover:text-emerald-400 underline decoration-dotted">How to Play</button>
                 </div>
                 <div id="pepper-display" class="pepper-count leading-none text-amber-400">0</div>
             </div>
@@ -152,7 +178,7 @@
         spawnCountOwned: 0, spawnCountRatio: 3.0, maxEnemiesOwned: 0, maxEnemiesRatio: 2.5,
         currentEnemyTier: 0, maxEnemyTier: 0, tierBaseCost: 50, tierRatio: 3.5,
         units: [], enemies: [], projectiles: [], visuals: [], traps: [],
-        lastSpawn: 0, lastUpdate: performance.now(), defeatHistory: [], upgrades: {}
+        lastSpawn: 0, lastUpdate: performance.now(), lastSave: 0, defeatHistory: [], upgrades: {}
     };
     UNIT_TYPES.forEach(u => state.upgrades[u.id] = { dmg: 0, loot: 0, spec: 0, cap: 0, isWithdrawn: false, owned: 0 });
 
@@ -180,6 +206,101 @@
     }
 
     function closeInfo() { document.getElementById('info-overlay').style.display = 'none'; document.getElementById('overlay-bg').style.display = 'none'; }
+
+    const tour = { index: 0, active: false };
+    const tourSteps = [
+        { title: 'Welcome', body: 'Peppers spawn on the grid and your workers harvest them automatically. Every harvest becomes currency.', target: '#grid-canvas' },
+        { title: 'Legion Vault', body: 'Track your pepper stash, rank, and peppers per second in the header.', target: '#ui-header' },
+        { title: 'Farm Controls', body: 'Boost spawn capacity, frequency, and rank in the Farm tab to scale your harvest.', target: '#shop-world', onEnter: () => switchTab('world') },
+        { title: 'Hire Workers', body: 'Buy workers to grow your squad. Each worker adds new damage patterns.', target: '#shop-army', onEnter: () => switchTab('army') },
+        { title: 'Mastery', body: 'Spend peppers on mastery upgrades to boost damage, loot, specials, and caps.', target: '#shop-upgrades', onEnter: () => switchTab('upgrades') },
+        { title: 'Emergency Reset', body: 'Use Purge Area to clear projectiles and summons if the grid gets wild.', target: '#purge-btn' }
+    ];
+
+    function clearTourFocus() {
+        document.querySelectorAll('.tour-focus').forEach(el => el.classList.remove('tour-focus'));
+    }
+
+    function renderTourStep() {
+        if (!tour.active) return;
+        const step = tourSteps[tour.index];
+        if (step.onEnter) step.onEnter();
+        clearTourFocus();
+        const target = step.target ? document.querySelector(step.target) : null;
+        if (target) target.classList.add('tour-focus');
+        document.getElementById('tour-step').innerText = `Step ${tour.index + 1} of ${tourSteps.length}`;
+        document.getElementById('tour-title').innerText = step.title;
+        document.getElementById('tour-body').innerText = step.body;
+        const backBtn = document.getElementById('tour-back');
+        const nextBtn = document.getElementById('tour-next');
+        backBtn.disabled = tour.index === 0;
+        nextBtn.innerText = tour.index === tourSteps.length - 1 ? 'Finish' : 'Next';
+    }
+
+    function endTour(markSeen) {
+        tour.active = false;
+        clearTourFocus();
+        document.getElementById('tour-backdrop').style.display = 'none';
+        document.getElementById('tour-dialog').style.display = 'none';
+        if (markSeen) localStorage.setItem('pepperFarmerTourSeen', '1');
+    }
+
+    function startTour(force) {
+        if (tour.active) return;
+        if (!force && localStorage.getItem('pepperFarmerTourSeen') === '1') return;
+        closeInfo();
+        tour.active = true;
+        tour.index = 0;
+        document.getElementById('tour-backdrop').style.display = 'block';
+        document.getElementById('tour-dialog').style.display = 'block';
+        renderTourStep();
+    }
+
+    const SAVE_KEY = 'pepperFarmerSave';
+
+    function rebuildUnitsFromUpgrades() {
+        state.units = [];
+        UNIT_TYPES.forEach(u => {
+            const upg = state.upgrades[u.id];
+            if (!upg || upg.isWithdrawn) return;
+            for (let i = 0; i < upg.owned; i++) state.units.push(new Unit(u.id, u.id, u.color));
+        });
+        state.enemies = []; state.projectiles = []; state.visuals = []; state.traps = [];
+    }
+
+    function saveState() {
+        const payload = {
+            pepper: state.pepper,
+            spawnRateOwned: state.spawnRateOwned,
+            spawnCountOwned: state.spawnCountOwned,
+            maxEnemiesOwned: state.maxEnemiesOwned,
+            currentEnemyTier: state.currentEnemyTier,
+            maxEnemyTier: state.maxEnemyTier,
+            upgrades: {}
+        };
+        UNIT_TYPES.forEach(u => { payload.upgrades[u.id] = { ...state.upgrades[u.id] }; });
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify(payload)); } catch (err) { /* ignore */ }
+    }
+
+    function loadState() {
+        let data = null;
+        try { data = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (err) { data = null; }
+        if (!data) return;
+        if (typeof data.pepper === 'number') state.pepper = data.pepper;
+        if (typeof data.spawnRateOwned === 'number') state.spawnRateOwned = data.spawnRateOwned;
+        if (typeof data.spawnCountOwned === 'number') state.spawnCountOwned = data.spawnCountOwned;
+        if (typeof data.maxEnemiesOwned === 'number') state.maxEnemiesOwned = data.maxEnemiesOwned;
+        if (typeof data.currentEnemyTier === 'number') state.currentEnemyTier = data.currentEnemyTier;
+        if (typeof data.maxEnemyTier === 'number') state.maxEnemyTier = data.maxEnemyTier;
+        if (data.upgrades) {
+            UNIT_TYPES.forEach(u => {
+                const saved = data.upgrades[u.id];
+                if (saved) state.upgrades[u.id] = { ...state.upgrades[u.id], ...saved };
+            });
+        }
+        state.spawnInterval = 2000 * Math.pow(0.8, state.spawnRateOwned);
+        rebuildUnitsFromUpgrades();
+    }
     
     function purgeArea() {
         state.visuals = []; state.projectiles = []; state.traps = [];
@@ -368,6 +489,7 @@
         } else {
             for (let i = 0; i < state.upgrades[id].owned; i++) state.units.push(new Unit(id, id, UNIT_TYPES.find(ut => ut.id === id).color));
         }
+        saveState();
         updateUI();
     }
     function buyWorldUpgrade(type) {
@@ -380,6 +502,7 @@
             if (type === 'capacity') state.maxEnemiesOwned += k;
             else if (type === 'count') state.spawnCountOwned += k;
             else { state.spawnRateOwned += k; state.spawnInterval = 2000 * Math.pow(0.8, state.spawnRateOwned); }
+            saveState();
         }
         updateUI();
     }
@@ -389,19 +512,20 @@
         if(k > 0) { 
             state.pepper -= calcTotalPrice(u.cost, u.ratio, owned, k); state.upgrades[id].owned += k; 
             if (!state.upgrades[id].isWithdrawn) { for(let j=0; j<k; j++) state.units.push(new Unit(id, id, u.color)); }
+            saveState();
         }
         updateUI();
     }
     function upgradeUnit(id, field) {
         const u = UNIT_TYPES.find(ut => ut.id === id); const base = u.cost * 5; const lv = state.upgrades[id][field];
         let k = calcMaxBuy(state.pepper, base, 1.5, lv);
-        if(k > 0) { state.pepper -= calcTotalPrice(base, 1.5, lv, k); state.upgrades[id][field] += k; }
+        if(k > 0) { state.pepper -= calcTotalPrice(base, 1.5, lv, k); state.upgrades[id][field] += k; saveState(); }
         updateUI();
     }
-    function changeTier(delta) { state.currentEnemyTier = Math.max(0, Math.min(state.maxEnemyTier, state.currentEnemyTier + delta)); updateUI(); }
+    function changeTier(delta) { state.currentEnemyTier = Math.max(0, Math.min(state.maxEnemyTier, state.currentEnemyTier + delta)); saveState(); updateUI(); }
     function evolveWorld() {
         const cost = state.tierBaseCost * Math.pow(state.tierRatio, state.maxEnemyTier);
-        if (state.pepper >= cost) { state.pepper -= cost; state.maxEnemyTier++; state.currentEnemyTier = state.maxEnemyTier; updateUI(); }
+        if (state.pepper >= cost) { state.pepper -= cost; state.maxEnemyTier++; state.currentEnemyTier = state.maxEnemyTier; saveState(); updateUI(); }
     }
 
     function updateUI() {
@@ -524,12 +648,18 @@
             else if (v.type === 'slash') { ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(v.x*window.cellSize+window.cellSize/2, v.y*window.cellSize+window.cellSize/2, v.r*window.cellSize, v.angle - 0.5, v.angle + 0.5); ctx.stroke(); }
             else if (v.type === 'particle') { ctx.fillStyle = v.color; ctx.beginPath(); ctx.arc(v.x*window.cellSize+window.cellSize/2, v.y*window.cellSize+window.cellSize/2, 2, 0, Math.PI*2); ctx.fill(); }
         });
+        if (time - state.lastSave > 5000) { saveState(); state.lastSave = time; }
         updateUI(); requestAnimationFrame(loop);
     }
     window.onload = () => {
         window.addEventListener('resize', resize);
         document.getElementById('overlay-bg').onclick = closeInfo;
+        document.getElementById('tour-back').onclick = () => { if (tour.index > 0) { tour.index -= 1; renderTourStep(); } };
+        document.getElementById('tour-next').onclick = () => { if (tour.index >= tourSteps.length - 1) endTour(true); else { tour.index += 1; renderTourStep(); } };
+        document.getElementById('tour-skip').onclick = () => endTour(true);
+        loadState();
         initUI(); requestAnimationFrame(loop);
+        setTimeout(() => startTour(false), 400);
     };
 </script>
 </body>
