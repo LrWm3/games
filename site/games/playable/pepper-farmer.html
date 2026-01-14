@@ -462,6 +462,7 @@
             let dmg = base.dmg * (1 + upg.dmg * 0.2);
             if (state.upgrades['A'].owned > 0) dmg *= (1 + (state.upgrades['A'].owned * state.upgrades['A'].spec * 0.05));
             let cd = (this.id === 'F' ? 150 : (['V','Z','W','P','U','N','Q','J','E'].includes(this.id) ? 2500 : 800));
+            if (this.id === 'V') cd = 1000;
             if (this.id === 'Q') cd = Math.max(66, 333 - (upg.spec * 33));
             return { dmg, spd: base.spd, rng: base.rng + (this.id === 'C' ? upg.spec * 0.5 : 0), cooldown: cd, spec: upg.spec, lootMult: 1 + (upg.loot * 0.25) };
         }
@@ -590,6 +591,16 @@
                 case 'N': case 'shadow': state.projectiles.push({ x: this.x, y: this.y, originX: this.x, originY: this.y, vx: (target.x-this.x)*0.03, vy: (target.y-this.y)*0.03, char: '*', damage: stats.dmg*m, lootMult: stats.lootMult, isBoomerang: true, color: '#475569', speed: 0.25, range: 10 }); break;
                 case 'turret': enemies.filter(e => Math.hypot(e.x-this.x, e.y-this.y) < stats.rng).slice(0, 5).forEach(e => { this.dealDamage(e, stats.dmg, 1); state.visuals.push({ type: 'bolt', x1: this.x, y1: this.y, x2: e.x, y2: e.y, life: 5, color: '#fff' }); }); break;
                 case 'U': state.projectiles.push({ x: this.x, y: this.y, vx: (target.x-this.x)*0.1, vy: (target.y-this.y)*0.1, damage: stats.dmg*m, life: 4000, isBubble: true, r: 1.8+stats.spec*0.2, travelR: 0.9+stats.spec*0.1, color: '#60a5fa' }); break;
+                case 'V': {
+                    const count = 5 + stats.spec;
+                    for (let i = 0; i < count; i++) {
+                        const ang = this.rotation + (i * Math.PI * 2 / count);
+                        state.projectiles.push({
+                            x: this.x, y: this.y, vx: Math.cos(ang) * 0.22, vy: Math.sin(ang) * 0.22,
+                            damage: stats.dmg*m, life: 2200, isSpear: true, color: '#fde047', bounces: 5, r: 1.0
+                        });
+                    }
+                } break;
                 case 'P': {
                     if (target) {
                         const accel = 0.0012 + (stats.spec * 0.00035);
@@ -610,7 +621,7 @@
                             state.projectiles.push({
                                 x: this.x, y: this.y, target, isCoin: true, speed: 0.2,
                                 wobble: 0.04 + Math.random() * 0.02, wobblePhase: Math.random() * Math.PI * 2,
-                                damage: stats.dmg * 0.2 * m, color: '#fbbf24', char: 'o', life: 1000, scale: 0.8
+                                damage: stats.dmg * 0.2 * m, color: '#fbbf24', char: 'o', life: 500, scale: 0.8
                             });
                         }
                     }
@@ -807,7 +818,37 @@
                 p.x += (p.vx||0); p.y += (p.vy||0); p.vx*=0.985; p.vy*=0.985;
                 const travelR = p.travelR ?? (p.r * 0.6);
                 state.enemies.forEach(e => { if(Math.hypot(e.x-p.x, e.y-p.y) < travelR) e.hp -= p.damage*(dt/1000); });
+                state.visuals.push({ type: 'bubble-aura', x: p.x, y: p.y, r: travelR, life: 2, color: '#60a5fa' });
                 if((p.life-=dt)<=0) { state.visuals.push({ type: 'nova', x: p.x, y: p.y, r: p.r, life: 10, color: '#60a5fa' }); state.projectiles.splice(i, 1); }
+                if(p.x<0||p.x>GRID_SIZE) p.vx*=-1; if(p.y<0||p.y>GRID_SIZE) p.vy*=-1;
+            } else if (p.isSpear) {
+                p.x += p.vx; p.y += p.vy;
+                let hit = null;
+                for (let e of state.enemies) { if (Math.hypot(e.x-p.x, e.y-p.y) < 0.5) { hit = e; break; } }
+                if (hit) {
+                    hit.hp -= p.damage;
+                    p.bounces -= 1;
+                    if (p.bounces < 0) { state.projectiles.splice(i, 1); }
+                    else {
+                        let next = null; let dMin = Infinity;
+                        state.enemies.forEach(e => {
+                            if (e !== hit && e.hp > 0) {
+                                const d2 = Math.hypot(e.x-p.x, e.y-p.y);
+                                if (d2 < dMin) { dMin = d2; next = e; }
+                            }
+                        });
+                        if (next && p.bounces > 0) {
+                            const dx = next.x - p.x; const dy = next.y - p.y; const d = Math.hypot(dx, dy) || 1;
+                            state.projectiles.push({
+                                x: p.x, y: p.y, vx: (dx / d) * 0.22, vy: (dy / d) * 0.22,
+                                damage: p.damage, life: 2000, isSpear: true, color: p.color, bounces: p.bounces - 1, r: p.r
+                            });
+                        }
+                        p.vx *= -1; p.vy *= -1;
+                    }
+                } else if ((p.life -= dt) <= 0) {
+                    state.projectiles.splice(i, 1);
+                }
                 if(p.x<0||p.x>GRID_SIZE) p.vx*=-1; if(p.y<0||p.y>GRID_SIZE) p.vy*=-1;
             } else if (p.isArrow) {
                 let t = p.target; if (!state.enemies.includes(t) || t.hp <= 0) t = null; p.target = t;
@@ -863,8 +904,8 @@
                     p.vy = Math.sin(ang) * p.speed + Math.sin(ang + Math.PI/2) * wob;
                     p.x += p.vx; p.y += p.vy;
                     if (Math.hypot(t.x-p.x, t.y-p.y) < 0.4) {
-                        t.hp -= p.damage;
-                        state.visuals.push({ type: 'coin-spark', x: p.x, y: p.y, life: 8, color: '#fbbf24' });
+                        state.visuals.push({ type: 'coin-blast', x: p.x, y: p.y, r: 0.9, life: 10, color: '#fbbf24' });
+                        state.enemies.forEach(e => { if (Math.hypot(e.x-p.x, e.y-p.y) < 0.9) e.hp -= p.damage * 0.6; });
                         state.projectiles.splice(i, 1);
                     }
                 }
@@ -927,6 +968,19 @@
         });
         state.enemies.forEach(e => e.draw(ctx, window.cellSize)); state.units.forEach(u => u.draw(ctx, window.cellSize));
         state.projectiles.forEach(p => { 
+            if (p.isSpear) {
+                const px = p.x*window.cellSize+window.cellSize/2; const py = p.y*window.cellSize+window.cellSize/2;
+                const vx = p.vx || 0; const vy = p.vy || 0;
+                const vlen = Math.hypot(vx, vy) || 1;
+                const nx = vx / vlen; const ny = vy / vlen;
+                const len = window.cellSize * 0.9;
+                ctx.strokeStyle = (p.color || '#fde047') + '80'; ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(px - nx * len, py - ny * len);
+                ctx.lineTo(px + nx * len * 0.2, py + ny * len * 0.2);
+                ctx.stroke();
+                return;
+            }
             ctx.fillStyle = p.color || '#fff'; const s = window.cellSize * (p.scale || (p.isBoulder?1.2:0.6));
             ctx.font = "bold " + s + "px 'Fira Code'"; ctx.fillText(p.char||'·', p.x*window.cellSize+window.cellSize/2, p.y*window.cellSize+window.cellSize/2); 
         });
@@ -952,6 +1006,13 @@
                 ctx.beginPath(); ctx.arc(px, py, v.r*window.cellSize, v.angle, v.angle + Math.PI * 1.2); ctx.stroke();
                 ctx.strokeStyle = v.color + '55'; ctx.lineWidth = 1.5;
                 ctx.beginPath(); ctx.arc(px, py, (v.r*0.75)*window.cellSize, v.angle + Math.PI, v.angle + Math.PI * 2.1); ctx.stroke();
+            }
+            else if (v.type === 'bubble-aura') {
+                const px = v.x*window.cellSize+window.cellSize/2; const py = v.y*window.cellSize+window.cellSize/2;
+                ctx.strokeStyle = v.color + '66'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(px, py, v.r*window.cellSize, 0, Math.PI*2); ctx.stroke();
+                ctx.strokeStyle = v.color + '22'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.arc(px, py, (v.r*0.6)*window.cellSize, 0, Math.PI*2); ctx.stroke();
             }
             else if (v.type === 'coin-spark') {
                 const px = v.x*window.cellSize+window.cellSize/2; const py = v.y*window.cellSize+window.cellSize/2;
