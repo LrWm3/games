@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sibling Resonance - Dynamic Rivalry</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #020205;
+            color: #f8fafc;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            touch-action: none;
+        }
+        canvas { display: block; }
+        .ui-drawer {
+            background: rgba(5, 5, 10, 0.95);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 50;
+        }
+        .drawer-closed { transform: translateX(-100%); }
+        .pattern-btn {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease;
+        }
+        .btn-active {
+            background: #8b5cf6 !important;
+            color: #fff !important;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        
+        @keyframes pulse-border {
+            0% { border-color: rgba(255,255,255,0.1); }
+            50% { border-color: rgba(139, 92, 246, 0.5); }
+            100% { border-color: rgba(255,255,255,0.1); }
+        }
+        .swapping {
+            animation: pulse-border 0.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="flex h-screen">
+
+    <button onclick="toggleMenu()" class="fixed top-6 left-6 z-[60] p-4 rounded-2xl bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 transition-all active:scale-90 shadow-2xl">
+        <svg id="menu-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+    </button>
+
+    <div id="drawer" class="ui-drawer fixed top-0 left-0 h-full w-80 p-8 flex flex-col drawer-open shadow-2xl">
+        <div class="mt-20 mb-10">
+            <h1 class="text-[9px] font-black tracking-[0.5em] text-violet-500 uppercase mb-2">Protocol: Resonance</h1>
+            <h2 class="text-xl font-bold tracking-tight text-slate-200 uppercase">The Trinity v4</h2>
+        </div>
+        
+        <div class="flex-grow space-y-2 overflow-y-auto pr-2 custom-scrollbar">
+            <button onclick="setPattern(5)" id="btn-5" class="pattern-btn btn-active w-full text-left px-5 py-4 rounded-xl text-xs font-bold flex flex-col">
+                <span class="opacity-40 mb-1">P-48</span>
+                <span>SIBLING RIVALRY (SWAP MODE)</span>
+            </button>
+            <button onclick="setPattern(4)" id="btn-4" class="pattern-btn w-full text-left px-5 py-4 rounded-xl text-xs font-bold flex flex-col">
+                <span class="opacity-40 mb-1">P-47</span>
+                <span>OVERLOAD SYNC</span>
+            </button>
+            <button onclick="setPattern(0)" id="btn-0" class="pattern-btn w-full text-left px-5 py-4 rounded-xl text-xs font-bold flex flex-col">
+                <span class="opacity-40 mb-1">P-43</span>
+                <span>SNIPER FOCUS</span>
+            </button>
+            <button onclick="setPattern(1)" id="btn-1" class="pattern-btn w-full text-left px-5 py-4 rounded-xl text-xs font-bold flex flex-col">
+                <span class="opacity-40 mb-1">P-44</span>
+                <span>SPIRAL BLOOM</span>
+            </button>
+            <button onclick="setPattern(2)" id="btn-2" class="pattern-btn w-full text-left px-5 py-4 rounded-xl text-xs font-bold flex flex-col">
+                <span class="opacity-40 mb-1">P-45</span>
+                <span>CLUSTER SIEGE</span>
+            </button>
+            <button onclick="setPattern(3)" id="btn-3" class="pattern-btn w-full text-left px-5 py-4 rounded-xl text-xs font-bold flex flex-col">
+                <span class="opacity-40 mb-1">P-46</span>
+                <span>RESONANCE TRIANGLE</span>
+            </button>
+        </div>
+
+        <div class="mt-8 pt-6 border-t border-white/5 space-y-4">
+            <div class="flex justify-between items-center text-[10px] font-bold text-slate-500">
+                <span>TOTAL HITS</span>
+                <span id="hit-counter" class="text-violet-400 text-lg font-mono">000</span>
+            </div>
+            <div id="swap-status" class="hidden text-[10px] font-bold text-amber-500 uppercase animate-pulse">
+                Phase Shift Imminent
+            </div>
+            <div class="flex flex-wrap gap-2 text-[8px] font-bold uppercase">
+                <span id="label-icarus" class="px-2 py-1 bg-blue-500/20 text-blue-400 rounded">Icarus</span>
+                <span id="label-lyra" class="px-2 py-1 bg-pink-500/20 text-pink-400 rounded">Lyra</span>
+                <span id="label-brutus" class="px-2 py-1 bg-green-500/20 text-green-400 rounded">Brutus</span>
+            </div>
+            <button onclick="resetStats()" class="w-full py-2 rounded-lg bg-white/5 border border-white/5 text-[9px] tracking-widest uppercase font-bold hover:bg-white/10 transition-all">Reset Stats</button>
+        </div>
+    </div>
+
+    <canvas id="mainView" class="w-full h-full"></canvas>
+
+    <script>
+        const canvas = document.getElementById('mainView');
+        const ctx = canvas.getContext('2d');
+        const drawer = document.getElementById('drawer');
+        const hitEl = document.getElementById('hit-counter');
+        const menuIcon = document.getElementById('menu-icon');
+        const swapStatus = document.getElementById('swap-status');
+
+        let width, height;
+        let bullets = [];
+        let patternIdx = 5;
+        let ticks = 0;
+        let isMenuOpen = true;
+
+        const icarus = { name: 'Icarus', x: 0, y: 0, tx: 0, ty: 0, color: '#3b82f6', size: 10, enhanced: false };
+        const lyra = { name: 'Lyra', x: 0, y: 0, tx: 0, ty: 0, color: '#ec4899', size: 12, enhanced: false };
+        const brutus = { name: 'Brutus', x: 0, y: 0, tx: 0, ty: 0, color: '#22c55e', size: 16, enhanced: false };
+        const siblings = [icarus, lyra, brutus];
+        
+        // Tracks which sibling occupies which of the 3 orbital slots [0, 1, 2]
+        let slotMapping = [0, 1, 2];
+
+        const survivor = {
+            x: 0, y: 0, vx: 0, vy: 0,
+            speed: 6.8, hits: 0, lastHitFrame: -100,
+            anchorX: 0, anchorY: 0
+        };
+
+        class Bullet {
+            constructor(x, y, angle, speed, color, opts = {}) {
+                this.x = x; this.y = y;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.color = color;
+                this.size = opts.size || 2.5;
+                this.type = opts.type || 'normal'; 
+                this.accel = opts.accel || 1;
+                this.life = 0;
+                this.isHit = false;
+                this.burstTicks = opts.burstTicks || 60;
+            }
+            update() {
+                this.vx *= this.accel; this.vy *= this.accel;
+                this.x += this.vx; this.y += this.vy;
+                this.life++;
+                if (this.type === 'shell' && this.life >= this.burstTicks) { this.explode(); return false; }
+                return this.x > -100 && this.x < width + 100 && this.y > -100 && this.y < height + 100;
+            }
+            explode() {
+                const frags = 8;
+                for(let i=0; i<frags; i++) fire(this.x, this.y, (i/frags)*Math.PI*2, 3, this.color, {size: 2});
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                if(this.type === 'link') { ctx.shadowBlur = 10; ctx.shadowColor = this.color; }
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function toggleMenu() {
+            isMenuOpen = !isMenuOpen;
+            drawer.classList.toggle('drawer-open', isMenuOpen);
+            drawer.classList.toggle('drawer-closed', !isMenuOpen);
+            menuIcon.innerHTML = isMenuOpen 
+                ? '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>' 
+                : '<line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line>';
+        }
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            survivor.x = width/2; survivor.y = height * 0.8;
+            survivor.anchorX = width/2; survivor.anchorY = height * 0.8;
+        }
+
+        function fire(x, y, angle, speed, color, opts = {}) { bullets.push(new Bullet(x, y, angle, speed, color, opts)); }
+
+        function setPattern(n) {
+            patternIdx = n;
+            document.querySelectorAll('.pattern-btn').forEach((b) => {
+                const id = parseInt(b.id.split('-')[1]);
+                b.classList.toggle('btn-active', id === n);
+            });
+            bullets = [];
+            if (window.innerWidth < 1024) toggleMenu();
+            swapStatus.classList.add('hidden');
+        }
+
+        function resetStats() { survivor.hits = 0; hitEl.innerText = "000"; }
+
+        function updateSurvivorAI() {
+            let fX = 0, fY = 0;
+            const threatRange = 160;
+            const padding = 40;
+
+            for (let b of bullets) {
+                const dx = survivor.x - b.x;
+                const dy = survivor.y - b.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (!b.isHit && dist < b.size + 1.2) {
+                    survivor.hits++; survivor.lastHitFrame = ticks; b.isHit = true;
+                    hitEl.innerText = survivor.hits.toString().padStart(3, '0');
+                }
+                if (dist < threatRange) {
+                    const weight = b.type === 'link' ? 14 : 6;
+                    const s = Math.pow((threatRange - dist) / threatRange, 2.8) * weight;
+                    fX += (dx / dist) * s; fY += (dy / dist) * s;
+                }
+            }
+
+            let aX = survivor.anchorX;
+            let aY = survivor.anchorY;
+            if (patternIdx === 5) { aY = height/2; } 
+
+            fX += (aX - survivor.x) * 0.012;
+            fY += (aY - survivor.y) * 0.012;
+
+            if (survivor.x < padding*3) fX += 2.0;
+            if (survivor.x > width-padding*3) fX -= 2.0;
+            if (survivor.y < padding*3) fY += 2.0;
+            if (survivor.y > height-padding*3) fY -= 2.0;
+
+            survivor.vx = (survivor.vx * 0.8) + (fX * 0.2);
+            survivor.vy = (survivor.vy * 0.8) + (fY * 0.2);
+            const m = Math.sqrt(survivor.vx**2 + survivor.vy**2);
+            if (m > survivor.speed) { survivor.vx = (survivor.vx/m) * survivor.speed; survivor.vy = (survivor.vy/m) * survivor.speed; }
+            survivor.x += survivor.vx; survivor.y += survivor.vy;
+            survivor.x = Math.max(padding, Math.min(width-padding, survivor.x));
+            survivor.y = Math.max(padding, Math.min(height-padding, survivor.y));
+        }
+
+        function handleResonance(source, target, speed = 15) {
+            target.enhanced = true;
+            if (ticks % 1 === 0) { 
+                const angle = Math.atan2(target.y - source.y, target.x - source.x);
+                fire(source.x, source.y, angle, speed, source.color, {type: 'link', size: 1.2});
+            }
+        }
+
+        function updatePatterns() {
+            const cx = width / 2;
+            const t = ticks * 0.025;
+            siblings.forEach(s => s.enhanced = false);
+
+            switch(patternIdx) {
+                case 0: // Sniper Focus
+                    icarus.tx = cx + Math.sin(t) * 200; icarus.ty = 150;
+                    lyra.tx = 150; lyra.ty = 100; brutus.tx = width - 150; brutus.ty = 100;
+                    handleResonance(lyra, icarus, 15);
+                    if (ticks % 30 === 0) {
+                        const ang = Math.atan2(survivor.y - icarus.y, survivor.x - icarus.x);
+                        const count = icarus.enhanced ? 3 : 1;
+                        for(let i=0; i<count; i++) fire(icarus.x, icarus.y, ang + (i - (count-1)/2)*0.15, 9, icarus.color, {size: 4});
+                    }
+                    break;
+                case 1: // Spiral Bloom
+                    icarus.tx = 150; icarus.ty = 100; lyra.tx = cx; lyra.ty = 200; brutus.tx = cx; brutus.ty = height-150;
+                    handleResonance(brutus, lyra, 15);
+                    if (ticks % (lyra.enhanced ? 1 : 3) === 0) {
+                        for(let i=0; i<2; i++) fire(lyra.x, lyra.y, t*4 + i*Math.PI, 3.5, lyra.color);
+                    }
+                    break;
+                case 2: // Cluster Siege
+                    icarus.tx = cx + Math.cos(t*2)*300; icarus.ty = 80; lyra.tx = 100; lyra.ty = 200; brutus.tx = cx; brutus.ty = 200;
+                    handleResonance(icarus, brutus, 15);
+                    if (ticks % (brutus.enhanced ? 10 : 40) === 0) fire(brutus.x, brutus.y, Math.random()*Math.PI*2, 2.5, brutus.color, {type: 'shell', size: 5, burstTicks: 40});
+                    break;
+                case 3: // Resonance Triangle
+                    icarus.tx = cx + Math.cos(t)*250; icarus.ty = 300 + Math.sin(t*1.5)*150;
+                    lyra.tx = cx + Math.cos(t + 2.1)*250; lyra.ty = 300 + Math.sin(t*1.5 + 2.1)*150;
+                    brutus.tx = cx + Math.cos(t + 4.2)*250; brutus.ty = 300 + Math.sin(t*1.5 + 4.2)*150;
+                    handleResonance(icarus, lyra, 12); handleResonance(lyra, brutus, 12); handleResonance(brutus, icarus, 12);
+                    if (ticks % 15 === 0) siblings.forEach(s => fire(s.x, s.y, Math.atan2(survivor.y - s.y, survivor.x - s.x), 5, s.color));
+                    break;
+                case 4: // Overload Sync
+                    brutus.tx = cx; brutus.ty = 80;
+                    icarus.tx = cx - 350 + Math.sin(t*2)*150; icarus.ty = 300;
+                    lyra.tx = cx + 350 - Math.sin(t*2)*150; lyra.ty = 300;
+                    handleResonance(brutus, icarus, 15); handleResonance(brutus, lyra, 15);
+                    if (ticks % 2 === 0) {
+                        const offset = Math.sin(t*4) * 0.8;
+                        fire(icarus.x, icarus.y, Math.PI/2 + offset, 5, icarus.color);
+                        fire(lyra.x, lyra.y, Math.PI/2 - offset, 5, lyra.color);
+                    }
+                    if (ticks % 30 === 0) for(let i=0; i<20; i++) fire(brutus.x, brutus.y, (i/20)*Math.PI*2, 3, brutus.color, {accel: 1.015});
+                    break;
+                case 5: // SIBLING RIVALRY (Swap Mechanic)
+                    const r = 300;
+                    const rot = t * 2.0;
+                    
+                    // Every 300 ticks, rotate the slots
+                    if (ticks % 300 === 0) {
+                        slotMapping.push(slotMapping.shift());
+                        swapStatus.classList.add('hidden');
+                    }
+                    if (ticks % 300 > 240) {
+                        swapStatus.classList.remove('hidden');
+                    }
+
+                    // Assign siblings to their current slots
+                    const slotPhases = [rot, rot + 2.1, rot + 4.2];
+                    
+                    icarus.tx = cx + Math.cos(slotPhases[slotMapping[0]]) * r;
+                    icarus.ty = height/2 + Math.sin(slotPhases[slotMapping[0]]) * r;
+                    
+                    lyra.tx = cx + Math.cos(slotPhases[slotMapping[1]]) * r;
+                    lyra.ty = height/2 + Math.sin(slotPhases[slotMapping[1]]) * r;
+                    
+                    brutus.tx = cx + Math.cos(slotPhases[slotMapping[2]]) * r;
+                    brutus.ty = height/2 + Math.sin(slotPhases[slotMapping[2]]) * r;
+                    
+                    // SLOW Link projectiles (Speed 4.5)
+                    handleResonance(icarus, lyra, 4.5);
+                    handleResonance(lyra, brutus, 4.5);
+                    handleResonance(brutus, icarus, 4.5);
+
+                    if (ticks % 3 === 0) {
+                        siblings.forEach(s => {
+                            const inward = Math.atan2(height/2 - s.y, cx - s.x);
+                            fire(s.x, s.y, inward, 4, s.color);
+                            if (s.enhanced && ticks % 15 === 0) {
+                                fire(s.x, s.y, inward + Math.PI, 6, s.color, {size: 3.5});
+                            }
+                        });
+                    }
+                    break;
+            }
+
+            siblings.forEach(s => {
+                const moveSpeed = (patternIdx === 5 && ticks % 300 < 50) ? 0.05 : 0.12;
+                s.x += (s.tx - s.x) * moveSpeed; 
+                s.y += (s.ty - s.y) * moveSpeed;
+                
+                const lbl = document.getElementById(`label-${s.name.toLowerCase()}`);
+                if (lbl) lbl.className = s.enhanced 
+                    ? `px-2 py-1 bg-${s.color === '#3b82f6' ? 'blue' : s.color === '#ec4899' ? 'pink' : 'green'}-500 text-white rounded ring-2 ring-white animate-pulse`
+                    : `px-2 py-1 bg-${s.color === '#3b82f6' ? 'blue' : s.color === '#ec4899' ? 'pink' : 'green'}-500/10 text-${s.color === '#3b82f6' ? 'blue' : s.color === '#ec4899' ? 'pink' : 'green'}-400 rounded`;
+            });
+        }
+
+        function draw() {
+            ctx.fillStyle = 'rgba(2, 2, 5, 0.45)'; ctx.fillRect(0, 0, width, height);
+            updatePatterns(); updateSurvivorAI();
+            for (let i = bullets.length - 1; i >= 0; i--) { if (!bullets[i].update()) bullets.splice(i, 1); else bullets[i].draw(); }
+            siblings.forEach(s => {
+                ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(ticks * 0.08); ctx.strokeStyle = s.color; ctx.lineWidth = s.enhanced ? 5 : 2;
+                if(s.enhanced) { ctx.shadowBlur = 20; ctx.shadowColor = s.color; }
+                ctx.strokeRect(-s.size, -s.size, s.size*2, s.size*2);
+                ctx.restore();
+            });
+            ctx.save(); ctx.translate(survivor.x, survivor.y);
+            const isHurt = (ticks - survivor.lastHitFrame < 10);
+            ctx.fillStyle = isHurt ? '#ef4444' : '#ffffff'; ctx.fillRect(-0.5, -0.5, 1, 1);
+            ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2);
+            ctx.strokeStyle = isHurt ? 'rgba(239, 68, 68, 0.5)' : 'rgba(139, 92, 246, 0.3)';
+            ctx.stroke(); ctx.restore();
+            ticks++; requestAnimationFrame(draw);
+        }
+
+        window.onload = () => { resize(); setPattern(5); window.addEventListener('resize', resize); draw(); };
+    </script>
+</body>
+</html>

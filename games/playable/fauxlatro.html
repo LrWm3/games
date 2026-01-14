@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fauxlatro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --card-w: 80px; --card-h: 115px;
+            --joker-w: 75px; --joker-h: 105px;
+            --bg: #0b0d14;
+            --accent-blue: #4d94ff; --accent-red: #ff4d4d; --accent-gold: #f1c40f;
+            --hand-bg: #1a1d2e;
+            --suit-spade: #2c3e50; --suit-heart: #e74c3c; --suit-club: #3498db; --suit-diamond: #e67e22;
+        }
+        @media (min-width: 640px) { :root { --card-w: 105px; --card-h: 150px; --joker-w: 95px; --joker-h: 130px; } }
+
+        body {
+            background-color: var(--bg); color: white; height: 100vh; margin: 0;
+            display: flex; flex-direction: column; font-family: 'Courier New', Courier, monospace;
+            touch-action: none; user-select: none; overflow: hidden;
+        }
+
+        * { scrollbar-width: none; -ms-overflow-style: none; }
+        *::-webkit-scrollbar { display: none; }
+
+        .crt-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.05) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 4px, 4px 100%; pointer-events: none; z-index: 10000;
+        }
+
+        .header-stats { position: fixed; top: 10px; left: 10px; z-index: 7000; display: flex; flex-direction: column; gap: 8px; width: 160px; }
+        .ui-panel { background: rgba(0,0,0,0.9); padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(8px); }
+        
+        .top-btns { position: fixed; top: 10px; right: 10px; z-index: 7000; display: flex; gap: 8px; }
+        .circle-btn { 
+            background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2); 
+            border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; cursor: pointer; transition: background 0.2s;
+        }
+        .circle-btn:hover { background: var(--hand-bg); border-color: var(--accent-blue); }
+
+        .joker-area { position: fixed; top: 10px; left: 180px; right: 100px; height: calc(var(--joker-h) + 15px); border: 2px dashed rgba(255,255,255,0.1); border-radius: 12px; z-index: 6000; background: rgba(0,0,0,0.4); }
+
+        .card, .joker-card, .planet-card, .pack-card {
+            width: var(--card-w); height: var(--card-h); background: #fff; border-radius: 8px; position: absolute;
+            display: flex; flex-direction: column; justify-content: space-between; padding: 10px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.8); cursor: pointer; color: #000;
+            transition: left 0.3s cubic-bezier(0.19, 1, 0.22, 1), top 0.3s cubic-bezier(0.19, 1, 0.22, 1), transform 0.2s ease-out;
+            transform: translate(-50%, -50%);
+            will-change: left, top, transform;
+        }
+        .joker-card, .planet-card, .pack-card { width: var(--joker-w); height: var(--joker-h); }
+        .planet-card { background: #2a1a3e; color: #fff; border: 2px solid #6b4dff; }
+        
+        .pack-card { background: #1a1a1a; color: white; border: 2px solid #333; }
+        .pack-card.fruit { border-color: #a855f7; background: linear-gradient(135deg, #1e1b4b, #4c1d95); }
+        .pack-card.joker { border-color: #ef4444; background: linear-gradient(135deg, #450a0a, #991b1b); }
+
+        .inspected { border: 3px solid var(--accent-gold) !important; box-shadow: 0 0 15px var(--accent-gold) !important; transform: translate(-50%, -50%) scale(1.1) !important; z-index: 100 !important; }
+        .selected { border: 3px solid var(--accent-blue); box-shadow: 0 0 20px var(--accent-blue); }
+        .dragging { position: fixed !important; z-index: 9999 !important; transition: transform 0.1s ease-out !important; opacity: 0.9; pointer-events: none; }
+        .placeholder { background: rgba(255,255,255,0.05); border: 2px dashed rgba(255,255,255,0.2); box-shadow: none; visibility: visible; z-index: 1; pointer-events: none; }
+        
+        .not-scoring { opacity: 0.4; filter: grayscale(0.5); transform: translate(-50%, -40%) scale(0.9) !important; }
+
+        .rank-label { font-weight: 900; font-size: 1.5rem; line-height: 1; pointer-events: none; }
+        .suit-icon { align-self: flex-end; font-size: 1.8rem; line-height: 1; pointer-events: none; }
+        .suit-spade { color: var(--suit-spade); } .suit-heart { color: var(--suit-heart); } .suit-club { color: var(--suit-club); } .suit-diamond { color: var(--suit-diamond); }
+
+        .game-viewport { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 20px; }
+        .played-zone { width: 100%; height: 160px; position: relative; margin-bottom: 20px; pointer-events: none; }
+        .hand-zone { width: 100%; max-width: 1000px; height: 180px; position: relative; margin: 0 auto; }
+
+        .footer-panel { background: rgba(0,0,0,0.95); border-top: 2px solid #1a1d2e; padding: 15px; z-index: 2000; }
+        .big-btn { height: 65px; min-width: 130px; border-radius: 8px; font-weight: 900; text-transform: uppercase; border: 3px solid rgba(255,255,255,0.1); cursor: pointer; }
+        .btn-play { background: #1a2a4e; color: var(--accent-blue); }
+        .btn-discard { background: #3e1a1a; color: var(--accent-red); }
+
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 5000; }
+        .shop-overlay { background: #06070a; z-index: 4000; padding: 20px; justify-content: center; overflow: hidden; }
+        .shop-title-container { margin-bottom: 20px; transform: rotate(-3deg); z-index: 10; }
+        .shop-title { font-size: 3.5rem; font-weight: 900; color: #fff; text-shadow: 0 0 10px var(--accent-blue), 0 0 20px var(--accent-blue); font-style: italic; letter-spacing: -3px; line-height: 1; }
+        
+        .shop-section-label { text-transform: uppercase; font-size: 10px; font-weight: 900; color: var(--accent-gold); letter-spacing: 4px; margin-bottom: 8px; opacity: 0.6; }
+        .shop-row { position: relative; width: 100%; height: 140px; margin-bottom: 30px; display: flex; justify-content: center; }
+        .price-tag { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); color: var(--accent-gold); font-weight: 900; font-size: 14px; pointer-events: none; }
+
+        .inspect-panel {
+            position: fixed; top: 180px; right: 20px; width: 240px; background: var(--hand-bg); border: 2px solid var(--accent-gold);
+            border-radius: 8px; padding: 15px; z-index: 8000; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+
+        .stats-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
+        .stats-row { background: rgba(255,255,255,0.05); border-radius: 4px; }
+        .stats-row td { padding: 8px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+
+        .pack-open-overlay { z-index: 9000; background: rgba(10, 10, 20, 0.98); }
+
+        @keyframes jiggle { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -65%) scale(1.15); } }
+        .trigger-jiggle { animation: jiggle 0.3s ease-out; z-index: 3000 !important; box-shadow: 0 0 40px #fff; }
+        .fly-away { transform: translate(150vw, -100vh) rotate(90deg) scale(0.2) !important; opacity: 0; pointer-events: none; }
+    </style>
+</head>
+<body onclick="handleGlobalClick(event)">
+
+    <div class="crt-overlay"></div>
+
+    <div class="top-btns">
+        <button class="circle-btn" onclick="toggleHandsMenu(true)">📊</button>
+        <button class="circle-btn" onclick="toggleInfo(true)">?</button>
+    </div>
+
+    <div class="header-stats">
+        <div class="ui-panel">
+            <p class="text-[8px] uppercase opacity-50 font-bold">Ante <span id="ante-num">1/8</span></p>
+            <p class="text-xs font-black text-white uppercase tracking-tighter" id="blind-name">Small Blind</p>
+        </div>
+        <div class="ui-panel"><p class="text-[8px] uppercase opacity-50 font-bold">Money</p><p class="text-lg font-black text-yellow-400" id="money-display">$0</p></div>
+        <div class="ui-panel"><p class="text-[8px] uppercase opacity-50 font-bold">Round Score</p><div class="flex items-baseline gap-1"><p class="text-lg font-black text-blue-400" id="total-score">0</p><p class="text-[10px] opacity-40 font-bold">/ <span id="target-score">300</span></p></div></div>
+    </div>
+
+    <div class="joker-area" id="joker-inventory-list"></div>
+
+    <div class="inspect-panel" id="inspect-panel">
+        <h3 class="text-accent-gold font-black uppercase text-sm mb-1" id="inspect-name">NAME</h3>
+        <p class="text-[10px] text-gray-300 leading-tight mb-4" id="inspect-desc">DESCRIPTION.</p>
+        <div id="inspect-actions">
+             <button class="w-full bg-red-900 border border-red-500 text-white font-black py-2 rounded text-[10px] uppercase" id="sell-btn">Sell</button>
+             <p class="text-[8px] text-white/30 text-center mt-2 uppercase italic" id="buy-hint">Drag into slot to purchase</p>
+        </div>
+    </div>
+
+    <div class="fixed top-[180px] left-1/2 -translate-x-1/2 z-1000 text-center pointer-events-none">
+        <div class="ui-panel border-blue-500/50 min-w-[280px]" id="hand-box">
+            <p class="text-sm font-black uppercase tracking-widest" id="hand-name">Select Cards</p>
+            <p class="text-lg font-black mt-1" id="hand-score-val"></p>
+        </div>
+    </div>
+
+    <div class="game-viewport">
+        <div class="played-zone h-[160px] relative mb-4" id="played-list"></div>
+        <div class="hand-zone h-[180px] w-full max-w-[1000px] relative mx-auto" id="hand-list"></div>
+    </div>
+
+    <div class="footer-panel">
+        <div class="flex justify-center gap-3 mb-4 flex-wrap">
+            <button class="big-btn btn-play" id="play-btn" onclick="playHandSequence()">Play <span class="block text-[10px] opacity-60" id="play-sub">4 Left</span></button>
+            <button class="big-btn btn-discard" id="discard-btn" onclick="discardSelected()">Discard <span class="block text-[10px] opacity-60" id="discard-sub">3 Left</span></button>
+            <button class="big-btn bg-zinc-800 text-white min-w-[160px]" id="sort-toggle-btn" onclick="toggleSort()">Sort By Suit</button>
+        </div>
+        <div class="flex justify-between items-center max-w-[800px] mx-auto text-[10px] font-bold uppercase text-white/30">
+            <div id="sel-count">0/5 Selected</div>
+            <button onclick="resetGame()" class="hover:text-white underline">[ Reset Run ]</button>
+            <div id="deck-info">Deck: 52</div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="hands-overlay" class="overlay">
+        <div class="bg-black border border-white/20 p-6 rounded-lg w-full max-w-lg shadow-2xl">
+            <h2 class="text-2xl font-black italic uppercase text-blue-400 mb-4 border-b border-white/10 pb-2">Run Statistics</h2>
+            <div class="max-h-[60vh] overflow-y-auto">
+                <table class="stats-table" id="hands-stats-list"></table>
+            </div>
+            <button class="w-full mt-6 bg-blue-600 text-white font-black py-3 rounded uppercase" onclick="toggleHandsMenu(false)">Back to Game</button>
+        </div>
+    </div>
+
+    <div id="pack-overlay" class="overlay pack-open-overlay">
+        <h2 class="text-3xl font-black italic uppercase text-white mb-2" id="pack-open-title">Pack Opened</h2>
+        <p class="text-accent-gold font-black uppercase text-sm mb-12 tracking-widest" id="pack-open-subtitle">Choose 1 Card</p>
+        <div class="shop-row !mb-20" id="pack-contents"></div>
+        <button class="bg-gray-800 px-12 py-3 rounded font-black text-xs uppercase text-white/50 border border-white/10" onclick="closePack()">Skip Pack</button>
+    </div>
+
+    <div id="shop-overlay" class="overlay shop-overlay">
+        <div class="shop-title-container"><h1 class="shop-title italic uppercase">The Shop</h1></div>
+        <div class="w-full max-w-3xl px-4">
+            <div class="flex flex-col items-center">
+                <div class="w-full">
+                    <div class="shop-section-label text-center">Jokers</div>
+                    <div class="shop-row" id="shop-list-jokers"></div>
+                </div>
+                <div class="w-full">
+                    <div class="shop-section-label text-center">Booster Packs</div>
+                    <div class="shop-row" id="shop-list-packs"></div>
+                </div>
+            </div>
+        </div>
+        <div class="mt-6 flex gap-4">
+            <button class="bg-gray-800 border border-yellow-600 text-yellow-500 px-8 py-3 rounded font-black text-xs uppercase" onclick="rerollShop()">Reroll ($5)</button>
+            <button class="bg-blue-600 px-12 py-3 rounded font-black text-xs uppercase" onclick="startNextRound()">Next Round</button>
+        </div>
+    </div>
+
+    <div id="info-overlay" class="overlay">
+        <div class="bg-black border border-white/20 p-8 rounded-lg max-w-md text-center shadow-2xl">
+            <h2 class="text-3xl font-black italic uppercase text-blue-400 mb-4">About Fauxlatro</h2>
+            <p class="text-sm text-gray-300 mb-2">Inspired by the masterpiece</p>
+            <p class="text-xl font-black text-white uppercase tracking-widest mb-4">BALATRO</p>
+            <p class="text-[10px] text-gray-500 uppercase mb-8">All rights reserved to LocalThunk and Playstack.</p>
+            <a href="https://www.playbalatro.com" target="_blank" class="block w-full bg-blue-600 text-white font-black py-4 rounded uppercase hover:bg-blue-500 transition-colors">Visit Official Site</a>
+            <button class="text-xs text-gray-400 underline uppercase" onclick="toggleInfo(false)">Close</button>
+        </div>
+    </div>
+
+    <div id="win-overlay" class="overlay">
+        <h1 class="text-5xl font-black text-blue-400 uppercase italic">Round Won</h1>
+        <div class="bg-white/5 border border-white/10 p-8 rounded my-8 min-w-[320px]">
+            <div class="flex justify-between mb-2"><span>Base Reward:</span><span class="text-yellow-400">$4</span></div>
+            <div class="flex justify-between mb-2"><span>Hands Left:</span><span class="text-yellow-400" id="win-bonus">$0</span></div>
+            <div class="flex justify-between mb-2"><span>Joker Bonus:</span><span class="text-yellow-400" id="joker-gold-bonus">$0</span></div>
+            <div class="flex justify-between border-b border-white/10 pb-2 mb-2"><span>Interest ($1 per $5):</span><span class="text-yellow-400" id="interest-bonus">$0</span></div>
+            <div class="flex justify-between pt-2 font-black text-2xl"><span>Total Gained:</span><span class="text-yellow-400" id="win-total">$0</span></div>
+        </div>
+        <button class="bg-blue-500 text-black font-black px-12 py-4 rounded uppercase" onclick="goToShop()">Enter Shop</button>
+    </div>
+
+    <div id="lose-overlay" class="overlay">
+        <h1 class="text-7xl font-black text-red-600 italic uppercase">Defeated</h1>
+        <button class="bg-red-600 text-white font-black px-12 py-4 rounded mt-10 uppercase" onclick="resetGame()">New Run</button>
+    </div>
+
+    <div id="victory-overlay" class="overlay">
+        <h1 class="text-7xl font-black text-yellow-400 italic uppercase text-center">Victory!<br><span class="text-3xl">Ante 8 Defeated</span></h1>
+        <button class="bg-yellow-400 text-black font-black px-12 py-4 rounded mt-10 uppercase" onclick="resetGame()">New Run</button>
+    </div>
+
+    <script>
+        const ANTE_BASE_SCORES = [300, 800, 2000, 5000, 11000, 20000, 35000, 50000];
+        const BLIND_MODS = [
+            { name: "Small Blind", mult: 1.0 },
+            { name: "Big Blind", mult: 1.5 },
+            { name: "Boss Blind", mult: 2.0 }
+        ];
+
+        const HAND_TYPES = {
+            'Straight Flush': { emoji: '🍉', baseChips: 100, baseMult: 8, chipMod: 40, multMod: 4 },
+            'Four of a Kind': { emoji: '🍑', baseChips: 70, baseMult: 6, chipMod: 30, multMod: 3 },
+            'Full House': { emoji: '🍐', baseChips: 40, baseMult: 4, chipMod: 25, multMod: 2 },
+            'Flush': { emoji: '🍊', baseChips: 35, baseMult: 4, chipMod: 15, multMod: 2 },
+            'Straight': { emoji: '🍓', baseChips: 30, baseMult: 4, chipMod: 30, multMod: 3 },
+            'Three of a Kind': { emoji: '🍋', baseChips: 30, baseMult: 3, chipMod: 20, multMod: 2 },
+            'Two Pair': { emoji: '🍇', baseChips: 20, baseMult: 2, chipMod: 20, multMod: 1 },
+            'Pair': { emoji: '🍌', baseChips: 10, baseMult: 2, chipMod: 15, multMod: 1 },
+            'High Card': { emoji: '🍒', baseChips: 5, baseMult: 1, chipMod: 10, multMod: 1 }
+        };
+
+        const JOKER_POOL = [
+            { id: 1, name: 'Basic', emoji: '🃏', price: 2, mult: 4, chips: 0, xMult: 1, trigger: 'all', desc: "+4 Mult on every played hand." },
+            { id: 2, name: 'Chiller', emoji: '❄️', price: 2, mult: 0, chips: 20, xMult: 1, trigger: 'all', desc: "+20 Chips on every played hand." },
+            { id: 3, name: 'Pair Buddy', emoji: '👯', price: 4, mult: 12, chips: 0, xMult: 1, trigger: 'Pair', desc: "+12 Mult if played hand contains a Pair." },
+            { id: 4, name: 'Flush Burn', emoji: '🔥', price: 6, mult: 0, chips: 0, xMult: 1.5, trigger: 'Flush', desc: "x1.5 Mult if played hand contains a Flush." },
+            { id: 5, name: 'Archer', emoji: '🏹', price: 4, mult: 0, chips: 60, xMult: 1, trigger: 'Straight', desc: "+60 Chips if played hand contains a Straight." },
+            { id: 6, name: 'Odd Todd', emoji: '🔢', price: 4, mult: 0, chips: 30, xMult: 1, trigger: 'odd', desc: "+30 Chips for every played card with an Odd rank." },
+            { id: 7, name: 'Even Steven', emoji: '🔟', price: 4, mult: 4, chips: 0, xMult: 1, trigger: 'even', desc: "+4 Mult for every played card with an Even rank." },
+            { id: 8, name: 'The Trio', emoji: '3️⃣', price: 8, mult: 0, chips: 0, xMult: 3, trigger: 'Three of a Kind', desc: "x3 Mult if hand contains a Three of a Kind." },
+            { id: 9, name: 'Golden Joker', emoji: '💰', price: 6, mult: 0, chips: 0, xMult: 1, trigger: 'win', desc: "Earn $3 extra when you win a round." },
+            { id: 10, name: 'Blue Joker', emoji: '💙', price: 5, mult: 0, chips: 0, xMult: 1, trigger: 'deck', desc: "+2 Chips for every card remaining in your Deck." },
+            { id: 11, name: 'Lusty', emoji: '❤️', price: 4, mult: 4, chips: 0, xMult: 1, trigger: 'suit_2', desc: "+4 Mult for every Heart card played." },
+            { id: 12, name: 'Greedy', emoji: '💎', price: 4, mult: 4, chips: 0, xMult: 1, trigger: 'suit_1', desc: "+4 Mult for every Diamond card played." },
+            { id: 13, name: 'Wrathful', emoji: '♠️', price: 4, mult: 4, chips: 0, xMult: 1, trigger: 'suit_0', desc: "+4 Mult for every Spade card played." },
+            { id: 14, name: 'Gluttonous', emoji: '♣️', price: 4, mult: 4, chips: 0, xMult: 1, trigger: 'suit_3', desc: "+4 Mult for every Club card played." },
+            { id: 15, name: 'Recycler', emoji: '♻️', price: 5, mult: 0, chips: 0, xMult: 1, trigger: 'discard_cash', desc: "Earn $1 for every Discard used." },
+            { id: 16, name: 'Eke', emoji: '👑', price: 12, mult: 0, chips: 0, xMult: 3, trigger: 'all', desc: "x3 Mult on every played hand. A Royal command." },
+            { id: 17, name: 'Tater', emoji: '🥔', price: 10, mult: 0, chips: 0, xMult: 3, trigger: 'all', desc: "x3 Mult on every played hand. Just a potato." },
+            { id: 18, name: 'Scary Face', emoji: '🤡', price: 4, mult: 0, chips: 30, xMult: 1, trigger: 'face', desc: "+30 Chips for every Face card (J, Q, K) played." },
+            { id: 19, name: 'Fibonacci', emoji: '🌀', price: 8, mult: 8, chips: 0, xMult: 1, trigger: 'fibonacci', desc: "+8 Mult for every Ace, 2, 3, 5, or 8 played." },
+            { id: 20, name: 'The Bull', emoji: '🐂', price: 6, mult: 0, chips: 0, xMult: 1, trigger: 'money', desc: "+2 Chips for every $1 you currently have." },
+            { id: 21, name: 'Boot', emoji: '👢', price: 5, mult: 4, chips: 0, xMult: 1, trigger: 'low', desc: "+4 Mult for every low card (2, 3, 4, 5) played." },
+            { id: 22, name: 'Supernova', emoji: '🌟', price: 7, mult: 0, chips: 0, xMult: 1, trigger: 'scaling', desc: "Adds Mult equal to the number of times the played hand has been used this run." }
+        ];
+
+        const PACK_POOL = [
+            { type: 'fruit', size: 'Small', cards: 3, pick: 1, price: 4, emoji: '🍇' },
+            { type: 'fruit', size: 'Med', cards: 5, pick: 1, price: 6, emoji: '🍊' },
+            { type: 'fruit', size: 'Large', cards: 5, pick: 2, price: 8, emoji: '🍉' },
+            { type: 'joker', size: 'Small', cards: 2, pick: 1, price: 4, emoji: '🃏' },
+            { type: 'joker', size: 'Med', cards: 4, pick: 1, price: 6, emoji: '🤡' },
+            { type: 'joker', size: 'Large', cards: 4, pick: 2, price: 8, emoji: '🎴' }
+        ];
+
+        const SUITS = [{s:'♣',c:'suit-club',v:3}, {s:'♥',c:'suit-heart',v:2}, {s:'♦',c:'suit-diamond',v:1}, {s:'♠',c:'suit-spade',v:0}];
+        const RANKS = [{n:'2',v:2},{n:'3',v:3},{n:'4',v:4},{n:'5',v:5},{n:'6',v:6},{n:'7',v:7},{n:'8',v:8},{n:'9',v:9},{n:'10',v:10},{n:'J',v:10,val:11},{n:'Q',v:10,val:12},{n:'K',v:10,val:13},{n:'A',v:11,val:14}];
+
+        let deck = [], totalScore = 0, money = 10, plays = 4, discards = 3;
+        let anteIndex = 0, blindIndex = 0; 
+        let selectedOrder = [], inventory = [], shopJokers = [], shopPacks = [], isBusy = false, sortMode = 'rank';
+        let handLevels = Object.keys(HAND_TYPES).reduce((acc, t) => ({...acc, [t]: 1}), {});
+        let handPlayCounts = Object.keys(HAND_TYPES).reduce((acc, t) => ({...acc, [t]: 0}), {});
+        let inspectedIdx = -1, inspectedSource = null;
+        let activePack = null, packPicksRemaining = 0;
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+        function toggleInfo(show) { document.getElementById('info-overlay').style.display = show ? 'flex' : 'none'; }
+        function toggleHandsMenu(show) { if (show) renderHandsStats(); document.getElementById('hands-overlay').style.display = show ? 'flex' : 'none'; }
+
+        function renderHandsStats() {
+            const list = document.getElementById('hands-stats-list');
+            list.innerHTML = '';
+            Object.keys(HAND_TYPES).forEach(type => {
+                const tr = document.createElement('tr');
+                tr.className = 'stats-row';
+                tr.innerHTML = `<td class="text-white/40 w-12 text-center">${HAND_TYPES[type].emoji}</td><td class="text-white">${type}</td><td class="text-blue-400 text-center">Lvl ${handLevels[type]}</td><td class="text-accent-gold text-right pr-4">${handPlayCounts[type]} played</td>`;
+                list.appendChild(tr);
+            });
+        }
+
+        function toggleSelection(el) {
+            if (el.classList.contains('selected')) {
+                el.classList.remove('selected');
+                selectedOrder = selectedOrder.filter(c => c !== el);
+            } else if (selectedOrder.length < 5) {
+                el.classList.add('selected');
+                selectedOrder.push(el);
+            }
+            updateUI();
+        }
+
+        function deselectEverything() {
+            inspectedIdx = -1; inspectedSource = null;
+            document.getElementById('inspect-panel').style.display = 'none';
+            renderInventory(); renderShop();
+        }
+
+        function handleGlobalClick(e) {
+            if (activePack) return;
+            if (!e.target.closest('.joker-card') && !e.target.closest('.pack-card') && !e.target.closest('#inspect-panel') && !e.target.closest('.top-btns')) deselectEverything();
+        }
+
+        function positionStagedCards(cards) {
+            cards.forEach((c, i) => {
+                c.style.left = ((i + 1) / (cards.length + 1)) * 100 + "%";
+                c.style.top = "50%"; 
+                c.style.transform = "translate(-50%, -50%) rotate(0deg)";
+            });
+        }
+
+        function updatePreview(n, c, m) { 
+            const f = HAND_TYPES[n] ? HAND_TYPES[n].emoji : ''; 
+            document.getElementById('hand-name').innerText = f + ' ' + n; 
+            document.getElementById('hand-score-val').innerHTML = `<span style="color:#4d94ff">${c}</span> x <span style="color:#ff4d4d">${m}</span>`; 
+        }
+
+        function getAfterElement(list, x) {
+            const cs = [...list.querySelectorAll('.card:not(.dragging):not(.fly-away), .joker-card:not(.dragging), .planet-card:not(.dragging), .pack-card:not(.dragging), .placeholder')];
+            return cs.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = x - (box.left + box.width / 2);
+                if (offset < 0 && offset > closest.offset) return { offset, element: child };
+                else return closest;
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        function initDeck() {
+            deck = [];
+            SUITS.forEach(s => RANKS.forEach(r => deck.push({ rank: r.n, chips: r.v, sortVal: r.val || r.v, suit: s.s, suitCss: s.c, suitVal: s.v })));
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+
+        function drawCard() {
+            if (deck.length === 0) return;
+            const d = deck.pop();
+            const el = document.createElement('div');
+            el.className = 'card';
+            el.dataset.rankSort = d.sortVal; el.dataset.rankChips = d.chips; el.dataset.suitSort = d.suitVal;
+            el.dataset.visualIndex = 999;
+            el.innerHTML = `<div class="rank-label ${d.suitCss}">${d.rank}</div><div class="suit-icon ${d.suitCss}">${d.suit}</div>`;
+            el.onpointerdown = (e) => onEntityDown(e, 'hand-list', 'hand');
+            document.getElementById('hand-list').appendChild(el);
+            applySort();
+        }
+
+        function drawToFull() {
+            const list = document.getElementById('hand-list');
+            const count = list.querySelectorAll('.card:not(.dragging):not(.fly-away)').length;
+            const needed = Math.min(deck.length, 8 - count);
+            for (let i = 0; i < needed; i++) setTimeout(drawCard, i * 100);
+            updateUI();
+        }
+
+        function updateSpacings(id) {
+            const list = document.getElementById(id);
+            if (!list) return;
+            const items = [...list.querySelectorAll('.card:not(.dragging):not(.fly-away), .joker-card:not(.dragging), .planet-card:not(.dragging), .pack-card:not(.dragging), .placeholder')];
+            if (id === 'hand-list') items.sort((a, b) => (parseFloat(a.dataset.visualIndex) || 0) - (parseFloat(b.dataset.visualIndex) || 0));
+            items.forEach((item, i) => {
+                item.style.left = ((i + 1) / (items.length + 1)) * 100 + "%";
+                item.style.top = "50%";
+                const y = (id === 'hand-list' && item.classList.contains('selected')) ? '-45px' : '0px';
+                item.style.transform = `translate(-50%, calc(-50% + ${y}))`;
+                item.style.zIndex = i + (item.classList.contains('placeholder') ? 0 : 5);
+            });
+        }
+
+        function getTargetScore() { return Math.floor(ANTE_BASE_SCORES[anteIndex] * BLIND_MODS[blindIndex].mult); }
+
+        function evaluateHand() { 
+            if (!selectedOrder.length) return { name: "Select Cards", chips: 0, mult: 0, lvl: 1, scoring: [] }; 
+            const currentSelection = [...selectedOrder].sort((a,b) => (a.offsetLeft || 0) - (b.offsetLeft || 0));
+            const sortedByRank = [...currentSelection].sort((a,b) => parseInt(a.dataset.rankSort) - parseInt(b.dataset.rankSort));
+            const ranks = sortedByRank.map(c => parseInt(c.dataset.rankSort));
+            const suits = sortedByRank.map(c => parseInt(c.dataset.suitSort));
+            const counts = {}; ranks.forEach(r => counts[r] = (counts[r]||0)+1); 
+            const freq = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+            const isFlush = new Set(suits).size === 1 && sortedByRank.length === 5;
+            let isStr = false;
+            if (sortedByRank.length === 5) {
+                const uniq = [...new Set(ranks)];
+                if (uniq.length === 5 && (ranks[4]-ranks[0] === 4)) isStr = true;
+                if (uniq.length === 5 && ranks[4] === 14 && ranks[0] === 2 && ranks[3] === 5) isStr = true;
+            }
+            let name = "High Card", scoringElements = [];
+            if (isStr && isFlush) { name = "Straight Flush"; scoringElements = sortedByRank; }
+            else if (freq[0][1] === 4) { name = "Four of a Kind"; scoringElements = sortedByRank.filter(c => c.dataset.rankSort == freq[0][0]); }
+            else if (freq[0][1] === 3 && freq[1] && freq[1][1] === 2) { name = "Full House"; scoringElements = sortedByRank; }
+            else if (isFlush) { name = "Flush"; scoringElements = sortedByRank; }
+            else if (isStr) { name = "Straight"; scoringElements = sortedByRank; }
+            else if (freq[0][1] === 3) { name = "Three of a Kind"; scoringElements = sortedByRank.filter(c => c.dataset.rankSort == freq[0][0]); }
+            else if (freq[0][1] === 2 && freq[1] && freq[1][1] === 2) { name = "Two Pair"; scoringElements = sortedByRank.filter(c => c.dataset.rankSort == freq[0][0] || c.dataset.rankSort == freq[1][0]); }
+            else if (freq[0][1] === 2) { name = "Pair"; scoringElements = sortedByRank.filter(c => c.dataset.rankSort == freq[0][0]); }
+            else { name = "High Card"; scoringElements = [sortedByRank[sortedByRank.length-1]]; }
+            const lvl = handLevels[name]; const d = HAND_TYPES[name];
+            return { name, lvl, chips: d.baseChips + (lvl-1)*d.chipMod, mult: d.baseMult + (lvl-1)*d.multMod, scoring: scoringElements };
+        }
+
+        function isHandTypeMet(playedHand, triggerTarget) {
+            if (playedHand === triggerTarget) return true;
+            const containment = {
+                'Straight Flush': ['Flush', 'Straight', 'Three of a Kind', 'Two Pair', 'Pair', 'High Card'],
+                'Four of a Kind': ['Three of a Kind', 'Pair', 'High Card'],
+                'Full House': ['Three of a Kind', 'Pair', 'High Card'],
+                'Flush': ['High Card'],
+                'Straight': ['High Card'],
+                'Three of a Kind': ['Pair', 'High Card'],
+                'Two Pair': ['Pair', 'High Card'],
+                'Pair': ['High Card'],
+                'High Card': []
+            };
+            return containment[playedHand]?.includes(triggerTarget) || false;
+        }
+
+        function updateUI() { 
+            const eval = evaluateHand(); 
+            const nEl = document.getElementById('hand-name');
+            const sEl = document.getElementById('hand-score-val');
+            if (HAND_TYPES[eval.name]) { nEl.innerText = `${HAND_TYPES[eval.name].emoji} ${eval.name} Lvl.${eval.lvl}`; sEl.innerHTML = `<span style="color:#4d94ff">${eval.chips}</span> x <span style="color:#ff4d4d">${eval.mult}</span>`; } 
+            else { nEl.innerText = eval.name; sEl.innerHTML = ""; }
+            document.getElementById('money-display').innerText = `$${money}`; 
+            document.getElementById('total-score').innerText = totalScore.toLocaleString(); 
+            document.getElementById('target-score').innerText = getTargetScore().toLocaleString();
+            document.getElementById('ante-num').innerText = `${anteIndex + 1}/8`;
+            document.getElementById('blind-name').innerText = BLIND_MODS[blindIndex].name;
+            document.getElementById('play-sub').innerText = `${plays} Left`; 
+            document.getElementById('discard-sub').innerText = `${discards} Left`; 
+            document.getElementById('sel-count').innerText = `${selectedOrder.length}/5 SELECTED`; 
+            document.getElementById('deck-info').innerText = `Deck: ${deck.length}`; 
+            document.getElementById('play-btn').disabled = isBusy || plays <= 0 || !selectedOrder.length; 
+            document.getElementById('discard-btn').disabled = isBusy || discards <= 0 || !selectedOrder.length; 
+            updateSpacings('hand-list');
+        }
+
+        let dTarget = null, dPlaceholder = null, dStart = {x:0, y:0}, dActive = false;
+        function onEntityDown(e, containerId, source) {
+            if (isBusy || activePack) return;
+            dTarget = e.currentTarget; dStart = { x: e.clientX, y: e.clientY }; dActive = false;
+            const onMove = (me) => {
+                const dist = Math.hypot(me.clientX - dStart.x, me.clientY - dStart.y);
+                if (!dActive && dist > 5) {
+                    dActive = true; 
+                    dPlaceholder = dTarget.cloneNode(true); 
+                    dPlaceholder.classList.add('placeholder');
+                    dPlaceholder.classList.remove('selected', 'inspected');
+                    dPlaceholder.innerHTML = '';
+                    dTarget.classList.add('dragging'); 
+                    dTarget.parentNode.insertBefore(dPlaceholder, dTarget);
+                    document.body.appendChild(dTarget);
+                }
+                if (dActive) {
+                    dTarget.style.left = me.clientX + 'px'; 
+                    dTarget.style.top = me.clientY + 'px';
+                    const targetListId = (source === 'hand') ? 'hand-list' : 'joker-inventory-list';
+                    const list = document.getElementById(targetListId);
+                    const after = getAfterElement(list, me.clientX);
+                    if (after) {
+                        if (dPlaceholder.nextSibling !== after) {
+                            list.insertBefore(dPlaceholder, after);
+                            updateSpacings(targetListId);
+                        }
+                    } else {
+                        if (list.lastChild !== dPlaceholder) {
+                            list.appendChild(dPlaceholder);
+                            updateSpacings(targetListId);
+                        }
+                    }
+                }
+            };
+            const onUp = (ue) => {
+                window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
+                if (!dActive) {
+                    if (source === 'hand') toggleSelection(dTarget);
+                    else if (source === 'inventory') inspectEntity(parseInt(dTarget.dataset.idx), 'inventory');
+                    else if (source === 'shop_joker') inspectEntity(parseInt(dTarget.dataset.idx), 'shop_joker');
+                    else if (source === 'shop_pack') buyPack(parseInt(dTarget.dataset.idx));
+                } else {
+                    const invZone = document.getElementById('joker-inventory-list').getBoundingClientRect();
+                    const droppedInInv = ue.clientY < invZone.bottom + 80 && ue.clientY > invZone.top - 80;
+                    if (source === 'shop_joker' && droppedInInv) {
+                        const idx = parseInt(dTarget.dataset.idx);
+                        const data = shopJokers[idx];
+                        if (money >= data.price && inventory.length < 5) {
+                            money -= data.price; inventory.push(data); shopJokers.splice(idx, 1); deselectEverything();
+                        }
+                        dTarget.remove(); dPlaceholder.remove();
+                    } else if (source === 'inventory' || source === 'hand') {
+                        const listId = (source === 'hand') ? 'hand-list' : 'joker-inventory-list';
+                        const list = document.getElementById(listId);
+                        list.replaceChild(dTarget, dPlaceholder);
+                        dTarget.classList.remove('dragging'); dTarget.style.cssText = "";
+                        if (source === 'inventory') inventory = [...list.querySelectorAll('.joker-card')].map(el => inventory[el.dataset.idx]);
+                        else if (source === 'hand') [...list.querySelectorAll('.card')].forEach((c, idx) => c.dataset.visualIndex = idx);
+                    } else { dTarget.remove(); if (dPlaceholder && dPlaceholder.parentNode) dPlaceholder.remove(); }
+                }
+                dTarget = null; dPlaceholder = null; renderInventory(); renderShop(); updateUI();
+            };
+            window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
+        }
+
+        function renderInventory() {
+            const cont = document.getElementById('joker-inventory-list');
+            cont.innerHTML = '';
+            inventory.forEach((j, i) => {
+                const div = document.createElement('div');
+                div.className = 'joker-card' + (inspectedIdx === i && inspectedSource === 'inventory' ? ' inspected' : '');
+                div.dataset.idx = i;
+                div.innerHTML = `<span class="text-3xl">${j.emoji}</span><span class="text-[9px] font-black uppercase text-center mt-2">${j.name}</span>`;
+                div.onpointerdown = (e) => onEntityDown(e, 'joker-inventory-list', 'inventory');
+                cont.appendChild(div);
+            });
+            updateSpacings('joker-inventory-list');
+        }
+
+        function renderShop() {
+            const jCont = document.getElementById('shop-list-jokers');
+            const pCont = document.getElementById('shop-list-packs');
+            if (!jCont || !pCont) return;
+            jCont.innerHTML = ''; pCont.innerHTML = '';
+            shopJokers.forEach((j, i) => {
+                const div = document.createElement('div');
+                div.className = 'joker-card' + (inspectedIdx === i && inspectedSource === 'shop_joker' ? ' inspected' : ''); 
+                div.dataset.idx = i;
+                div.innerHTML = `<span class="text-3xl">${j.emoji}</span><span class="text-[9px] font-black uppercase text-center mt-2">${j.name}</span><div class="price-tag">$${j.price}</div>`;
+                div.onpointerdown = (e) => onEntityDown(e, 'shop-list-jokers', 'shop_joker');
+                jCont.appendChild(div);
+            });
+            shopPacks.forEach((p, i) => {
+                const div = document.createElement('div');
+                div.className = `pack-card ${p.type}`; div.dataset.idx = i;
+                div.innerHTML = `<span class="text-3xl">${p.emoji}</span><span class="text-[8px] font-black uppercase text-center px-1">${p.size} ${p.type} Pack</span><div class="price-tag">$${p.price}</div>`;
+                div.onpointerdown = (e) => onEntityDown(e, 'shop-list-packs', 'shop_pack');
+                pCont.appendChild(div);
+            });
+            updateSpacings('shop-list-jokers');
+            updateSpacings('shop-list-packs');
+        }
+
+        function inspectEntity(idx, source) {
+            if (isBusy || activePack) return;
+            if (inspectedIdx === idx && inspectedSource === source) { deselectEverything(); return; }
+            inspectedIdx = idx; inspectedSource = source;
+            const panel = document.getElementById('inspect-panel');
+            const sellBtn = document.getElementById('sell-btn');
+            const hint = document.getElementById('buy-hint');
+            
+            // Fix: Use correct array based on source
+            const data = (source === 'inventory') ? inventory[idx] : shopJokers[idx];
+            if (!data) { deselectEverything(); return; }
+
+            if (source === 'inventory') {
+                const price = Math.floor(data.price / 2);
+                sellBtn.innerText = `Sell for $${price}`; 
+                sellBtn.classList.remove('hidden');
+                sellBtn.onclick = (e) => { 
+                    e.stopPropagation();
+                    money += price; inventory.splice(idx, 1); deselectEverything(); updateUI(); 
+                };
+                if (hint) hint.classList.add('hidden');
+            } else {
+                sellBtn.classList.add('hidden');
+                if (hint) hint.classList.remove('hidden');
+            }
+            
+            document.getElementById('inspect-name').innerText = data.name;
+            document.getElementById('inspect-desc').innerText = data.desc;
+            panel.style.display = 'block'; 
+            renderInventory();
+            renderShop();
+        }
+
+        function buyPack(idx) {
+            const pack = shopPacks[idx];
+            if (money < pack.price) return;
+            money -= pack.price;
+            shopPacks.splice(idx, 1);
+            openPack(pack);
+            updateUI();
+            renderShop();
+        }
+
+        function openPack(pack) {
+            activePack = pack;
+            packPicksRemaining = pack.pick;
+            const overlay = document.getElementById('pack-overlay');
+            const contents = document.getElementById('pack-contents');
+            document.getElementById('pack-open-title').innerText = `${pack.size} ${pack.type} Pack`;
+            document.getElementById('pack-open-subtitle').innerText = `Choose ${pack.pick} Card${pack.pick > 1 ? 's' : ''}`;
+            contents.innerHTML = '';
+            const pool = pack.type === 'joker' ? [...JOKER_POOL] : Object.keys(HAND_TYPES);
+            const items = [];
+            for (let i = 0; i < pack.cards; i++) {
+                const pick = pool[Math.floor(Math.random() * pool.length)];
+                items.push(pack.type === 'joker' ? pick : { name: pick, emoji: HAND_TYPES[pick].emoji });
+            }
+            items.forEach((item, i) => {
+                const div = document.createElement('div');
+                div.className = pack.type === 'joker' ? 'joker-card' : 'planet-card';
+                div.innerHTML = `<span class="text-3xl">${item.emoji}</span><span class="text-[9px] font-black uppercase text-center mt-2">${item.name}</span>`;
+                div.onclick = () => pickFromPack(item, div);
+                contents.appendChild(div);
+            });
+            overlay.style.display = 'flex';
+            updateSpacings('pack-contents');
+        }
+
+        function pickFromPack(item, el) {
+            if (activePack.type === 'joker') {
+                if (inventory.length >= 5) return;
+                inventory.push(item);
+            } else {
+                handLevels[item.name]++;
+            }
+            el.style.opacity = '0'; el.style.pointerEvents = 'none';
+            packPicksRemaining--;
+            if (packPicksRemaining <= 0) closePack();
+            else document.getElementById('pack-open-subtitle').innerText = `Choose ${packPicksRemaining} Card${packPicksRemaining > 1 ? 's' : ''}`;
+            renderInventory();
+            updateUI();
+        }
+
+        function closePack() {
+            activePack = null;
+            document.getElementById('pack-overlay').style.display = 'none';
+        }
+
+        async function playHandSequence() {
+            if (isBusy || plays <= 0 || !selectedOrder.length) return;
+            isBusy = true; plays--; deselectEverything();
+            const eval = evaluateHand();
+            const pZone = document.getElementById('played-list');
+            const jokerEls = document.querySelectorAll('#joker-inventory-list .joker-card');
+            const handCards = [...document.getElementById('hand-list').querySelectorAll('.card')].filter(el => el.classList.contains('selected')).sort((a, b) => a.offsetLeft - b.offsetLeft);
+            selectedOrder = [];
+            handCards.forEach(c => { c.classList.remove('selected'); pZone.appendChild(c); });
+            positionStagedCards(handCards);
+            await sleep(500);
+            
+            let cC = eval.chips, cM = eval.mult;
+            updatePreview(eval.name, cC, cM);
+            
+            for (const c of handCards) {
+                const isScoring = eval.scoring.includes(c);
+                if (!isScoring) { c.classList.add('not-scoring'); await sleep(150); continue; }
+                c.classList.add('trigger-jiggle');
+                const rankVal = parseInt(c.dataset.rankSort);
+                const suitVal = c.dataset.suitSort;
+                cC += parseInt(c.dataset.rankChips);
+                for (let i = 0; i < inventory.length; i++) {
+                    const j = inventory[i];
+                    let cardTriggered = false;
+                    if (j.trigger === 'odd' && [3,5,7,9,14].includes(rankVal)) cardTriggered = true;
+                    if (j.trigger === 'even' && [2,4,6,8,10].includes(rankVal)) cardTriggered = true;
+                    if (j.trigger === 'fibonacci' && [2,3,5,8,14].includes(rankVal)) cardTriggered = true;
+                    if (j.trigger === 'face' && rankVal >= 11 && rankVal <= 13) cardTriggered = true;
+                    if (j.trigger === 'low' && rankVal >= 2 && rankVal <= 5) cardTriggered = true;
+                    if (j.trigger === `suit_${suitVal}`) cardTriggered = true;
+                    if (cardTriggered) { 
+                        if (jokerEls[i]) jokerEls[i].classList.add('trigger-jiggle'); 
+                        cC += j.chips; cM += j.mult; 
+                        updatePreview(eval.name, cC, Math.floor(cM)); 
+                    }
+                }
+                updatePreview(eval.name, cC, Math.floor(cM));
+                await sleep(400); c.classList.remove('trigger-jiggle');
+                jokerEls.forEach(el => el.classList.remove('trigger-jiggle'));
+            }
+            
+            for (let i = 0; i < inventory.length; i++) {
+                const j = inventory[i];
+                let triggered = (j.trigger === 'all' || isHandTypeMet(eval.name, j.trigger) || j.trigger === 'deck' || j.trigger === 'money' || j.trigger === 'scaling');
+                if (triggered) {
+                    if (jokerEls[i]) jokerEls[i].classList.add('trigger-jiggle');
+                    if (j.trigger === 'deck') cC += (deck.length * 2);
+                    else if (j.trigger === 'money') cC += (money * 2);
+                    else if (j.trigger === 'scaling') cM += handPlayCounts[eval.name];
+                    else { cC += j.chips; cM += j.mult; }
+                    cM *= j.xMult;
+                    updatePreview(eval.name, cC, Math.floor(cM));
+                    await sleep(450); if (jokerEls[i]) jokerEls[i].classList.remove('trigger-jiggle');
+                }
+            }
+            
+            handPlayCounts[eval.name]++;
+            totalScore += (cC * Math.floor(cM)); updateUI();
+            handCards.forEach(c => c.classList.add('fly-away')); await sleep(600); handCards.forEach(c => c.remove());
+            isBusy = false;
+            if (totalScore >= getTargetScore()) showWin(); 
+            else if (plays <= 0) document.getElementById('lose-overlay').style.display = 'flex';
+            drawToFull();
+        }
+
+        function applySort() {
+            const list = document.getElementById('hand-list');
+            const items = [...list.querySelectorAll('.card:not(.dragging):not(.fly-away)')];
+            items.sort((a,b) => {
+                const rA = parseInt(a.dataset.rankSort), rB = parseInt(b.dataset.rankSort);
+                const sA = parseInt(a.dataset.suitSort), sB = parseInt(b.dataset.suitSort);
+                if (sortMode === 'rank') return (rA !== rB) ? rB - rA : sB - sA;
+                return (sA !== sB) ? sB - sA : rB - rA;
+            });
+            items.forEach((item, i) => item.dataset.visualIndex = i);
+            updateSpacings('hand-list');
+            clearTimeout(window.sortFinalizeTimeout);
+            window.sortFinalizeTimeout = setTimeout(() => items.forEach(item => list.appendChild(item)), 500);
+        }
+
+        function toggleSort() { 
+            sortMode = (sortMode === 'rank') ? 'suit' : 'rank'; 
+            document.getElementById('sort-toggle-btn').innerText = sortMode === 'rank' ? "Sort By Suit" : "Sort By Rank"; 
+            applySort(); 
+        }
+        
+        function showWin() { 
+            let jB = 0; inventory.forEach(j => { if (j.trigger === 'win') jB += 3; }); 
+            const base = 4;
+            const interest = Math.min(Math.floor(money / 5), 5);
+            document.getElementById('win-bonus').innerText = `$${plays}`; 
+            document.getElementById('joker-gold-bonus').innerText = `$${jB}`; 
+            document.getElementById('interest-bonus').innerText = `$${interest}`;
+            const totalGained = base + plays + jB + interest;
+            document.getElementById('win-total').innerText = `$${totalGained}`; 
+            money += totalGained;
+            document.getElementById('win-overlay').style.display = 'flex'; 
+            updateUI(); 
+        }
+
+        function goToShop() { 
+            document.getElementById('win-overlay').style.display = 'none'; 
+            document.getElementById('shop-overlay').style.display = 'flex'; 
+            rerollShop(true); 
+        }
+
+        function rerollShop(f = false) { 
+            if (!f) { if (money < 5) return; money -= 5; } 
+            const pool = [...JOKER_POOL].filter(j => !inventory.find(inv => inv.id === j.id)); 
+            shopJokers = []; 
+            for (let i = 0; i < 2; i++) if (pool.length) shopJokers.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]); 
+            shopPacks = []; 
+            for (let i = 0; i < 2; i++) shopPacks.push(PACK_POOL[Math.floor(Math.random() * PACK_POOL.length)]); 
+            renderShop(); updateUI(); 
+        }
+
+        function startNextRound() { 
+            blindIndex++; if (blindIndex > 2) { blindIndex = 0; anteIndex++; }
+            if (anteIndex >= 8) { document.getElementById('shop-overlay').style.display = 'none'; document.getElementById('victory-overlay').style.display = 'flex'; return; }
+            document.getElementById('shop-overlay').style.display = 'none'; 
+            document.getElementById('hand-list').innerHTML = ''; 
+            totalScore = 0; plays = 4; discards = 3; selectedOrder = []; 
+            initDeck(); drawToFull(); updateUI();
+        }
+
+        function resetGame() { 
+            money = 10; inventory = []; anteIndex = 0; blindIndex = 0;
+            handLevels = Object.keys(HAND_TYPES).reduce((acc, t) => ({...acc, [t]: 1}), {}); 
+            handPlayCounts = Object.keys(HAND_TYPES).reduce((acc, t) => ({...acc, [t]: 0}), {}); 
+            renderInventory(); 
+            document.getElementById('lose-overlay').style.display = 'none'; 
+            document.getElementById('victory-overlay').style.display = 'none';
+            document.getElementById('shop-overlay').style.display = 'none';
+            document.getElementById('hands-overlay').style.display = 'none';
+            document.getElementById('hand-list').innerHTML = ''; 
+            totalScore = 0; plays = 4; discards = 3; selectedOrder = []; 
+            initDeck(); drawToFull(); updateUI();
+        }
+
+        function discardSelected() { 
+            if (isBusy || discards <= 0 || !selectedOrder.length) return; 
+            discards--; 
+            inventory.forEach(j => { if (j.trigger === 'discard_cash') money += 1; }); 
+            selectedOrder.forEach(c => { c.classList.add('fly-away'); setTimeout(()=>c.remove(), 600); }); 
+            selectedOrder = []; setTimeout(() => drawToFull(), 300); 
+        }
+
+        window.onload = () => { initDeck(); drawToFull(); renderInventory(); updateUI(); };
+    </script>
+</body>
+</html>

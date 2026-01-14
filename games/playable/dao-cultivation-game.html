@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dao of the Shattered Foundation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;600&display=swap');
+        :root { --bg: #050507; --panel: #0f0f12; --gold: #fbbf24; --emerald: #10b981; --red: #ef4444; --blue: #3b82f6; --violet: #8b5cf6; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: #d1d5db; user-select: none; touch-action: none; overflow: hidden; }
+        .cinzel { font-family: 'Cinzel', serif; }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-thumb { background: #333; }
+        .stat-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); padding: 0.5rem; border-radius: 0.5rem; }
+        canvas { image-rendering: pixelated; cursor: crosshair; }
+        .active-tab { border-color: var(--gold); color: var(--gold); }
+        .progress-bar { transition: width 0.3s ease-out; }
+        .mini-log { mask-image: linear-gradient(to top, black 70%, transparent 100%); }
+        .danger-text { color: var(--red); font-weight: bold; }
+        .fateful { color: var(--blue); font-weight: bold; text-shadow: 0 0 5px rgba(59, 130, 246, 0.5); }
+        @keyframes pulse-gold { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .mastered-glow { animation: pulse-gold 2s infinite; color: var(--gold); }
+        
+        /* Tutorial Styling */
+        .tutorial-overlay {
+            background: radial-gradient(circle at center, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.9) 100%);
+            backdrop-filter: blur(4px);
+        }
+        .tutorial-card {
+            background: #0f0f12;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            box-shadow: 0 0 40px rgba(0,0,0,0.8), 0 0 20px rgba(251, 191, 36, 0.05);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <!-- Tutorial Modal -->
+    <div id="tutorial-container" class="fixed inset-0 z-[100] flex items-center justify-center p-6 tutorial-overlay hidden">
+        <div class="tutorial-card max-w-sm w-full p-6 rounded-2xl text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent opacity-50"></div>
+            <h3 id="tutorial-title" class="cinzel text-yellow-500 text-xl mb-3">Awakening</h3>
+            <p id="tutorial-text" class="text-sm text-gray-400 leading-relaxed mb-6"></p>
+            <button onclick="game.tutorial.next()" class="w-full bg-yellow-600/20 border border-yellow-500/40 text-yellow-500 py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest hover:bg-yellow-600/40 transition">Understood</button>
+        </div>
+    </div>
+
+    <header class="bg-[#0f0f12] border-b border-white/5 p-3 flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-4">
+            <div>
+                <h1 class="cinzel text-lg font-bold text-yellow-500 leading-tight">Dao Cycle</h1>
+                <p class="text-[9px] text-gray-500 uppercase tracking-tighter">Gen <span id="gen-display">1</span> • Karma: <span id="karma-total">0</span></p>
+            </div>
+            <div class="h-8 w-px bg-white/10 hidden sm:block"></div>
+            <div class="hidden sm:block">
+                <p class="text-[9px] text-gray-500 uppercase">Comprehension</p>
+                <p id="comp-display" class="text-xs font-bold text-blue-400">0.0</p>
+            </div>
+        </div>
+        <div id="realm-display" class="text-[10px] font-bold bg-yellow-500/10 text-yellow-500 px-3 py-1 rounded-full border border-yellow-500/20 uppercase">Mortal</div>
+    </header>
+
+    <nav class="md:hidden bg-[#0f0f12] border-b border-white/5 flex shrink-0">
+        <button onclick="switchTab('stats')" class="tab-btn flex-1 p-3 text-[10px] font-bold uppercase tracking-widest border-b-2 border-transparent active-tab" id="btn-tab-stats">Body</button>
+        <button onclick="switchTab('world')" class="tab-btn flex-1 p-3 text-[10px] font-bold uppercase tracking-widest border-b-2 border-transparent" id="btn-tab-world">Domain</button>
+        <button onclick="switchTab('logs')" class="tab-btn flex-1 p-3 text-[10px] font-bold uppercase tracking-widest border-b-2 border-transparent" id="btn-tab-logs">Destiny</button>
+    </nav>
+
+    <main id="game-main" class="flex-1 flex overflow-hidden flex-col md:flex-row">
+        <!-- Left Panel: Stats -->
+        <section id="tab-stats" class="hidden md:flex flex-col w-full md:w-80 bg-[#0f0f12] border-r border-white/5 p-4 overflow-y-auto space-y-4 shrink-0">
+            <div class="space-y-2">
+                <div class="flex justify-between text-[10px] uppercase font-bold text-gray-500">
+                    <span>Qi Essence</span>
+                    <span id="qi-text">0/100</span>
+                </div>
+                <div class="h-1.5 bg-black rounded-full overflow-hidden">
+                    <div id="qi-bar" class="h-full bg-emerald-500 progress-bar" style="width: 0%"></div>
+                </div>
+                
+                <div class="flex justify-between text-[9px] uppercase font-bold text-blue-400 mt-2">
+                    <span>Technique Mastery</span>
+                    <span id="mastery-text">0%</span>
+                </div>
+                <div class="h-1 bg-black rounded-full overflow-hidden">
+                    <div id="mastery-bar" class="h-full bg-blue-500 progress-bar" style="width: 0%"></div>
+                </div>
+
+                <button id="btn-cultivate" onclick="game.cultivate()" class="w-full bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 py-3 rounded text-xs font-bold border border-emerald-500/20 transition disabled:opacity-20 mt-2">CULTIVATE</button>
+                <button id="btn-break" onclick="game.handleBreakthroughAction()" class="w-full bg-yellow-600/20 text-yellow-500 py-3 rounded text-xs font-bold border border-yellow-500/20 transition">ATTEMPT BREAKTHROUGH</button>
+            </div>
+
+            <div class="stat-card flex justify-between items-center">
+                <span class="text-[8px] text-gray-500 uppercase font-bold">Age / Lifespan</span>
+                <div id="age-display" class="text-xs font-bold text-white">16.0 / 80</div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <div class="stat-card">
+                    <span class="text-[8px] text-gray-500 uppercase font-bold">Impurities</span>
+                    <div id="impurity-display" class="text-sm font-bold text-red-400">0%</div>
+                </div>
+                <div class="stat-card">
+                    <span class="text-[8px] text-gray-500 uppercase font-bold">Stability</span>
+                    <div id="stability-display" class="text-sm font-bold text-green-400">100%</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <div class="stat-card text-center">
+                    <span class="text-[8px] text-gray-500 uppercase">Pill Logic</span>
+                    <div id="pill-skill-display" class="text-xs font-bold text-purple-400">Lv.0</div>
+                </div>
+                <div class="stat-card text-center">
+                    <span class="text-[8px] text-gray-500 uppercase">Artifact Lore</span>
+                    <div id="art-skill-display" class="text-xs font-bold text-blue-400">Lv.0</div>
+                </div>
+            </div>
+
+            <div class="stat-card flex justify-between items-center">
+                <span class="text-[8px] text-gray-500 uppercase font-bold">Spirit Stones</span>
+                <div id="stones-display" class="text-xs font-bold text-blue-400 font-mono">0</div>
+            </div>
+
+            <div class="space-y-2">
+                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest border-b border-white/5 pb-1">Bound Artifacts</h4>
+                <div id="equipment-list" class="space-y-1"></div>
+            </div>
+
+            <div class="mt-auto p-3 bg-white/5 rounded-lg border border-white/5">
+                <div class="text-[9px] text-gray-500 uppercase mb-1">Active Manual</div>
+                <div id="manual-name" class="text-xs font-bold text-yellow-500">None</div>
+                <div id="manual-stats" class="text-[8px] text-gray-400 mt-1 leading-relaxed"></div>
+            </div>
+        </section>
+
+        <!-- Domain Panel -->
+        <section id="tab-world" class="flex-1 bg-black relative flex flex-col items-center justify-center p-2">
+            <div class="absolute top-4 left-4 z-10 bg-black/60 p-2 rounded backdrop-blur-md border border-white/10 text-[9px] pointer-events-none space-y-1">
+                <div id="zone-display" class="text-emerald-500 font-bold uppercase tracking-widest">Mortal Village</div>
+                <div class="flex gap-2">
+                    <span class="text-gray-500">Qi: <span id="tile-qi" class="text-white">1.0x</span></span>
+                    <span class="text-gray-500">Imp: <span id="tile-imp" class="text-white">1.0x</span></span>
+                    <span class="text-gray-500">Safe: <span id="tile-safe" class="text-white">1.0x</span></span>
+                </div>
+                <div id="risk-level" class="text-[8px] uppercase tracking-tighter"></div>
+            </div>
+
+            <div id="canvas-wrapper" class="relative w-full aspect-square max-w-[600px]">
+                <canvas id="world-canvas" class="rounded-sm"></canvas>
+            </div>
+
+            <div class="flex space-x-2 mt-4 w-full max-w-[600px]">
+                <button id="btn-world-cultivate" onclick="game.cultivate()" class="flex-1 bg-emerald-600 p-4 rounded-xl font-bold text-[10px] uppercase text-white shadow-xl active:bg-emerald-500 disabled:opacity-20 transition">Cultivate</button>
+                <button id="btn-world-explore" onclick="game.explore()" class="flex-1 bg-blue-600 p-4 rounded-xl font-bold text-[10px] uppercase text-white shadow-xl active:bg-blue-500 disabled:opacity-20 transition">Explore</button>
+            </div>
+
+            <div class="absolute bottom-32 md:bottom-24 left-4 right-4 h-20 overflow-hidden pointer-events-none mini-log">
+                <div id="mini-log-container" class="flex flex-col-reverse space-y-1 text-[9px] text-gray-400 font-mono"></div>
+            </div>
+        </section>
+
+        <!-- Log Panel -->
+        <section id="tab-logs" class="hidden md:flex flex-col w-full md:w-80 bg-[#0f0f12] border-l border-white/5 p-4 overflow-hidden shrink-0">
+            <button id="btn-log-explore" onclick="game.explore()" class="w-full bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/20 p-2.5 rounded text-[10px] font-bold uppercase mb-4 transition shrink-0">Search Surroundings</button>
+            <div id="combat-power" class="text-[10px] font-bold text-red-500 mb-2">Pwr: 0</div>
+            <div id="log-container" class="flex-1 overflow-y-auto space-y-2 font-mono text-[10px]"></div>
+        </section>
+    </main>
+
+    <!-- Modal Reincarnate -->
+    <div id="modal-reincarnate" class="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-[#121216] border border-yellow-500/20 w-full max-w-md p-6 rounded-2xl shadow-2xl">
+            <h2 class="cinzel text-2xl text-yellow-500 text-center mb-1" id="death-title">Return to the Dao</h2>
+            <p id="death-reason" class="text-center text-gray-500 text-[9px] mb-6 italic uppercase tracking-widest leading-relaxed px-4"></p>
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="bg-white/5 p-3 rounded-lg text-center border border-white/5">
+                    <div class="text-[8px] text-gray-500 uppercase">Final Realm</div>
+                    <div id="death-realm" class="text-xs font-bold text-white">Mortal</div>
+                </div>
+                <div class="bg-white/5 p-3 rounded-lg text-center border border-white/5">
+                    <div class="text-[8px] text-gray-500 uppercase">Karma Earned</div>
+                    <div id="death-karma" class="text-xs font-bold text-emerald-400">+0</div>
+                </div>
+            </div>
+            <h3 class="text-[10px] font-bold text-gray-500 mb-2 uppercase tracking-widest">Manual Lineage</h3>
+            <div id="reincarnation-options" class="space-y-1.5 max-h-44 overflow-y-auto mb-6 pr-2"></div>
+            <button onclick="game.reincarnate()" class="w-full bg-yellow-600 hover:bg-yellow-500 py-4 rounded-xl font-bold text-black uppercase text-xs tracking-widest transition shadow-lg active:scale-95">Accept Fate</button>
+        </div>
+    </div>
+
+<script>
+/** * DATA & CONFIG
+ */
+const CONFIG = { gridSize: 25, inputCooldown: 250 };
+
+const REALMS = [
+    { name: "Mortal", maxQi: 100, lifespan: 80, view: 1, power: 10, zoneTier: 0 },
+    { name: "Qi Condensation I", maxQi: 400, lifespan: 100, view: 2, power: 100, zoneTier: 0 },
+    { name: "Qi Condensation II", maxQi: 1200, lifespan: 110, view: 2, power: 300, zoneTier: 1 },
+    { name: "Qi Condensation III", maxQi: 3000, lifespan: 120, view: 3, power: 800, zoneTier: 1 },
+    { name: "Foundation Establishment", maxQi: 15000, lifespan: 300, view: 5, power: 2500, zoneTier: 2 },
+    { name: "Golden Core", maxQi: 100000, lifespan: 800, view: 8, power: 12000, zoneTier: 3 },
+    { name: "Nascent Soul", maxQi: 1000000, lifespan: 2000, view: 15, power: 60000, zoneTier: 4 }
+];
+
+const MANUALS = {
+    "breath_trash": { id: "breath_trash", name: "Ox Breath", tier: 0, mult: 1.0, impurity: 2.0, desc: "Crude livestock breathing." },
+    "breath_poor": { id: "breath_poor", name: "Muddy Script", tier: 0, mult: 2.2, impurity: 1.2, desc: "A script full of errors." },
+    "flow_common": { id: "flow_common", name: "Mist Path", tier: 1, mult: 4.5, impurity: 0.7, desc: "Outer sect disciple standard." },
+    "iron_uncommon": { id: "iron_uncommon", name: "Steel Marrow", tier: 1, mult: 6.5, impurity: 0.4, desc: "Purifies through pain." },
+    "iron_rare": { id: "iron_rare", name: "Vajra Scripture", tier: 2, mult: 15.0, impurity: 0.15, desc: "Ancient crystalline Qi." },
+    "spirit_epic": { id: "spirit_epic", name: "Storm Core", tier: 3, mult: 45.0, impurity: 0.05, desc: "Condense celestial fury." },
+    "void_mythic": { id: "void_mythic", name: "Void Primordial", tier: 4, mult: 250.0, impurity: 0.0, desc: "The root of all Dao." }
+};
+
+const ARTIFACTS = {
+    "scraps": { name: "Iron Scraps", pwr: 20, desc: "Rusty scrap. +20 Pwr.", tier: 0 },
+    "jade": { name: "Worn Jade", pwr: 100, desc: "Spirit focus. +100 Pwr.", tier: 1 },
+    "sword": { name: "Sect Sword", pwr: 600, desc: "Sharp and heavy. +600 Pwr.", tier: 2 },
+    "mirror": { name: "Void Mirror", pwr: 100000, desc: "The truth reflects. +100k Pwr.", tier: 4 }
+};
+
+const MERCHANT_UNIQUE = {
+    "luck_coin": { name: "Lucky Token", pwr: 50, desc: "Fortune. +50 Pwr.", tier: 0 },
+    "alch_bag": { name: "Pill Satchel", pwr: 300, desc: "Boosts Logic. +300 Pwr.", tier: 1 },
+    "gold_cape": { name: "Golden Cape", pwr: 5000, desc: "Pressure resist. +5k Pwr.", tier: 2 },
+    "star_needle": { name: "Astral Needle", pwr: 25000, desc: "Pierces lies. +25k Pwr.", tier: 3 }
+};
+
+const TILE_TYPES = {
+    VILLAGE: { key: "VILLAGE", color: "#166534", name: "Village", danger: 0, tier: 0, pwrRange: [10, 80],
+                landmark: { name: "Mortal Well", req: 50, reward: "jade" } },
+    FOREST: { key: "FOREST", color: "#14532d", name: "Forest", danger: 1, tier: 1, pwrRange: [250, 700],
+              landmark: { name: "Ancient Grove", req: 450, reward: "alch_bag" } },
+    RUINS: { key: "RUINS", color: "#451a03", name: "Ruins", danger: 2, tier: 2, pwrRange: [1500, 4500],
+             landmark: { name: "Broken Altar", req: 2500, reward: "sword" } },
+    SECT: { key: "SECT", color: "#1e3a8a", name: "Sect", danger: 3, tier: 3, pwrRange: [8000, 25000],
+            landmark: { name: "Sword Grave", req: 18000, reward: "mirror" } },
+    PEAK: { key: "PEAK", color: "#4c1d95", name: "Peak", danger: 4, tier: 4, pwrRange: [60000, 400000],
+            landmark: { name: "Divine Pillar", req: 90000, reward: "void_mythic" } }
+};
+
+class TutorialManager {
+    constructor(game) {
+        this.game = game;
+        this.step = 0;
+        this.completedSteps = new Set(JSON.parse(localStorage.getItem('dao_tutorial_completed') || '[]'));
+        this.steps = [
+            {
+                id: 'intro',
+                title: "The Mortal Soul",
+                text: "You awaken in a fragile body. To ascend, you must gather Qi. Click 'Cultivate' to begin your journey. But beware—every breath draws in impurities.",
+                trigger: () => true
+            },
+            {
+                id: 'qi_full',
+                title: "The First Barrier",
+                text: "Your Qi is full. You cannot grow further without a 'Breakthrough'. This process is dangerous—it tests your Foundation Stability. If Stability hits 0%, your soul will shatter.",
+                trigger: () => this.game.player.qi >= REALMS[this.game.player.realmIdx].maxQi
+            },
+            {
+                id: 'regions',
+                title: "Vast Heavens",
+                text: "The Mortal Village has thin Qi. Click on the map to explore further. Regions like the Forest or Sect have denser Qi but higher regional pressure. You need Combat Power to survive there.",
+                trigger: () => this.game.player.age > 17
+            },
+            {
+                id: 'impurities',
+                title: "The Taint of Earth",
+                text: "Your impurities are high! High impurities make breakthroughs fail and slowly rot your Stability. Use better techniques or 'Reincarnate' to purge your lineage.",
+                trigger: () => this.game.player.impurities > 30
+            },
+            {
+                id: 'death',
+                title: "Shattered Cycle",
+                text: "Death is not the end. When your lifespan ends or foundation shatters, you return to the Dao. You will earn Karma based on your progress, which allows you to start with better Cultivation Manuals.",
+                trigger: () => this.game.player.isDead
+            }
+        ];
+    }
+
+    check() {
+        const nextStep = this.steps.find(s => !this.completedSteps.has(s.id) && s.trigger());
+        if (nextStep) {
+            this.show(nextStep);
+        }
+    }
+
+    show(stepData) {
+        this.currentStepId = stepData.id;
+        document.getElementById('tutorial-title').innerText = stepData.title;
+        document.getElementById('tutorial-text').innerText = stepData.text;
+        document.getElementById('tutorial-container').classList.remove('hidden');
+    }
+
+    next() {
+        this.completedSteps.add(this.currentStepId);
+        localStorage.setItem('dao_tutorial_completed', JSON.stringify([...this.completedSteps]));
+        document.getElementById('tutorial-container').classList.add('hidden');
+    }
+}
+
+class GameEngine {
+    constructor() {
+        const canvas = document.getElementById('world-canvas');
+        if (!canvas) return;
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.unlockedManuals = new Set(["breath_trash"]);
+        this.masteredManuals = new Set();
+        this.comprehension = 0;
+        this.totalKarma = 0;
+        this.generation = 1;
+        this.lastInput = 0;
+        
+        this.tutorial = new TutorialManager(this);
+        
+        this.generateWorld();
+        this.initLife();
+        this.setupListeners();
+        this.resizeCanvas();
+
+        // Trigger intro tutorial
+        setTimeout(() => this.tutorial.check(), 500);
+    }
+
+    initLife() {
+        this.player = {
+            realmIdx: 0, qi: 0, age: 16, lifespan: 80,
+            impurities: 0, stability: 100, manual: "breath_trash",
+            mastery: 0, stones: 0, pillSkill: 0, artSkill: 0,
+            x: 2, y: 2, equipment: [], isDead: false
+        };
+        this.selectedManualId = "breath_trash";
+        this.updateVision();
+        this.updateUI();
+        this.renderMap();
+        this.log("Your soul finds a new shell in the Mortal Village.");
+    }
+
+    generateWorld() {
+        this.map = [];
+        for (let y = 0; y < CONFIG.gridSize; y++) {
+            let row = [];
+            for (let x = 0; x < CONFIG.gridSize; x++) {
+                let dist = Math.sqrt(x*x + y*y);
+                let type = TILE_TYPES.VILLAGE;
+                if (dist > 22) type = TILE_TYPES.PEAK;
+                else if (dist > 15) type = TILE_TYPES.SECT;
+                else if (dist > 8) type = TILE_TYPES.RUINS;
+                else if (dist > 4) type = TILE_TYPES.FOREST;
+
+                row.push({
+                    type, explored: false, landmarkUsed: false,
+                    isLandmark: Math.random() < 0.05,
+                    qi: 0.6 + Math.random() * 1.4,
+                    imp: 0.6 + Math.random() * 1.4,
+                    safe: 0.6 + Math.random() * 1.4
+                });
+            }
+            this.map.push(row);
+        }
+
+        Object.keys(TILE_TYPES).forEach(key => {
+            let zoneType = TILE_TYPES[key];
+            let found = false;
+            let possible = [];
+            for(let y=0; y<CONFIG.gridSize; y++) {
+                for(let x=0; x<CONFIG.gridSize; x++) {
+                    if(this.map[y][x].type.key === key) {
+                        possible.push(this.map[y][x]);
+                        if(this.map[y][x].isLandmark) found = true;
+                    }
+                }
+            }
+            if(!found && possible.length > 0) {
+                possible[Math.floor(Math.random() * possible.length)].isLandmark = true;
+            }
+        });
+    }
+
+    setupListeners() {
+        this.canvas.addEventListener('pointerdown', (e) => this.handleInput(e));
+        window.addEventListener('resize', () => this.resizeCanvas());
+    }
+
+    resizeCanvas() {
+        const wrap = document.getElementById('canvas-wrapper');
+        if (!wrap) return;
+        const size = Math.min(wrap.clientWidth, 600);
+        this.canvas.width = size; this.canvas.height = size;
+        this.renderMap();
+    }
+
+    handleInput(e) {
+        if (this.player.isDead || this.player.stability <= 0) return;
+        const now = Date.now();
+        if (now - this.lastInput < CONFIG.inputCooldown) return;
+        this.lastInput = now;
+
+        const rect = this.canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const ts = this.canvas.width / (CONFIG.gridSize * this.getZoom());
+        const ox = (this.canvas.width/2) - (this.player.x * ts) - (ts/2);
+        const oy = (this.canvas.width/2) - (this.player.y * ts) - (ts/2);
+
+        const tx = Math.floor((mx - ox) / ts);
+        const ty = Math.floor((my - oy) / ts);
+
+        if (tx >= 0 && tx < CONFIG.gridSize && ty >= 0 && ty < CONFIG.gridSize) {
+            this.travel(tx, ty);
+            this.tutorial.check();
+        }
+    }
+
+    getZoom() {
+        const r = this.player.realmIdx;
+        if (r >= 6) return 1.0;
+        if (r >= 4) return 0.6;
+        return 0.25;
+    }
+
+    updateVision() {
+        const p = this.player;
+        const r = REALMS[p.realmIdx];
+        if (!r) return;
+        const radius = r.view + 1;
+        for (let y = 0; y < CONFIG.gridSize; y++) {
+            for (let x = 0; x < CONFIG.gridSize; x++) {
+                const dist = Math.sqrt((x - p.x)**2 + (y - p.y)**2);
+                if (dist <= radius) {
+                    this.map[y][x].explored = true;
+                }
+            }
+        }
+    }
+
+    travel(x, y) {
+        if (this.player.stability <= 0) return;
+        const dist = Math.sqrt((x - this.player.x)**2 + (y - this.player.y)**2);
+        if (dist === 0) return;
+        const target = this.map[y][x];
+        const minPwr = target.type.danger * 150;
+        if (this.getPower() < minPwr) {
+            this.log("<span class='text-red-500'>Regional pressure is too great!</span>");
+            return;
+        }
+        this.player.x = x; this.player.y = y;
+        this.player.age += dist * 0.25;
+        this.updateVision();
+        this.updateUI(); this.renderMap();
+        this.checkDeath();
+    }
+
+    getRiskFactor(tile) {
+        const envy = 1 / Math.max(0.1, tile.imp);
+        return (tile.qi * envy) / Math.max(0.1, tile.safe);
+    }
+
+    cultivate() {
+        if (this.player.isDead || this.player.stability <= 0) return;
+        const t = this.map[this.player.y][this.player.x];
+        const m = MANUALS[this.player.manual];
+
+        if (t.type.tier < REALMS[this.player.realmIdx].zoneTier - 1) {
+            this.log("<span class='text-red-400'>The Qi here is too thin. Move outwards!</span>");
+            return;
+        }
+        if (this.player.qi >= REALMS[this.player.realmIdx].maxQi) {
+            this.log("<span class='text-yellow-400'>Breakthrough required.</span>");
+            this.tutorial.check();
+            return;
+        }
+
+        this.player.qi = Math.min(REALMS[this.player.realmIdx].maxQi, this.player.qi + (12 * m.mult * t.qi));
+        this.player.impurities = Math.min(100, this.player.impurities + (m.impurity * t.imp));
+        this.player.age += 0.1;
+
+        const masterySpeed = (1 / (1 + m.tier)) * (1 + this.comprehension * 0.1) * 3;
+        this.player.mastery = Math.min(100, this.player.mastery + masterySpeed);
+
+        if (this.player.mastery >= 100 && !this.masteredManuals.has(this.player.manual)) {
+            this.masteredManuals.add(this.player.manual);
+            const compGain = (m.tier + 1) * 0.1;
+            this.comprehension += compGain;
+            this.log(`<span class='text-blue-400 font-bold'>MASTERED: Global Comprehension +${compGain.toFixed(1)}!</span>`);
+        }
+
+        if (Math.random() < (0.05 * this.getRiskFactor(t))) this.triggerAmbush(t.type);
+        if (this.player.impurities > 50 && Math.random() < 0.15) this.player.stability -= 2;
+
+        this.tutorial.check();
+        this.checkDeath();
+        this.updateUI();
+    }
+
+    triggerAmbush(zone) {
+        const enemyPwr = zone.pwrRange[0] + Math.random() * (zone.pwrRange[1] - zone.pwrRange[0]);
+        this.log(`<span class='text-red-500 font-bold'>AMBUSH! (Enemy Pwr: ${Math.floor(enemyPwr)})</span>`);
+        if (this.getPower() < enemyPwr) {
+            this.player.stability -= 15;
+            this.log("<span class='text-red-400'>Defeated. Foundation damaged.</span>");
+        } else {
+            const reward = Math.floor(enemyPwr / 12) + 10;
+            this.player.stones += reward;
+            this.log(`<span class='text-emerald-400 font-bold'>Victory! Looted ${reward} Stones.</span>`);
+        }
+    }
+
+    handleBreakthroughAction() {
+        if (this.player.stability <= 0) {
+            this.die("Shattered Foundation", "You must shatter your soul and restart.");
+            return;
+        }
+        this.breakthrough();
+    }
+
+    breakthrough() {
+        const rIdx = this.player.realmIdx;
+        const cur = REALMS[rIdx];
+        if (!cur || this.player.qi < cur.maxQi) return;
+        
+        if (rIdx >= REALMS.length - 1) {
+            this.log("You have reached the apex.");
+            return;
+        }
+
+        const successChance = (this.player.stability + (this.player.mastery / 5)) - this.player.impurities;
+        
+        if (Math.random() * 100 < successChance) {
+            this.player.realmIdx++; 
+            const nr = REALMS[this.player.realmIdx];
+            this.player.qi = 0; 
+            this.player.lifespan = nr.lifespan;
+            this.log(`<span class='text-emerald-400 font-bold'>ASCENSION! Reached ${nr.name}.</span>`);
+        } else {
+            this.player.stability -= 25; 
+            this.player.qi = Math.floor(cur.maxQi * 0.4);
+            this.log("<span class='text-red-500 font-bold'>FAILURE: Inner world cracked.</span>");
+        }
+        this.updateVision();
+        this.updateUI();
+    }
+
+    explore() {
+        if (this.player.isDead || this.player.stability <= 0) return;
+        const t = this.map[this.player.y][this.player.x];
+        this.player.age += 0.5;
+
+        if (t.isLandmark && !t.landmarkUsed) {
+            this.log(`<span class='fortuitous'>Encounter: ${t.type.landmark.name}</span>`);
+            if (this.getPower() >= t.type.landmark.req || this.player.artSkill > (t.type.tier * 5)) {
+                const id = t.type.landmark.reward;
+                const itm = ARTIFACTS[id] || MANUALS[id] || MERCHANT_UNIQUE[id];
+                if (itm && itm.mult) this.unlockedManuals.add(id);
+                else if (itm && !this.player.equipment.some(e => e.name === itm.name)) this.player.equipment.push(itm);
+                this.log(`<span class='text-gold font-bold'>FATE: Secured ${itm ? itm.name : 'Visions'}!</span>`);
+            } else {
+                this.player.stability -= 40;
+                this.log("<span class='text-red-500 font-bold'>CALAMITY: Soul damaged.</span>");
+            }
+            t.landmarkUsed = true;
+            this.updateUI(); return;
+        }
+
+        const roll = Math.random();
+        if (roll < 0.25) this.triggerAmbush(t.type);
+        else if (roll < 0.45) this.eventMerchant(t.type);
+        else if (roll < 0.6) this.eventWorldLoot(t.type);
+        else if (roll < 0.7) this.eventMiasma(t.type);
+        else if (roll < 0.8) this.eventSkills();
+        else this.log("Nothing found in the surroundings.");
+
+        this.checkDeath(); this.updateUI();
+    }
+
+    eventMerchant(zone) {
+        const itms = Object.values(MERCHANT_UNIQUE).filter(u => u.tier <= zone.tier && !this.player.equipment.some(e => e.name === u.name));
+        if (this.player.pillSkill >= 10) {
+            const pay = this.player.pillSkill * 5;
+            this.player.stones += pay;
+            this.log(`<span class='text-purple-400'>Sold pills for ${pay} Stones.</span>`);
+        }
+        if (itms.length === 0) return;
+        const itm = itms[Math.floor(Math.random() * itms.length)];
+        const price = (itm.tier + 1) * 200;
+        if (this.player.stones >= price) {
+            this.player.stones -= price; this.player.equipment.push(itm);
+            this.log(`<span class='text-emerald-400'>Bought ${itm.name} for ${price} Stones.</span>`);
+        } else this.log(`Merchant offered ${itm.name} for ${price}st.`);
+    }
+
+    eventWorldLoot(zone) {
+        const pool = Object.keys(MANUALS).filter(k => MANUALS[k].tier <= zone.tier);
+        const id = pool[Math.floor(Math.random()*pool.length)];
+        if (!this.unlockedManuals.has(id)) {
+            this.unlockedManuals.add(id);
+            this.log(`<span class='text-yellow-400 font-bold'>LEGACY: Gained the manual for ${MANUALS[id].name}!</span>`);
+        } else {
+            const itms = Object.keys(ARTIFACTS).filter(k => ARTIFACTS[k].tier <= zone.tier);
+            const aid = itms[Math.floor(Math.random()*itms.length)];
+            const itm = ARTIFACTS[aid];
+            if (itm && !this.player.equipment.some(e => e.name === itm.name)) {
+                this.player.equipment.push(itm); this.log(`<span class='text-blue-400'>Looted ${itm.name}.</span>`);
+            }
+        }
+    }
+
+    eventMiasma(zone) {
+        if (this.getPower() > (zone.danger * 150 + 100)) {
+            if (Math.random() < 0.1) { this.comprehension += 0.1; this.log("<span class='fateful'>FATEFUL: Cosmic insight.</span>"); }
+            else this.log("The miasma parted before you.");
+        } else { this.player.impurities += 10; this.log("<span class='text-red-400'>Miasma scorched your meridians.</span>"); }
+    }
+
+    eventSkills() {
+        if (Math.random() < 0.5) { this.player.pillSkill++; this.log("<span class='text-purple-400'>Skill+ Pill Logic.</span>"); }
+        else { this.player.artSkill++; this.log("<span class='text-blue-400'>Skill+ Artifact Lore.</span>"); }
+    }
+
+    getPower() {
+        const r = REALMS[this.player.realmIdx];
+        if (!r) return 0;
+        const b = r.power;
+        const m = MANUALS[this.player.manual].mult;
+        const s = Math.max(0.1, this.player.stability / 100);
+        const e = this.player.equipment.reduce((sum, i) => sum + i.pwr, 0);
+        return (b * (1 + m * 0.15) * s) + e;
+    }
+
+    checkDeath() { if (this.player.age >= this.player.lifespan && !this.player.isDead) this.die("Old Age", "Your shell returns to dust."); }
+
+    die(title, reason) {
+        this.player.isDead = true;
+        this.tutorial.check();
+        const modal = document.getElementById('modal-reincarnate');
+        if (modal) {
+            modal.classList.remove('hidden');
+            this.safeSetText('death-title', title);
+            this.safeSetText('death-reason', reason);
+            const r = REALMS[this.player.realmIdx];
+            this.safeSetText('death-realm', r ? r.name : "Mortal");
+            const karma = (this.player.realmIdx * 60) + Math.floor(this.player.stones / 10);
+            this.totalKarma += karma;
+            this.safeSetText('death-karma', `+${karma}`);
+            this.safeSetText('karma-total', this.totalKarma);
+            this.populateManuals();
+        }
+    }
+
+    populateManuals() {
+        const list = document.getElementById('reincarnation-options');
+        if (!list) return;
+        list.innerHTML = "";
+        this.unlockedManuals.forEach(mid => {
+            const m = MANUALS[mid];
+            if (!m) return;
+            const div = document.createElement('div');
+            div.className = `p-2 rounded border cursor-pointer transition ${mid === this.selectedManualId ? 'border-yellow-500 bg-yellow-500/10' : 'border-white/5 bg-white/5'}`;
+            div.innerHTML = `<span class='text-[10px] font-bold'>${m.name} [Tier ${m.tier}]</span>`;
+            div.onclick = () => { this.selectedManualId = mid; this.populateManuals(); };
+            list.appendChild(div);
+        });
+    }
+
+    reincarnate() {
+        this.generation++; 
+        for(let r of this.map) for(let t of r) t.landmarkUsed = false;
+        document.getElementById('modal-reincarnate').classList.add('hidden');
+        const mid = this.selectedManualId;
+        this.initLife(); 
+        this.player.manual = mid; 
+        this.updateUI();
+    }
+
+    safeSetText(id, txt) { const el = document.getElementById(id); if(el) el.innerText = txt; }
+    safeSetHtml(id, html) { const el = document.getElementById(id); if(el) el.innerHTML = html; }
+
+    updateUI() {
+        const p = this.player; const m = MANUALS[p.manual]; const t = this.map[p.y][p.x];
+        const r = REALMS[p.realmIdx];
+        if (!r) return;
+
+        this.safeSetText('gen-display', this.generation);
+        this.safeSetText('comp-display', this.comprehension.toFixed(1));
+        this.safeSetText('age-display', `${p.age.toFixed(1)} / ${p.lifespan}`);
+        this.safeSetText('qi-text', `${Math.floor(p.qi)}/${r.maxQi}`);
+        const qb = document.getElementById('qi-bar'); if (qb) qb.style.width = `${(p.qi/r.maxQi)*100}%`;
+        
+        this.safeSetText('mastery-text', `${Math.floor(p.mastery)}%`);
+        const mb = document.getElementById('mastery-bar'); if (mb) mb.style.width = `${p.mastery}%`;
+        
+        this.safeSetText('impurity-display', `${p.impurities.toFixed(1)}%`);
+        this.safeSetText('stability-display', `${Math.floor(p.stability)}%`);
+        this.safeSetText('pill-skill-display', `Lv.${p.pillSkill}`);
+        this.safeSetText('art-skill-display', `Lv.${p.artSkill}`);
+        this.safeSetText('stones-display', p.stones);
+        this.safeSetText('combat-power', `Pwr: ${Math.floor(this.getPower())}`);
+        
+        const mn = document.getElementById('manual-name');
+        if (mn) { mn.innerText = m.name; mn.className = this.masteredManuals.has(p.manual) ? "text-xs font-bold mastered-glow" : "text-xs font-bold text-yellow-500"; }
+        this.safeSetHtml('manual-stats', `Boost: ${m.mult}x | Impurity: ${m.impurity}x<br>${m.desc}`);
+        
+        if (p.stability <= 0 && !p.isDead) this.die("Shattered Foundation", "Your path is severed. Soul has crumbled.");
+
+        this.safeSetText('tile-qi', t.qi.toFixed(1) + "x");
+        this.safeSetText('tile-imp', t.imp.toFixed(1) + "x");
+        this.safeSetText('tile-safe', t.safe.toFixed(1) + "x");
+        this.safeSetText('zone-display', t.type.name);
+
+        const rsk = this.getRiskFactor(t);
+        const rl = document.getElementById('risk-level');
+        if (rl) { if (rsk > 1.8) { rl.innerText = "Target: Highly Envied"; rl.className = "text-[8px] uppercase danger-text"; }
+        else if (rsk > 1.2) { rl.innerText = "Target: Visible"; rl.className = "text-[8px] uppercase text-orange-400"; }
+        else { rl.innerText = "Target: Concealed"; rl.className = "text-[8px] uppercase text-gray-500"; } }
+
+        const elist = document.getElementById('equipment-list');
+        if (elist) elist.innerHTML = p.equipment.map(i => `<div class='stat-card py-1'><div class='flex justify-between text-[9px] font-bold'><span>${i.name}</span><span class='text-blue-400'>+${i.pwr}</span></div><div class='text-[8px] text-gray-500'>${i.desc}</div></div>`).join("");
+        
+        this.safeSetText('realm-display', r.name);
+
+        const isS = p.stability <= 0;
+        const ids = ['btn-break', 'btn-world-cultivate', 'btn-world-explore', 'btn-log-explore', 'btn-cultivate'];
+        ids.forEach(id => { const b = document.getElementById(id); if (b) {
+            if (isS) { if (id === 'btn-break') { b.innerText = "SHATTER SOUL"; b.className = "w-full bg-red-600/80 text-white py-3 rounded text-xs font-bold shadow-lg transition"; b.disabled = false; } else b.disabled = true; }
+            else { if (id === 'btn-break') { b.innerText = "ATTEMPT BREAKTHROUGH"; b.className = "w-full bg-yellow-600/20 text-yellow-500 py-3 rounded text-xs font-bold border border-yellow-500/20 transition disabled:opacity-30"; b.disabled = p.qi < r.maxQi; } else b.disabled = false; }
+        }});
+    }
+
+    renderMap() {
+        const sz = this.canvas.width; const zoom = this.getZoom();
+        const ts = sz / (CONFIG.gridSize * zoom);
+        const ox = (sz/2) - (this.player.x * ts) - (ts/2);
+        const oy = (sz/2) - (this.player.y * ts) - (ts/2);
+        this.ctx.fillStyle = "#000"; this.ctx.fillRect(0, 0, sz, sz);
+        for (let y = 0; y < CONFIG.gridSize; y++) {
+            for (let x = 0; x < CONFIG.gridSize; x++) {
+                const dx = x * ts + ox, dy = y * ts + oy;
+                if (dx + ts < 0 || dx > sz || dy + ts < 0 || dy > sz) continue;
+                const tile = this.map[y][x];
+                this.ctx.fillStyle = tile.explored ? tile.type.color : "#050505";
+                this.ctx.fillRect(dx, dy, ts-1, ts-1);
+                if (tile.isLandmark && tile.explored && !tile.landmarkUsed) { this.ctx.fillStyle = "gold"; this.ctx.fillRect(dx+ts*0.3, dy+ts*0.3, ts*0.4, ts*0.4); }
+                if (x === this.player.x && y === this.player.y) { this.ctx.fillStyle = "#fff"; this.ctx.beginPath(); this.ctx.arc(dx+ts/2, dy+ts/2, ts/5, 0, Math.PI*2); this.ctx.fill(); }
+            }
+        }
+    }
+
+    log(msg) {
+        const c = document.getElementById('log-container'), mc = document.getElementById('mini-log-container');
+        if (!c || !mc) return;
+        const div = document.createElement('div');
+        div.className = "border-l border-white/10 pl-2 mb-1 py-1 text-gray-400";
+        div.innerHTML = `<span class='text-gray-600'>[${this.player.age.toFixed(1)}]</span> ${msg}`;
+        c.prepend(div);
+        const mDiv = div.cloneNode(true); mDiv.className = "truncate py-0";
+        mc.appendChild(mDiv);
+        if (c.children.length > 50) c.lastElementChild.remove();
+        if (mc.children.length > 3) mc.firstElementChild.remove();
+    }
+}
+
+let game;
+window.onload = () => { game = new GameEngine(); if (window.innerWidth < 768) switchTab('world'); };
+
+function switchTab(id) {
+    document.querySelectorAll('.tab-content, section[id^="tab-"]').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active-tab'));
+    const t = document.getElementById(`tab-${id}`), b = document.getElementById(`btn-tab-${id}`);
+    if (t) t.classList.remove('hidden');
+    if (b) b.classList.add('active-tab');
+    if (id === 'world' && game) game.resizeCanvas();
+}
+</script>
+</body>
+</html>

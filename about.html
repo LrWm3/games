@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LRWM3 Games | About</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="text-slate-100">
+  <div class="page-bg" aria-hidden="true"></div>
+
+  <header class="sticky top-0 z-50">
+    <nav class="glass mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
+      <a class="flex items-center gap-3 text-lg font-semibold" href="index.html">
+        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400 text-slate-900">
+          <i class="fa-solid fa-bolt"></i>
+        </span>
+        LRWM3 Games
+      </a>
+      <div class="hidden items-center gap-6 text-sm font-medium sm:flex">
+        <a class="hover:text-amber-300" href="games/index.html">Games</a>
+        <a class="hover:text-amber-300" href="guides/gemini-website-generator.html">Guides</a>
+        <a class="hover:text-amber-300" href="about.html">About</a>
+      </div>
+      <details class="sm:hidden">
+        <summary class="cursor-pointer list-none rounded-full border border-slate-600 px-3 py-2 text-sm">Menu</summary>
+        <div class="mt-2 grid gap-2 rounded-2xl border border-slate-700 bg-slate-900/80 p-3 text-sm">
+          <a class="hover:text-amber-300" href="games/index.html">Games</a>
+          <a class="hover:text-amber-300" href="guides/gemini-website-generator.html">Guides</a>
+          <a class="hover:text-amber-300" href="about.html">About</a>
+        </div>
+      </details>
+    </nav>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-4 pb-16 pt-10 sm:px-6">
+    <section class="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+      <div class="space-y-6">
+        <p class="badge text-amber-300">About the hub</p>
+        <h1 class="text-4xl font-semibold leading-tight sm:text-5xl">A quiet home for playful prototypes, demos, and guides.</h1>
+        <p class="text-lg text-slate-300">LRWM3 Games keeps everything lightweight and fast. It is designed so visitors can quickly find a game, get in, and start playing. Every game and guide lives on a simple static page for instant loads on Cloudflare Pages.</p>
+        <div class="flex flex-wrap gap-3">
+          <a class="link-chip rounded-full px-4 py-2 text-sm" href="games/index.html">Browse games</a>
+          <a class="link-chip rounded-full px-4 py-2 text-sm" href="guides/gemini-website-generator.html">Read a guide</a>
+        </div>
+      </div>
+      <div class="glass rounded-3xl p-6 sm:p-8">
+        <div class="space-y-6">
+          <div>
+            <p class="badge text-emerald-300">Principles</p>
+            <h2 class="text-2xl font-semibold">What matters here</h2>
+          </div>
+          <ul class="space-y-4 text-sm text-slate-300">
+            <li class="flex gap-3">
+              <i class="fa-solid fa-feather text-amber-300"></i>
+              <span>Fast navigation and zero clutter so players stay focused.</span>
+            </li>
+            <li class="flex gap-3">
+              <i class="fa-solid fa-compass text-blue-300"></i>
+              <span>Clear labels for playable builds vs demos.</span>
+            </li>
+            <li class="flex gap-3">
+              <i class="fa-solid fa-mobile-screen-button text-emerald-300"></i>
+              <span>Mobile-first layouts that look crisp on any device.</span>
+            </li>
+            <li class="flex gap-3">
+              <i class="fa-solid fa-cloud text-slate-200"></i>
+              <span>Static hosting for quick loads and easy updates.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-16">
+      <div>
+        <p class="badge text-blue-300">What you can do</p>
+        <h2 class="section-title text-2xl font-semibold">Use this space as your launchpad</h2>
+      </div>
+      <div class="mt-6 grid gap-6 md:grid-cols-3">
+        <div class="card rounded-3xl p-6">
+          <p class="text-lg font-semibold">Play</p>
+          <p class="mt-2 text-sm text-slate-300">Jump into full builds from the playable shelf and keep your session moving.</p>
+        </div>
+        <div class="card rounded-3xl p-6">
+          <p class="text-lg font-semibold">Explore</p>
+          <p class="mt-2 text-sm text-slate-300">Peek at experimental demos to see what is in the lab right now.</p>
+        </div>
+        <div class="card rounded-3xl p-6">
+          <p class="text-lg font-semibold">Learn</p>
+          <p class="mt-2 text-sm text-slate-300">Grab short guides for how-to tasks and rapid inspiration.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-16 rounded-3xl border border-slate-700 bg-slate-950/70 p-8">
+      <div class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div class="space-y-4">
+          <p class="badge text-amber-300">Next steps</p>
+          <h3 class="text-2xl font-semibold">Want to add new games or guides?</h3>
+          <p class="text-sm text-slate-300">Drop a new HTML file into the right folder and add it to the list. The site is designed to stay simple, so adding fresh content is as easy as updating one array.</p>
+        </div>
+        <div class="space-y-3 text-sm text-slate-300">
+          <p><i class="fa-solid fa-folder-open text-emerald-300"></i> Games live in <span class="text-slate-100">/games/playable</span> and <span class="text-slate-100">/games/demos</span>.</p>
+          <p><i class="fa-solid fa-book text-blue-300"></i> Guides live in <span class="text-slate-100">/guides</span>.</p>
+          <p><i class="fa-solid fa-pen-to-square text-amber-300"></i> Update the arrays in <span class="text-slate-100">index.html</span> and <span class="text-slate-100">games/index.html</span>.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="mx-auto flex max-w-6xl flex-col gap-4 px-4 pb-10 text-sm text-slate-400 sm:px-6">
+    <div class="flex flex-wrap items-center justify-between gap-4 border-t border-slate-800 pt-6">
+      <p>LRWM3 Games is a lightweight launcher for browser games.</p>
+      <div class="flex gap-4">
+        <a class="footer-link" href="games/index.html">Games</a>
+        <a class="footer-link" href="guides/gemini-website-generator.html">Guides</a>
+        <a class="footer-link" href="index.html">Home</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

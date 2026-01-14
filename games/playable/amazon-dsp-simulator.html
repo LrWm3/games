@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Amason DSP Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        :root {
+            --amason-orange: #FF9900;
+            --amason-dark: #131921;
+            --amason-bg: #0f172a;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--amason-bg);
+            color: #f1f5f9;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        .glass { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(12px); border-top: 1px solid rgba(255, 255, 255, 0.1); }
+        .btn-amason { background-color: var(--amason-orange); color: var(--amason-dark); font-weight: 800; text-transform: uppercase; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
+        .btn-amason:active { transform: scale(0.96); }
+        .btn-amason:disabled { background-color: #334155; color: #64748b; opacity: 0.6; cursor: not-allowed; }
+
+        .progress-bar { height: 6px; background: #010409; border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--amason-orange); transition: width 0.3s ease; }
+
+        /* Telemetry Responsive Grid */
+        .tel-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tel-card { 
+            background: #1e293b;
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Dense Grid Packing Engine */
+        .van-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, 8px);
+            grid-auto-rows: 8px;
+            grid-auto-flow: dense;
+            gap: 2px;
+            padding: 10px;
+        }
+        
+        .asset { border-radius: 1px; flex-shrink: 0; position: relative; }
+        .t1 { grid-column: span 1; grid-row: span 1; }
+        .t2 { grid-column: span 2; grid-row: span 2; border: 1px solid rgba(255,255,255,0.2); }
+        .t3 { grid-column: span 4; grid-row: span 4; border: 2px solid rgba(255,255,255,0.3); }
+        .t4 { grid-column: span 8; grid-row: span 8; border: 3px double rgba(255,255,255,0.4); }
+        .t5 { grid-column: span 12; grid-row: span 12; border: 4px solid rgba(255,255,255,0.5); box-shadow: 0 0 20px rgba(255,153,0,0.3); animation: glow 4s infinite; } 
+
+        @keyframes glow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.3); } }
+
+        .dsp-active { background-color: #475569; }
+        .dsp-failed { background-color: #ef4444; animation: blink 0.8s infinite; }
+        .internal { background-color: var(--amason-orange); box-shadow: 0 0 5px var(--amason-orange); }
+
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        .scanline { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: rgba(255, 153, 0, 0.05); pointer-events: none; animation: scan 10s linear infinite; z-index: 10; }
+        @keyframes scan { from { transform: translateY(0); } to { transform: translateY(100vh); } }
+
+        .upgrade-card { background: rgba(255,255,255,0.03); border-radius: 10px; padding: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: left; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+        .grid-tooltip {
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 70;
+            transform: translate(12px, 12px);
+        }
+
+        .grid-tooltip.hidden { display: none; }
+
+        .grid-tooltip-card {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+            padding: 10px 12px;
+            border-radius: 10px;
+            min-width: 180px;
+            font-size: 11px;
+            line-height: 1.3;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col select-none overflow-hidden bg-[#0f172a]">
+
+    <div class="scanline"></div>
+
+    <!-- Header -->
+    <header class="p-4 bg-[#0f172a] border-b border-white/5 shrink-0 z-20">
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-xl font-black text-orange-500 italic leading-none uppercase">Amason DSP</h1>
+                <p class="text-[9px] text-slate-500 uppercase mt-1 font-bold tracking-widest">Global Logistics Monopoly</p>
+            </div>
+            <div class="text-right">
+                <div id="stat-cash" class="text-lg font-bold text-green-400 mono leading-none">$0</div>
+                <div class="text-[9px] text-slate-500 font-bold uppercase mt-1">Capital Reserves</div>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4 mt-4">
+            <div class="space-y-1">
+                <div class="flex justify-between items-center text-[10px] uppercase font-bold text-blue-400">
+                    <span>AI Model v<span id="stat-level">1</span></span>
+                    <span class="flex items-center gap-2">
+                        <span id="ai-base-income">Base $50/tk</span>
+                        <span id="training-pct">0%</span>
+                    </span>
+                </div>
+                <div class="progress-bar"><div id="training-fill" class="progress-fill" style="width: 0%; background: #3b82f6;"></div></div>
+            </div>
+            <div class="space-y-1">
+                <div class="flex justify-between items-center text-[10px] uppercase font-bold text-orange-400">
+                    <span>AI Market Share</span>
+                    <span id="market-pct">0%</span>
+                </div>
+                <div class="progress-bar"><div id="market-fill" class="progress-fill" style="width: 0%;"></div></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Telemetry Dashboard -->
+    <section class="tel-grid border-b border-white/5 shrink-0 z-10">
+        <div class="tel-card flex flex-col">
+            <span class="text-[8px] uppercase font-bold text-slate-400">TAM (5M)</span>
+            <span id="tel-tam" class="text-xs font-bold text-slate-200 mono">0 / 5M</span>
+        </div>
+        <div class="tel-card flex flex-col border-x border-white/5">
+            <span class="text-[8px] uppercase font-bold text-orange-400">AI Trucks</span>
+            <span id="tel-ai-count" class="text-xs font-bold text-orange-200 mono">0</span>
+        </div>
+        <div class="tel-card flex flex-col">
+            <span class="text-[8px] uppercase font-bold text-slate-400">DSP Trucks</span>
+            <span id="tel-dsp-count" class="text-xs font-bold text-slate-200 mono">0</span>
+        </div>
+        <div class="tel-card flex flex-col border-t border-white/5">
+            <span class="text-[8px] uppercase font-bold text-red-400">Defaults</span>
+            <span id="tel-bankrupt" class="text-xs font-bold text-red-200 mono">0</span>
+        </div>
+        <div class="tel-card flex flex-col border-t border-x border-white/5">
+            <span class="text-[8px] uppercase font-bold text-orange-500">AI Income</span>
+            <span id="tel-ai-income" class="text-[9px] text-green-400 mono">+$0/tk</span>
+        </div>
+        <div class="tel-card flex flex-col border-t border-white/5">
+            <span class="text-[8px] uppercase font-bold text-slate-400">DSP Income</span>
+            <span id="tel-dsp-income" class="text-[9px] text-green-400 mono">+$0/tk</span>
+        </div>
+    </section>
+
+    <!-- Visualization Matrix -->
+    <main class="flex-1 overflow-hidden flex flex-col relative bg-[#0b1120]">
+        <div id="grid-container" class="van-grid flex-1 overflow-y-auto overflow-x-hidden content-start"></div>
+        <div class="absolute bottom-4 left-4 right-4 pointer-events-none">
+            <div id="ticker" class="text-[10px] mono text-orange-400 font-bold uppercase truncate bg-[#0b1120]/90 py-1 px-2 rounded border border-white/10 w-fit">Initializing Matrix...</div>
+        </div>
+    </main>
+
+    <div id="grid-tooltip" class="grid-tooltip hidden" role="tooltip" aria-hidden="true">
+        <div class="grid-tooltip-card space-y-1"></div>
+    </div>
+
+    <!-- Operational Controls -->
+    <footer class="glass p-4 shrink-0 z-20 space-y-3">
+        <div class="grid grid-cols-3 gap-2">
+            <button id="btn-onboard" onclick="game.manualOnboard()" class="btn-amason h-14 rounded-xl flex flex-col items-center justify-center">
+                <span class="text-[10px]">Onboard Driver</span>
+                <span class="text-[9px] font-normal opacity-80">+$1.5K Fee</span>
+            </button>
+            <button id="btn-refurb" onclick="game.refurbish()" class="btn-amason h-14 rounded-xl flex flex-col items-center justify-center" disabled>
+                <span class="text-[10px]">Refurb & Swap</span>
+                <span id="refurb-count" class="text-[9px] font-normal opacity-80">0 Trucks</span>
+            </button>
+            <button id="btn-bid" onclick="game.launchBidding()" class="btn-amason h-14 rounded-xl flex flex-col items-center justify-center opacity-50" disabled>
+                <span class="text-[10px]">Zone Bidding</span>
+                <span id="bid-lock-status" class="text-[9px] font-normal opacity-80">Locked (<80%)</span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+            <button id="upg-rate" onclick="game.upgrade('rate')" class="upgrade-card">
+                <div class="text-[9px] uppercase text-slate-400 font-bold">Driver Recruitment</div>
+                <div class="flex justify-between items-center mt-1"><span id="rate-cost" class="text-xs text-green-400 mono">$5k</span><span id="rate-lvl" class="text-[10px] text-slate-500">Lvl 1</span></div>
+            </button>
+            <button id="upg-size" onclick="game.upgrade('size')" class="upgrade-card">
+                <div class="text-[9px] uppercase text-slate-400 font-bold">Onboard Batching</div>
+                <div class="flex justify-between items-center mt-1"><span id="size-cost" class="text-xs text-green-400 mono">$8k</span><span id="size-lvl" class="text-[10px] text-slate-500">Lvl 1</span></div>
+            </button>
+        </div>
+    </footer>
+
+    <!-- Initial Tutorials -->
+    <div id="modal" class="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-6 text-center">
+        <div class="max-w-md w-full space-y-6">
+            <h2 class="text-4xl font-black text-orange-500 italic tracking-tighter uppercase leading-none">The Amason Plan</h2>
+            <div id="tutorial-p1" class="space-y-4 text-sm text-slate-400 leading-relaxed text-left bg-slate-900 p-6 rounded-2xl border border-white-5">
+                <p class="text-white font-bold text-lg italic">Phase 1: Human Funded Expansion</p>
+                <ul class="space-y-3 text-xs">
+                    <li><b class="text-orange-400">1. Entry Fees:</b> <b class="text-white">Human Drivers</b> join as DSPs, paying us <b class="text-green-400">$1,500</b> per head to retrofit their trucks and join our delivery network.</li>
+                    <li><b class="text-orange-400">2. Truck Obsolence:</b> Retrofitted trucks fail by design and must be replaced. Drivers fund new <b class="text-green-400">$30,000</b> truck purchases up to <b class="text-white">8 times</b> before debt forces them into bankruptcy.</li>
+                    <li><b class="text-orange-400">3. Competitive Extraction:</b> When DSPs replace a failing truck, they return the old one to us. We swap parts at no cost and compete against them using their old trucks—powered by our <b class="text-white">Autonomous AI Fleet</b>.</li>
+                </ul>
+                <button onclick="game.nextTutorial()" class="btn-amason w-full py-3 rounded-lg mt-4 text-xs">Next: Telemetry Overview</button>
+            </div>
+            <div id="tutorial-p2" class="hidden space-y-4 text-sm text-slate-400 leading-relaxed text-left bg-slate-900 p-6 rounded-2xl border border-white/5">
+                <p class="text-white font-bold text-lg italic">Phase 2: Color States</p>
+                <ul class="space-y-4 text-xs">
+                    <li class="flex items-start gap-4"><div class="w-6 h-6 bg-[#475569] border border-white/10 shrink-0 rounded-sm"></div><div><b class="text-white uppercase tracking-wider">Gray: Active Human Drivers</b><br>Finite resource (5M TAM). They provide the initial capital.</div></li>
+                    <li class="flex items-start gap-4"><div class="w-6 h-6 bg-[#ef4444] shrink-0 rounded-sm animate-pulse"></div><div><b class="text-red-400 uppercase tracking-wider">Red: Replacement Required</b><br>Truck has failed; replacement drives revenue and accelerates partner bankruptcy.</div></li>
+                    <li class="flex items-start gap-4"><div class="w-6 h-6 bg-[#FF9900] shadow-[0_0_8px_rgba(255,153,0,0.6)] shrink-0 rounded-sm"></div><div><b class="text-orange-400 uppercase tracking-wider">Orange: AI Autonomous Fleet</b><br>Permanent assets. Built from seized partner trucks. Zero capex.</div></li>
+                </ul>
+                <button onclick="game.start()" class="btn-amason w-full py-3 rounded-lg mt-4 text-xs">Initialize Matrix</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini Tutorial for Squeeze -->
+    <div id="squeeze-modal" class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-6 text-center hidden">
+        <div class="max-w-md w-full bg-[#1e293b] p-8 rounded-3xl border-2 border-orange-500/50 shadow-2xl">
+            <h2 class="text-2xl font-black text-orange-500 mb-4 uppercase">Phase 3: Market Squeeze</h2>
+            <p class="text-sm text-slate-300 mb-6 leading-relaxed">
+                You have recruited 80% of the available human workforce. Sentiment is no longer required. 
+                <br><br> Activating <b class="text-white">Zone Bidding</b> will use your zero-cost AI fleet to underbid the remaining human drivers, forcing them into rapid bankruptcy.
+            </p>
+            <button onclick="document.getElementById('squeeze-modal').style.display='none'" class="btn-amason w-full py-4 rounded-xl text-xs">Acknowledge</button>
+        </div>
+    </div>
+
+    <!-- Win Screen -->
+    <div id="win-screen" class="fixed inset-0 z-[60] bg-white text-slate-900 flex flex-col items-center justify-center p-8 hidden overflow-y-auto">
+        <div class="max-w-2xl w-full text-center space-y-8 py-10">
+            <h1 class="text-6xl font-black italic tracking-tighter uppercase leading-none">Global Monopoly</h1>
+            <p class="text-xl font-bold border-y-2 border-slate-900 py-4 uppercase">Autonomous Victory Achieved</p>
+            
+            <div class="text-left bg-slate-100 p-8 rounded-2xl space-y-6">
+                <p id="final-summary" class="text-lg leading-relaxed font-medium"></p>
+                <div class="grid grid-cols-3 gap-4 border-t border-slate-300 pt-6">
+                    <div><span class="text-[10px] uppercase font-bold opacity-60">Time to Win</span><p id="win-time" class="text-xl font-bold">0:00</p></div>
+                    <div><span class="text-[10px] uppercase font-bold opacity-60">Total Recruits</span><p id="win-recruits" class="text-xl font-bold">5.0M</p></div>
+                    <div><span class="text-[10px] uppercase font-bold opacity-60">AI Dominance</span><p class="text-xl font-bold">100%</p></div>
+                </div>
+            </div>
+
+            <button onclick="location.reload()" class="bg-slate-900 text-white font-bold px-12 py-5 rounded-full text-sm uppercase tracking-widest shadow-xl">Reset Flywheel</button>
+        </div>
+    </div>
+
+    <script>
+        const game = {
+            startTime: Date.now(),
+            cash: 5000,
+            trainingProgress: 0,
+            trainingLevel: 1,
+            marketShare: 0,
+            tamDSPs: 5000000,
+            totalRecruited: 0,
+            bankruptcies: 0,
+            dspEntryRevenue: 0,
+            dspSaleRevenue: 0,
+            dspWorkRevenue: 0,
+            internalUnitRevenue: 0,
+            dspActivePool: [], 
+            internalUnits: 0,
+            onboardTimer: 0,
+            onboardInterval: 40, 
+            onboardAmount: 1,
+            biddingActive: false,
+            biddingUnlocked: false,
+            upgrades: { rate: { level: 1, cost: 5000 }, size: { level: 1, cost: 8000 } },
+            elements: {
+                cash: document.getElementById('stat-cash'),
+                market: document.getElementById('market-pct'),
+                marketFill: document.getElementById('market-fill'),
+                training: document.getElementById('training-pct'),
+                trainingFill: document.getElementById('training-fill'),
+                level: document.getElementById('stat-level'),
+                grid: document.getElementById('grid-container'),
+                ticker: document.getElementById('ticker'),
+                btnRefurb: document.getElementById('btn-refurb'),
+                refurbCount: document.getElementById('refurb-count'),
+                btnBid: document.getElementById('btn-bid'),
+                btnOnboard: document.getElementById('btn-onboard'),
+                telTam: document.getElementById('tel-tam'),
+                telBankrupt: document.getElementById('tel-bankrupt'),
+                telDspCount: document.getElementById('tel-dsp-count'),
+                telAiCount: document.getElementById('tel-ai-count'),
+                telAiIncome: document.getElementById('tel-ai-income'),
+                telDspIncome: document.getElementById('tel-dsp-income')
+            },
+
+            nextTutorial() {
+                document.getElementById('tutorial-p1').classList.add('hidden');
+                document.getElementById('tutorial-p2').classList.remove('hidden');
+            },
+
+            start() {
+                document.getElementById('modal').style.display = 'none';
+                this.renderGrid();
+                setInterval(() => this.tick(), 600);
+            },
+
+            log(msg) { this.elements.ticker.innerText = msg.toUpperCase(); },
+            
+            formatCurrency(val) {
+                if (val >= 1e12) return '$' + (val / 1e12).toFixed(2) + 'T';
+                if (val >= 1e9) return '$' + (val / 1e9).toFixed(2) + 'B';
+                if (val >= 1e6) return '$' + (val / 1e6).toFixed(2) + 'M';
+                if (val >= 1e3) return '$' + (val / 1e3).toFixed(1) + 'K';
+                return '$' + Math.floor(val).toLocaleString();
+            },
+
+            formatCompact(val) {
+                if (val >= 1e6) return (val / 1e6).toFixed(1) + 'M';
+                if (val >= 1e3) return (val / 1e3).toFixed(1) + 'K';
+                return Math.floor(val).toLocaleString();
+            },
+
+            aiIncomePerTruck() {
+                return this.trainingLevel * 50;
+            },
+
+            manualOnboard() {
+                if (this.totalRecruited >= this.tamDSPs) return;
+                this.onboardDSPs(1);
+                this.updateUI();
+            },
+
+            onboardDSPs(count) {
+                const available = this.tamDSPs - this.totalRecruited;
+                const toAdd = Math.min(count, available);
+                for(let i=0; i<toAdd; i++) {
+                    this.dspActivePool.push({ failures: 0, limit: Math.floor(Math.random() * 6) + 3, failed: false });
+                    this.totalRecruited++;
+                    this.dspEntryRevenue += 1500;
+                    this.cash += 1500;
+                }
+                this.renderGrid();
+            },
+
+            upgrade(type) {
+                const u = this.upgrades[type];
+                if (this.cash >= u.cost) {
+                    this.cash -= u.cost;
+                    u.level++;
+                    if (type === 'rate') {
+                        this.onboardInterval = Math.max(2, this.onboardInterval - 5);
+                        u.cost *= 1.9;
+                    } else {
+                        this.onboardAmount = Math.ceil(this.onboardAmount * 2.8);
+                        u.cost *= 3.0;
+                    }
+                    this.updateUI();
+                }
+            },
+
+            refurbish() {
+                const failedDSPs = this.dspActivePool.filter(d => d.failed);
+                if (failedDSPs.length <= 0) return;
+                const cost = failedDSPs.length * 600;
+                if (this.cash < cost) return;
+                this.cash -= cost;
+                this.dspSaleRevenue += (failedDSPs.length * 30000);
+                this.cash += (failedDSPs.length * 30000); 
+                this.internalUnits += failedDSPs.length; 
+                this.dspActivePool.forEach(d => { if (d.failed) { d.failed = false; d.failures++; } });
+                const survivors = [];
+                this.dspActivePool.forEach(d => {
+                    if (d.failures >= d.limit) { this.bankruptcies++; } else { survivors.push(d); }
+                });
+                this.dspActivePool = survivors;
+                this.updateUI();
+                this.renderGrid();
+            },
+
+            launchBidding() {
+                this.biddingActive = true;
+                this.log("Zone Bidding active. Squeezing human overhead.");
+                this.elements.btnBid.disabled = true;
+                document.getElementById('bid-lock-status').innerText = "Active";
+            },
+
+            tick() {
+                if (this.totalRecruited < this.tamDSPs) {
+                    this.onboardTimer++;
+                    if (this.onboardTimer >= this.onboardInterval) {
+                        this.onboardDSPs(this.onboardAmount);
+                        this.onboardTimer = 0;
+                    }
+                }
+                const activeDSPsCount = this.dspActivePool.filter(d => !d.failed).length;
+                const totalActive = activeDSPsCount + this.internalUnits;
+                if (totalActive > 0) {
+                    this.trainingProgress += (totalActive * 0.0004) + 0.1;
+                    if (this.trainingProgress >= 100) { this.trainingLevel++; this.trainingProgress = 0; }
+                }
+                if (activeDSPsCount > 0) {
+                    const failRate = 0.008 + (this.trainingLevel * 0.001);
+                    this.dspActivePool.forEach(d => { if (!d.failed && Math.random() < failRate) d.failed = true; });
+                }
+                const dspInc = activeDSPsCount * 20;
+                const aiInc = this.internalUnits * this.aiIncomePerTruck();
+                this.dspWorkRevenue += dspInc;
+                this.internalUnitRevenue += aiInc;
+                this.cash += (dspInc + aiInc);
+
+                // Monopoly Share Calculation Update:
+                // AI trucks vs (Remaining TAM + Active DSPs + Failed DSPs + AI trucks)
+                // Note: dspActivePool.length covers both Active and Failed DSPs in this implementation.
+                const tamRemaining = this.tamDSPs - this.totalRecruited;
+                const totalPotentialTrucks = tamRemaining + this.dspActivePool.length + this.internalUnits;
+                this.marketShare = (this.internalUnits / totalPotentialTrucks) * 100;
+
+                if (this.totalRecruited >= this.tamDSPs * 0.8 && !this.biddingUnlocked) {
+                    this.biddingUnlocked = true;
+                    document.getElementById('squeeze-modal').classList.remove('hidden');
+                }
+                if (this.biddingActive) {
+                    if (this.dspActivePool.length > 0 && Math.random() > 0.4) {
+                        const bankruptCount = Math.ceil(this.internalUnits / 10000 + 2);
+                        for(let i=0; i<bankruptCount; i++) {
+                            if (this.dspActivePool.length > 0) { this.dspActivePool.pop(); this.bankruptcies++; }
+                        }
+                    }
+                }
+                if (this.totalRecruited >= this.tamDSPs && this.dspActivePool.length === 0) {
+                    this.showWinScreen();
+                }
+                this.updateUI(dspInc, aiInc);
+                this.renderGrid();
+            },
+
+            updateUI(dspInc = 0, aiInc = 0) {
+                const activeCount = this.dspActivePool.filter(d => !d.failed).length;
+                const failedCount = this.dspActivePool.filter(d => d.failed).length;
+                this.elements.cash.innerText = this.formatCurrency(this.cash);
+                this.elements.level.innerText = this.trainingLevel;
+                this.elements.training.innerText = Math.floor(this.trainingProgress) + '%';
+                this.elements.trainingFill.style.width = this.trainingProgress + '%';
+                this.elements.market.innerText = this.marketShare.toFixed(2) + '%';
+                this.elements.marketFill.style.width = this.marketShare + '%';
+                this.elements.refurbCount.innerText = this.formatCompact(failedCount) + ' Trucks';
+                this.elements.btnRefurb.disabled = failedCount <= 0 || this.cash < (failedCount * 600);
+                this.elements.btnOnboard.disabled = this.totalRecruited >= this.tamDSPs;
+                const aiBaseIncome = this.aiIncomePerTruck();
+                document.getElementById('ai-base-income').innerText = `Base ${this.formatCurrency(aiBaseIncome)}/tk`;
+                if (this.biddingUnlocked && !this.biddingActive) {
+                    this.elements.btnBid.disabled = false;
+                    this.elements.btnBid.classList.remove('opacity-50');
+                    document.getElementById('bid-lock-status').innerText = "Ready";
+                }
+                this.elements.telTam.innerText = `${this.formatCompact(this.totalRecruited)} / 5M`;
+                this.elements.telBankrupt.innerText = this.formatCompact(this.bankruptcies);
+                this.elements.telDspCount.innerText = this.formatCompact(activeCount + failedCount);
+                this.elements.telAiCount.innerText = this.formatCompact(this.internalUnits);
+                this.elements.telAiIncome.innerText = `+${this.formatCurrency(aiInc)}/tk`;
+                this.elements.telDspIncome.innerText = `+${this.formatCurrency(dspInc)}/tk`;
+                document.getElementById('rate-cost').innerText = this.formatCurrency(this.upgrades.rate.cost);
+                document.getElementById('rate-lvl').innerText = `Lvl ${this.upgrades.rate.level}`;
+                document.getElementById('upg-rate').disabled = this.cash < this.upgrades.rate.cost;
+                document.getElementById('size-cost').innerText = this.formatCurrency(this.upgrades.size.cost);
+                document.getElementById('size-lvl').innerText = `Lvl ${this.upgrades.size.level}`;
+                document.getElementById('upg-size').disabled = this.cash < this.upgrades.size.cost;
+            },
+
+            showWinScreen() {
+                const duration = Math.floor((Date.now() - this.startTime) / 1000);
+                const mins = Math.floor(duration / 60);
+                const secs = duration % 60;
+                const totalPaidByDSPs = this.dspEntryRevenue + this.dspSaleRevenue;
+                const truckValue = this.internalUnits * 30000;
+                document.getElementById('win-time').innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                const summary = `You were paid ${this.formatCurrency(totalPaidByDSPs)} by DSPs, who earned you ${this.formatCurrency(this.dspWorkRevenue)} dollars while they worked for you, and acquired ${this.internalUnits.toLocaleString()} of their trucks with collective value of ${this.formatCurrency(truckValue)}, and used those trucks in your autonomous fleet to make ${this.formatCurrency(this.internalUnitRevenue)} dollars. <br><br> <b class="italic text-orange-600">Congratulations on building the worlds largest autonomous fleet without spending any money!</b>`;
+                document.getElementById('final-summary').innerHTML = summary;
+                document.getElementById('win-screen').classList.remove('hidden');
+            },
+
+            renderGrid() {
+                const container = this.elements.grid;
+                const tierUnits = { 1: 1, 2: 100, 3: 10000, 4: 1000000, 5: 10000000 };
+                const typeLabels = {
+                    internal: "AI fleet truck",
+                    "dsp-active": "DSP truck",
+                    "dsp-failed": "Failed DSP truck (reclaim + retrofit)"
+                };
+                const calculateTiers = (count) => ({
+                    t5: Math.floor(count / 10000000), // Updated to 10M
+                    t4: Math.floor((count % 10000000) / 1000000),
+                    t3: Math.floor((count % 1000000) / 10000), t2: Math.floor((count % 10000) / 100), t1: count % 100
+                });
+                const activeCount = this.dspActivePool.filter(d => !d.failed).length;
+                const failedCount = this.dspActivePool.filter(d => d.failed).length;
+                const internal = calculateTiers(this.internalUnits);
+                const active = calculateTiers(activeCount);
+                const failed = calculateTiers(failedCount);
+                const assets = [];
+                const add = (tiers, className) => {
+                    for(let i=0; i<tiers.t5; i++) assets.push({t:5, c:className});
+                    for(let i=0; i<tiers.t4; i++) assets.push({t:4, c:className});
+                    for(let i=0; i<tiers.t3; i++) assets.push({t:3, c:className});
+                    for(let i=0; i<tiers.t2; i++) assets.push({t:2, c:className});
+                    for(let i=0; i<tiers.t1; i++) assets.push({t:1, c:className});
+                };
+                add(internal, 'internal');
+                add(active, 'dsp-active');
+                add(failed, 'dsp-failed');
+                assets.sort((a, b) => b.t - a.t);
+                const slice = assets.slice(0, 800);
+                container.innerHTML = slice.map(a => {
+                    const label = typeLabels[a.c] || "Truck";
+                    const units = tierUnits[a.t] || 1;
+                    const suffix = units === 1 ? "truck" : "trucks";
+                    const incomePerTruck = a.c === "internal" ? this.aiIncomePerTruck() : 20;
+                    const income = a.c === "dsp-failed"
+                        ? `Refurb net: ${this.formatCurrency(units * 29400)}`
+                        : `Income: ${this.formatCurrency(units * incomePerTruck)}/tk`;
+                    return `<div class="asset t${a.t} ${a.c}" data-label="${label}" data-units="${units.toLocaleString()} ${suffix}" data-income="${income}"></div>`;
+                }).join('');
+            }
+        };
+        window.game = game;
+
+        const gridContainer = document.getElementById('grid-container');
+        const gridTooltip = document.getElementById('grid-tooltip');
+        const tooltipCard = gridTooltip.querySelector('.grid-tooltip-card');
+
+        const updateTooltip = (event) => {
+            const asset = event.target.closest('.asset');
+            if (!asset) {
+                gridTooltip.classList.add('hidden');
+                gridTooltip.setAttribute('aria-hidden', 'true');
+                return;
+            }
+
+            const label = asset.dataset.label || 'Truck';
+            const units = asset.dataset.units || '1 truck';
+            const income = asset.dataset.income || '';
+
+            tooltipCard.innerHTML = `
+                <div class="text-[9px] uppercase tracking-[0.24em] text-slate-400">${label}</div>
+                <div class="text-sm font-bold text-white">${units}</div>
+                <div class="text-[10px] text-amber-300">${income}</div>
+            `;
+
+            gridTooltip.style.transform = `translate(${event.clientX + 14}px, ${event.clientY + 14}px)`;
+            gridTooltip.classList.remove('hidden');
+            gridTooltip.setAttribute('aria-hidden', 'false');
+        };
+
+        gridContainer.addEventListener('mousemove', updateTooltip);
+        gridContainer.addEventListener('mouseleave', () => {
+            gridTooltip.classList.add('hidden');
+            gridTooltip.setAttribute('aria-hidden', 'true');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Playing Card Engine</title>
+    <style>
+        :root {
+            --card-width: 80px;
+            --card-height: 115px;
+            --bg-color: #1a252f;
+            --area-bg: rgba(255, 255, 255, 0.05);
+            --highlight: #f1c40f;
+            --text-color: #ecf0f1;
+            --trans-speed: 0.25s;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #controls {
+            padding: 10px;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            z-index: 2000;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        button {
+            background: #34495e;
+            color: white;
+            border: 1px solid #7f8c8d;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.1s;
+        }
+
+        button.active { background: #27ae60; border-color: #2ecc71; }
+        button:active { transform: translateY(1px); background: #2c3e50; }
+
+        #game-board {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            gap: 15px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .row {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .played-row {
+            flex: 1;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .player-row {
+            height: calc(var(--card-height) + 60px);
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 10px;
+        }
+
+        .area-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.5;
+            margin-bottom: 6px;
+            text-align: center;
+        }
+
+        .card-area-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .hand-wrapper {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .card-area {
+            background: var(--area-bg);
+            border-radius: 12px;
+            position: relative;
+            border: 1px solid rgba(255,255,255,0.1);
+            width: 100%;
+            transform-style: preserve-3d;
+        }
+
+        .card-area.drag-active { border-color: var(--highlight); background: rgba(241, 196, 15, 0.05); }
+
+        #area-deck { width: calc(var(--card-width) + 20px); height: calc(var(--card-height) + 20px); }
+        #area-played { height: calc(var(--card-height) + 40px); }
+        #area-hand { height: calc(var(--card-height) + 40px); }
+
+        .card {
+            width: var(--card-width);
+            height: var(--card-height);
+            background: #fff;
+            border-radius: 6px;
+            position: absolute;
+            top: 50%; 
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: left var(--trans-speed) cubic-bezier(0.2, 0.8, 0.2, 1), 
+                        top var(--trans-speed) cubic-bezier(0.2, 0.8, 0.2, 1),
+                        transform var(--trans-speed) cubic-bezier(0.2, 0.8, 0.2, 1);
+            will-change: transform, left, top;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+            color: #2c3e50;
+            cursor: grab;
+            border: 1px solid #ccc;
+        }
+
+        .card.red { color: #e74c3c; }
+        .card.black { color: #2c3e50; }
+
+        .corner {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 0.85;
+            font-size: 13px;
+            font-weight: 800;
+            padding: 2px;
+        }
+        .top-left { top: 2px; left: 2px; }
+        .top-right { top: 2px; right: 2px; }
+        .bottom-left { bottom: 2px; left: 2px; transform: rotate(180deg); }
+        .bottom-right { bottom: 2px; right: 2px; transform: rotate(180deg); }
+        
+        .card-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 32px;
+            opacity: 0.8;
+        }
+
+        .card.face-down {
+            background: #2980b9;
+            background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.2) 1px, transparent 0);
+            background-size: 8px 8px;
+            border: 4px solid #fff;
+        }
+        .card.face-down > * { display: none; }
+
+        .card.selected { 
+            box-shadow: 0 0 0 4px var(--highlight); 
+        }
+        
+        .card-ghost {
+            position: fixed;
+            z-index: 9999 !important;
+            pointer-events: none;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            transform: scale(1.1) !important;
+            transition: none !important;
+        }
+        
+        .card-ghost.snapping { transition: all 0.08s ease-out !important; transform: scale(1.0) !important; }
+
+        .card.placeholder { opacity: 0; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<div id="controls">
+    <button id="btn-sort-rank" onclick="setSortCriteria('rank')">Sort Rank</button>
+    <button id="btn-sort-suit" onclick="setSortCriteria('suit')">Sort Suit</button>
+    <button onclick="discardAndDraw()">Discard & Draw</button>
+    <button onclick="dealHand()">New Game</button>
+</div>
+
+<div id="game-board">
+    <div class="row played-row">
+        <div class="card-area-wrapper" style="width: 100%">
+            <div class="area-label">Played Cards</div>
+            <div id="area-played" class="card-area"></div>
+        </div>
+    </div>
+    
+    <div class="row player-row">
+        <div class="card-area-wrapper">
+            <div class="area-label">Deck</div>
+            <div id="area-deck" class="card-area"></div>
+        </div>
+        <div class="card-area-wrapper hand-wrapper">
+            <div class="area-label">Your Hand (Max 5 Select)</div>
+            <div id="area-hand" class="card-area"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const HAND_SIZE_LIMIT = 8;
+const ANIMATION_DELAY_MS = 80;
+const SNAP_DURATION_MS = 80;
+const FLY_DURATION = '0.25s';
+
+const SUITS = [
+    { symbol: '♣', color: 'black' },
+    { symbol: '♥', color: 'red' },
+    { symbol: '♠', color: 'black' },
+    { symbol: '♦', color: 'red' }
+];
+const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
+let currentSortCriteria = 'rank';
+
+class Card {
+    constructor(rankIndex, suitIndex) {
+        this.id = 'c-' + Math.random().toString(36).substr(2, 6);
+        this.rankIndex = rankIndex;
+        this.suitIndex = suitIndex;
+        this.selected = false;
+        this.rankValue = rankIndex + 2; 
+        this.faceUp = true;
+        this.isPlaceholder = false;
+    }
+    
+    get rankLabel() { return RANKS[this.rankIndex]; }
+    get suit() { return SUITS[this.suitIndex]; }
+    
+    getHTML() {
+        if (this.isPlaceholder) return '';
+        const corner = `<div class="corner-val">${this.rankLabel}</div><div class="corner-suit">${this.suit.symbol}</div>`;
+        return `
+            <div class="corner top-left">${corner}</div>
+            <div class="corner top-right">${corner}</div>
+            <div class="corner bottom-left">${corner}</div>
+            <div class="corner bottom-right">${corner}</div>
+            <div class="card-center">${this.suit.symbol}</div>
+        `;
+    }
+}
+
+class CardArea {
+    constructor(domId, options = {}) {
+        this.el = document.getElementById(domId);
+        this.cards = []; 
+        this.options = Object.assign({
+            maxSelect: 0, 
+            canReorder: true, 
+            overlapLeftOverRight: true, 
+            layoutMode: 'spread', 
+            faceDown: false 
+        }, options);
+        
+        new ResizeObserver(() => this.layout()).observe(this.el);
+    }
+    
+    addCard(card) {
+        this.cards.push(card);
+        this.layout();
+    }
+    
+    getIndexForPosition(screenX) {
+        if (this.options.layoutMode === 'stack') return this.cards.length;
+        const rect = this.el.getBoundingClientRect();
+        if (rect.width <= 0) return 0;
+        const pct = (screenX - rect.left) / rect.width;
+        return Math.max(0, Math.min(this.cards.length, Math.round(pct * (this.cards.length + 1) - 0.5)));
+    }
+
+    layout() {
+        const total = this.cards.length;
+        const existingChildren = Array.from(this.el.children);
+        const childMap = new Map(existingChildren.map(c => [c.dataset.id, c]));
+        
+        this.cards.forEach((card, i) => {
+            let el = childMap.get(card.id);
+            if (!el) {
+                el = document.createElement('div');
+                const suitColor = (card.suit && card.suit.color) ? card.suit.color : 'black';
+                el.className = `card ${suitColor}`;
+                el.dataset.id = card.id;
+                el.innerHTML = card.isPlaceholder ? '' : card.getHTML();
+                el.addEventListener('pointerdown', (e) => this.onPointerDown(e, card));
+                this.el.appendChild(el);
+            } else {
+                childMap.delete(card.id);
+            }
+
+            if (card.isPlaceholder) {
+                el.classList.add('placeholder');
+            } else {
+                el.classList.remove('placeholder');
+                card.selected ? el.classList.add('selected') : el.classList.remove('selected');
+                (this.options.faceDown || !card.faceUp) ? el.classList.add('face-down') : el.classList.remove('face-down');
+            }
+
+            if (this.options.layoutMode === 'stack') {
+                el.style.left = '50%'; 
+                el.style.top = '50%'; 
+                el.style.transform = 'translate(-50%, -50%)';
+                el.style.zIndex = i + 100;
+            } else {
+                el.style.top = '50%';
+                const centerPercent = ((i + 1) / (total + 1)) * 100;
+                el.style.left = `${centerPercent}%`;
+                
+                const yShift = (card.selected && !card.isPlaceholder) ? -20 : 0;
+                el.style.transform = `translate(-50%, calc(-50% + ${yShift}px))`;
+                
+                if (this.options.overlapLeftOverRight) {
+                    el.style.zIndex = (1000 - i); 
+                } else {
+                    el.style.zIndex = (1000 + i);
+                }
+            }
+        });
+        
+        childMap.forEach(el => el.remove());
+    }
+    
+    onPointerDown(e, card) {
+        if (e.button !== 0 || card.isPlaceholder) return;
+        if (this.options.layoutMode === 'stack' && this.cards.indexOf(card) !== this.cards.length - 1) return;
+        DragManager.start(e, card, this, e.currentTarget);
+    }
+}
+
+const DragManager = {
+    card: null, source: null, ghost: null, active: false, current: null, offset: {x:0, y:0},
+    
+    start(e, card, area, el) {
+        this.card = card; this.source = area; this.current = area;
+        const rect = el.getBoundingClientRect();
+        this.offset = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        this.startPos = { x: e.clientX, y: e.clientY };
+        
+        document.addEventListener('pointermove', this.move);
+        document.addEventListener('pointerup', this.up);
+    },
+    
+    move: (e) => {
+        const DM = DragManager;
+        if (!DM.active) {
+            if (Math.abs(e.clientX - DM.startPos.x) < 5 && Math.abs(e.clientY - DM.startPos.y) < 5) return;
+            DM.active = true;
+            
+            DM.card.selected = false;
+            const original = document.querySelector(`[data-id="${DM.card.id}"]`);
+            DM.ghost = original.cloneNode(true);
+            DM.ghost.classList.add('card-ghost');
+            DM.ghost.classList.remove('selected');
+            
+            if (DM.source.options.faceDown) DM.ghost.classList.add('face-down');
+            else DM.card.faceUp = true;
+            
+            document.body.appendChild(DM.ghost);
+            
+            const idx = DM.source.cards.indexOf(DM.card);
+            DM.source.cards[idx] = {id: 'placeholder', isPlaceholder: true, selected: false, faceUp: true, suit: {color: 'black'}};
+            DM.source.layout();
+        }
+        
+        DM.ghost.style.left = (e.clientX - DM.offset.x) + 'px';
+        DM.ghost.style.top = (e.clientY - DM.offset.y) + 'px';
+        
+        const hit = DM.detectArea(e.clientX, e.clientY);
+        
+        if (hit && hit !== DM.current) {
+            if (!(DM.source.el.id === 'area-deck' && hit.el.id === 'area-hand')) {
+                DM.current.cards = DM.current.cards.filter(c => !c.isPlaceholder);
+                DM.current.layout();
+                DM.current = hit;
+                DM.current.cards.push({id: 'placeholder', isPlaceholder: true, selected: false, faceUp: true, suit: {color: 'black'}});
+                DM.current.layout();
+            }
+        }
+        
+        if (DM.current.options.canReorder) {
+            const arr = DM.current.cards;
+            const curIdx = arr.findIndex(c => c.isPlaceholder);
+            const nextIdx = DM.current.getIndexForPosition(e.clientX);
+            if (curIdx !== nextIdx && curIdx !== -1) {
+                const ph = arr.splice(curIdx, 1)[0];
+                arr.splice(Math.min(nextIdx, arr.length), 0, ph);
+                DM.current.layout();
+            }
+        }
+    },
+    
+    up: () => {
+        const DM = DragManager;
+        document.removeEventListener('pointermove', DM.move);
+        document.removeEventListener('pointerup', DM.up);
+        
+        if (DM.active) {
+            const idx = DM.current.cards.findIndex(c => c.isPlaceholder);
+            idx > -1 ? (DM.current.cards[idx] = DM.card) : DM.current.cards.push(DM.card);
+            
+            if (DM.source !== DM.current) {
+                DM.source.cards = DM.source.cards.filter(c => c.id !== DM.card.id && !c.isPlaceholder);
+            }
+            
+            DM.source.layout(); 
+            DM.current.layout();
+            
+            const realEl = document.querySelector(`[data-id="${DM.card.id}"]`);
+            if (realEl) {
+                const r = realEl.getBoundingClientRect(); 
+                realEl.style.opacity = '0';
+                DM.ghost.classList.add('snapping'); 
+                DM.ghost.style.left = r.left + 'px'; 
+                DM.ghost.style.top = r.top + 'px';
+                
+                setTimeout(() => { 
+                    if (realEl) realEl.style.opacity = '1'; 
+                    DM.ghost?.remove(); 
+                    DM.ghost = null;
+                }, SNAP_DURATION_MS);
+            } else {
+                DM.ghost?.remove();
+                DM.ghost = null;
+            }
+        } else {
+            if (DM.source.options.maxSelect) {
+                DM.card.selected = !DM.card.selected;
+                if (DM.source.cards.filter(c => c.selected).length > DM.source.options.maxSelect) {
+                    DM.card.selected = false;
+                }
+                DM.source.layout();
+            }
+        }
+        DM.active = false;
+    },
+    
+    detectArea(x, y) {
+        for (const a of [handArea, playedArea, deckArea]) {
+            const r = a.el.getBoundingClientRect();
+            if (x >= r.left && x <= r.right && y >= r.top - 40 && y <= r.bottom + 40) return a;
+        }
+        return null;
+    }
+};
+
+const deckArea = new CardArea('area-deck', { canReorder: false, layoutMode: 'stack', faceDown: true });
+const handArea = new CardArea('area-hand', { maxSelect: 5 });
+const playedArea = new CardArea('area-played', { maxSelect: 0 });
+
+function getSortedIndex(card, hand) {
+    const list = hand.filter(c => !c.isPlaceholder);
+    let i = 0;
+    for (const c of list) {
+        let before = false;
+        if (currentSortCriteria === 'rank') {
+            if (card.rankValue > c.rankValue) before = true;
+            else if (card.rankValue === c.rankValue && card.suitIndex < c.suitIndex) before = true;
+        } else {
+            if (card.suitIndex < c.suitIndex) before = true;
+            else if (card.suitIndex === c.suitIndex && card.rankValue > c.rankValue) before = true;
+        }
+        if (before) break;
+        i++;
+    }
+    return i;
+}
+
+/**
+ * FIX: Re-calling layout() inside the animation frame instead of clearing style.left
+ * to prevent the card engine from losing the inline percentage styles.
+ */
+function fly(card, from, to) {
+    const el = document.querySelector(`[data-id="${card.id}"]`);
+    if (!el) return;
+    
+    const startRect = el.getBoundingClientRect();
+    
+    // Remove from source and refresh layout
+    from.cards = from.cards.filter(c => c.id !== card.id); 
+    from.layout();
+    
+    // Move to destination and refresh layout to create/update DOM
+    card.faceUp = true;
+    const idx = (to === handArea) ? getSortedIndex(card, to.cards) : to.cards.length;
+    to.cards.splice(idx, 0, card); 
+    to.layout();
+    
+    const targetEl = document.querySelector(`[data-id="${card.id}"]`);
+    if (targetEl) {
+        const tr = to.el.getBoundingClientRect();
+        
+        // Temporarily disable transition to snap to the 'fly-from' position
+        targetEl.style.transition = 'none';
+        targetEl.style.left = (startRect.left - tr.left + (startRect.width / 2)) + 'px';
+        targetEl.style.top = (startRect.top - tr.top + (startRect.height / 2)) + 'px';
+        
+        // Force Reflow
+        targetEl.offsetHeight; 
+        
+        // Re-enable transition and use layout() to set the destination percentage
+        requestAnimationFrame(() => {
+            targetEl.style.transition = `left ${FLY_DURATION} cubic-bezier(0.2, 0.8, 0.2, 1), top ${FLY_DURATION} cubic-bezier(0.2, 0.8, 0.2, 1), transform ${FLY_DURATION}`;
+            // Re-calling to.layout() re-asserts the correct inline percentage styles
+            to.layout();
+        });
+    }
+}
+
+function dealHand() {
+    handArea.cards = []; 
+    playedArea.cards = []; 
+    deckArea.cards = [];
+    
+    const d = [];
+    for (let s=0; s<4; s++) for (let r=0; r<13; r++) d.push(new Card(r,s));
+    
+    for (let i=d.length-1; i>0; i--) { 
+        const j=Math.floor(Math.random()*(i+1)); 
+        [d[i],d[j]]=[d[j],d[i]]; 
+    }
+    
+    d.forEach(c => { 
+        c.faceUp = false; 
+        deckArea.addCard(c); 
+    });
+    
+    draw(HAND_SIZE_LIMIT);
+}
+
+function draw(n) {
+    let count = 0;
+    const interval = setInterval(() => {
+        if (count >= n || deckArea.cards.length === 0) return clearInterval(interval);
+        fly(deckArea.cards[deckArea.cards.length-1], deckArea, handArea);
+        count++;
+    }, ANIMATION_DELAY_MS);
+}
+
+function setSortCriteria(criteria) {
+    currentSortCriteria = criteria;
+    document.getElementById('btn-sort-rank').classList.toggle('active', criteria === 'rank');
+    document.getElementById('btn-sort-suit').classList.toggle('active', criteria === 'suit');
+    
+    handArea.cards = handArea.cards.filter(c => !c.isPlaceholder).sort((a,b) => {
+        if (currentSortCriteria === 'rank') return b.rankValue !== a.rankValue ? b.rankValue - a.rankValue : a.suitIndex - b.suitIndex;
+        return a.suitIndex !== b.suitIndex ? a.suitIndex - b.suitIndex : b.rankValue - a.rankValue;
+    });
+    handArea.layout();
+}
+
+function discardAndDraw() {
+    const prevCount = handArea.cards.length;
+    handArea.cards = handArea.cards.filter(c => !c.selected); 
+    handArea.layout();
+    
+    const needed = Math.max(0, HAND_SIZE_LIMIT - handArea.cards.length);
+    if (needed > 0) draw(needed);
+    else if (prevCount === handArea.cards.length) {
+        const msg = document.createElement('div');
+        msg.style.cssText = "position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); color:white; padding:15px 30px; border-radius:10px; z-index:9999;";
+        msg.innerText = "Select cards to discard.";
+        document.body.appendChild(msg);
+        setTimeout(() => msg.remove(), 1500);
+    }
+}
+
+setSortCriteria('rank');
+dealHand();
+</script>
+</body>
+</html>

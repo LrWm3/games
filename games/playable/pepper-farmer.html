@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pepper Quest: Final Zenith</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap');
+        :root {
+            --bg-dark: #020617; --panel-dark: #0f172a; --border-color: #1e293b;
+            --accent-gold: #fbbf24; --accent-green: #10b981; --accent-red: #ef4444; --accent-blue: #3b82f6;
+        }
+        body { background-color: var(--bg-dark); color: #e2e8f0; font-family: 'Fira+Code', monospace; margin: 0; overflow: hidden; user-select: none; touch-action: manipulation; }
+        #game-wrapper { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+        #canvas-container { display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; flex: 1; padding: 10px; overflow: hidden; position: relative; }
+        .shop-panel { background-color: var(--bg-dark); display: flex; flex-direction: column; border-top: 2px solid #334155; height: 40vh; flex-shrink: 0; }
+        @media (min-width: 768px) { #game-wrapper { flex-direction: row; } .shop-panel { width: 520px; height: 100vh; border-top: none; border-left: 2px solid #334155; } }
+        #grid-canvas { image-rendering: pixelated; background-color: #020617; border: 2px solid #334155; box-shadow: 0 0 30px rgba(0,0,0,0.8); }
+        .tab-bar { display: flex; border-bottom: 2px solid #334155; background: #0f172a; flex-shrink: 0; }
+        .tab-btn { flex: 1; padding: 12px 4px; font-weight: bold; text-transform: uppercase; font-size: 10px; color: #64748b; transition: all 0.2s; border-bottom: 3px solid transparent; cursor: pointer; }
+        .tab-btn.active { color: var(--accent-green); border-bottom-color: var(--accent-green); background: rgba(16, 185, 129, 0.1); }
+        .shop-content { flex: 1; overflow-y: auto; padding: 10px; scrollbar-width: thin; }
+        .stat-card { background: var(--panel-dark); padding: 10px; border-radius: 0.5rem; border: 1px solid #334155; margin-bottom: 8px; }
+        .buy-btn { width: 100%; padding: 10px; background: var(--accent-green); color: #064e3b; font-weight: 800; border-radius: 0.4rem; margin-top: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; cursor: pointer; }
+        .buy-btn:disabled { background: #334155; color: #64748b; opacity: 0.6; cursor: default; }
+        .unit-name-clickable { cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 4px; }
+        #info-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 400px; background: var(--panel-dark); border: 2px solid #334155; padding: 20px; border-radius: 12px; z-index: 1000; display: none; }
+        .overlay-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 999; display: none; }
+        .header-stat { display: flex; flex-direction: column; align-items: flex-end; margin-left: 14px; }
+        .upgrade-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px; }
+        @media (min-width: 400px) { .upgrade-grid { grid-template-columns: repeat(4, 1fr); } }
+        .mini-btn { font-size: 7px; padding: 8px 2px; background: #1e293b; color: white; border-radius: 4px; text-align: center; font-weight: bold; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid #334155; min-height: 48px; width: 100%; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div id="overlay-bg" class="overlay-bg"></div>
+<div id="info-overlay">
+    <div class="flex justify-between items-start mb-4">
+        <h2 id="info-title" class="text-xl font-bold">Unit Info</h2>
+        <button onclick="closeInfo()" class="text-slate-500 hover:text-white font-bold">CLOSE</button>
+    </div>
+    <div class="stat-card border-emerald-500/20 mb-4">
+        <div class="text-[10px] text-emerald-400 font-bold uppercase mb-1">Special Ability</div>
+        <p id="info-ability-desc" class="text-xs text-slate-300 leading-relaxed"></p>
+    </div>
+    <div class="stat-card border-blue-500/20">
+        <div class="text-[10px] text-blue-400 font-bold uppercase mb-1">Mastery Scaling</div>
+        <ul id="info-mastery-list" class="text-[11px] text-slate-400 space-y-2"></ul>
+    </div>
+</div>
+
+<div id="game-wrapper">
+    <div id="canvas-container">
+        <div id="ui-header" class="w-full flex justify-between items-center px-4 mb-2 max-w-4xl">
+            <div class="flex flex-col">
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] uppercase font-bold text-blue-400 tracking-tighter">Legion Vault</span>
+                    <button onclick="purgeArea()" class="text-[9px] uppercase font-bold text-slate-500 hover:text-red-400 underline decoration-dotted">Purge Area</button>
+                </div>
+                <div id="pepper-display" class="pepper-count leading-none text-amber-400">0</div>
+            </div>
+            <div class="flex">
+                <div class="header-stat"><div class="text-[9px] uppercase font-bold text-slate-500">Pop</div><div id="pop-label" class="text-xs font-bold text-blue-400">0/5</div></div>
+                <div class="header-stat"><div class="text-[9px] uppercase font-bold text-slate-500">PPS</div><div id="pps-label" class="text-xs font-bold text-amber-400">0.0</div></div>
+                <div class="header-stat"><div class="text-[9px] uppercase font-bold text-slate-500">Rank</div><div id="rank-label" class="text-xs font-bold text-emerald-400">1</div></div>
+            </div>
+        </div>
+        <canvas id="grid-canvas"></canvas>
+    </div>
+
+    <aside class="shop-panel">
+        <div class="tab-bar">
+            <button onclick="switchTab('world')" data-tab="world" class="tab-btn adata-hp">Farm</button>
+            <button onclick="switchTab('army')" data-tab="army" class="tab-btn">Workers</button>
+            <button onclick="switchTab('upgrades')" data-tab="upgrades" class="tab-btn">Mastery</button>
+        </div>
+        <div id="shop-world" class="shop-content">
+            <div class="stat-card">
+                <div class="flex justify-between items-start mb-1">
+                    <div class="text-[10px] text-slate-400 font-bold uppercase">Manual Rank Override</div>
+                    <span id="data-hp" class="text-[9px] bg-black/40 px-2 py-0.5 rounded text-red-400 font-bold">HP: 10</span>
+                </div>
+                <div class="flex items-center justify-between px-2 py-2">
+                    <button onclick="changeTier(-1)" class="bg-slate-800 w-10 h-10 rounded border border-slate-600 font-bold text-white text-xl">-</button>
+                    <div class="text-center"><div id="tier-selector-val" class="font-bold text-2xl text-emerald-400">1</div></div>
+                    <button onclick="changeTier(1)" class="bg-slate-800 w-10 h-10 rounded border border-slate-600 font-bold text-white text-xl">+</button>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="text-[10px] text-slate-400 font-bold uppercase mb-1">Rift Capacity</div>
+                <button onclick="buyWorldUpgrade('capacity')" id="up-world-capacity" class="buy-btn"><span>Expand Max (Buy Max)</span><span id="cap-cost">0 P</span></button>
+            </div>
+            <div class="stat-card">
+                <div class="text-[10px] text-slate-400 font-bold uppercase mb-1">Spawn Frequency</div>
+                <button onclick="buyWorldUpgrade('rate')" id="up-world-rate" class="buy-btn"><span>Accelerate (Buy Max)</span><span id="rate-cost">0 P</span></button>
+            </div>
+            <div class="stat-card">
+                <div class="text-[10px] text-slate-400 font-bold uppercase mb-1">Spawn Quantity</div>
+                <button onclick="buyWorldUpgrade('count')" id="up-world-count" class="buy-btn"><span>Burst Spawn (Buy Max)</span><span id="count-cost">0 P</span></button>
+            </div>
+            <div class="stat-card">
+                <div class="text-[10px] text-slate-400 font-bold uppercase mb-1">Evolution</div>
+                <button onclick="evolveWorld()" id="up-world-tier" class="buy-btn"><span>Unlock Rank (Buy 1)</span><span id="tier-cost">0 P</span></button>
+                <div id="max-rank-hint" class="text-[9px] text-slate-500 mt-1 text-center uppercase tracking-tighter">Unlocked: 1</div>
+            </div>
+        </div>
+        <div id="shop-army" class="shop-content hidden"></div>
+        <div id="shop-upgrades" class="shop-content hidden"></div>
+    </aside>
+</div>
+
+<script>
+    // --- 1. CONFIG & DATA ---
+    const GRID_SIZE = 20;
+    const ENEMY_CHARS = ['p', 'e', 'r', 's', 'q', 'm', 'v', 'x', 'z', 'k', 'y'];
+    const UNIT_TYPES = [
+        { id: 'A', name: 'Apostle', cost: 5, ratio: 1.3, dmg: 1.5, rng: 3.0, spd: 0.1, color: '#10b981', specName: 'HOLY', desc: "Fires holy sparks at range. Projects an aura boosting nearby worker power.", scaling: { dmg: "Spark damage.", loot: "Bounty bonus.", spec: "Aura damage multiplier.", cap: "Worker cap." }},
+        { id: 'B', name: 'Battleborn', cost: 60, ratio: 1.3, dmg: 7, rng: 1.2, spd: 0.08, color: '#ef4444', specName: 'CLEAVE', desc: "Strikes deal red directional splash damage in a forward arc.", scaling: { dmg: "Core power.", loot: "Bounty bonus.", spec: "Splash radius & arc size.", cap: "Worker cap." }},
+        { id: 'C', name: 'Cantripper', cost: 400, ratio: 1.3, dmg: 10, rng: 12.0, spd: 0.07, color: '#3b82f6', specName: 'HITS', desc: "Magic missiles bounce multiple times between targets.", scaling: { dmg: "Impact power.", loot: "Bounty bonus.", spec: "Increases bounce count.", cap: "Worker cap." }},
+        { id: 'D', name: 'Devil', cost: 1800, ratio: 1.3, dmg: 22, rng: 9.0, spd: 0.05, color: '#a855f7', specName: 'JUMPS', desc: "Chain lightning jumps between multiple unique targets.", scaling: { dmg: "Bolt damage.", loot: "Bounty bonus.", spec: "Jump count.", cap: "Worker cap." }},
+        { id: 'E', name: 'Ettin', cost: 12000, ratio: 1.3, dmg: 130, rng: 10.0, spd: 0.04, color: '#f59e0b', specName: 'WEIGHT', desc: "Hurls heavy boulders that pierce through ranks in a line.", scaling: { dmg: "Boulder power.", loot: "Bounty bonus.", spec: "Boulder size.", cap: "Worker cap." }},
+        { id: 'F', name: 'Fairy', cost: 85000, ratio: 1.3, dmg: 40, rng: 3.5, spd: 0.1, color: '#ec4899', specName: 'ORBS', desc: "Surrounded by pink magical lights that burn contact foes.", scaling: { dmg: "Contact damage.", loot: "Bounty bonus.", spec: "Orb count.", cap: "Worker cap." }},
+        { id: 'G', name: 'Gnoll Capt.', cost: 550000, ratio: 1.3, dmg: 85, rng: 1.5, spd: 0.06, color: '#94a3b8', specName: 'RECRUIT', desc: "Summons temporary melee grunts that expire after a short time.", scaling: { dmg: "Unit power.", loot: "Bounty bonus.", spec: "Grunt lifespan.", cap: "Worker cap." }},
+        { id: 'H', name: 'Hydra', cost: 2800000, ratio: 1.3, dmg: 110, rng: 5.0, spd: 0.05, color: '#84cc16', specName: 'HEADS', desc: "Simultaneous bites on multiple unique peppers.", scaling: { dmg: "Bite strength.", loot: "Bounty bonus.", spec: "Head count.", cap: "Worker cap." }},
+        { id: 'I', name: 'Illusionist', cost: 12000000, ratio: 1.3, dmg: 150, rng: 8.0, spd: 0.06, color: '#6366f1', specName: 'VIRAL', desc: "Infects foes with spreading viral damage threads.", scaling: { dmg: "Tick damage.", loot: "Bounty bonus.", spec: "Tick speed.", cap: "Worker cap." }},
+        { id: 'J', name: 'Juggernaut', cost: 50000000, ratio: 1.3, dmg: 450, rng: 1.2, spd: 0.04, color: '#06b6d4', specName: 'KINETIC', desc: "Every hit triggers a massive Cyan Kinetic Nova shockwave.", scaling: { dmg: "Strike power.", loot: "Enemy bounty bonus.", spec: "Nova radius.", cap: "Worker cap." }},
+        { id: 'K', name: 'Kitsune', cost: 250000000, ratio: 1.3, dmg: 300, rng: 8.0, spd: 0.08, color: '#f97316', specName: 'SIZE', desc: "Fire orbs that grow into Foxfire Suns based on rank.", scaling: { dmg: "Orb damage.", loot: "Bounty bonus.", spec: "Orb visual scale.", cap: "Worker cap." }},
+        { id: 'L', name: 'Lich', cost: 1000000000, ratio: 1.3, dmg: 800, rng: 10.0, spd: 0.04, color: '#2dd4bf', specName: 'REAP', desc: "Deaths trigger high-damage soul-traps for exactly 3 frames.", scaling: { dmg: "Direct power.", loot: "Bounty bonus.", spec: "Burst damage.", cap: "Worker cap." }},
+        { id: 'M', name: 'Monk', cost: 5000000000, ratio: 1.3, dmg: 1200, rng: 1.5, spd: 0.07, color: '#eab308', specName: 'WHIRL', desc: "Constant circular 'Whirling Fist' damage arc.", scaling: { dmg: "Tick dmg.", loot: "Bounty bonus.", spec: "Radius.", cap: "Worker cap." }},
+        { id: 'N', name: 'Ninja', cost: 25000000000, ratio: 1.3, dmg: 600, rng: 8.0, spd: 0.12, color: '#475569', specName: 'GIANT', desc: "Throws a Giant Boomerang and spawns shadow clones.", scaling: { dmg: "Star power.", loot: "Bounty bonus.", spec: "Duration.", cap: "Worker cap." }},
+        { id: 'O', name: 'Oracle', cost: 150000000000, ratio: 1.3, dmg: 100, rng: 9.0, spd: 0.04, color: '#fef3c7', specName: 'AURA', desc: "Global aura and damage beams.", scaling: { dmg: "Personal dmg.", loot: "Bounty bonus.", spec: "Aura radius.", cap: "Worker cap." }},
+        { id: 'P', name: 'Paladin', cost: 800000000000, ratio: 1.3, dmg: 2500, rng: 4.0, spd: 0.03, color: '#bae6fd', specName: 'CONSE', desc: "Holy Consecration fields burn foes.", scaling: { dmg: "Field dmg.", loot: "Bounty bonus.", spec: "Duration.", cap: "Worker cap." }},
+        { id: 'Q', name: 'Qiqirn', cost: 5000000000000, ratio: 1.3, dmg: 900, rng: 8.0, spd: 0.2, color: '#cbd5e1', specName: 'COINS', desc: "Frantic rapid lucky coin spray barrage.", scaling: { dmg: "Per coin.", loot: "Bounty bonus.", spec: "Coin count.", cap: "Worker cap." }},
+        { id: 'R', name: 'Ranger', cost: 35000000000000, ratio: 1.3, dmg: 1800, rng: 12.0, spd: 0.07, color: '#166534', specName: 'BOUNCE', desc: "Arrows that physically bounce on hit.", scaling: { dmg: "Arrow power.", loot: "Bounty bonus.", spec: "Bounces.", cap: "Worker cap." }},
+        { id: 'S', name: 'Shadowdancer', cost: 250000000000000, ratio: 1.3, dmg: 4500, rng: 5.0, spd: 0.09, color: '#6d28d9', specName: 'BACKS', desc: "Teleporting execution backstabs.", scaling: { dmg: "Strike power.", loot: "Bounty bonus.", spec: "Range.", cap: "Worker cap." }},
+        { id: 'T', name: 'Tinkerer', cost: 1200000000000000, ratio: 1.3, dmg: 1500, rng: 7.0, spd: 0.06, color: '#2dd4bf', specName: 'TURRET', desc: "Deploys independent multi-target lightning Turrets.", scaling: { dmg: "Turret power.", loot: "Bounty bonus.", spec: "Fire rate.", cap: "Worker cap." }},
+        { id: 'U', name: 'Undine', cost: 8000000000000000, ratio: 1.3, dmg: 3000, rng: 8.0, spd: 0.05, color: '#60a5fa', specName: 'BUBBLE', desc: "High-speed crushing bubbles with travelling AOE damage.", scaling: { dmg: "Crush power.", loot: "Bounty bonus.", spec: "Radius.", cap: "Worker cap." }},
+        { id: 'V', name: 'Valkyrie', cost: 50000000000000000, ratio: 1.3, dmg: 6000, rng: 10.0, spd: 0.04, color: '#fde047', specName: 'SPEARS', desc: "Radial lightning spear bursts.", scaling: { dmg: "Spear dmg.", loot: "Bounty bonus.", spec: "Spear count.", cap: "Worker cap." }},
+        { id: 'W', name: 'Warpgazer', cost: 400000000000000000, ratio: 1.3, dmg: 8000, rng: 10.0, spd: 0.05, color: '#c084fc', specName: 'VORTEX', desc: "Warps enemies into its center (ignores workers).", scaling: { dmg: "Main power.", loot: "Bounty bonus.", spec: "Pull force.", cap: "Worker cap." }},
+        { id: 'X', name: 'Xenomorph', cost: 3000000000000000000, ratio: 1.3, dmg: 10000, rng: 6.0, spd: 0.07, color: '#4ade80', specName: 'ACID', desc: "Nearby deaths leave high-strength, short-duration acid pools.", scaling: { dmg: "Acid burn.", loot: "Bounty bonus.", spec: "Acid radius.", cap: "Worker cap." }},
+        { id: 'Y', name: 'Yeti', cost: 25000000000000000000, ratio: 1.3, dmg: 15000, rng: 4.0, spd: 0.04, color: '#93c5fd', specName: 'FROST', desc: "Pulse aura freezes enemies solid.", scaling: { dmg: "Main power.", loot: "Bounty bonus.", spec: "Freeze length.", cap: "Worker cap." }},
+        { id: 'Z', name: 'Zephyr', cost: 100000000000000000000, ratio: 1.3, dmg: 20000, rng: 8.0, spd: 0.05, color: '#5eead4', specName: 'TOSS', desc: "Summons twisters to toss enemies.", scaling: { dmg: "Wind power.", loot: "Bounty bonus.", spec: "Count.", cap: "Worker cap." }}
+    ];
+
+    // --- 2. GLOBAL STATE ---
+    const state = {
+        pepper: 500, spawnInterval: 2000, spawnRateOwned: 0, spawnRateRatio: 2.2,
+        spawnCountOwned: 0, spawnCountRatio: 3.0, maxEnemiesOwned: 0, maxEnemiesRatio: 2.5,
+        currentEnemyTier: 0, maxEnemyTier: 0, tierBaseCost: 50, tierRatio: 3.5,
+        units: [], enemies: [], projectiles: [], visuals: [], traps: [],
+        lastSpawn: 0, lastUpdate: performance.now(), defeatHistory: [], upgrades: {}
+    };
+    UNIT_TYPES.forEach(u => state.upgrades[u.id] = { dmg: 0, loot: 0, spec: 0, cap: 0, isWithdrawn: false, owned: 0 });
+
+    // --- 3. CORE LOGIC (HOISTED) ---
+    function formatNum(n) {
+        if (!n || isNaN(n)) return '0';
+        if (n < 1000) return Math.floor(n).toString();
+        const sufs = ['', 'k', 'm', 'b', 't', 'qa', 'qi', 'sx', 'sp', 'oc', 'no', 'dc'];
+        const mag = Math.floor(Math.log10(n) / 3);
+        if (mag >= sufs.length) return n.toExponential(2);
+        return (n / Math.pow(1000, mag)).toFixed(2).replace(/\.00$/, '') + sufs[mag];
+    }
+
+    function resize() {
+        const canvas = document.getElementById('grid-canvas');
+        const container = document.getElementById('canvas-container');
+        const header = document.getElementById('ui-header');
+        if (!container || !canvas) return;
+        const width = container.clientWidth - 20;
+        const headH = header ? header.offsetHeight : 50;
+        const height = container.clientHeight - headH - 20;
+        const size = Math.min(width, height);
+        canvas.width = canvas.height = size;
+        window.cellSize = size / GRID_SIZE;
+    }
+
+    function closeInfo() { document.getElementById('info-overlay').style.display = 'none'; document.getElementById('overlay-bg').style.display = 'none'; }
+    
+    function purgeArea() {
+        state.visuals = []; state.projectiles = []; state.traps = [];
+        state.units = state.units.filter(u => !u.isSummon);
+    }
+
+    function calcMaxBuy(pepper, base, ratio, owned) {
+        if (pepper < base * Math.pow(ratio, owned)) return 0;
+        const cur = base * Math.pow(ratio, owned);
+        return Math.max(0, Math.floor(Math.log((pepper * (ratio - 1) / cur) + 1) / Math.log(ratio) + 1e-10));
+    }
+
+    function calcTotalPrice(base, ratio, owned, k) {
+        if (k <= 0) return 0;
+        const cur = base * Math.pow(ratio, owned);
+        return cur * (Math.pow(ratio, k) - 1) / (ratio - 1);
+    }
+
+    function getDisplayStats(id) {
+        const upg = state.upgrades[id];
+        const base = UNIT_TYPES.find(u => u.id === id);
+        let dmg = base.dmg * (1 + upg.dmg * 0.2);
+        if (state.upgrades['A'].owned > 0) dmg *= (1 + (state.upgrades['A'].owned * state.upgrades['A'].spec * 0.05));
+        return { dmg, loot: 1 + (upg.loot * 0.25) };
+    }
+
+    // --- 4. ENGINE CLASSES ---
+    class Enemy {
+        constructor(tier) {
+            this.uid = Math.random().toString(36).substring(2, 9);
+            this.char = ENEMY_CHARS[Math.min(tier, ENEMY_CHARS.length-1)];
+            this.x = Math.random()*(GRID_SIZE-2)+1; this.y = Math.random()*(GRID_SIZE-2)+1;
+            this.maxHp = 10 * Math.pow(1.7, tier); this.hp = this.maxHp;
+            this.value = Math.floor(8 * Math.pow(3.2, tier));
+            this.vx = (Math.random()-0.5)*0.03; this.vy = (Math.random()-0.5)*0.03;
+            this.stunTime = 0; this.isViral = false; this.isFrozen = false;
+        }
+        update(dt) {
+            if (this.stunTime > 0) { this.stunTime -= dt; return; }
+            if (this.isViral) this.hp -= (this.maxHp * 0.04) * (dt/1000);
+            this.x += this.vx; this.y += this.vy;
+            if (this.x < 0.2 || this.x > GRID_SIZE-0.2) this.vx *= -1;
+            if (this.y < 0.2 || this.y > GRID_SIZE-0.2) this.vy *= -1;
+        }
+        draw(ctx, cellSize) {
+            ctx.fillStyle = this.isViral ? '#6366f1' : (this.stunTime > 0 ? '#93c5fd' : '#ef4444');
+            ctx.font = `bold ${cellSize * 0.75}px 'Fira Code'`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(this.char, this.x * cellSize + cellSize/2, this.y * cellSize + cellSize/2);
+            ctx.fillStyle = '#ef4444'; ctx.fillRect(this.x*cellSize+2, this.y*cellSize, (cellSize-4)*(Math.max(0,this.hp)/this.maxHp), 2);
+        }
+    }
+
+    class Unit {
+        constructor(id, type, color, isSummon = false, parent = null) {
+            this.id = id; this.type = type; this.color = color;
+            this.isSummon = isSummon; this.parent = parent;
+            this.x = (isSummon && parent) ? parent.x : Math.random()*(GRID_SIZE-4)+2;
+            this.y = (isSummon && parent) ? parent.y : Math.random()*(GRID_SIZE-4)+2;
+            this.lastAttack = 0; this.rotation = Math.random()*Math.PI*2;
+            this.life = isSummon ? (id === 'turret' ? 12000 : 5000) : Infinity;
+            this.summonTimer = 0; this.targetUid = null; this.isBoosted = 0;
+        }
+        getStats() {
+            if (this.isSummon) {
+                if (this.id === 'turret') return { dmg: 75 * (1 + state.upgrades['T'].dmg * 0.2), spd: 0, rng: 8.0, cooldown: 400, spec: 0, lootMult: 1 };
+                return { dmg: 25, spd: 0.1, rng: 3.0, cooldown: 800, spec: 0, lootMult: 1 };
+            }
+            const upg = state.upgrades[this.id];
+            const base = UNIT_TYPES.find(u => u.id === this.id);
+            let dmg = base.dmg * (1 + upg.dmg * 0.2);
+            if (state.upgrades['A'].owned > 0) dmg *= (1 + (state.upgrades['A'].owned * state.upgrades['A'].spec * 0.05));
+            let cd = (this.id === 'F' ? 150 : (['V','Z','W','P','U','N','Q','J','E'].includes(this.id) ? 2500 : 800));
+            return { dmg, spd: base.spd, rng: base.rng + (this.id === 'C' ? upg.spec * 0.5 : 0), cooldown: cd, spec: upg.spec, lootMult: 1 + (upg.loot * 0.25) };
+        }
+        update(dt, enemies, allies) {
+            if (this.isSummon) this.life -= dt;
+            const stats = this.getStats();
+            this.rotation += 0.04 * (dt/16.6);
+
+            // SPECIALS
+            if (this.id === 'O') {
+                allies.forEach(a => { if(Math.hypot(a.x-this.x, a.y-this.y) < stats.rng/2) a.isBoosted = 500; });
+                state.visuals.push({ type: 'aura', x: this.x, y: this.y, r: stats.rng/2, color: '#fef3c70a', life: 1 });
+            }
+            if (this.id === 'L') state.visuals.push({ type: 'aura', x: this.x, y: this.y, r: 8, color: '#2dd4bf05', life: 1 });
+            if (this.id === 'Y') {
+                state.visuals.push({ type: 'aura', x: this.x, y: this.y, r: 4, color: '#93c5fd11', life: 1 });
+                enemies.forEach(e => { if(Math.hypot(e.x-this.x, e.y-this.y) < 4) { e.stunTime = 500; e.isFrozen = true; }});
+            }
+            if (this.id === 'F') {
+                const count = 4 + stats.spec;
+                for(let i=0; i<count; i++) {
+                    const ang = this.rotation + (i * Math.PI * 2 / count);
+                    const lx = this.x + Math.cos(ang) * 1.5; const ly = this.y + Math.sin(ang) * 1.5;
+                    enemies.forEach(e => { if (Math.hypot(e.x - lx, e.y - ly) < 0.6) this.dealDamage(e, stats.dmg * (dt/500), stats.lootMult); });
+                    state.visuals.push({ type: 'particle', x: lx, y: ly, color: '#ec4899', life: 1 });
+                }
+            }
+            if (this.id === 'N' && !this.isSummon) {
+                this.summonTimer += dt;
+                if (this.summonTimer > 10000 && allies.filter(a => a.id === 'shadow').length < 4) {
+                    state.units.push(new Unit('shadow', 'ninja', '#475569', true, this)); this.summonTimer = 0;
+                }
+            }
+
+            let target = enemies.find(e => e.uid === this.targetUid);
+            if (!target || target.hp <= 0) {
+                let dMin = Infinity; target = null;
+                enemies.forEach(e => { let d = Math.hypot(e.x-this.x, e.y-this.y); if(d < dMin) { dMin=d; target=e; }});
+                if (target) this.targetUid = target.uid;
+            }
+
+            const step = (stats.spd || 0) * (dt/16.6);
+            if (target && this.id !== 'turret') {
+                let d = Math.hypot(target.x-this.x, target.y-this.y);
+                if (d > stats.rng * 0.8) { let a = Math.atan2(target.y-this.y, target.x-this.x); this.x += Math.cos(a)*step; this.y += Math.sin(a)*step; }
+                if (d <= stats.rng && performance.now() - this.lastAttack > stats.cooldown) { this.attack(target, enemies, stats); this.lastAttack = performance.now(); }
+            } else if (this.id === 'turret' && performance.now() - this.lastAttack > stats.cooldown) {
+                this.attack(null, enemies, stats); this.lastAttack = performance.now();
+            } else { this.x += (Math.random()-0.5)*step; this.y += (Math.random()-0.5)*step; }
+            this.x = Math.max(0.5, Math.min(GRID_SIZE-0.5, this.x)); this.y = Math.max(0.5, Math.min(GRID_SIZE-0.5, this.y));
+            if (this.isBoosted > 0) this.isBoosted -= dt;
+        }
+        attack(target, enemies, stats) {
+            let m = this.isBoosted > 0 ? 3 : 1;
+            switch(this.id) {
+                case 'A': case 'O': state.projectiles.push({ x: this.x, y: this.y, target, speed: 0.22, char: '·', damage: stats.dmg*m, lootMult: stats.lootMult, color: this.color }); break;
+                case 'B': {
+                    this.dealDamage(target, stats.dmg*m, stats.lootMult);
+                    const ang = Math.atan2(target.y-this.y, target.x-this.x);
+                    state.visuals.push({ type: 'slash', x: this.x, y: this.y, r: 1.5 + stats.spec*0.2, angle: ang, life: 10, color: '#ef4444' }); 
+                    enemies.forEach(e => { if(e!==target && Math.hypot(e.x-target.x, e.y-target.y) < 1.5 + stats.spec*0.2) this.dealDamage(e, stats.dmg*m, stats.lootMult); });
+                } break;
+                case 'C': state.projectiles.push({ x: this.x, y: this.y, target, vx: (Math.random()-0.5)*0.1, vy: (Math.random()-0.5)*0.1, char: '*', damage: stats.dmg*m, lootMult: stats.lootMult, isMissile: true, speed: 0.06, maxHits: 3+stats.spec, hits: 0, color: '#3b82f6', life: 3000 }); break;
+                case 'D': let last=this, cur=target, hts=0, hArr=[]; while(cur && hts < 4+stats.spec) { this.dealDamage(cur, stats.dmg*m, stats.lootMult); state.visuals.push({ type: 'bolt', x1: last.x, y1: last.y, x2: cur.x, y2: cur.y, life: 10, color: this.color }); hArr.push(cur); hts++; last=cur; cur=enemies.find(e => !hArr.includes(e) && Math.hypot(e.x-last.x, e.y-last.y) < 5); } break;
+                case 'E': state.projectiles.push({ x: this.x, y: this.y, vx: Math.cos(Math.atan2(target.y-this.y, target.x-this.x))*0.18, vy: Math.sin(Math.atan2(target.y-this.y, target.x-this.x))*0.18, char: 'O', damage: stats.dmg*m, lootMult: stats.lootMult, isBoulder: true, radius: 1.0+stats.spec*0.2, color: '#78350f' }); break;
+                case 'G': state.units.push(new Unit('g', 'grunt', '#94a3b8', true, this)); break;
+                case 'J': this.dealDamage(target, stats.dmg*m, stats.lootMult); state.visuals.push({ type: 'nova', x: this.x, y: this.y, r: 2.5, life: 15, color: '#06b6d4' }); enemies.forEach(e => { if(Math.hypot(e.x-this.x, e.y-this.y) < 2.5) { this.dealDamage(e, stats.dmg*2, stats.lootMult); e.vx *= -2.5; e.vy *= -2.5; }}); break;
+                case 'K': const ksz = 0.5 + (stats.spec * 0.25); for(let j=0; j<3; j++) state.projectiles.push({ x: this.x, y: this.y, target, vx: (Math.random()-0.5)*0.2, vy: (Math.random()-0.5)*0.2, speed: 0.12, char: 'o', damage: stats.dmg*m, lootMult: stats.lootMult, color: '#f97316', isMissile: true, life: 2000, scale: ksz }); break;
+                case 'N': case 'shadow': state.projectiles.push({ x: this.x, y: this.y, originX: this.x, originY: this.y, vx: (target.x-this.x)*0.03, vy: (target.y-this.y)*0.03, char: '*', damage: stats.dmg*m, lootMult: stats.lootMult, isBoomerang: true, color: '#475569', speed: 0.25, range: 10 }); break;
+                case 'turret': enemies.filter(e => Math.hypot(e.x-this.x, e.y-this.y) < stats.rng).slice(0, 5).forEach(e => { this.dealDamage(e, stats.dmg, 1); state.visuals.push({ type: 'bolt', x1: this.x, y1: this.y, x2: e.x, y2: e.y, life: 5, color: '#fff' }); }); break;
+                case 'U': state.projectiles.push({ x: this.x, y: this.y, vx: (target.x-this.x)*0.1, vy: (target.y-this.y)*0.1, damage: stats.dmg*m, life: 4000, isBubble: true, r: 1.8+stats.spec*0.2, color: '#60a5fa' }); break;
+                case 'P': state.traps.push({ x: target.x, y: target.y, damage: stats.dmg*m, life: 3000+stats.spec*500, color: '#bae6fd', isField: true, r: 2.2 }); break;
+                case 'I': target.isViral = true; this.dealDamage(target, stats.dmg*m, stats.lootMult); break;
+                case 'W': {
+                    state.visuals.push({ type: 'vortex', x: this.x, y: this.y, r: 6, life: 30, color: '#c084fc' });
+                    state.enemies.forEach(obj => {
+                        if(Math.hypot(obj.x-this.x, obj.y-this.y) < 6) {
+                            obj.x += (this.x - obj.x) * 0.15; obj.y += (this.y - obj.y) * 0.15;
+                        }
+                    });
+                    if(target) this.dealDamage(target, stats.dmg*m, stats.lootMult);
+                } break;
+                default: if(target) this.dealDamage(target, stats.dmg * m, stats.lootMult);
+            }
+        }
+        dealDamage(target, amount, lootMult) { target.hp -= amount; if (target.hp <= 0 && !target.killedByMultSet) { target.killedByMult = lootMult; target.killedByMultSet = true; } }
+        draw(ctx, cellSize) {
+            ctx.fillStyle = this.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.font = `bold ${cellSize * (this.isSummon?0.6:0.8)}px 'Fira Code'`;
+            let char = this.isSummon ? (this.id === 'turret' ? 't' : (this.id === 'shadow' ? 'n' : 'g')) : this.id;
+            ctx.fillText(char, this.x * cellSize + cellSize/2, this.y * cellSize + cellSize/2);
+        }
+    }
+
+    // --- 5. SYSTEM ACTIONS ---
+    function openInfo(id) {
+        const u = UNIT_TYPES.find(ut => ut.id === id); const upg = state.upgrades[id];
+        document.getElementById('info-title').innerText = u.name; document.getElementById('info-title').style.color = u.color;
+        document.getElementById('info-ability-desc').innerText = u.desc;
+        const list = document.getElementById('info-mastery-list');
+        list.innerHTML = `<li><b class="text-white">DMG (R ${upg.dmg}):</b> ${u.scaling.dmg}</li><li><b class="text-white">LOOT (R ${upg.loot}):</b> ${u.scaling.loot}</li><li><b class="text-white">${u.specName} (R ${upg.spec}):</b> ${u.scaling.spec}</li><li><b class="text-white">CAP (R ${upg.cap}):</b> Max size: ${5 + upg.cap*5}</li>`;
+        document.getElementById('info-overlay').style.display = 'block'; document.getElementById('overlay-bg').style.display = 'block';
+    }
+    function switchTab(tab) {
+        state.currentTab = tab;
+        ['world', 'army', 'upgrades'].forEach(t => {
+            const el = document.getElementById(`shop-${t}`); const btn = document.querySelector(`button[data-tab="${t}"]`);
+            if (el) el.classList.toggle('hidden', t !== tab); if (btn) btn.classList.toggle('active', t === tab);
+        });
+    }
+    function toggleWithdraw(id) {
+        state.upgrades[id].isWithdrawn = !state.upgrades[id].isWithdrawn;
+        if (state.upgrades[id].isWithdrawn) {
+            state.units = state.units.filter(u => u.id !== id);
+        } else {
+            for (let i = 0; i < state.upgrades[id].owned; i++) state.units.push(new Unit(id, id, UNIT_TYPES.find(ut => ut.id === id).color));
+        }
+        updateUI();
+    }
+    function buyWorldUpgrade(type) {
+        let base = (type === 'capacity') ? 100 : (type === 'count' ? 500 : 10);
+        let ratio = (type === 'capacity') ? state.maxEnemiesRatio : (type === 'count' ? state.spawnCountRatio : state.spawnRateRatio);
+        let owned = (type === 'capacity') ? state.maxEnemiesOwned : (type === 'count' ? state.spawnCountOwned : state.spawnRateOwned);
+        let k = calcMaxBuy(state.pepper, base, ratio, owned);
+        if (k > 0) {
+            state.pepper -= calcTotalPrice(base, ratio, owned, k);
+            if (type === 'capacity') state.maxEnemiesOwned += k;
+            else if (type === 'count') state.spawnCountOwned += k;
+            else { state.spawnRateOwned += k; state.spawnInterval = 2000 * Math.pow(0.8, state.spawnRateOwned); }
+        }
+        updateUI();
+    }
+    function buyUnit(id) {
+        const u = UNIT_TYPES.find(ut => ut.id === id); const owned = state.upgrades[id].owned; const totalCap = 5 + (state.upgrades[id].cap * 5);
+        let k = Math.min(calcMaxBuy(state.pepper, u.cost, u.ratio, owned), totalCap - owned);
+        if(k > 0) { 
+            state.pepper -= calcTotalPrice(u.cost, u.ratio, owned, k); state.upgrades[id].owned += k; 
+            if (!state.upgrades[id].isWithdrawn) { for(let j=0; j<k; j++) state.units.push(new Unit(id, id, u.color)); }
+        }
+        updateUI();
+    }
+    function upgradeUnit(id, field) {
+        const u = UNIT_TYPES.find(ut => ut.id === id); const base = u.cost * 5; const lv = state.upgrades[id][field];
+        let k = calcMaxBuy(state.pepper, base, 1.5, lv);
+        if(k > 0) { state.pepper -= calcTotalPrice(base, 1.5, lv, k); state.upgrades[id][field] += k; }
+        updateUI();
+    }
+    function changeTier(delta) { state.currentEnemyTier = Math.max(0, Math.min(state.maxEnemyTier, state.currentEnemyTier + delta)); updateUI(); }
+    function evolveWorld() {
+        const cost = state.tierBaseCost * Math.pow(state.tierRatio, state.maxEnemyTier);
+        if (state.pepper >= cost) { state.pepper -= cost; state.maxEnemyTier++; state.currentEnemyTier = state.maxEnemyTier; updateUI(); }
+    }
+
+    function updateUI() {
+        document.getElementById('pepper-display').innerText = formatNum(state.pepper);
+        document.getElementById('rank-label').innerText = state.currentEnemyTier + 1;
+        document.getElementById('tier-selector-val').innerText = state.currentEnemyTier + 1;
+        document.getElementById('max-rank-hint').innerText = `Unlocked: ${state.maxEnemyTier + 1}`;
+        document.getElementById('data-hp').innerText = 'HP: ' + formatNum(10 * Math.pow(1.7, state.currentEnemyTier));
+
+        UNIT_TYPES.forEach((u, i) => {
+            const unlocked = (i === 0) || (state.upgrades[UNIT_TYPES[i-1].id].owned > 0);
+            const card = document.getElementById(`unit-card-${u.id}`); const upgCard = document.getElementById(`upg-card-${u.id}`);
+            if (card) card.classList.toggle('hidden', !unlocked); if (upgCard) upgCard.classList.toggle('hidden', !unlocked);
+            if (!unlocked) return;
+            const stats = getDisplayStats(u.id); const owned = state.upgrades[u.id].owned; const totalCap = 5 + (state.upgrades[u.id].cap * 5);
+            document.getElementById(`army-count-${u.id}`).innerText = `x${owned} / ${totalCap}`;
+            document.getElementById(`army-dmg-${u.id}`).innerText = 'Pwr: ' + formatNum(stats.dmg);
+            document.getElementById(`army-loot-${u.id}`).innerText = 'Bty: ' + (stats.loot * 100).toFixed(0) + '%';
+            const isW = state.upgrades[u.id].isWithdrawn;
+            const dBtn = document.getElementById(`deploy-btn-${u.id}`); dBtn.innerText = isW ? 'Hire' : 'Dismiss'; dBtn.style.color = isW ? 'var(--accent-green)' : 'var(--accent-red)';
+            const b = document.getElementById(`btn-buy-${u.id}`); let k = Math.min(calcMaxBuy(state.pepper, u.cost, u.ratio, owned), totalCap - owned);
+            b.disabled = k <= 0 && owned < totalCap; document.getElementById(`lbl-buy-${u.id}`).innerText = (owned >= totalCap) ? 'CAP REACHED' : (k > 1 ? `Add +${k}` : 'Add +1');
+            document.getElementById(`cost-${u.id}`).innerText = (owned >= totalCap) ? 'MAX' : formatNum(k > 0 ? calcTotalPrice(u.cost, u.ratio, owned, k) : u.cost * Math.pow(u.ratio, owned)) + ' P';
+            ['dmg', 'loot', 'spec', 'cap'].forEach(f => {
+                const btn = document.getElementById(`up-${f}-${u.id}`); if(btn) { const lv = state.upgrades[u.id][f]; let kU = calcMaxBuy(state.pepper, u.cost * 5, 1.5, lv);
+                btn.disabled = kU <= 0; btn.querySelector('span').innerText = (kU > 1 ? `+${kU}` : '') + ` (R ${lv})`; }
+            });
+        });
+        document.getElementById('cap-cost').innerText = formatNum(100 * Math.pow(state.maxEnemiesRatio, state.maxEnemiesOwned)) + ' P';
+        document.getElementById('rate-cost').innerText = formatNum(10 * Math.pow(state.spawnRateRatio, state.spawnRateOwned)) + ' P';
+        document.getElementById('count-cost').innerText = formatNum(500 * Math.pow(state.spawnCountRatio, state.spawnCountOwned)) + ' P';
+        const tierCost = state.tierBaseCost * Math.pow(state.tierRatio, state.maxEnemyTier);
+        document.getElementById('up-world-tier').disabled = state.pepper < tierCost; document.getElementById('tier-cost').innerText = formatNum(tierCost) + ' P';
+    }
+
+    function initUI() {
+        const armyDiv = document.getElementById('shop-army'); const upgDiv = document.getElementById('shop-upgrades');
+        UNIT_TYPES.forEach((u) => {
+            const card = document.createElement('div'); card.id = `unit-card-${u.id}`; card.className = 'stat-card hidden';
+            card.innerHTML = `<div class="flex justify-between items-center mb-1"><span class="text-sm font-bold unit-name-clickable" style="color:${u.color}" onclick="openInfo('${u.id}')"><span class="unit-badge" style="background:${u.color}22; color:${u.color}">${u.id}</span> ${u.name}</span><button id="deploy-btn-${u.id}" class="deploy-btn"></button></div><div class="text-[9px] text-slate-400 mb-1 leading-tight">${u.desc.substring(0,55)}...</div><div class="flex justify-between items-center mb-1"><span id="army-count-${u.id}" class="text-xs text-slate-500 font-bold">x0 / 5</span><div class="flex gap-2"><span id="army-dmg-${u.id}" class="text-[10px] text-slate-400">Pwr: 0</span><span id="army-loot-${u.id}" class="text-[10px] text-amber-500">Bty: 100%</span></div></div><button id="btn-buy-${u.id}" class="buy-btn"><span id="lbl-buy-${u.id}">Add +1</span><span id="cost-${u.id}">0 P</span></button>`;
+            armyDiv.appendChild(card);
+            card.querySelector(`#deploy-btn-${u.id}`).onclick = () => toggleWithdraw(u.id);
+            card.querySelector(`#btn-buy-${u.id}`).onclick = () => buyUnit(u.id);
+            const uCard = document.createElement('div'); uCard.id = `upg-card-${u.id}`; uCard.className = 'stat-card hidden';
+            uCard.innerHTML = `<div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-slate-300 unit-name-clickable" style="border-left: 2px solid ${u.color}; padding-left: 6px" onclick="openInfo('${u.id}')">${u.name} Mastery</span></div><div class="upgrade-grid"><button id="up-dmg-${u.id}" class="mini-btn">DMG<span>0</span></button><button id="up-loot-${u.id}" class="mini-btn">LOOT<span>0</span></button><button id="up-spec-${u.id}" class="mini-btn">${u.specName}<span>0</span></button><button id="up-cap-${u.id}" class="mini-btn">CAP<span>0</span></button></div>`;
+            upgDiv.appendChild(uCard);
+            ['dmg', 'loot', 'spec', 'cap'].forEach(f => uCard.querySelector(`#up-${f}-${u.id}`).onclick = () => upgradeUnit(u.id, f));
+        });
+        resize();
+    }
+
+    function loop(time) {
+        const dt = Math.min(32, time - state.lastUpdate); state.lastUpdate = time;
+        const canvas = document.getElementById('grid-canvas'); const ctx = canvas.getContext('2d');
+        if (!ctx) return; ctx.clearRect(0,0,canvas.width,canvas.height); ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+        for(let i=0; i<=GRID_SIZE; i++) { ctx.beginPath(); ctx.moveTo(i*window.cellSize, 0); ctx.lineTo(i*window.cellSize, canvas.height); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, i*window.cellSize); ctx.lineTo(canvas.width, i*window.cellSize); ctx.stroke(); }
+        if (time - state.lastSpawn > state.spawnInterval) {
+            const count = 1 + state.spawnCountOwned;
+            for(let i=0; i<count; i++) { if (state.enemies.length < 5 + (state.maxEnemiesOwned * 5)) state.enemies.push(new Enemy(state.currentEnemyTier)); }
+            state.lastSpawn = time;
+        }
+        state.defeatHistory = state.defeatHistory.filter(ts => time - ts < 5000);
+        document.getElementById('pps-label').innerText = (state.defeatHistory.length/5).toFixed(1);
+        document.getElementById('pop-label').innerText = `${state.enemies.length}/${5 + (state.maxEnemiesOwned * 5)}`;
+        for (let i = state.projectiles.length-1; i >= 0; i--) {
+            const p = state.projectiles[i];
+            if (p.isMissile) {
+                let t = p.target; if (!state.enemies.includes(t) || t.hp <= 0) t = state.enemies[0] || null; p.target = t;
+                if (t) { let a = Math.atan2(t.y-p.y, t.x-p.x); p.vx = (p.vx || 0) + Math.cos(a)*0.015; p.vy = (p.vy || 0) + Math.sin(a)*0.015; }
+                const s = Math.hypot(p.vx, p.vy); if (s > 0.5) { p.vx *= 0.5/s; p.vy *= 0.5/s; } p.x += p.vx; p.y += p.vy;
+                if (t && Math.hypot(t.x-p.x, t.y-p.y) < (p.scale || 0.5)) { t.hp -= p.damage; p.hits = (p.hits||0)+1; if (p.hits >= (p.maxHits||1)) state.projectiles.splice(i, 1); else { p.vx *= -1; p.vy *= -1; } }
+                else if ((p.life -= dt) <= 0) state.projectiles.splice(i, 1);
+            } else if (p.isBoulder) {
+                p.x += p.vx; p.y += p.vy; state.enemies.forEach(e => { if(Math.hypot(e.x-p.x, e.y-p.y) < p.radius) e.hp -= p.damage * 0.1; });
+                if (p.x < 0 || p.x > GRID_SIZE || p.y < 0 || p.y > GRID_SIZE) state.projectiles.splice(i,1);
+            } else if (p.isBoomerang) {
+                if(!p.returning) { p.x += p.vx; p.y += p.vy; state.enemies.forEach(e => { if(Math.hypot(e.x-p.x, e.y-p.y) < 1.0) e.hp -= p.damage*0.2; }); if(Math.hypot(p.x-p.originX, p.y-p.originY)>p.range) p.returning=true; }
+                else { let a = Math.atan2(p.originY-p.y, p.originX-p.x); p.x += Math.cos(a)*p.speed; p.y += Math.sin(a)*p.speed; if(Math.hypot(p.x-p.originX, p.y-p.originY)<0.5) state.projectiles.splice(i, 1); }
+            } else if (p.isBubble) {
+                p.x += (p.vx||0); p.y += (p.vy||0); p.vx*=0.985; p.vy*=0.985; state.enemies.forEach(e => { if(Math.hypot(e.x-p.x, e.y-p.y) < p.r) e.hp -= p.damage*(dt/1000); });
+                if((p.life-=dt)<=0) { state.visuals.push({ type: 'nova', x: p.x, y: p.y, r: p.r, life: 10, color: '#60a5fa' }); state.projectiles.splice(i, 1); }
+                if(p.x<0||p.x>GRID_SIZE) p.vx*=-1; if(p.y<0||p.y>GRID_SIZE) p.vy*=-1;
+            } else if (p.target) {
+                let dx = p.target.x - p.x, dy = p.target.y - p.y, d = Math.hypot(dx, dy);
+                if (d < 0.3 || !state.enemies.includes(p.target)) { if (p.target) p.target.hp -= p.damage; state.projectiles.splice(i, 1); } 
+                else { p.x += (dx/d)*p.speed; p.y += (dy/d)*p.speed; }
+            } else if (p.vx !== undefined) {
+                p.x += p.vx; p.y += p.vy;
+                for (let e of state.enemies) { if (Math.hypot(e.x-p.x, e.y-p.y) < 0.3) { e.hp -= p.damage; state.projectiles.splice(i, 1); break; } }
+                if ((p.life -= 1) <= 0 || p.x < 0 || p.x > GRID_SIZE || p.y < 0 || p.y > GRID_SIZE) state.projectiles.splice(i, 1);
+            }
+        }
+        for(let i=state.units.length-1; i>=0; i--){
+            state.units[i].update(dt, state.enemies, state.units);
+            if(state.units[i].isSummon && state.units[i].life <= 0) state.units.splice(i,1);
+        }
+        state.enemies.forEach(e => {
+            e.update(dt); if (e.hp <= 0) { 
+                state.pepper += e.value; state.defeatHistory.push(time);
+                state.units.filter(u => u.id === 'L').forEach(l => { if(Math.hypot(e.x-l.x, e.y-l.y) < 8) state.traps.push({ x: e.x, y: e.y, damage: 1000, life: 3, color: '#2dd4bf', r: 0.8 }); });
+                state.units.filter(u => u.id === 'X').forEach(x => { if(Math.hypot(e.x-x.x, e.y-x.y) < 6) { state.traps.push({ x: e.x, y: e.y, damage: 1200, life: 1.5, color: '#4ade80', r: 1.2 }); }});
+            }
+        });
+        state.enemies = state.enemies.filter(e => e.hp > 0); state.visuals = state.visuals.filter(v => --v.life > 0);
+        state.traps = state.traps.filter(t => (t.life--) > 0);
+        state.traps.forEach(t => { 
+            ctx.fillStyle = t.color + (t.isField?'44':'88'); ctx.beginPath(); 
+            ctx.arc(t.x*window.cellSize+window.cellSize/2, t.y*window.cellSize+window.cellSize/2, t.r*window.cellSize, 0, Math.PI*2); ctx.fill(); 
+            state.enemies.forEach(e=>{ if(Math.hypot(e.x-t.x, e.y-t.y)<t.r) e.hp -= (t.isField? (t.damage*dt/1000) : t.damage); });
+        });
+        state.enemies.forEach(e => e.draw(ctx, window.cellSize)); state.units.forEach(u => u.draw(ctx, window.cellSize));
+        state.projectiles.forEach(p => { 
+            ctx.fillStyle = p.color || '#fff'; const s = window.cellSize * (p.scale || (p.isBoulder?1.2:0.6));
+            ctx.font = "bold " + s + "px 'Fira Code'"; ctx.fillText(p.char||'·', p.x*window.cellSize+window.cellSize/2, p.y*window.cellSize+window.cellSize/2); 
+        });
+        state.visuals.forEach(v => {
+            ctx.strokeStyle = v.color; if (v.type === 'bolt') { ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(v.x1*window.cellSize+window.cellSize/2, v.y1*window.cellSize+window.cellSize/2); ctx.lineTo(v.x2*window.cellSize+window.cellSize/2, v.y2*window.cellSize+window.cellSize/2); ctx.stroke(); }
+            else if (v.type === 'nova' || v.type === 'aura' || v.type === 'vortex') { ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(v.x*window.cellSize+window.cellSize/2, v.y*window.cellSize+window.cellSize/2, v.r*window.cellSize, 0, Math.PI*2); ctx.stroke(); }
+            else if (v.type === 'whirl' || v.type === 'twister') { ctx.beginPath(); ctx.arc(v.x*window.cellSize+window.cellSize/2, v.y*window.cellSize+window.cellSize/2, v.r*window.cellSize, v.life*0.1, v.life*0.1+2); ctx.stroke(); }
+            else if (v.type === 'slash') { ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(v.x*window.cellSize+window.cellSize/2, v.y*window.cellSize+window.cellSize/2, v.r*window.cellSize, v.angle - 0.5, v.angle + 0.5); ctx.stroke(); }
+            else if (v.type === 'particle') { ctx.fillStyle = v.color; ctx.beginPath(); ctx.arc(v.x*window.cellSize+window.cellSize/2, v.y*window.cellSize+window.cellSize/2, 2, 0, Math.PI*2); ctx.fill(); }
+        });
+        updateUI(); requestAnimationFrame(loop);
+    }
+    window.onload = () => {
+        window.addEventListener('resize', resize);
+        document.getElementById('overlay-bg').onclick = closeInfo;
+        initUI(); requestAnimationFrame(loop);
+    };
+</script>
+</body>
+</html>

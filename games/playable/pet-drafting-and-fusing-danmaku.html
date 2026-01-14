@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Emoji Squad: Fusion Master</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap');
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+        #arena-container {
+            flex-grow: 1;
+            position: relative;
+            background: radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%);
+            overflow: hidden;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+        .ui-panel { backdrop-filter: blur(20px); background: rgba(15, 23, 42, 0.98); }
+        .glass-card { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255, 255, 255, 0.05); }
+        
+        #sell-bar {
+            position: absolute;
+            bottom: -100px;
+            left: 0;
+            right: 0;
+            height: 90px;
+            background: linear-gradient(to top, #7f1d1d, #450a0a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 60;
+            border-top: 3px solid #ef4444;
+        }
+        #sell-bar.visible { transform: translateY(-300px); }
+        #sell-bar.highlight { background: #b91c1c; box-shadow: 0 0 40px rgba(239, 68, 68, 0.6); }
+
+        #battle-timer {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-weight: 900;
+            font-size: 2rem;
+            color: rgba(255,255,255,0.1);
+            pointer-events: none;
+            letter-spacing: -0.05em;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+
+    <!-- Header -->
+    <header class="p-3 border-b border-slate-800 flex justify-between items-center shrink-0 z-50 ui-panel">
+        <div class="flex gap-2">
+            <div class="glass-card px-3 py-1 rounded-xl flex items-center gap-2">
+                <span class="text-yellow-400 font-black text-xs">💰 <span id="gold-val">15</span></span>
+            </div>
+            <div class="glass-card px-3 py-1 rounded-xl flex items-center gap-2">
+                <span class="text-red-500 font-black text-xs">❤️ <span id="health-val">100</span></span>
+            </div>
+        </div>
+        <div class="text-center">
+            <div class="text-[8px] uppercase tracking-[0.4em] text-slate-500 font-black">Wave</div>
+            <div class="text-lg font-black text-white italic" id="round-val">1</div>
+        </div>
+        <div class="glass-card px-3 py-1 rounded-xl flex items-center gap-2">
+            <span class="text-blue-400 font-black text-xs">👥 <span id="squad-val">0/5</span></span>
+        </div>
+    </header>
+
+    <!-- Arena Area -->
+    <div id="arena-container">
+        <div id="battle-timer" class="hidden">20.0s</div>
+        <canvas id="battleCanvas"></canvas>
+        <div id="sell-bar">
+            <div class="text-white font-black uppercase tracking-[0.3em] text-sm flex items-center gap-4">
+                <span>🗑️</span> RECYCLE PET (+1G) <span>🗑️</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shop Footer -->
+    <footer id="prep-ui" class="p-4 border-t border-slate-800 shrink-0 ui-panel z-50">
+        <div class="flex justify-between items-end mb-4">
+            <div id="status-msg" class="text-[9px] font-black text-blue-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                Drag into a Pet to FUSE
+            </div>
+            <div class="flex gap-2">
+                <button id="reroll-btn" class="bg-slate-800 hover:bg-slate-700 border border-white/5 text-[10px] px-4 py-2 rounded-xl font-bold transition-all">🔄 Reroll (2g)</button>
+                <button id="fight-btn" class="bg-blue-600 hover:bg-blue-500 text-[10px] px-8 py-2 rounded-xl font-black shadow-lg shadow-blue-900/40 uppercase tracking-widest transition-all">Start Wave</button>
+            </div>
+        </div>
+        <div id="shop-slots" class="grid grid-cols-5 gap-2"></div>
+    </footer>
+
+    <div id="toast" class="absolute top-24 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 transition-all duration-300 bg-blue-600 text-white px-6 py-2 rounded-full font-black text-[10px] z-[100] shadow-2xl text-center"></div>
+
+    <div id="modal" class="fixed inset-0 bg-black/95 backdrop-blur-3xl z-[200] hidden flex items-center justify-center p-6 text-center">
+        <div id="modal-content" class="bg-slate-900 border border-white/5 p-10 rounded-[3rem] max-w-sm w-full text-center shadow-2xl"></div>
+    </div>
+
+    <script>
+        const UNIT_LIMIT = 5;
+        const PROXIMITY_RADIUS = 25; 
+        const AVOIDANCE_RADIUS = 120;
+        const FUSION_RADIUS = 80; // Larger trigger for easier fusions
+        const BATTLE_TIMEOUT_FRAMES = 20 * 60;
+        const HITBOX_RADIUS = 1;
+
+        const TEMPLATES = {
+            'pig': { icon: '🐷', hits: 5, speed: 1.1, color: '#ec4899', pattern: 'nova_ring' },
+            'snake': { icon: '🐍', hits: 2, speed: 2.5, color: '#22c55e', pattern: 'cross_spiral' },
+            'lion': { icon: '🦁', hits: 5, speed: 1.5, color: '#fcd34d', pattern: 'solar_crown' },
+            'turtle': { icon: '🐢', hits: 5, speed: 0.8, color: '#10b981', pattern: 'iron_scute' },
+            'wolf': { icon: '🐺', hits: 2, speed: 2.7, color: '#6366f1', pattern: 'alpha_stalker' },
+            'whale': { icon: '🐋', hits: 5, speed: 0.5, color: '#0ea5e9', pattern: 'deep_pressure' },
+            'fox': { icon: '🦊', hits: 2, speed: 2.9, color: '#f97316', pattern: 'mirage_shot' },
+            'owl': { icon: '🦉', hits: 3, speed: 1.8, color: '#818cf8', pattern: 'phase_blink' },
+            'butterfly': { icon: '🦋', hits: 1, speed: 3.2, color: '#d946ef', pattern: 'flutter_dust' }
+        };
+
+        let state = {
+            gold: 15, health: 100, round: 1, phase: 'PREP',
+            shop: [], playerUnits: [], enemyUnits: [], bullets: [], particles: [],
+            frame: 0, dragTarget: null, battleTimer: BATTLE_TIMEOUT_FRAMES,
+            mergeCandidate: null // Track who we are about to merge with
+        };
+
+        const canvas = document.getElementById('battleCanvas');
+        const ctx = canvas.getContext('2d');
+        const arena = document.getElementById('arena-container');
+        const sellBar = document.getElementById('sell-bar');
+        const timerUI = document.getElementById('battle-timer');
+        let width, height;
+
+        function resize() {
+            width = canvas.width = arena.clientWidth;
+            height = canvas.height = arena.clientHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function spawnBullet(u, cfg) {
+            const { count=1, speed=4, angle=0, spread=0, rot=0, rad=3, color='#fff', shrapnel=null, life=300, behavior='linear', parent=null } = cfg;
+            const startAngle = angle - (spread / 2);
+            const step = count > 1 ? spread / (count - 1) : 0;
+            for (let i = 0; i < count; i++) {
+                const a = startAngle + (step * i) + rot;
+                state.bullets.push({
+                    x: u.x, y: u.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+                    rad, color, ownerSide: u.side, life, maxLife: life,
+                    shrapnel, behavior, spawnFrame: state.frame, 
+                    parentUnit: parent, orbitAngle: a, isDecoy: cfg.isDecoy || false
+                });
+            }
+        }
+
+        const Patterns = {
+            nova_ring: (u) => { if (state.frame % 70 === 0) spawnBullet(u, { count: 18, spread: Math.PI*2, speed: 2.2, rad: 6, color: u.type.color }); },
+            cross_spiral: (u) => { if (state.frame % 4 === 0) spawnBullet(u, { count: 4, spread: Math.PI*1.5, rot: state.frame*0.2, speed: 5.5, color: u.type.color }); },
+            solar_crown: (u) => { if (state.frame % 60 === 0) spawnBullet(u, { count: 12, spread: Math.PI*2, rot: state.frame*0.05, speed: 1.5, behavior: 'accelerate', rad: 5, color: '#fbbf24' }); },
+            iron_scute: (u) => {
+                if (state.frame % 120 === 0) spawnBullet(u, { count: 4, spread: Math.PI*2, speed: 0, behavior: 'orbit', parent: u, amplitude: 55, color: u.type.color, life: 300, rad: 7 });
+                if (state.frame % 45 === 0) spawnBullet(u, { count: 6, spread: Math.PI*2, speed: 3.5, color: u.type.color, rad: 4, behavior: 'spiral_out' });
+            },
+            alpha_stalker: (u) => {
+                if (state.frame % 90 === 0) {
+                    const targets = u.side === 'p' ? state.enemyUnits : state.playerUnits;
+                    if (targets.length) {
+                        const t = targets[0];
+                        const a = Math.atan2(t.y-u.y, t.x-u.x);
+                        spawnBullet(u, { speed: 0.5, angle: a, behavior: 'stalk', color: '#cbd5e1', rad: 5, life: 200, shrapnel: { count: 5, speed: 7, color: '#fff', rad: 2 } });
+                    }
+                }
+            },
+            deep_pressure: (u) => {
+                if (state.frame % 150 === 0) spawnBullet(u, { speed: 1, angle: u.side==='p'?-Math.PI/2:Math.PI/2, rad: 18, color: '#0ea5e9', behavior: 'vortex', life: 220 });
+                if (state.frame % 60 === 0) spawnBullet(u, { count: 10, spread: Math.PI*2, speed: 3, rad: 3, color: '#38bdf8' });
+            },
+            phase_blink: (u) => {
+                if (state.frame % 60 === 0) {
+                    const a = u.side==='p'?-Math.PI/2:Math.PI/2;
+                    spawnBullet(u, { count: 2, spread: 0.3, speed: 4.5, angle: a, behavior: 'phase', rad: 7, color: '#818cf8', life: 240 });
+                }
+            },
+            mirage_shot: (u) => { if (state.frame % 45 === 0) { const a = u.side==='p'?-Math.PI/2:Math.PI/2; spawnBullet(u, { speed: 6, angle: a, color: u.type.color, rad: 4 }); spawnBullet(u, { speed: 6, angle: a-0.2, color: u.type.color, rad: 4, isDecoy: true }); spawnBullet(u, { speed: 6, angle: a+0.2, color: u.type.color, rad: 4, isDecoy: true }); } },
+            flutter_dust: (u) => { if (state.frame % 15 === 0) spawnBullet(u, { speed: 4, angle: u.side==='p'?-Math.PI/2:Math.PI/2, rad: 2, color: u.type.color, behavior: 'flutter', life: 180 }); }
+        };
+
+        function update() {
+            state.frame++;
+            const all = [...state.playerUnits, ...state.enemyUnits];
+            
+            // Separation Physics
+            for (let i = 0; i < all.length; i++) {
+                for (let j = i + 1; j < all.length; j++) {
+                    const a = all[i], b = all[j];
+                    if (a.hits <= 0 || b.hits <= 0) continue;
+                    
+                    // Don't push if one is currently being dragged (prevents fusion sliding)
+                    if (state.dragTarget === a || state.dragTarget === b) continue;
+
+                    const dx = a.x - b.x, dy = a.y - b.y, dist = Math.hypot(dx, dy);
+                    const min = PROXIMITY_RADIUS * 2.2;
+                    if (dist < min) {
+                        const force = (min - dist) / dist * 0.2;
+                        a.x += dx * force; a.y += dy * force;
+                        b.x -= dx * force; b.y -= dy * force;
+                        if (state.phase === 'BATTLE' && state.frame % 30 === 0) { a.hits -= 0.1; b.hits -= 0.1; createExplosion((a.x+b.x)/2, (a.y+b.y)/2, '#ef4444', 2); }
+                    }
+                }
+            }
+
+            if (state.phase === 'BATTLE') {
+                state.battleTimer--;
+                timerUI.innerText = (state.battleTimer / 60).toFixed(1) + 's';
+                if (state.battleTimer <= 0) resolveTimeout();
+
+                all.forEach(u => {
+                    if (u.hits <= 0) return;
+                    let ax=0, ay=0;
+                    
+                    state.bullets.forEach(b => { if (b.ownerSide !== u.side && !b.isDecoy) { const d = Math.hypot(u.x-b.x, u.y-b.y); if (d < 90) { ax += (u.x-b.x)/d * 2.0; ay += (u.y-b.y)/d * 2.0; } } });
+                    all.forEach(other => { if (other !== u && other.hits > 0) { const d = Math.hypot(u.x - other.x, u.y - other.y); if (d < AVOIDANCE_RADIUS) { const weight = (other.side === u.side) ? 4.5 : 1.5; ax += (u.x - other.x)/d * weight; ay += (u.y - other.y)/d * weight; } } });
+
+                    const ty = u.side === 'p' ? height * 0.8 : height * 0.2;
+                    u.vx = (u.vx * 0.85) + (ax * 0.9) + (width/2 - u.x)*0.01;
+                    u.vy = (u.vy * 0.85) + (ay * 0.9) + (ty - u.y)*0.06;
+                    const s = Math.hypot(u.vx, u.vy);
+                    if (s > u.type.speed) { u.vx = (u.vx/s)*u.type.speed; u.vy = (u.vy/s)*u.type.speed; }
+                    u.x = Math.max(40, Math.min(width-40, u.x + u.vx));
+                    u.y = Math.max(40, Math.min(height-40, u.y + u.vy));
+                    
+                    u.patterns.forEach(pat => { if (Patterns[pat]) Patterns[pat](u); });
+                });
+
+                for (let i = state.bullets.length-1; i >= 0; i--) {
+                    const b = state.bullets[i];
+                    switch(b.behavior) {
+                        case 'accelerate': b.vx *= 1.05; b.vy *= 1.05; break;
+                        case 'stalk':
+                            const stalkT = state.frame - b.spawnFrame;
+                            if (stalkT < 60) { b.vx *= 0.9; b.vy *= 0.9; }
+                            else if (stalkT === 60) {
+                                const targets = b.ownerSide === 'p' ? state.enemyUnits : state.playerUnits;
+                                if (targets.length) { const t = targets[0]; const a = Math.atan2(t.y-b.y, t.x-b.x); b.vx = Math.cos(a) * 14; b.vy = Math.sin(a) * 14; }
+                            }
+                            break;
+                        case 'phase': b.isPhased = ((state.frame - b.spawnFrame) % 40) > 20; break;
+                        case 'flutter': const a = Math.atan2(b.vy, b.vx) + (Math.random()-0.5)*0.4; const s = Math.hypot(b.vx, b.vy); b.vx = Math.cos(a)*s; b.vy = Math.sin(a)*s; break;
+                        case 'spiral_out': const sa = Math.atan2(b.vy, b.vx) + 0.1; const ss = Math.hypot(b.vx, b.vy); b.vx = Math.cos(sa)*ss; b.vy = Math.sin(sa)*ss; break;
+                        case 'vortex':
+                            state.bullets.forEach(o => { if (o !== b && o.ownerSide !== b.ownerSide && !o.isDecoy) { const d = Math.hypot(b.x-o.x, b.y-o.y); if (d < 140) { o.vx += (b.x-o.x)/30; o.vy += (b.y-o.y)/30; if (d < 18) o.life = 0; } } });
+                            break;
+                        case 'orbit':
+                            if (b.parentUnit && b.parentUnit.hits > 0) { b.orbitAngle += 0.05; b.x = b.parentUnit.x + Math.cos(b.orbitAngle)*55; b.y = b.parentUnit.y + Math.sin(b.orbitAngle)*55; } else b.life = 0;
+                            break;
+                    }
+                    b.x += b.vx; b.y += b.vy; b.life--;
+                    if (b.life <= 0 || b.x < -120 || b.x > width+120 || b.y < -120 || b.y > height+120) {
+                        if (b.life <= 0 && b.shrapnel) triggerShrapnel(b);
+                        state.bullets.splice(i, 1); continue;
+                    }
+                    if (!b.isDecoy && !b.isPhased) {
+                        const targets = b.ownerSide === 'p' ? state.enemyUnits : state.playerUnits;
+                        for (let t of targets) {
+                            if (t.hits > 0 && Math.hypot(b.x-t.x, b.y-t.y) < b.rad + HITBOX_RADIUS) {
+                                t.hits--; createExplosion(b.x, b.y, b.color, 4);
+                                if (b.shrapnel) triggerShrapnel(b);
+                                state.bullets.splice(i, 1); break;
+                            }
+                        }
+                    }
+                }
+                if (state.enemyUnits.length && state.enemyUnits.every(e => e.hits <= 0)) endBattle(true);
+                else if (state.playerUnits.length && state.playerUnits.every(p => p.hits <= 0)) endBattle(false);
+            }
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        function triggerShrapnel(b) {
+            const { count, speed, color, rad } = b.shrapnel;
+            spawnBullet({x: b.x, y: b.y, side: b.ownerSide}, { count, speed, angle: Math.atan2(b.vy, b.vx), spread: Math.PI*2, rad: rad||2, color: color||'#fff', life: 50 });
+        }
+
+        function resolveTimeout() {
+            const ph = state.playerUnits.reduce((acc, u) => acc + Math.max(0, u.hits), 0);
+            const eh = state.enemyUnits.reduce((acc, u) => acc + Math.max(0, u.hits), 0);
+            endBattle(ph >= eh);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+            ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 1;
+            for(let x=0; x<width; x+=40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,height); ctx.stroke(); }
+            for(let y=0; y<height; y+=40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(width,y); ctx.stroke(); }
+
+            if (state.phase === 'PREP') {
+                state.playerUnits.forEach(u => {
+                    ctx.beginPath(); ctx.arc(u.homeX, u.homeY, 35, 0, Math.PI*2);
+                    ctx.strokeStyle = 'rgba(59, 130, 246, 0.2)'; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+                });
+            }
+
+            [...state.playerUnits, ...state.enemyUnits].forEach(u => {
+                if (u.hits <= 0) ctx.globalAlpha = 0.1;
+                
+                // Fusion Candidate Glow
+                if (state.dragTarget && state.mergeCandidate === u && u !== state.dragTarget) {
+                    ctx.beginPath();
+                    ctx.arc(u.x, u.y, 45, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 4 + Math.sin(state.frame * 0.2) * 2;
+                    ctx.stroke();
+                }
+
+                ctx.font = `46px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(u.type.icon, u.x, u.y);
+                if (u.fusedWith) {
+                    ctx.font = `24px serif`;
+                    ctx.fillText(u.fusedWith.icon, u.x + 22, u.y - 22);
+                    ctx.font = `46px serif`;
+                }
+
+                const pipC = Math.ceil(u.type.hits);
+                const sX = u.x - (pipC * 9) / 2;
+                for (let i = 0; i < pipC; i++) { ctx.fillStyle = i < Math.floor(u.hits) ? u.type.color : '#1e293b'; ctx.beginPath(); ctx.arc(sX + i * 9 + 4.5, u.y - 35, 3, 0, Math.PI * 2); ctx.fill(); }
+                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(u.x, u.y, 1.5, 0, Math.PI*2); ctx.fill();
+                ctx.globalAlpha = 1;
+            });
+
+            state.bullets.forEach(b => {
+                if (b.isDecoy || b.isPhased) ctx.globalAlpha = 0.2;
+                ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(b.x, b.y, b.rad, 0, Math.PI*2); ctx.fill();
+                if (b.behavior && b.behavior !== 'linear') { ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1; ctx.stroke(); }
+                ctx.globalAlpha = 1;
+                if (b.behavior === 'vortex') { ctx.beginPath(); ctx.arc(b.x, b.y, 25, 0, Math.PI*2); ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)'; ctx.stroke(); }
+            });
+
+            state.particles.forEach((p, i) => {
+                p.x += p.vx; p.y += p.vy; p.life -= 0.04;
+                if (p.life <= 0) state.particles.splice(i, 1);
+                ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.fillRect(p.x, p.y, 2, 2);
+            });
+
+            if (state.dragTarget) {
+                ctx.lineWidth = 2; ctx.strokeStyle = '#3b82f6';
+                ctx.beginPath(); ctx.arc(state.dragTarget.x, state.dragTarget.y, 50, 0, Math.PI*2); ctx.stroke();
+            }
+        }
+
+        function getPointer(e) {
+            const r = canvas.getBoundingClientRect();
+            const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+            const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+            return {x, y};
+        }
+
+        const startDrag = (e) => {
+            if (state.phase !== 'PREP') return;
+            const p = getPointer(e);
+            const u = state.playerUnits.find(unit => Math.hypot(unit.x-p.x, unit.y-p.y) < 65);
+            if (u) { state.dragTarget = u; sellBar.classList.add('visible'); }
+        };
+
+        const doDrag = (e) => {
+            if (state.dragTarget) {
+                const p = getPointer(e);
+                state.dragTarget.x = p.x; state.dragTarget.y = p.y;
+                
+                // Track Merge Candidates in real-time
+                state.mergeCandidate = state.playerUnits.find(u => u !== state.dragTarget && Math.hypot(u.x - p.x, u.y - p.y) < FUSION_RADIUS);
+                
+                const overSell = p.y > height - 100;
+                sellBar.classList.toggle('highlight', overSell);
+            }
+        };
+
+        const endDrag = (e) => {
+            if (state.dragTarget) {
+                const p = getPointer(e.changedTouches ? e.changedTouches[0] : e);
+                
+                if (p.y > height - 100) {
+                    state.playerUnits = state.playerUnits.filter(u => u !== state.dragTarget);
+                    state.gold += 1; updateStats(); showToast("RECYCLED +1G");
+                } else if (state.mergeCandidate && !state.mergeCandidate.fusedWith) {
+                    state.mergeCandidate.fusedWith = state.dragTarget.type;
+                    state.mergeCandidate.patterns.push(...state.dragTarget.patterns);
+                    state.playerUnits = state.playerUnits.filter(u => u !== state.dragTarget);
+                    showToast("FUSION COMPLETE!");
+                    createExplosion(state.mergeCandidate.x, state.mergeCandidate.y, '#fff', 15);
+                } else {
+                    state.dragTarget.homeX = state.dragTarget.x;
+                    state.dragTarget.homeY = state.dragTarget.y;
+                }
+                
+                state.dragTarget = null;
+                state.mergeCandidate = null;
+                sellBar.classList.remove('visible', 'highlight');
+            }
+        };
+
+        canvas.addEventListener('mousedown', startDrag);
+        canvas.addEventListener('touchstart', startDrag, {passive:false});
+        window.addEventListener('mousemove', doDrag);
+        window.addEventListener('touchmove', doDrag, {passive:false});
+        window.addEventListener('mouseup', endDrag);
+        window.addEventListener('touchend', endDrag);
+
+        function generateShop() {
+            state.shop = [];
+            const keys = Object.keys(TEMPLATES);
+            for (let i = 0; i < 5; i++) state.shop.push(TEMPLATES[keys[Math.floor(Math.random() * keys.length)]]);
+            renderShop();
+        }
+
+        function renderShop() {
+            const container = document.getElementById('shop-slots');
+            container.innerHTML = '';
+            state.shop.forEach((type, i) => {
+                const btn = document.createElement('div');
+                btn.className = `glass-card rounded-2xl p-2 flex flex-col items-center cursor-pointer transition-all active:scale-95`;
+                if (!type) { btn.innerHTML = `<div class="h-10 flex items-center justify-center opacity-10 text-[8px] font-black italic">...</div>`; btn.style.pointerEvents = 'none'; }
+                else { btn.innerHTML = `<div class="text-3xl">${type.icon}</div><div class="text-[8px] font-black uppercase text-slate-500 mt-1 text-center truncate w-full">${type.pattern.replace('_', ' ')}</div><div class="text-[9px] text-blue-400 font-black">3G</div>`; btn.onclick = () => buyUnit(i); }
+                container.appendChild(btn);
+            });
+            updateStats();
+        }
+
+        function buyUnit(idx) {
+            if (state.playerUnits.length >= UNIT_LIMIT) return showToast("SQUAD FULL - FUSE PETS TO FREE SLOTS");
+            if (state.gold < 3) return showToast("NEED GOLD");
+            const type = state.shop[idx];
+            const startX = width/2 + (Math.random()-0.5)*60;
+            const startY = height - 160 + (Math.random()-0.5)*60;
+            state.playerUnits.push({ type, side: 'p', x: startX, y: startY, homeX: startX, homeY: startY, vx:0, vy:0, hits: type.hits, patterns: [type.pattern], fusedWith: null });
+            state.gold -= 3; state.shop[idx] = null; renderShop();
+        }
+
+        function startBattle() {
+            if (!state.playerUnits.length) return showToast("RECRUIT SQUAD");
+            state.phase = 'BATTLE';
+            state.battleTimer = BATTLE_TIMEOUT_FRAMES;
+            state.bullets = []; state.particles = [];
+            timerUI.classList.remove('hidden');
+            document.getElementById('prep-ui').classList.add('translate-y-full', 'opacity-0');
+            state.enemyUnits = [];
+            const count = 3 + Math.floor(state.round * 0.85);
+            const keys = Object.keys(TEMPLATES);
+            for (let i = 0; i < count; i++) {
+                const type = TEMPLATES[keys[Math.floor(Math.random() * keys.length)]];
+                state.enemyUnits.push({ type, side: 'e', x: Math.random()*width, y: 80+Math.random()*40, vx:0, vy:0, hits: type.hits * (1 + state.round * 0.08), patterns: [type.pattern] });
+            }
+        }
+
+        function endBattle(win) {
+            state.phase = 'PREP'; 
+            state.bullets = []; 
+            state.particles = [];
+            timerUI.classList.add('hidden');
+            document.getElementById('prep-ui').classList.remove('translate-y-full', 'opacity-0');
+            state.playerUnits.forEach(u => { u.x = u.homeX; u.y = u.homeY; u.vx = 0; u.vy = 0; u.hits = u.type.hits; });
+            if (win) { state.gold += 12 + state.round; state.round++; showModal(`<h1 class="text-4xl font-black text-green-400 mb-2 italic uppercase">WAVE CLEAR</h1><button onclick="closeModal()" class="w-full py-5 bg-blue-600 rounded-[2rem] font-black shadow-xl uppercase tracking-widest text-sm">CONTINUE</button>`); }
+            else { state.health -= 20; showModal(`<h1 class="text-4xl font-black text-red-500 mb-2 italic uppercase tracking-tighter">BREACH</h1><button onclick="${state.health <= 0 ? 'location.reload()' : 'closeModal()'}" class="w-full py-5 bg-slate-700 rounded-[2rem] font-black shadow-xl uppercase tracking-widest text-sm">${state.health <= 0 ? 'RESTART' : 'REFORM'}</button>`); }
+            generateShop(); updateStats();
+        }
+
+        function createExplosion(x, y, color, count) { for (let i = 0; i < count; i++) { state.particles.push({ x, y, color, life: 1, vx: (Math.random()-0.5)*7, vy: (Math.random()-0.5)*7 }); } }
+        function updateStats() { document.getElementById('gold-val').innerText = state.gold; document.getElementById('health-val').innerText = state.health; document.getElementById('round-val').innerText = state.round; document.getElementById('squad-val').innerText = `${state.playerUnits.length}/${UNIT_LIMIT}`; }
+        function showToast(txt) { const t = document.getElementById('toast'); t.innerText = txt; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 2000); }
+        function showModal(html) { document.getElementById('modal-content').innerHTML = html; document.getElementById('modal').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+        document.getElementById('fight-btn').onclick = startBattle;
+        document.getElementById('reroll-btn').onclick = () => { if (state.gold >= 2) { state.gold -= 2; generateShop(); updateStats(); } };
+
+        generateShop(); updateStats();
+        requestAnimationFrame(update);
+    </script>
+</body>
+</html>

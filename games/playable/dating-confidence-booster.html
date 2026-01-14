@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dating Confidence Booster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+            overflow-x: hidden;
+        }
+
+        .gradient-brand {
+            background: linear-gradient(135deg, #6366f1 0%, #d946ef 100%);
+        }
+
+        .confidence-pop {
+            animation: confidenceFloat 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        @keyframes confidenceFloat {
+            0% { transform: translateY(20px) scale(0.8); opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translateY(-120px) scale(1.5); opacity: 0; }
+        }
+
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .cringe-flash {
+            animation: flashRed 0.4s ease-out;
+        }
+
+        @keyframes flashRed {
+            0% { background-color: transparent; }
+            50% { background-color: rgba(239, 68, 68, 0.2); }
+            100% { background-color: transparent; }
+        }
+
+        .embarrassment-box {
+            background: #fff1f2;
+            border: 2px dashed #fda4af;
+            border-radius: 1rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .embarrassment-text {
+            color: #be123c;
+            font-weight: 700;
+            font-style: italic;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 bg-slate-100">
+
+    <div id="game-container" class="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden relative border border-white transition-colors duration-300">
+        
+        <!-- Header -->
+        <div class="px-8 pt-8 pb-4 flex justify-between items-end">
+            <div>
+                <h1 class="text-2xl font-extrabold tracking-tight text-slate-900">Social Shot</h1>
+                <p id="people-count" class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.15em]">6 People Nearby</p>
+            </div>
+            <div class="text-right">
+                <div class="text-[10px] font-extrabold text-indigo-500 uppercase tracking-widest mb-1">Confidence</div>
+                <div id="score-display" class="text-4xl font-black text-slate-900 tabular-nums">0</div>
+            </div>
+        </div>
+
+        <div class="h-1.5 w-full bg-slate-100 relative overflow-hidden">
+            <div id="progress-bar" class="absolute top-0 left-0 h-full gradient-brand transition-all duration-700" style="width: 100%"></div>
+        </div>
+
+        <!-- Content Area -->
+        <div id="screen-content" class="p-8 min-h-[520px]">
+            <!-- Screens injected here -->
+        </div>
+
+        <!-- Animation Layer -->
+        <div id="animation-layer" class="absolute inset-0 pointer-events-none flex items-center justify-center z-50"></div>
+
+        <!-- Modal Overlay -->
+        <div id="feedback-modal" class="hidden absolute inset-0 bg-slate-950/60 backdrop-blur-md z-50 flex items-center justify-center p-8">
+            <div id="modal-card" class="bg-white rounded-[2rem] p-8 w-full max-w-sm text-center shadow-2xl transition-all">
+                <div id="modal-icon" class="mb-4 flex justify-center text-6xl"></div>
+                <h2 id="modal-title" class="text-2xl font-extrabold mb-3 text-slate-900"></h2>
+                
+                <div id="embarrassment-container" class="hidden">
+                    <div class="embarrassment-box">
+                        <p class="text-[10px] uppercase font-bold text-rose-400 tracking-widest mb-1 text-center">Cringe Alert!</p>
+                        <p id="embarrassment-text" class="embarrassment-text text-center"></p>
+                    </div>
+                </div>
+
+                <p id="modal-body" class="text-slate-500 mb-8 leading-relaxed text-sm font-medium"></p>
+                <button onclick="closeModal()" class="w-full py-4 gradient-brand text-white font-bold rounded-2xl shadow-lg transition-all active:scale-95">
+                    Shake it off
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const statusCycle = ["Friendly", "Intrigued", "Shy", "Charmed", "Warm", "Connected", "Vibe-y"];
+        
+        const embarrassingEvents = [
+            "You lean in to whisper something smooth and accidentally let out a massive, wet burp directly into their ear.",
+            "As you reach for their hand, your pants split right down the middle with a loud 'RIIIIIP' that echoes across the room.",
+            "You try to wink, but your contact lens flies out and lands directly in their drink with a splash.",
+            "A huge, bright green piece of spinach is stuck to your front tooth the entire time you are talking.",
+            "Your voice cracks so high that it sounds like a dying flute, and you physically cannot stop squeaking.",
+            "You try to take a cool sip of water, miss your mouth completely, and soak your entire shirt front.",
+            "You go for a high-five, they don't see it, and you end up just patting your own head awkwardly for ten seconds.",
+            "You accidentally call them 'Mom' at the end of your sentence and then panic-repeat it three more times.",
+            "A massive, stringy line of drool escapes your mouth and hangs in the air as you wait for their answer.",
+            "You trip over absolutely nothing and face-plant into a trash can while trying to look confident.",
+            "You realize your fly is wide open and your bright neon 'Lucky Charms' underwear is fully visible.",
+            "A single, extremely loud fart escapes your body the exact moment the room goes silent."
+        ];
+
+        const rejections = [
+            "I'm super flattered, but I think I just see us as friends.",
+            "That's so sweet, but I'm not really looking for anything right now.",
+            "I've actually started seeing someone else quite recently!",
+            "I think you're great, but I'm not feeling that romantic spark.",
+            "I'm honored you asked! But I'd rather stay good friends.",
+            "I'm focusing a lot on my personal goals at the moment.",
+            "I'm so sorry, I just don't think we're a match in that way.",
+            "You caught me off guard! I'm not really ready to date anyone yet.",
+            "I think we have a great vibe, but I'd like to keep it casual/friendly.",
+            "I value our conversations, but I don't see this going further."
+        ];
+
+        const INITIAL_CRUSH_DATA = [
+            { id: 1, name: "Alex", bio: "Always has a polaroid camera. Loves neon lights.", interest: "Photography", status: "Neutral", active: true },
+            { id: 2, name: "Jordan", bio: "Professional coffee taster. Extremely energetic.", interest: "Coffee Culture", status: "Friendly", active: true },
+            { id: 3, name: "Taylor", bio: "Night owl. Thinks breakfast is best at 10 PM.", interest: "Diners", status: "Neutral", active: true },
+            { id: 4, name: "Riley", bio: "Could talk about prehistoric plants for hours.", interest: "Botany", status: "Shy", active: true },
+            { id: 5, name: "Casey", bio: "Spends weekends hunting for rare vintage books.", interest: "Literature", status: "Neutral", active: true },
+            { id: 6, name: "Quinn", bio: "Amateur astronomer. Knows where the satellites are.", interest: "Star Gazing", status: "Friendly", active: true }
+        ];
+
+        let crushes = [];
+        let confidenceScore = 0;
+        let selectedId = null;
+
+        const screenContent = document.getElementById('screen-content');
+        const scoreDisplay = document.getElementById('score-display');
+        const peopleCount = document.getElementById('people-count');
+        const progressBar = document.getElementById('progress-bar');
+        const feedbackModal = document.getElementById('feedback-modal');
+        const animationLayer = document.getElementById('animation-layer');
+        const gameContainer = document.getElementById('game-container');
+
+        // Main entry point
+        function init() {
+            resetGameState();
+            showStartScreen();
+        }
+
+        // Resets all variables without refreshing the page
+        function resetGameState() {
+            // Deep copy the initial data so we don't mutate the source
+            crushes = INITIAL_CRUSH_DATA.map(c => ({ ...c }));
+            confidenceScore = 0;
+            selectedId = null;
+            
+            // Update UI
+            scoreDisplay.innerText = "0";
+            progressBar.style.width = "100%";
+            peopleCount.innerText = `${crushes.length} People Nearby`;
+        }
+
+        function showStartScreen() {
+            screenContent.innerHTML = `
+                <div class="flex flex-col items-center text-center pt-12 fade-in">
+                    <div class="w-24 h-24 gradient-brand rounded-[2.5rem] flex items-center justify-center mb-10 shadow-2xl rotate-3">
+                        <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                    </div>
+                    <h2 class="text-3xl font-black mb-4 tracking-tight">Confidence Booster</h2>
+                    <p class="text-slate-400 font-medium mb-12 leading-relaxed px-2">
+                        Practice makes perfect. Build rapport, handle the cringe, and grow your social confidence!
+                    </p>
+                    <button onclick="renderList()" class="w-full py-5 gradient-brand text-white font-extrabold rounded-2xl shadow-xl hover:translate-y-[-2px] transition-all active:scale-95">
+                        Start Mingling
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderList() {
+            const active = crushes.filter(c => c.active);
+            const totalStart = INITIAL_CRUSH_DATA.length;
+            const progress = (active.length / totalStart) * 100;
+            progressBar.style.width = `${progress}%`;
+            peopleCount.innerText = `${active.length} People Nearby`;
+
+            if (active.length === 0) {
+                return showFinalStats();
+            }
+
+            let html = `<div class="space-y-4 fade-in">`;
+            active.forEach(crush => {
+                html += `
+                    <div onclick="openProfile(${crush.id})" class="group p-5 bg-white border border-slate-100 rounded-3xl cursor-pointer flex items-center space-x-5 hover:border-indigo-100 hover:bg-slate-50/50 transition-all shadow-sm">
+                        <div class="w-16 h-16 bg-white border-2 border-slate-50 rounded-2xl flex items-center justify-center text-3xl shadow-sm group-hover:scale-105 transition-transform">
+                            ${getAvatar(crush.name)}
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-slate-800 text-lg">${crush.name}</h4>
+                            <div class="flex items-center mt-1">
+                                <span class="text-[10px] font-extrabold uppercase tracking-widest text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-md">
+                                    ${crush.status}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="text-slate-300 group-hover:text-indigo-400 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"/></svg>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            screenContent.innerHTML = html;
+        }
+
+        function openProfile(id) {
+            selectedId = id;
+            const crush = crushes.find(c => c.id === id);
+            
+            screenContent.innerHTML = `
+                <div class="fade-in">
+                    <button onclick="renderList()" class="mb-8 text-slate-400 hover:text-indigo-600 transition-colors flex items-center text-xs font-extrabold uppercase tracking-widest">
+                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7"/></svg>
+                        Back
+                    </button>
+                    
+                    <div class="text-center mb-10">
+                        <div class="w-28 h-28 bg-slate-50 rounded-[2.5rem] mx-auto flex items-center justify-center text-5xl mb-6 shadow-inner relative border-4 border-white">
+                             ${getAvatar(crush.name)}
+                             <div class="absolute -bottom-2 -right-2 px-3 py-1 bg-white border border-slate-100 shadow-md rounded-full text-[10px] font-black uppercase text-indigo-600">
+                                ${crush.status}
+                             </div>
+                        </div>
+                        <h2 class="text-2xl font-black text-slate-900">${crush.name}</h2>
+                        <p class="text-slate-500 text-sm mt-3 px-8 font-medium leading-relaxed">${crush.bio}</p>
+                    </div>
+
+                    <div class="space-y-3">
+                        <button onclick="interact('chat')" class="w-full flex items-center justify-between p-5 bg-slate-50 rounded-2xl hover:bg-white border-2 border-transparent hover:border-indigo-100 transition-all group">
+                            <span class="font-bold text-slate-700">Chat about ${crush.interest}</span>
+                            <span class="text-xl group-hover:scale-125 transition-transform">💬</span>
+                        </button>
+                        <button onclick="interact('compliment')" class="w-full flex items-center justify-between p-5 bg-slate-50 rounded-2xl hover:bg-white border-2 border-transparent hover:border-indigo-100 transition-all group">
+                            <span class="font-bold text-slate-700">Give a Compliment</span>
+                            <span class="text-xl group-hover:scale-125 transition-transform">✨</span>
+                        </button>
+                        <button onclick="askOut()" class="w-full flex items-center justify-between p-5 gradient-brand text-white rounded-2xl shadow-xl hover:shadow-indigo-200 mt-4 active:scale-95 transition-all">
+                            <span class="font-black tracking-tight">Ask them out</span>
+                            <span class="bg-white/20 p-2 rounded-lg">🔥</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function interact(type) {
+            const crush = crushes.find(c => c.id === selectedId);
+            
+            if (crush.status === "Neutral") {
+                crush.status = statusCycle[0];
+            } else {
+                let idx = statusCycle.indexOf(crush.status);
+                crush.status = statusCycle[(idx + 1) % statusCycle.length];
+            }
+
+            let msg = type === 'chat' 
+                ? `The conversation about ${crush.interest.toLowerCase()} was actually pretty good! Your rapport is now: ${crush.status}.`
+                : `You complimented them. They seemed genuinely happy! Your rapport is now: ${crush.status}.`;
+
+            showModal(type === 'chat' ? "Connected!" : "Smooth!", msg, type === 'chat' ? "🤝" : "💎", false);
+        }
+
+        function askOut() {
+            const crush = crushes.find(c => c.id === selectedId);
+            const rejection = rejections[Math.floor(Math.random() * rejections.length)];
+            const embarrassment = embarrassingEvents[Math.floor(Math.random() * embarrassingEvents.length)];
+            
+            confidenceScore++;
+            scoreDisplay.innerText = confidenceScore;
+            
+            const pop = document.createElement('div');
+            pop.className = 'confidence-pop absolute text-indigo-600 font-black text-3xl z-50 pointer-events-none';
+            pop.innerText = '+1 CONFIDENCE';
+            animationLayer.appendChild(pop);
+            setTimeout(() => pop.remove(), 1200);
+
+            gameContainer.classList.add('cringe-flash');
+            setTimeout(() => gameContainer.classList.remove('cringe-flash'), 400);
+
+            crush.active = false;
+            
+            showModal(
+                "Big Move!", 
+                `"${rejection}"\n\nIt was a polite 'no', but you handled the absolute chaos like a pro. Your social skin is getting thicker!`, 
+                "🚀", 
+                true,
+                embarrassment
+            );
+        }
+
+        function showFinalStats() {
+            screenContent.innerHTML = `
+                <div class="flex flex-col items-center text-center pt-8 fade-in">
+                    <div class="text-7xl mb-10">🏆</div>
+                    <h2 class="text-3xl font-black mb-4 tracking-tight">Social Legend</h2>
+                    <p class="text-slate-500 mb-12 font-medium leading-relaxed">
+                        You survived splitting your pants, calling strangers 'Mom', and accidental burps. You took 6 shots and grew 6 times stronger!
+                    </p>
+                    <div class="bg-indigo-50/50 border-2 border-indigo-100 rounded-[2.5rem] p-10 w-full mb-12 shadow-sm">
+                        <div class="text-7xl font-black text-indigo-600 tabular-nums">${confidenceScore}</div>
+                        <div class="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-400 mt-4">Confidence Mastery</div>
+                    </div>
+                    <button onclick="init()" class="w-full py-5 gradient-brand text-white font-bold rounded-2xl shadow-xl transition-all active:scale-95">
+                        Reset Session
+                    </button>
+                </div>
+            `;
+            peopleCount.innerText = "All Shots Taken";
+            progressBar.style.width = "100%";
+        }
+
+        function showModal(title, body, icon, isAskOut, embarrassment = "") {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-body').innerText = body;
+            document.getElementById('modal-icon').innerText = icon;
+            
+            const container = document.getElementById('embarrassment-container');
+            const eText = document.getElementById('embarrassment-text');
+            const card = document.getElementById('modal-card');
+            
+            if (isAskOut) {
+                container.classList.remove('hidden');
+                eText.innerText = embarrassment;
+                card.classList.add('shake');
+                setTimeout(() => card.classList.remove('shake'), 500);
+            } else {
+                container.classList.add('hidden');
+            }
+
+            feedbackModal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            feedbackModal.classList.add('hidden');
+            renderList();
+        }
+
+        function getAvatar(name) {
+            const emojis = ['🧑‍💼', '🧑‍🎨', '🧑‍🎤', '🧑‍🔬', '🧑‍💻', '🧑‍🌾'];
+            const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            return emojis[hash % emojis.length];
+        }
+
+        // Initialize on window load
+        window.onload = init;
+    </script>
+</body>
+</html>

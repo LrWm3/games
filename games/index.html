@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LRWM3 Games | Games</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body class="text-slate-100">
+  <div class="page-bg" aria-hidden="true"></div>
+
+  <header class="sticky top-0 z-50">
+    <nav class="glass mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
+      <a class="flex items-center gap-3 text-lg font-semibold" href="../index.html">
+        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400 text-slate-900">
+          <i class="fa-solid fa-bolt"></i>
+        </span>
+        LRWM3 Games
+      </a>
+      <div class="hidden items-center gap-6 text-sm font-medium sm:flex">
+        <a class="hover:text-amber-300" href="../index.html">Home</a>
+        <a class="hover:text-amber-300" href="index.html">Games</a>
+        <a class="hover:text-amber-300" href="../guides/gemini-website-generator.html">Guides</a>
+        <a class="hover:text-amber-300" href="../about.html">About</a>
+      </div>
+      <details class="sm:hidden">
+        <summary class="cursor-pointer list-none rounded-full border border-slate-600 px-3 py-2 text-sm">Menu</summary>
+        <div class="mt-2 grid gap-2 rounded-2xl border border-slate-700 bg-slate-900/80 p-3 text-sm">
+          <a class="hover:text-amber-300" href="../index.html">Home</a>
+          <a class="hover:text-amber-300" href="index.html">Games</a>
+          <a class="hover:text-amber-300" href="../guides/gemini-website-generator.html">Guides</a>
+          <a class="hover:text-amber-300" href="../about.html">About</a>
+        </div>
+      </details>
+    </nav>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-4 pb-16 pt-10 sm:px-6">
+    <section class="space-y-6">
+      <div>
+        <p class="badge text-amber-300">Games library</p>
+        <h1 class="text-4xl font-semibold leading-tight sm:text-5xl">Playable games and experimental demos.</h1>
+        <p class="mt-4 text-lg text-slate-300">Browse everything in one place. Filter by status, search by title, and launch instantly.</p>
+      </div>
+      <div class="input-shell flex flex-col gap-3 rounded-2xl px-4 py-3 sm:flex-row sm:items-center">
+        <div class="flex flex-1 items-center gap-3">
+          <i class="fa-solid fa-magnifying-glass text-amber-300"></i>
+          <input id="game-search" class="w-full bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none" type="search" placeholder="Search by title or tag" />
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button class="filter-pill active rounded-full px-4 py-2 text-xs font-semibold" data-filter="all">All</button>
+          <button class="filter-pill rounded-full px-4 py-2 text-xs font-semibold" data-filter="playable">Playable</button>
+          <button class="filter-pill rounded-full px-4 py-2 text-xs font-semibold" data-filter="demo">Demos</button>
+        </div>
+      </div>
+      <div id="game-results" class="text-sm text-slate-400"></div>
+    </section>
+
+    <section class="mt-10">
+      <div id="games-grid" class="grid gap-6 md:grid-cols-2"></div>
+    </section>
+
+    <section class="mt-16 rounded-3xl border border-slate-700 bg-slate-950/70 p-8">
+      <div class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div>
+          <p class="badge text-emerald-300">Need a guide?</p>
+          <h2 class="text-2xl font-semibold">Pair your game time with a quick how-to.</h2>
+          <p class="mt-3 text-sm text-slate-300">Guides are short, practical, and designed to help you build or tweak your own projects.</p>
+        </div>
+        <div class="flex flex-col gap-3 text-sm">
+          <a class="link-chip rounded-full px-4 py-2" href="../guides/gemini-website-generator.html">Gemini Website Generator</a>
+          <a class="link-chip rounded-full px-4 py-2" href="../about.html">Learn about LRWM3 Games</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="mx-auto flex max-w-6xl flex-col gap-4 px-4 pb-10 text-sm text-slate-400 sm:px-6">
+    <div class="flex flex-wrap items-center justify-between gap-4 border-t border-slate-800 pt-6">
+      <p>Playable builds and demos are updated regularly.</p>
+      <div class="flex gap-4">
+        <a class="footer-link" href="../index.html">Home</a>
+        <a class="footer-link" href="../guides/gemini-website-generator.html">Guides</a>
+        <a class="footer-link" href="../about.html">About</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const games = [
+      {
+        title: "Amazon DSP Simulator",
+        href: "playable/amazon-dsp-simulator.html",
+        blurb: "Experiment with ad settings and campaign levers.",
+        tags: ["sim", "strategy"],
+        type: "playable"
+      },
+      {
+        title: "Dao Cultivation Game",
+        href: "playable/dao-cultivation-game.html",
+        blurb: "Train disciples and climb toward immortality.",
+        tags: ["idle", "fantasy"],
+        type: "playable"
+      },
+      {
+        title: "Dating Confidence Booster",
+        href: "playable/dating-confidence-booster.html",
+        blurb: "A narrative experiment about social practice.",
+        tags: ["story", "tools"],
+        type: "playable"
+      },
+      {
+        title: "Fauxlatro",
+        href: "playable/fauxlatro.html",
+        blurb: "Combo-driven card duels with arcade tempo.",
+        tags: ["deck", "arcade"],
+        type: "playable"
+      },
+      {
+        title: "Pauls Path to Peace",
+        href: "playable/pauls-path-to-peace.html",
+        blurb: "A lighthearted journey through calming choices.",
+        tags: ["story", "relax"],
+        type: "playable"
+      },
+      {
+        title: "Pepper Farmer",
+        href: "playable/pepper-farmer.html",
+        blurb: "Farm, upgrade, and chase the hottest harvests.",
+        tags: ["farm", "sim"],
+        type: "playable"
+      },
+      {
+        title: "Pet Drafting and Fusing Danmaku",
+        href: "playable/pet-drafting-and-fusing-danmaku.html",
+        blurb: "Draft pets and fuse them into bullet-hell builds.",
+        tags: ["action", "arcade"],
+        type: "playable"
+      },
+      {
+        title: "Swamps and Spikes Love Story",
+        href: "playable/swamps-and-spikes-love-story.html",
+        blurb: "A quirky platformer romance experiment.",
+        tags: ["platformer", "story"],
+        type: "playable"
+      },
+      {
+        title: "TYOOL 2026",
+        href: "playable/tyool-2026.html",
+        blurb: "A future-themed adventure with bold choices.",
+        tags: ["story", "sci-fi"],
+        type: "playable"
+      },
+      {
+        title: "Danmaku Pattern Simulator",
+        href: "demos/danmaku-pattern-simulator.html",
+        blurb: "Visualize and tune bullet patterns.",
+        tags: ["demo", "tools"],
+        type: "demo"
+      },
+      {
+        title: "Minecraft Bullet Hell",
+        href: "demos/minecraft-bullet-hell.html",
+        blurb: "Voxel vibes meet chaotic waves.",
+        tags: ["demo", "arcade"],
+        type: "demo"
+      },
+      {
+        title: "Playing Card Engine",
+        href: "demos/playing-card-engine.html",
+        blurb: "Prototype cards, rules, and combos.",
+        tags: ["demo", "cards"],
+        type: "demo"
+      }
+    ];
+
+    const gameGrid = document.getElementById("games-grid");
+    const searchInput = document.getElementById("game-search");
+    const resultText = document.getElementById("game-results");
+    const filterButtons = Array.from(document.querySelectorAll("[data-filter]"));
+
+    let activeFilter = "all";
+
+    const buildCard = (game) => {
+      const tags = game.tags.map((tag) => `<span class="badge text-slate-400">${tag}</span>`).join(" ");
+      const label = game.type === "playable" ? "Playable" : "Demo";
+      const labelClass = game.type === "playable" ? "text-amber-300" : "text-emerald-300";
+      return `
+        <a class="card rounded-3xl p-6" href="${game.href}">
+          <div class="flex items-center justify-between">
+            <p class="text-lg font-semibold">${game.title}</p>
+            <span class="badge ${labelClass}">${label}</span>
+          </div>
+          <p class="mt-2 text-sm text-slate-300">${game.blurb}</p>
+          <div class="mt-4 flex flex-wrap gap-2">${tags}</div>
+        </a>
+      `;
+    };
+
+    const renderGames = () => {
+      const term = searchInput.value.trim().toLowerCase();
+      const filtered = games.filter((game) => {
+        const matchesFilter = activeFilter === "all" || game.type === activeFilter;
+        const matchesTerm = !term ||
+          game.title.toLowerCase().includes(term) ||
+          game.tags.some((tag) => tag.toLowerCase().includes(term));
+        return matchesFilter && matchesTerm;
+      });
+
+      gameGrid.innerHTML = filtered.map(buildCard).join("");
+      resultText.textContent = filtered.length
+        ? `${filtered.length} result${filtered.length === 1 ? "" : "s"} found.`
+        : "No matches. Try a different filter or search term.";
+    };
+
+    filterButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        filterButtons.forEach((btn) => btn.classList.remove("active"));
+        button.classList.add("active");
+        activeFilter = button.dataset.filter;
+        renderGames();
+      });
+    });
+
+    searchInput.addEventListener("input", renderGames);
+
+    renderGames();
+  </script>
+</body>
+</html>

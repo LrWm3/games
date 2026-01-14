@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swamps & Spikes: The Dating Sim</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 1s ease;
+        }
+
+        .swamp-bg {
+            background: linear-gradient(135deg, #2d5a27 0%, #1a3c15 100%);
+        }
+
+        .spike-bg {
+            background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+        }
+
+        .dialog-box {
+            background: rgba(0, 0, 0, 0.85);
+            border: 3px solid #ed64a6;
+            box-shadow: 0 0 20px rgba(237, 100, 166, 0.3);
+        }
+
+        .choice-btn {
+            transition: all 0.2s;
+            transform: scale(1);
+        }
+
+        .choice-btn:hover {
+            transform: scale(1.05);
+            background-color: #ed64a6;
+        }
+
+        .character-float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+    </style>
+</head>
+<body class="gradient-bg flex items-center justify-center">
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="text-center z-10 p-8">
+        <h1 class="text-6xl font-bold mb-4 text-pink-400 drop-shadow-lg">Swamps & Spikes</h1>
+        <p class="text-xl mb-8 italic">Who will capture your pixelated heart?</p>
+        <button onclick="startGame()" class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-4 px-12 rounded-full text-2xl shadow-xl transition-all hover:scale-110">
+            START ADVENTURE
+        </button>
+    </div>
+
+    <!-- Character Selection -->
+    <div id="char-selection" class="hidden grid grid-cols-1 md:grid-cols-2 gap-10 p-8 w-full max-w-5xl z-10">
+        <div onclick="selectChar('shrek')" class="bg-black/40 p-8 rounded-3xl border-4 border-green-500 cursor-pointer hover:bg-green-900/40 transition-all group text-center">
+            <div class="mb-6 h-64 flex items-center justify-center">
+                <svg viewBox="0 0 100 100" class="w-48 h-48">
+                    <!-- Shrek SVG Placeholder -->
+                    <circle cx="50" cy="40" r="35" fill="#8cb04e" />
+                    <path d="M30 25 Q20 10 15 25" fill="#8cb04e" />
+                    <path d="M70 25 Q80 10 85 25" fill="#8cb04e" />
+                    <circle cx="35" cy="35" r="5" fill="white" />
+                    <circle cx="65" cy="35" r="5" fill="white" />
+                    <circle cx="35" cy="35" r="2" fill="black" />
+                    <circle cx="65" cy="35" r="2" fill="black" />
+                    <path d="M40 60 Q50 70 60 60" stroke="black" stroke-width="2" fill="none" />
+                </svg>
+            </div>
+            <h2 class="text-3xl font-bold text-green-400 mb-2">Shrek</h2>
+            <p class="text-gray-300">The Ogre with layers. He likes long walks in the mud and privacy.</p>
+        </div>
+
+        <div onclick="selectChar('boshy')" class="bg-black/40 p-8 rounded-3xl border-4 border-yellow-400 cursor-pointer hover:bg-yellow-900/40 transition-all group text-center">
+            <div class="mb-6 h-64 flex items-center justify-center">
+                <svg viewBox="0 0 100 100" class="w-48 h-48">
+                    <!-- Boshy SVG -->
+                    <circle cx="50" cy="50" r="30" fill="#ffd700" />
+                    <circle cx="40" cy="45" r="4" fill="black" />
+                    <circle cx="60" cy="45" r="4" fill="black" />
+                    <path d="M40 65 L60 65" stroke="black" stroke-width="3" />
+                    <!-- Tiny legs/arms -->
+                    <path d="M40 80 L35 95" stroke="#ffd700" stroke-width="4" />
+                    <path d="M60 80 L65 95" stroke="#ffd700" stroke-width="4" />
+                </svg>
+            </div>
+            <h2 class="text-3xl font-bold text-yellow-400 mb-2">Boshy</h2>
+            <p class="text-gray-300">The hardest guy to date. He's fast, fragile, and absolutely frustrating.</p>
+        </div>
+    </div>
+
+    <!-- Game View -->
+    <div id="game-view" class="hidden w-full h-full flex flex-col items-center justify-between p-4 md:p-12 relative">
+        
+        <!-- Character Sprite Container -->
+        <div id="sprite-container" class="flex-grow flex items-center justify-center character-float w-full max-w-xl">
+            <!-- Dynamic SVG inserted here -->
+        </div>
+
+        <!-- Dialog Box -->
+        <div class="dialog-box w-full max-w-4xl p-6 rounded-2xl relative mb-4">
+            <div id="char-name" class="absolute -top-6 left-8 bg-pink-500 px-6 py-1 rounded-full font-bold text-xl">Name</div>
+            <div id="dialog-text" class="text-xl md:text-2xl leading-relaxed h-24 overflow-y-auto pr-4 mb-6">
+                Loading dialogue...
+            </div>
+            
+            <!-- Choices Container -->
+            <div id="choices" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Buttons inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- End Screen -->
+    <div id="end-screen" class="hidden text-center z-10 p-8">
+        <h1 id="end-title" class="text-6xl font-bold mb-4">Ending Title</h1>
+        <p id="end-desc" class="text-xl mb-8">Ending description goes here.</p>
+        <button onclick="location.reload()" class="bg-white text-black font-bold py-3 px-8 rounded-full hover:bg-gray-200 transition-all">
+            PLAY AGAIN
+        </button>
+    </div>
+
+    <script>
+        const state = {
+            char: null,
+            scene: 'start',
+            affinity: 0,
+            isTransitioning: false
+        };
+
+        const sprites = {
+            shrek: (mood) => `
+                <svg viewBox="0 0 100 100" class="w-full h-full max-h-[60vh]">
+                    <circle cx="50" cy="45" r="35" fill="#8cb04e" />
+                    <path d="M30 30 Q20 15 15 30" fill="#8cb04e" />
+                    <path d="M70 30 Q80 15 85 30" fill="#8cb04e" />
+                    <circle cx="38" cy="40" r="4" fill="white" />
+                    <circle cx="62" cy="40" r="4" fill="white" />
+                    <circle cx="38" cy="40" r="2" fill="black" />
+                    <circle cx="62" cy="40" r="2" fill="black" />
+                    ${mood === 'happy' ? '<path d="M35 60 Q50 75 65 60" stroke="black" stroke-width="3" fill="none" />' : ''}
+                    ${mood === 'angry' ? '<path d="M35 65 Q50 55 65 65" stroke="black" stroke-width="3" fill="none" />' : ''}
+                    ${mood === 'blush' ? '<circle cx="30" cy="55" r="5" fill="#ff9999" opacity="0.6" /><circle cx="70" cy="55" r="5" fill="#ff9999" opacity="0.6" /><path d="M40 65 Q50 70 60 65" stroke="black" stroke-width="2" fill="none" />' : ''}
+                    ${mood === 'neutral' ? '<path d="M40 65 L60 65" stroke="black" stroke-width="2" />' : ''}
+                </svg>
+            `,
+            boshy: (mood) => `
+                <svg viewBox="0 0 100 100" class="w-full h-full max-h-[60vh]">
+                    <circle cx="50" cy="50" r="30" fill="#ffd700" />
+                    <circle cx="42" cy="45" r="3" fill="black" />
+                    <circle cx="58" cy="45" r="3" fill="black" />
+                    ${mood === 'angry' ? '<path d="M35 35 L45 42" stroke="black" stroke-width="2" /><path d="M65 35 L55 42" stroke="black" stroke-width="2" />' : ''}
+                    ${mood === 'happy' ? '<path d="M40 60 Q50 70 60 60" stroke="black" stroke-width="3" fill="none" />' : ''}
+                    ${mood === 'surprised' ? '<circle cx="50" cy="65" r="5" fill="black" />' : ''}
+                    ${mood === 'neutral' ? '<path d="M40 65 L60 65" stroke="black" stroke-width="3" />' : ''}
+                    <!-- Legs -->
+                    <path d="M45 78 L45 95" stroke="#ffd700" stroke-width="5" />
+                    <path d="M55 78 L55 95" stroke="#ffd700" stroke-width="5" />
+                    <!-- Spikes around if angry -->
+                    ${mood === 'angry' ? '<path d="M10 50 L20 45 L20 55 Z" fill="red" /><path d="M80 50 L90 45 L90 55 Z" fill="red" />' : ''}
+                </svg>
+            `
+        };
+
+        const gameScript = {
+            shrek: {
+                start: {
+                    name: "Shrek",
+                    mood: "angry",
+                    text: "WHAT ARE YOU DOING IN MY SWAMP?!",
+                    choices: [
+                        { text: "I'm just here for the view... and you.", next: "flirt1", score: 2 },
+                        { text: "Sorry, I'm looking for the bathroom.", next: "fail1", score: 0 }
+                    ]
+                },
+                flirt1: {
+                    name: "Shrek",
+                    mood: "neutral",
+                    text: "The view? It's all mud and toadstools. You're a strange one, aren't ya?",
+                    choices: [
+                        { text: "Like an onion, I have many layers of interest.", next: "onion", score: 3 },
+                        { text: "I think the mud brings out your eyes.", next: "eyes", score: 2 }
+                    ]
+                },
+                fail1: {
+                    name: "Shrek",
+                    mood: "angry",
+                    text: "Bathroom's behind the boulder. Now get out before I make a rug out of ya!",
+                    choices: [
+                        { text: "Wait! I have waffles!", next: "waffles", score: 2 },
+                        { text: "Okay, okay, I'm leaving.", next: "end_bad", score: 0 }
+                    ]
+                },
+                onion: {
+                    name: "Shrek",
+                    mood: "blush",
+                    text: "Layers... you understand. Most people just see the outside and run away screaming.",
+                    choices: [
+                        { text: "I'd never run from you.", next: "confession", score: 5 },
+                        { text: "To be fair, you are quite loud.", next: "neutral_path", score: 1 }
+                    ]
+                },
+                eyes: {
+                    name: "Shrek",
+                    mood: "happy",
+                    text: "Heh. You've got a silver tongue. Better than that talking donkey I know.",
+                    choices: [
+                        { text: "Let's leave him behind and go for a stroll.", next: "confession", score: 3 },
+                        { text: "Donkey seems nice though.", next: "neutral_path", score: 0 }
+                    ]
+                },
+                waffles: {
+                    name: "Shrek",
+                    mood: "happy",
+                    text: "Waffles? Well... I suppose I could spare a minute. But don't get comfortable!",
+                    choices: [
+                        { text: "I'll make them every morning for you.", next: "confession", score: 5 },
+                        { text: "They're slightly burnt.", next: "fail1", score: -1 }
+                    ]
+                },
+                neutral_path: {
+                    name: "Shrek",
+                    mood: "neutral",
+                    text: "I guess you're alright. For a human. We can be friends, I suppose.",
+                    choices: [
+                        { text: "[Ending: The Friendzone]", next: "end_friend", score: 0 }
+                    ]
+                },
+                confession: {
+                    name: "Shrek",
+                    mood: "blush",
+                    text: "I didn't think I'd find someone who actually liked... well, this. You want to stay? In the swamp?",
+                    choices: [
+                        { text: "Forever.", next: "end_good", score: 10 },
+                        { text: "Maybe just for the weekend.", next: "end_friend", score: 0 }
+                    ]
+                }
+            },
+            boshy: {
+                start: {
+                    name: "Boshy",
+                    mood: "neutral",
+                    text: "Be careful where you step. One pixel off and it's GAME OVER.",
+                    choices: [
+                        { text: "I'm an expert at navigating difficult hearts.", next: "smooth", score: 2 },
+                        { text: "Why are there spikes everywhere?!", next: "complain", score: 0 }
+                    ]
+                },
+                smooth: {
+                    name: "Boshy",
+                    mood: "surprised",
+                    text: "Whoa, that was a smooth line. Most people just scream and reset.",
+                    choices: [
+                        { text: "I never reset when it comes to you.", next: "love_hard", score: 3 },
+                        { text: "I've got infinite lives for this date.", next: "gamer", score: 2 }
+                    ]
+                },
+                complain: {
+                    name: "Boshy",
+                    mood: "angry",
+                    text: "If you can't handle the spikes, you can't handle the Boshy! Watch out!",
+                    choices: [
+                        { text: "*Dodge the falling cherry*", next: "dodge", score: 3 },
+                        { text: "*Get hit and explode*", next: "end_bad", score: 0 }
+                    ]
+                },
+                dodge: {
+                    name: "Boshy",
+                    mood: "happy",
+                    text: "Nice reaction time! You might actually survive the first stage of this date.",
+                    choices: [
+                        { text: "What's the boss fight like?", next: "boss", score: 2 },
+                        { text: "I'm ready for the next level.", next: "love_hard", score: 3 }
+                    ]
+                },
+                gamer: {
+                    name: "Boshy",
+                    mood: "neutral",
+                    text: "Infinite lives? Cheater. But... I respect the hustle.",
+                    choices: [
+                        { text: "Let's find a save point together.", next: "love_hard", score: 4 },
+                        { text: "I'm actually using a TAS.", next: "end_bad", score: -10 }
+                    ]
+                },
+                boss: {
+                    name: "Boshy",
+                    mood: "angry",
+                    text: "The boss is my father. He's a giant floating eyeball. He's very judgmental.",
+                    choices: [
+                        { text: "I'll take him down for you.", next: "end_good", score: 5 },
+                        { text: "Sounds too hard. I quit.", next: "end_bad", score: 0 }
+                    ]
+                },
+                love_hard: {
+                    name: "Boshy",
+                    mood: "blush",
+                    text: "It's rare to find someone who doesn't tilt after five minutes. You're... you're pretty 'Perfect' rank.",
+                    choices: [
+                        { text: "You're the only trophy I want.", next: "end_good", score: 10 },
+                        { text: "Can we just be friends?", next: "end_friend", score: 0 }
+                    ]
+                }
+            }
+        };
+
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('char-selection').classList.remove('hidden');
+        }
+
+        function selectChar(char) {
+            state.char = char;
+            state.scene = 'start';
+            state.affinity = 0;
+            
+            document.body.classList.remove('gradient-bg');
+            document.body.classList.add(char === 'shrek' ? 'swamp-bg' : 'spike-bg');
+            
+            document.getElementById('char-selection').classList.add('hidden');
+            document.getElementById('game-view').classList.remove('hidden');
+            
+            updateScene();
+        }
+
+        function updateScene() {
+            const currentData = gameScript[state.char][state.scene];
+            
+            // Update Name and Text
+            document.getElementById('char-name').innerText = currentData.name;
+            document.getElementById('char-name').style.backgroundColor = state.char === 'shrek' ? '#48bb78' : '#ecc94b';
+            
+            typeWriter(currentData.text);
+            
+            // Update Sprite
+            const spriteContainer = document.getElementById('sprite-container');
+            spriteContainer.innerHTML = sprites[state.char](currentData.mood);
+            
+            if (currentData.mood === 'angry') {
+                spriteContainer.classList.add('shake');
+                setTimeout(() => spriteContainer.classList.remove('shake'), 500);
+            }
+
+            // Update Choices
+            const choicesContainer = document.getElementById('choices');
+            choicesContainer.innerHTML = '';
+            
+            currentData.choices.forEach(choice => {
+                const btn = document.createElement('button');
+                btn.className = "choice-btn bg-white/10 hover:bg-white/20 text-white p-4 rounded-xl text-left border border-white/20";
+                btn.innerText = choice.text;
+                btn.onclick = () => handleChoice(choice);
+                choicesContainer.appendChild(btn);
+            });
+        }
+
+        function typeWriter(text) {
+            const element = document.getElementById('dialog-text');
+            element.innerHTML = '';
+            let i = 0;
+            const speed = 30;
+            
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                }
+            }
+            type();
+        }
+
+        function handleChoice(choice) {
+            state.affinity += choice.score;
+            state.scene = choice.next;
+            
+            if (state.scene.startsWith('end_')) {
+                showEnding(state.scene);
+            } else {
+                updateScene();
+            }
+        }
+
+        function showEnding(type) {
+            document.getElementById('game-view').classList.add('hidden');
+            document.getElementById('end-screen').classList.remove('hidden');
+            
+            const title = document.getElementById('end-title');
+            const desc = document.getElementById('end-desc');
+            
+            if (type === 'end_good') {
+                title.innerText = "❤️ TRUE LOVE ❤️";
+                title.className = "text-6xl font-bold mb-4 text-pink-400";
+                desc.innerText = state.char === 'shrek' 
+                    ? "You and Shrek live happily ever after in the swamp. It's smelly, but it's home." 
+                    : "You and Boshy cleared the game of life. You're now the ultimate power couple!";
+            } else if (type === 'end_friend') {
+                title.innerText = "🤝 FRIENDZONE 🤝";
+                title.className = "text-6xl font-bold mb-4 text-blue-400";
+                desc.innerText = state.char === 'shrek'
+                    ? "Shrek appreciates you, but he still prefers his privacy. You're invited to waffles once a year."
+                    : "Boshy likes you, but he's too focused on speedrunning to have a relationship.";
+            } else {
+                title.innerText = "💀 GAME OVER 💀";
+                title.className = "text-6xl font-bold mb-4 text-red-600";
+                desc.innerText = state.char === 'shrek'
+                    ? "You were kicked out of the swamp. Shrek doesn't want to see you again."
+                    : "You touched a spike. You exploded into a thousand tiny pixels. Try again?";
+            }
+        }
+    </script>
+</body>
+</html>

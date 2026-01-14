@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Canvas Migration Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .step-number { font-size: 0.8rem; font-weight: 800; background: #3b82f6; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; }
+        .code-block { background: #1e293b; color: #f8fafc; padding: 1rem; border-radius: 0.5rem; border: 1px solid #334155; font-family: monospace; font-size: 0.9rem; position: relative; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+    <!-- Hero Header -->
+    <div class="bg-white border-b border-slate-200 pt-16 pb-12">
+        <div class="max-w-3xl mx-auto px-6">
+            <h1 class="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">Gemini Canvas <span class="text-blue-600">Site Porting</span></h1>
+            <p class="text-lg text-slate-600">The fastest way to move Squarespace sites to a free self-hosted environment while keeping your links intact.</p>
+        </div>
+    </div>
+
+    <main class="max-w-3xl mx-auto px-6 py-12">
+        
+        <!-- Section: Gemini Workflow -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-8 flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles text-blue-500"></i> Part 1: Generating the Site</h2>
+            
+            <div class="space-y-6">
+                <div class="flex items-start">
+                    <span class="step-number mt-1">1</span>
+                    <div>
+                        <p class="font-semibold text-slate-900">Access Gemini</p>
+                        <p class="text-slate-600">Navigate to <a href="https://gemini.google.com" target="_blank" class="text-blue-600 hover:underline">gemini.google.com</a> and sign in.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <span class="step-number mt-1">2</span>
+                    <div>
+                        <p class="font-semibold text-slate-900">Turn on Canvas</p>
+                        <p class="text-slate-600">In the chat box, look for the <strong>"Tool"</strong> expander at the bottom. Select <strong>"Canvas"</strong> to enable the side-by-side site previewer.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <span class="step-number mt-1">3</span>
+                    <div>
+                        <p class="font-semibold text-slate-900">Prepare Assets</p>
+                        <p class="text-slate-600">Copy the URL of your Squarespace site. Optionally, upload a screenshot for the AI to "see" specific design elements.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <span class="step-number mt-1">4</span>
+                    <div>
+                        <p class="font-semibold text-slate-900">Paste the Porting Prompt</p>
+                        <div class="code-block mt-3 group">
+                            <button onclick="copyToClipboard('prompt')" class="absolute top-2 right-2 text-slate-400 hover:text-white transition opacity-0 group-hover:opacity-100"><i class="fa-regular fa-copy"></i></button>
+                            <span id="prompt">
+"I am porting my site from Squarespace to self-hosted. Recreate the page at [PASTE_URL_HERE] in a single file using Tailwind CSS, Vanilla JS, and FontAwesome. 
+
+CRITICAL: Map the navigation links to end in .html (e.g., /services becomes services.html) so I can host these files while preserving my original link structure. Open this in Canvas."</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <span class="step-number mt-1">5</span>
+                    <div>
+                        <p class="font-semibold text-slate-900">Review & Save</p>
+                        <p class="text-slate-600 mb-2">Review the site in Gemini. Once ready, click the download button in the editor.</p>
+                        <div class="p-3 bg-blue-50 border-l-4 border-blue-500 text-sm text-blue-700">
+                            <strong>Local Organization:</strong> Create a folder on your computer named <code>site/</code>. Save each page inside as <code>site/&lt;page_name&gt;.html</code> (e.g., <code>site/index.html</code>, <code>site/about.html</code>).
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <span class="step-number mt-1">6</span>
+                    <div>
+                        <p class="font-semibold text-slate-900 text-blue-600 italic">Repeat this for each page you would like to port.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 p-6 bg-amber-50 border border-amber-200 rounded-lg text-amber-900">
+                <p class="font-bold mb-2 flex items-center gap-2"><i class="fa-solid fa-image"></i> Handling Images</p>
+                <p class="text-sm mb-3">Gemini cannot save your images for you. For full recreation, you must save images from your original site locally.</p>
+                <p class="text-sm font-semibold italic">Ask the AI agent: "How can I save the images from my current site locally so they match the HTML paths you just generated?"</p>
+            </div>
+        </section>
+
+        <!-- Section: Testing & Hosting -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-8 flex items-center gap-2"><i class="fa-solid fa-cloud-arrow-up text-blue-500"></i> Part 2: Preview & Hosting</h2>
+            
+            <div class="space-y-6 mb-8">
+                <div class="bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
+                    <h3 class="font-bold mb-2">1. Local Verification</h3>
+                    <p class="text-slate-600 text-sm">You can open your <code>.html</code> files locally in any browser to see if they look right and check if the navigation between pages works.</p>
+                </div>
+
+                <div class="bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
+                    <h3 class="font-bold mb-2">2. Deployment</h3>
+                    <p class="text-slate-600 text-sm mb-4">Once ready, proceed to upload the <code>site/</code> folder to Cloudflare Pages or your own server to host for free.</p>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <a href="https://developers.cloudflare.com/pages/get-started/direct-upload/" target="_blank" class="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded hover:bg-white transition text-sm">
+                            <span>Cloudflare Step-by-Step</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square text-slate-400"></i>
+                        </a>
+                        <a href="https://developers.cloudflare.com/dns/zone-setups/full-setup/setup/" target="_blank" class="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded hover:bg-white transition text-sm">
+                            <span>Move DNS (Squarespace to Cloudflare)</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square text-slate-400"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 text-slate-300 p-8 rounded-2xl">
+                <h3 class="text-white font-bold mb-4">Why Cloudflare Pages?</h3>
+                <ul class="space-y-3 text-sm">
+                    <li class="flex gap-2"><i class="fa-solid fa-check text-green-500"></i> $0 hosting (versus Squarespace's monthly fee)</li>
+                    <li class="flex gap-2"><i class="fa-solid fa-check text-green-500"></i> Faster page load times globally</li>
+                    <li class="flex gap-2"><i class="fa-solid fa-check text-green-500"></i> Automated SSL (https) included</li>
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <footer class="text-center py-12 border-t border-slate-200 text-slate-400 text-xs">
+        Built with Gemini Canvas Guide Template &bull; 2024
+    </footer>
+
+    <script>
+        function copyToClipboard(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            
+            const btn = event.currentTarget;
+            btn.innerHTML = '<i class="fa-solid fa-check text-green-500"></i>';
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

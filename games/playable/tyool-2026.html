@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TYOOL 2026 - The Final Grind</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body {
+            background-color: #010101;
+            color: #d4d4d8;
+            font-family: 'JetBrains+Mono', monospace;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .stat-bar {
+            transition: width 0.05s linear;
+        }
+
+        .event-log {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .event-log::-webkit-scrollbar { display: none; }
+
+        .glitch-text {
+            text-shadow: 1px 0 #ff00ea, -1px 0 #00fff2;
+        }
+
+        .exponential-glow {
+            box-shadow: inset 0 0 15px rgba(16, 185, 129, 0.2);
+            border-color: #10b981 !important;
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .danger {
+            animation: pulse-red 0.3s infinite;
+            color: #f87171;
+        }
+
+        .btn-press {
+            transition: transform 0.1s;
+        }
+        .btn-press:active {
+            transform: scale(0.92);
+        }
+
+        /* Emoji Particle Style */
+        .emoji-particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 100;
+            font-size: 20px;
+            animation: particle-fly 0.8s ease-out forwards;
+        }
+
+        @keyframes particle-fly {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--x), var(--y)) scale(0.5); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="flex flex-col select-none">
+
+    <div id="game-container" class="max-w-7xl mx-auto w-full h-full flex flex-col p-2 md:p-4">
+        <!-- Header -->
+        <header class="flex justify-between items-center border-b border-zinc-900 pb-2 mb-3">
+            <div class="flex items-center gap-3">
+                <h1 class="text-xl font-bold glitch-text italic tracking-tighter">TYOOL 2026</h1>
+                <span class="hidden sm:inline text-[8px] border border-zinc-700 px-1 rounded text-zinc-500 uppercase">SYS_STRESS_v2.7</span>
+            </div>
+            <div class="text-right flex items-center gap-6">
+                <div class="hidden sm:block">
+                    <div id="speed-label" class="text-[9px] text-zinc-500 font-bold mb-1 uppercase tracking-widest">1.0X Speed</div>
+                    <div class="w-32 bg-zinc-900 h-1 rounded-full overflow-hidden">
+                        <div id="year-progress" class="bg-blue-600 h-full w-0"></div>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end">
+                    <div id="display-date" class="text-2xl font-bold text-blue-500 leading-none">JAN 01</div>
+                    <div id="day-counter" class="text-[10px] text-zinc-600 font-bold uppercase">DAY: 001</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <div class="flex flex-col md:flex-row flex-grow gap-3 min-h-0">
+            
+            <!-- Dashboard (75%) -->
+            <div class="flex-[3] flex flex-col gap-3 min-h-0">
+                <div class="bg-zinc-900/10 p-3 rounded-xl border border-zinc-800/50 flex-grow overflow-y-auto">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="stats-list">
+                        <!-- Stats Injected -->
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-zinc-900 flex flex-wrap gap-4 text-[8px] font-bold uppercase tracking-[0.2em] text-zinc-700">
+                        <div>Efficiency: <span id="momentum-val" class="text-zinc-500">1.00</span></div>
+                        <div>Entropy: <span id="entropy-val" class="text-zinc-500">1.00</span></div>
+                        <div>Current Tick: <span id="clock-val" class="text-zinc-500">500ms</span></div>
+                    </div>
+                </div>
+
+                <!-- Action Grid -->
+                <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    <button onmousedown="takeAction('work', event)" class="btn-press bg-zinc-900 hover:bg-zinc-800 p-4 rounded-lg border border-zinc-800 transition-all group">
+                        <div class="text-[10px] font-bold group-hover:text-blue-400">GRIND</div>
+                        <div class="text-[7px] text-zinc-600 uppercase">+$Sav/-Hlt</div>
+                    </button>
+                    <button onmousedown="takeAction('rest', event)" class="btn-press bg-zinc-900 hover:bg-zinc-800 p-4 rounded-lg border border-zinc-800 transition-all group">
+                        <div class="text-[10px] font-bold group-hover:text-green-400">RECUP</div>
+                        <div class="text-[7px] text-zinc-600 uppercase">+Hlt/-$Sav</div>
+                    </button>
+                    <button onmousedown="takeAction('social', event)" class="btn-press bg-zinc-900 hover:bg-zinc-800 p-4 rounded-lg border border-zinc-800 transition-all group">
+                        <div class="text-[10px] font-bold group-hover:text-purple-400">SOCIAL</div>
+                        <div class="text-[7px] text-zinc-600 uppercase">+Frn/-Snt</div>
+                    </button>
+                    <button onmousedown="takeAction('therapy', event)" class="btn-press bg-zinc-900 hover:bg-zinc-800 p-4 rounded-lg border border-zinc-800 transition-all group">
+                        <div class="text-[10px] font-bold group-hover:text-pink-400">PSYCHE</div>
+                        <div class="text-[7px] text-zinc-600 uppercase">+Snt/-$Cdt</div>
+                    </button>
+                    <button onmousedown="takeAction('invest', event)" class="btn-press bg-zinc-900 hover:bg-zinc-800 p-4 rounded-lg border border-zinc-800 transition-all group">
+                        <div class="text-[10px] font-bold group-hover:text-yellow-400">SPEC</div>
+                        <div class="text-[7px] text-zinc-600 uppercase">+$Cdt/-$Sav</div>
+                    </button>
+                    <button onmousedown="takeAction('exercise', event)" class="btn-press bg-zinc-900 hover:bg-zinc-800 p-4 rounded-lg border border-zinc-800 transition-all group">
+                        <div class="text-[10px] font-bold group-hover:text-orange-400">VIGOR</div>
+                        <div class="text-[7px] text-zinc-600 uppercase">+Hlt/-Snt</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Terminal (25%) -->
+            <div class="flex-1 flex flex-col min-h-[140px] md:min-h-0 bg-black border border-zinc-900 rounded-xl p-3 relative shadow-xl">
+                <div class="absolute top-0 left-0 w-full h-0.5 bg-zinc-900">
+                    <div id="dilation-bar" class="h-full bg-blue-900 w-0 transition-all duration-100"></div>
+                </div>
+                <h2 class="text-[9px] font-bold text-zinc-800 mb-2 uppercase tracking-tighter">Live_Event_Feed</h2>
+                <div id="event-log" class="event-log overflow-y-auto flex-grow text-[10px] space-y-1.5 pr-1 font-mono leading-tight">
+                    <div class="text-zinc-800">>> JAN_01: LIFE_CYCLE_START</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- End Screen -->
+        <div id="end-screen" class="hidden fixed inset-0 bg-black/98 z-50 flex items-center justify-center p-4">
+            <div class="max-w-xl w-full bg-zinc-950 border border-zinc-800 p-10 rounded-2xl shadow-2xl text-center">
+                <h1 id="end-title" class="text-4xl font-bold mb-4 italic uppercase glitch-text">Simulation Ended</h1>
+                <p id="end-summary" class="text-zinc-500 mb-8 text-sm leading-relaxed"></p>
+                <div id="end-stats" class="grid grid-cols-2 gap-3 mb-10"></div>
+                <button onclick="handleRestart()" class="w-full bg-white text-black font-bold py-5 rounded-lg text-xs uppercase tracking-widest hover:bg-zinc-200 transition">Initialize New Cycle</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="fixed inset-0 bg-black z-40 flex items-center justify-center p-6 text-center">
+        <div class="max-w-lg">
+            <h1 class="text-6xl font-bold glitch-text mb-6 italic tracking-tighter">TYOOL 2026</h1>
+            <div class="text-zinc-400 space-y-4 mb-10 text-sm">
+                <p>Stats decay exponentially based on Entropy.<br>Benefits compound exponentially based on Momentum.</p>
+                <p>The news waits for no one. <br><span class="text-zinc-600 text-[10px] uppercase">Survive until January 1, 2027.</span></p>
+            </div>
+            <button onclick="startGame()" class="bg-zinc-100 text-black px-16 py-4 rounded-full font-bold hover:bg-white transition text-[11px] uppercase tracking-widest shadow-lg">Begin Simulation</button>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            day: 0,
+            isGameOver: false,
+            paused: true,
+            stats: {
+                credit: 100,
+                savings: 100,
+                sanity: 100,
+                health: 100,
+                credibility: 100 
+            },
+            momentum: 1.0,
+            entropy: 1.0,
+            eventHistory: new Set()
+        };
+
+        const config = {
+            baseTick: 500, // Jan 1 = 500ms
+            baseDecay: 1.45,
+            escapeThreshold: 200,
+            growthFactor: 0.05,
+            statMeta: {
+                credit: { name: "Credit", unit: "pt", ranks: [
+                    {min: -999, label: "Defaulted", class: "text-red-700"},
+                    {min: 300, label: "Consumer", class: "text-zinc-600"},
+                    {min: 1000, label: "Node", class: "text-blue-500"},
+                    {min: 2000, label: "Ghost Asset", class: "ascended"}
+                ]},
+                savings: { name: "Savings", prefix: "$", mult: 1000, ranks: [
+                    {min: -999, label: "Insolvent", class: "text-red-700"},
+                    {min: 0, label: "Precariat", class: "text-zinc-600"},
+                    {min: 2000, label: "Capitalist", class: "text-blue-500"},
+                    {min: 10000, label: "Plutocrat", class: "ascended"}
+                ]},
+                sanity: { name: "Psych", unit: "%", ranks: [
+                    {min: -999, label: "Fractured", class: "text-red-700"},
+                    {min: 40, label: "Stable", class: "text-zinc-600"},
+                    {min: 100, label: "Cold Focus", class: "text-blue-500"},
+                    {min: 500, label: "Nirvana", class: "ascended"}
+                ]},
+                health: { name: "Health", unit: "y", base: 30, ranks: [
+                    {min: -999, label: "Terminal", class: "text-red-700"},
+                    {min: 60, label: "Normal", class: "text-zinc-600"},
+                    {min: 120, label: "Immortalist", class: "text-blue-500"},
+                    {min: 500, label: "Eternal", class: "ascended"}
+                ]},
+                credibility: { name: "Friends", mult: 0.1, ranks: [
+                    {min: -999, label: "Cancelled", class: "text-red-700"},
+                    {min: 0, label: "Ghost", class: "text-zinc-600"},
+                    {min: 100, label: "Influencer", class: "text-blue-500"},
+                    {min: 500, label: "Prophet", class: "ascended"}
+                ]}
+            },
+            emojis: {
+                work: ['💰', '💼', '🏢', '☕', '📉'],
+                rest: ['💤', '🛌', '🔋', '🕯️', '😴'],
+                social: ['👥', '📱', '🤳', '🍻', '💬'],
+                therapy: ['🧠', '🧘', '🌿', '💊', '✨'],
+                invest: ['📈', '💎', '🚀', '🎰', '🤑'],
+                exercise: ['🏋️', '🏃', '🍎', '💦', '💪']
+            },
+            events: [
+                { day: 25, title: "Rent Optimization", impact: { savings: -30 }, text: "Your dynamic lease increased to meet market demand." },
+                { day: 60, title: "Social Leak", impact: { credibility: -40, sanity: -20 }, text: "A deepfake video of you sparked a PR nightmare." },
+                { day: 100, title: "Q1 Recession", impact: { savings: -80, credit: -30 }, text: "Market sentiment dropped through the floor." },
+                { day: 160, title: "Blackout", impact: { health: -15, sanity: -20 }, text: "The power grid buckled under the heat dome." },
+                { day: 240, title: "Neural Patch", impact: { savings: -50, health: 15 }, text: "Mandatory firmware update for the brain-link." },
+                { day: 310, title: "Election Wave", impact: { sanity: -90 }, text: "24/7 hyper-targeted disinformation bombardment." },
+                { day: 350, title: "End Tax", impact: { savings: -100, credit: -50 }, text: "The house collection is mandatory this month." }
+            ]
+        };
+
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            state.paused = false;
+            gameLoop();
+        }
+
+        function handleRestart() {
+            window.location.reload();
+        }
+
+        function createEmojiExplosion(type, x, y) {
+            const pool = config.emojis[type];
+            for (let i = 0; i < 8; i++) {
+                const el = document.createElement('div');
+                el.className = 'emoji-particle';
+                el.innerText = pool[Math.floor(Math.random() * pool.length)];
+                el.style.left = x + 'px';
+                el.style.top = y + 'px';
+                
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 50 + Math.random() * 100;
+                el.style.setProperty('--x', Math.cos(angle) * dist + 'px');
+                el.style.setProperty('--y', Math.sin(angle) * dist + 'px');
+                
+                document.body.appendChild(el);
+                setTimeout(() => el.remove(), 800);
+            }
+        }
+
+        function takeAction(type, event) {
+            if (state.paused || state.isGameOver) return;
+            
+            createEmojiExplosion(type, event.clientX, event.clientY);
+
+            const impacts = {
+                work: { savings: 9, health: -5, entropy: 0.01 },
+                rest: { health: 11, savings: -7, momentum: 0.03 },
+                social: { credibility: 11, sanity: -5, momentum: 0.02 },
+                therapy: { sanity: 14, credit: -11, entropy: -0.03 },
+                invest: { credit: 11, savings: -18, momentum: 0.06 },
+                exercise: { health: 9, sanity: -5, momentum: 0.03 }
+            };
+
+            const mod = impacts[type];
+            for (let s in mod) {
+                if (state.stats[s] !== undefined) state.stats[s] += mod[s] * state.momentum;
+                if (s === 'momentum') state.momentum += mod[s];
+                if (s === 'entropy') state.entropy += mod[s];
+            }
+            renderStats();
+            logMessage(`>> EXEC_CMD: ${type.toUpperCase()}`, 'text-zinc-700');
+        }
+
+        function getSpeedMultiplier() {
+            const d = state.day;
+            if (d < 90) return 1 + (3 * (d / 90)); 
+            if (d < 240) return 4 + (4 * ((d - 90) / 150)); 
+            return 8 + (8 * ((d - 240) / 125)); 
+        }
+
+        function gameLoop() {
+            if (state.isGameOver || state.paused) return;
+            state.day++;
+
+            // Stats Logic
+            for (let s in state.stats) {
+                if (state.stats[s] > config.escapeThreshold) {
+                    const over = state.stats[s] - config.escapeThreshold;
+                    state.stats[s] += (over * config.growthFactor) + 3.5;
+                } else {
+                    state.stats[s] -= (config.baseDecay * state.entropy);
+                }
+            }
+
+            // Dynamics
+            let avg = Object.values(state.stats).reduce((a,b)=>a+b)/5;
+            if (avg > 160) { state.momentum += 0.005; state.entropy -= 0.003; }
+            else if (avg < 40) { state.entropy += 0.04; state.momentum -= 0.015; }
+            state.momentum = Math.max(0.1, state.momentum);
+            state.entropy = Math.max(0.1, state.entropy);
+
+            checkEvents();
+            renderUI();
+
+            const speedMult = getSpeedMultiplier();
+            const currentTick = config.baseTick / speedMult;
+
+            if (state.day >= 365) endGame();
+            else setTimeout(gameLoop, currentTick);
+        }
+
+        function checkEvents() {
+            const ev = config.events.find(e => e.day === state.day);
+            if (ev && !state.eventHistory.has(state.day)) {
+                state.eventHistory.add(state.day);
+                logMessage(`!! ALERT: ${ev.title}`, 'text-red-500 font-bold');
+                logMessage(`${ev.text}`, 'text-zinc-800 mb-1');
+                for (let s in ev.impact) state.stats[s] += ev.impact[s];
+            }
+        }
+
+        function renderUI() {
+            const d = new Date(2026, 0, state.day);
+            document.getElementById('display-date').innerText = d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }).toUpperCase();
+            document.getElementById('day-counter').innerText = `DAY: ${state.day.toString().padStart(3, '0')}`;
+            document.getElementById('year-progress').style.width = `${(state.day/365)*100}%`;
+            
+            const speed = getSpeedMultiplier();
+            document.getElementById('speed-label').innerText = `${speed.toFixed(1)}X Speed`;
+            document.getElementById('dilation-bar').style.width = `${(state.day/365)*100}%`;
+            document.getElementById('clock-val').innerText = `${Math.floor(config.baseTick/speed)}ms`;
+            
+            document.getElementById('momentum-val').innerText = state.momentum.toFixed(2);
+            document.getElementById('entropy-val').innerText = state.entropy.toFixed(2);
+            renderStats();
+        }
+
+        function formatValue(key, val) {
+            const meta = config.statMeta[key];
+            let displayVal = "";
+            if (key === 'savings') displayVal = `$${(val * meta.mult).toLocaleString()}`;
+            else if (key === 'health') displayVal = `${(val + meta.base).toFixed(0)}y`;
+            else if (key === 'credibility') displayVal = `${Math.floor(val * meta.mult)} 👥`;
+            else displayVal = `${Math.floor(val)}${meta.unit || ''}`;
+
+            let currentRank = meta.ranks[0];
+            for (let r of meta.ranks) if (val >= r.min) currentRank = r;
+            return { displayVal, rank: currentRank };
+        }
+
+        function renderStats() {
+            const container = document.getElementById('stats-list');
+            container.innerHTML = '';
+            for (let [key, val] of Object.entries(state.stats)) {
+                const { displayVal, rank } = formatValue(key, val);
+                const isAsc = val > config.escapeThreshold;
+                const barPerc = isAsc ? 100 : Math.max(0, (val/config.escapeThreshold)*100);
+                const color = isAsc ? 'bg-emerald-500' : val < 20 ? 'bg-red-500' : 'bg-zinc-800';
+                
+                const div = document.createElement('div');
+                div.className = `p-3 rounded-lg border border-zinc-900 transition-all ${isAsc ? 'exponential-glow' : ''}`;
+                div.innerHTML = `
+                    <div class="flex justify-between items-baseline mb-1">
+                        <span class="text-[9px] text-zinc-700 font-bold uppercase">${config.statMeta[key].name}</span>
+                        <span class="text-[8px] ${rank.class} font-bold tracking-widest uppercase">${rank.label}</span>
+                    </div>
+                    <div class="flex justify-between items-center gap-3">
+                        <span class="text-sm font-bold ${val < 0 ? 'danger' : ''}">${displayVal}</span>
+                        <div class="flex-grow bg-zinc-950 h-1 overflow-hidden rounded-full">
+                            <div class="stat-bar h-full ${color}" style="width: ${barPerc}%"></div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        function logMessage(msg, className) {
+            const log = document.getElementById('event-log');
+            const div = document.createElement('div');
+            div.className = className;
+            div.innerHTML = msg;
+            log.prepend(div);
+            if (log.childNodes.length > 40) log.removeChild(log.lastChild);
+        }
+
+        function endGame() {
+            state.isGameOver = true;
+            const end = document.getElementById('end-screen');
+            const tit = document.getElementById('end-title');
+            const sum = document.getElementById('end-summary');
+            const sts = document.getElementById('end-stats');
+            end.classList.remove('hidden');
+            
+            let ascCount = Object.values(state.stats).filter(v => v > config.escapeThreshold).length;
+            
+            if (ascCount >= 4) {
+                tit.innerText = "Sovereign AI-Humanoid";
+                sum.innerText = "You have reached Escape Velocity. You are no longer a person; you are a series of high-frequency algorithms that owns three small countries. You spent New Year's Eve uploading your consciousness to a server in a volcano. Happy 2027, you absolute unit.";
+            } else if (ascCount > 0) {
+                tit.innerText = "Successful Outlier";
+                sum.innerText = "You did it! You found the loophole. While the rest of the world is fighting over rationed drinking water, you are living in a gated digital community. Your friends are all bots, but they are very, very polite bots.";
+            } else {
+                let total = Object.values(state.stats).reduce((a,b)=>a+b);
+                if (total < 10) {
+                    tit.innerText = "Asset Forfeited";
+                    sum.innerText = "You arrived at 2027 in a state of 'Maximum Efficiency,' which is to say you own nothing and your vital signs are purely optional. You have been recycled into a subscription tier for a more successful person's smart-fridge.";
+                } else {
+                    tit.innerText = "Standard Survivor";
+                    sum.innerText = "Congratulations. You survived 2026. You are tired, your credit score is the same as your body temperature, and your only friend is a spider in your kitchen. But you're here. The 2027 subscription starts in five minutes.";
+                }
+            }
+
+            sts.innerHTML = '';
+            for (let [key, val] of Object.entries(state.stats)) {
+                const { displayVal } = formatValue(key, val);
+                const card = document.createElement('div');
+                card.className = "bg-zinc-900 p-2 border border-zinc-800 rounded-lg text-center";
+                card.innerHTML = `
+                    <div class="text-zinc-600 text-[8px] uppercase font-bold mb-1">${config.statMeta[key].name}</div>
+                    <div class="text-xs font-bold truncate">${displayVal}</div>
+                `;
+                sts.appendChild(card);
+            }
+        }
+    </script>
+</body>
+</html>

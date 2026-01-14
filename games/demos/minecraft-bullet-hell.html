@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Danmaku Voxel Boss</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050510; font-family: 'Segoe UI', Tahoma, sans-serif; touch-action: none; user-select: none; }
+        canvas { display: block; }
+        
+        #ui {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: white;
+            text-shadow: 2px 2px 2px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #boss-ui {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            width: 80%;
+            pointer-events: none;
+        }
+        .health-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #ff00ff;
+            margin-top: 5px;
+        }
+        .health-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #ff00ff, #00ffff); }
+
+        .joystick-container {
+            position: absolute;
+            bottom: 40px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            touch-action: none;
+            z-index: 20;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        #move-joystick { left: 30px; }
+        #look-joystick { right: 30px; }
+        .joystick-knob {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            position: absolute;
+            top: 30px; left: 30px;
+            pointer-events: none;
+        }
+
+        #action-buttons {
+            position: absolute;
+            right: 30px;
+            bottom: 160px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 30;
+        }
+        .action-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(128, 0, 128, 0.4);
+            border: 2px solid #ff00ff;
+            border-radius: 50%;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 10px;
+        }
+
+        #hotbar {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 5px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 8px;
+            z-index: 30;
+        }
+        .slot {
+            width: 40px; height: 40px;
+            background: #222; border: 2px solid transparent;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .slot.active { border-color: #ff00ff; }
+        .block-preview { width: 25px; height: 25px; }
+
+        #crosshair {
+            position: absolute; top: 50%; left: 50%;
+            width: 16px; height: 16px; border: 2px solid white;
+            transform: translate(-50%, -50%); pointer-events: none;
+            mix-blend-mode: difference;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <div style="color: #00ffff; font-weight: bold;">VOXEL SURVIVAL</div>
+        <div id="stats">Pos: 0, 0</div>
+    </div>
+
+    <div id="boss-ui">
+        <div style="color: #ff00ff; font-weight: bold; letter-spacing: 2px;">ULTRA CHAOS CORE</div>
+        <div class="health-bar"><div class="health-fill"></div></div>
+    </div>
+
+    <div id="crosshair"></div>
+
+    <div id="hotbar">
+        <div class="slot active" data-type="grass"><div class="block-preview" style="background: #5d994d;"></div></div>
+        <div class="slot" data-type="stone"><div class="block-preview" style="background: #888888;"></div></div>
+        <div class="slot" data-type="red"><div class="block-preview" style="background: #ff2222;"></div></div>
+    </div>
+
+    <div id="action-buttons">
+        <div id="btn-break" class="action-btn">BREAK</div>
+        <div id="btn-place" class="action-btn">PLACE</div>
+    </div>
+
+    <div id="move-joystick" class="joystick-container">
+        <div id="move-knob" class="joystick-knob"></div>
+    </div>
+    <div id="look-joystick" class="joystick-container">
+        <div id="look-knob" class="joystick-knob"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/simplex-noise.min.js"></script>
+
+    <script>
+        let scene, camera, renderer, simplex, raycaster;
+        let moveJoystick = { active: false, x: 0, y: 0 };
+        let lookJoystick = { active: false, x: 0, y: 0 };
+        
+        const CHUNK_SIZE = 16;
+        const VIEW_DISTANCE = 3;
+        const TERRAIN_HEIGHT = 8;
+        const NOISE_SCALE = 0.04;
+        
+        const player = {
+            velocity: new THREE.Vector3(),
+            height: 1.8,
+            speed: 0.15,
+            rotation: new THREE.Euler(0, 0, 0, 'YXZ')
+        };
+
+        const worldVoxels = new Map();
+        const chunks = new Map();
+        let currentBlockType = 'grass';
+        const bullets = [];
+
+        function createBlockTexture(color, sideColor) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32; canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = sideColor || color;
+            ctx.fillRect(0, 0, 32, 32);
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.strokeRect(0, 0, 32, 32);
+            ctx.fillStyle = color;
+            ctx.fillRect(4, 4, 24, 24);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const materials = {
+            grass: new THREE.MeshLambertMaterial({ map: createBlockTexture('#5d994d', '#3d6633') }),
+            stone: new THREE.MeshLambertMaterial({ map: createBlockTexture('#888888', '#555555') }),
+            red: new THREE.MeshLambertMaterial({ map: createBlockTexture('#ff2222', '#880000') }),
+            void: new THREE.MeshBasicMaterial({ color: 0xaa00ff }),
+            chaos: new THREE.MeshBasicMaterial({ color: 0xffaa00 })
+        };
+
+        /** BOSS CLASS - 3D DANMAKU LOGIC **/
+        class Boss {
+            constructor() {
+                const geo = new THREE.IcosahedronGeometry(2.5, 1);
+                const mat = new THREE.MeshPhongMaterial({ color: 0xff00ff, emissive: 0x440044, wireframe: true });
+                this.mesh = new THREE.Mesh(geo, mat);
+                this.mesh.position.set(0, 24, 0);
+                scene.add(this.mesh);
+                
+                const coreGeo = new THREE.SphereGeometry(1.2, 12, 12);
+                const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                this.core = new THREE.Mesh(coreGeo, coreMat);
+                this.mesh.add(this.core);
+
+                this.timer = 0;
+                this.angle = 0;
+            }
+
+            update(delta) {
+                this.timer += delta;
+                this.angle += delta * 1.5;
+                
+                const targetX = camera.position.x + Math.sin(this.timer * 0.4) * 12;
+                const targetZ = camera.position.z + Math.cos(this.timer * 0.4) * 12;
+                const targetY = 22 + Math.sin(this.timer * 2.0) * 3;
+                
+                this.mesh.position.x += (targetX - this.mesh.position.x) * 0.05;
+                this.mesh.position.z += (targetZ - this.mesh.position.z) * 0.05;
+                this.mesh.position.y += (targetY - this.mesh.position.y) * 0.05;
+                
+                this.mesh.rotation.y += 0.05;
+                this.mesh.rotation.x += 0.02;
+
+                const phase = Math.floor(this.timer % 12);
+                
+                if (phase < 6) {
+                    if (Math.floor(this.timer * 60) % 2 === 0) {
+                        const verticalOffset = Math.sin(this.timer * 5) * 1.2;
+                        this.shootSpherical(this.angle, verticalOffset, 0.25, 'void');
+                        this.shootSpherical(this.angle + Math.PI, -verticalOffset, 0.25, 'void');
+                    }
+                } else {
+                    if (Math.floor(this.timer * 60) % 80 === 0) {
+                        const rings = 6;
+                        const perRing = 12;
+                        for (let r = 0; r < rings; r++) {
+                            const phi = (r / rings) * Math.PI;
+                            for (let i = 0; i < perRing; i++) {
+                                const theta = (i / perRing) * Math.PI * 2;
+                                this.shootRaw(phi, theta, 0.18, 'chaos');
+                            }
+                        }
+                    }
+                }
+            }
+
+            shootSpherical(theta, verticalTilt, speed, type) {
+                const dir = new THREE.Vector3(
+                    Math.cos(theta),
+                    verticalTilt - 0.3,
+                    Math.sin(theta)
+                ).normalize();
+                bullets.push(new Bullet(this.mesh.position.clone(), dir, speed, type));
+            }
+
+            shootRaw(phi, theta, speed, type) {
+                const dir = new THREE.Vector3(
+                    Math.sin(phi) * Math.cos(theta),
+                    Math.cos(phi),
+                    Math.sin(phi) * Math.sin(theta)
+                ).normalize();
+                bullets.push(new Bullet(this.mesh.position.clone(), dir, speed, type));
+            }
+        }
+
+        /** BULLET CLASS **/
+        class Bullet {
+            constructor(pos, dir, speed, type) {
+                this.pos = pos;
+                this.dir = dir;
+                this.speed = speed;
+                this.type = type;
+                this.alive = true;
+                this.life = 400;
+
+                const geo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+                this.mesh = new THREE.Mesh(geo, materials[type]);
+                this.mesh.position.copy(pos);
+                scene.add(this.mesh);
+            }
+
+            update() {
+                this.pos.addScaledVector(this.dir, this.speed);
+                this.mesh.position.copy(this.pos);
+                this.life--;
+
+                const vx = Math.round(this.pos.x);
+                const vy = Math.round(this.pos.y);
+                const vz = Math.round(this.pos.z);
+                
+                const hit = getVoxel(vx, vy, vz);
+                if (hit && hit !== 'air') {
+                    if (this.type === 'void') {
+                        setVoxel(vx, vy, vz, null);
+                    } else if (this.type === 'chaos') {
+                        const prevX = Math.round(this.pos.x - this.dir.x);
+                        const prevY = Math.round(this.pos.y - this.dir.y);
+                        const prevZ = Math.round(this.pos.z - this.dir.z);
+                        setVoxel(prevX, prevY, prevZ, 'red'); 
+                    }
+                    this.destroy();
+                }
+
+                if (this.life <= 0 || this.pos.y < -5) this.destroy();
+            }
+
+            destroy() {
+                if (!this.alive) return;
+                this.alive = false;
+                scene.remove(this.mesh);
+            }
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050510);
+            scene.fog = new THREE.Fog(0x050510, 15, 75);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 15, 10);
+
+            renderer = new THREE.WebGLRenderer({ antialias: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio > 1 ? 1.5 : 1);
+            document.body.appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0x4444ff, 0.4));
+            const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+            sun.position.set(5, 20, 5);
+            scene.add(sun);
+
+            simplex = new SimplexNoise();
+            raycaster = new THREE.Raycaster();
+            raycaster.far = 10;
+
+            boss = new Boss();
+
+            setupControls();
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function getVoxel(x, y, z) {
+            const key = `${x},${y},${z}`;
+            if (worldVoxels.has(key)) return worldVoxels.get(key);
+            const h = Math.floor((simplex.noise2D(x * NOISE_SCALE, z * NOISE_SCALE) + 1) * 0.5 * TERRAIN_HEIGHT);
+            if (y === h) return 'grass';
+            if (y < h) return 'stone';
+            return null;
+        }
+
+        function setVoxel(x, y, z, type) {
+            if (y < 0 || y > 30) return;
+            const key = `${x},${y},${z}`;
+            worldVoxels.set(key, type === null ? 'air' : type);
+            const cx = Math.floor(x / CHUNK_SIZE);
+            const cz = Math.floor(z / CHUNK_SIZE);
+            refreshChunk(cx, cz);
+            if (x % CHUNK_SIZE === 0) refreshChunk(cx - 1, cz);
+            if (x % CHUNK_SIZE === CHUNK_SIZE - 1) refreshChunk(cx + 1, cz);
+            if (z % CHUNK_SIZE === 0) refreshChunk(cx, cz - 1);
+            if (z % CHUNK_SIZE === CHUNK_SIZE - 1) refreshChunk(cx, cz + 1);
+        }
+
+        function refreshChunk(cx, cz) {
+            const key = `${cx},${cz}`;
+            if (chunks.has(key)) {
+                scene.remove(chunks.get(key));
+                chunks.delete(key);
+            }
+        }
+
+        function generateChunk(cx, cz) {
+            const group = new THREE.Group();
+            const geo = new THREE.BoxGeometry(1, 1, 1);
+            const instData = {};
+
+            for (let x = 0; x < CHUNK_SIZE; x++) {
+                for (let z = 0; z < CHUNK_SIZE; z++) {
+                    const wx = cx * CHUNK_SIZE + x;
+                    const wz = cz * CHUNK_SIZE + z;
+                    for (let y = 0; y < 25; y++) {
+                        const t = getVoxel(wx, y, wz);
+                        if (t && t !== 'air') {
+                            if (!instData[t]) instData[t] = [];
+                            instData[t].push(new THREE.Vector3(wx, y, wz));
+                        }
+                    }
+                }
+            }
+
+            for (const [t, posArr] of Object.entries(instData)) {
+                const mesh = new THREE.InstancedMesh(geo, materials[t], posArr.length);
+                const mat = new THREE.Matrix4();
+                posArr.forEach((p, i) => {
+                    mat.setPosition(p.x, p.y, p.z);
+                    mesh.setMatrixAt(i, mat);
+                });
+                mesh.instanceMatrix.needsUpdate = true;
+                group.add(mesh);
+            }
+            scene.add(group);
+            return group;
+        }
+
+        function setupControls() {
+            const handle = (e, container, knob, state) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const r = container.getBoundingClientRect();
+                let dx = touch.clientX - (r.left + r.width/2);
+                let dy = touch.clientY - (r.top + r.height/2);
+                const d = Math.sqrt(dx*dx + dy*dy);
+                if (d > 35) { dx *= 35/d; dy *= 35/d; }
+                knob.style.transform = `translate(${dx}px, ${dy}px)`;
+                state.x = dx/35; state.y = dy/35; state.active = true;
+            };
+
+            const mc = document.getElementById('move-joystick');
+            const mk = document.getElementById('move-knob');
+            mc.addEventListener('touchstart', (e) => handle(e, mc, mk, moveJoystick));
+            mc.addEventListener('touchmove', (e) => handle(e, mc, mk, moveJoystick));
+            mc.addEventListener('touchend', () => { mk.style.transform='none'; moveJoystick.active=false; });
+
+            const lc = document.getElementById('look-joystick');
+            const lk = document.getElementById('look-knob');
+            lc.addEventListener('touchstart', (e) => handle(e, lc, lk, lookJoystick));
+            lc.addEventListener('touchmove', (e) => handle(e, lc, lk, lookJoystick));
+            lc.addEventListener('touchend', () => { lk.style.transform='none'; lookJoystick.active=false; });
+
+            document.querySelectorAll('.slot').forEach(s => {
+                s.addEventListener('touchstart', () => {
+                    document.querySelectorAll('.slot').forEach(x => x.classList.remove('active'));
+                    s.classList.add('active');
+                    currentBlockType = s.dataset.type;
+                });
+            });
+
+            document.getElementById('btn-break').addEventListener('touchstart', (e) => { e.preventDefault(); action('break'); });
+            document.getElementById('btn-place').addEventListener('touchstart', (e) => { e.preventDefault(); action('place'); });
+        }
+
+        function action(mode) {
+            raycaster.setFromCamera({x:0, y:0}, camera);
+            const hits = raycaster.intersectObjects(scene.children, true).filter(h => h.object.instanceMatrix);
+            if (hits.length > 0) {
+                const h = hits[0];
+                const m = new THREE.Matrix4();
+                h.object.getMatrixAt(h.instanceId, m);
+                const p = new THREE.Vector3().setFromMatrixPosition(m);
+                if (mode === 'break') setVoxel(Math.round(p.x), Math.round(p.y), Math.round(p.z), null);
+                else {
+                    const n = h.face.normal.clone().applyQuaternion(h.object.quaternion);
+                    setVoxel(Math.round(p.x+n.x), Math.round(p.y+n.y), Math.round(p.z+n.z), currentBlockType);
+                }
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = 0.016;
+
+            player.velocity.y -= 0.008;
+            if (lookJoystick.active) {
+                player.rotation.y -= lookJoystick.x * 0.06;
+                player.rotation.x -= lookJoystick.y * 0.05;
+                player.rotation.x = Math.max(-1.5, Math.min(1.5, player.rotation.x));
+                camera.quaternion.setFromEuler(player.rotation);
+            }
+            if (moveJoystick.active) {
+                const f = new THREE.Vector3(0,0,-1).applyQuaternion(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, player.rotation.y, 0)));
+                const r = new THREE.Vector3(1,0,0).applyQuaternion(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, player.rotation.y, 0)));
+                camera.position.addScaledVector(f, -moveJoystick.y * player.speed);
+                camera.position.addScaledVector(r, moveJoystick.x * player.speed);
+            }
+            camera.position.y += player.velocity.y;
+
+            const px = Math.round(camera.position.x);
+            const pz = Math.round(camera.position.z);
+            let h = -10;
+            for(let i=20; i>=0; i--) {
+                const v = getVoxel(px, i, pz);
+                if(v && v !== 'air') { h = i + player.height + 0.5; break; }
+            }
+            if (camera.position.y < h) { camera.position.y = h; player.velocity.y = 0; }
+
+            boss.update(delta);
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].update();
+                if (!bullets[i].alive) bullets.splice(i, 1);
+            }
+
+            const pCX = Math.floor(camera.position.x / CHUNK_SIZE);
+            const pCZ = Math.floor(camera.position.z / CHUNK_SIZE);
+            for (let x = -VIEW_DISTANCE; x <= VIEW_DISTANCE; x++) {
+                for (let z = -VIEW_DISTANCE; z <= VIEW_DISTANCE; z++) {
+                    const k = `${pCX+x},${pCZ+z}`;
+                    if (!chunks.has(k)) chunks.set(k, generateChunk(pCX+x, pCZ+z));
+                }
+            }
+            
+            document.getElementById('stats').innerText = `Pos: ${Math.floor(camera.position.x)}, ${Math.floor(camera.position.z)} | Bullets: ${bullets.length}`;
+            renderer.render(scene, camera);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

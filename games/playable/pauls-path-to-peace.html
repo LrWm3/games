@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Paul's Internal Struggle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background: #1a1a05;
+            touch-action: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(to bottom, #2d2d0a, #4a4a16, #1a1a05);
+            overflow: hidden;
+            transition: background 1s ease;
+        }
+
+        .thought {
+            position: absolute;
+            padding: 12px 20px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            user-select: none;
+            z-index: 10;
+        }
+
+        .thought.good {
+            border-left: 4px solid #fde047;
+            color: #fef08a;
+        }
+
+        .thought.bad {
+            border-left: 4px solid #854d0e;
+            background: rgba(133, 77, 14, 0.2);
+            opacity: 0.9;
+        }
+
+        #paul {
+            position: absolute;
+            bottom: 12%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 140px;
+            height: 140px;
+            z-index: 50;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .clarity-bar-bg {
+            width: 100%;
+            height: 12px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 6px;
+            margin-top: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        #clarity-fill {
+            height: 100%;
+            width: 50%;
+            background: linear-gradient(to right, #854d0e, #ca8a04, #fde047);
+            border-radius: 6px;
+            transition: width 0.3s ease;
+        }
+
+        .shaking {
+            animation: shake 0.1s infinite;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(-50%, 0) rotate(0deg); }
+            25% { transform: translate(-52%, 1px) rotate(-1deg); }
+            50% { transform: translate(-50%, -1px) rotate(1deg); }
+            75% { transform: translate(-48%, 1px) rotate(0deg); }
+            100% { transform: translate(-50%, 0) rotate(-1deg); }
+        }
+
+        #message-log {
+            position: absolute;
+            bottom: 28%;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: #fef08a;
+            font-weight: 500;
+            padding: 20px;
+            pointer-events: none;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .screen {
+            position: absolute;
+            inset: 0;
+            background: rgba(20, 20, 5, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            color: white;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- UI -->
+        <div id="ui-overlay">
+            <div class="flex justify-between items-center text-white">
+                <span class="text-xs font-bold uppercase tracking-widest">Dignity Level</span>
+                <span id="state-text" class="text-xs">Clenching...</span>
+            </div>
+            <div class="clarity-bar-bg">
+                <div id="clarity-fill"></div>
+            </div>
+        </div>
+
+        <div id="message-log">Paul is trying to stay calm.</div>
+
+        <!-- Paul -->
+        <div id="paul">
+            <svg viewBox="0 0 100 100" class="w-full h-full">
+                <!-- Body -->
+                <path d="M30 90 Q50 20 70 90" fill="#a1a1aa" />
+                <!-- Head -->
+                <circle cx="50" cy="35" r="15" fill="#e4e4e7" />
+                <!-- Eyes (pained/closed) -->
+                <path id="eye-l" d="M40 35 L48 37" stroke="#18181b" stroke-width="2" fill="none" />
+                <path id="eye-r" d="M52 37 L60 35" stroke="#18181b" stroke-width="2" fill="none" />
+                <!-- Sweating -->
+                <circle cx="65" cy="30" r="2" fill="#7dd3fc" class="animate-bounce" />
+            </svg>
+        </div>
+
+        <!-- Screens -->
+        <div id="start-screen" class="screen">
+            <h1 class="text-4xl font-bold mb-4 text-yellow-500">The Rumble</h1>
+            <p class="mb-8 opacity-80 max-w-xs text-sm">Paul is in a public park. The nearest restroom is 400 yards away. Help him maintain his dignity by dismissing the physical urges.</p>
+            <div class="space-y-2 mb-8 text-left text-xs bg-black/30 p-4 rounded-lg">
+                <p>✨ <strong>Tap Zen Thoughts</strong> to stay calm.</p>
+                <p>💨 <strong>Swipe Urgent Urges</strong> away to ignore them.</p>
+                <p>💩 <strong>Don't Tap Urges</strong> or it's game over.</p>
+            </div>
+            <button id="start-btn" class="px-8 py-3 bg-yellow-700 hover:bg-yellow-600 rounded-full font-bold transition">Hold it in</button>
+        </div>
+
+        <div id="end-screen" class="screen hidden">
+            <h2 id="end-title" class="text-3xl font-bold mb-4">Disaster</h2>
+            <p id="end-desc" class="mb-8 opacity-80">Paul's journey ended prematurely.</p>
+            <button id="restart-btn" class="px-8 py-3 bg-white text-stone-900 rounded-full font-bold transition">Try Again</button>
+        </div>
+    </div>
+
+    <script>
+        const goodThoughts = [
+            "Inner peace...",
+            "Deep breaths.",
+            "Mind over matter.",
+            "I am a mountain.",
+            "The toilet is near.",
+            "Cool breeze.",
+            "Think of glaciers.",
+            "Still water...",
+            "Just 10 more steps."
+        ];
+
+        const badThoughts = [
+            "Was that a fart or...?",
+            "THE RUMBLE GROWS.",
+            "Liquid pressure rising.",
+            "I shouldn't have had that taco.",
+            "Sneeze imminent! OH NO.",
+            "The 'Turtle' is peeking.",
+            "Hot lava vibes.",
+            "Is there a bush nearby?",
+            "Code Brown alert.",
+            "I can feel it moving.",
+            "Slight leakage detected.",
+            "Why is there a line for the bathroom?",
+            "I'm sweating through my shirt.",
+            "Don't laugh. Don't cough.",
+            "Coffee was a terrible choice.",
+            "My belt is too tight.",
+            "Every step is a gamble.",
+            "The gates are trembling."
+        ];
+
+        const stateMessages = [
+            "CRITICAL FAILURE",
+            "Emergency Status",
+            "Sweating Profusely",
+            "Dangerous Gurgle",
+            "Focusing Hard",
+            "Clenching...",
+            "Somewhat Stable",
+            "Dignified"
+        ];
+
+        const gameContainer = document.getElementById('game-container');
+        const clarityFill = document.getElementById('clarity-fill');
+        const messageLog = document.getElementById('message-log');
+        const stateText = document.getElementById('state-text');
+        const paul = document.getElementById('paul');
+        const startScreen = document.getElementById('start-screen');
+        const endScreen = document.getElementById('end-screen');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+
+        let clarity = 60;
+        let gameActive = false;
+        let spawnTimer = null;
+
+        function updateUI() {
+            clarityFill.style.width = `${clarity}%`;
+            
+            let stateIndex = Math.floor((clarity / 100) * (stateMessages.length - 1));
+            stateIndex = Math.max(0, Math.min(stateIndex, stateMessages.length - 1));
+            stateText.innerText = stateMessages[stateIndex];
+
+            // Shaking effect based on distress
+            if (clarity < 40) {
+                paul.classList.add('shaking');
+                gameContainer.style.background = 'linear-gradient(to bottom, #422006, #713f12, #1a1a05)';
+            } else {
+                paul.classList.remove('shaking');
+                gameContainer.style.background = 'linear-gradient(to bottom, #2d2d0a, #4a4a16, #1a1a05)';
+            }
+
+            const scale = 0.7 + (1 - (clarity / 100)) * 0.6;
+            paul.style.transform = `translateX(-50%) scale(${scale})`;
+            
+            if (clarity >= 100) endGame(true);
+            if (clarity <= 0) endGame(false);
+        }
+
+        function createThought() {
+            if (!gameActive) return;
+
+            // 80% chance of a bad bowel thought
+            const isGood = Math.random() > 0.8;
+            const text = isGood 
+                ? goodThoughts[Math.floor(Math.random() * goodThoughts.length)]
+                : badThoughts[Math.floor(Math.random() * badThoughts.length)];
+
+            const thoughtEl = document.createElement('div');
+            thoughtEl.className = `thought ${isGood ? 'good' : 'bad'}`;
+            thoughtEl.innerText = text;
+            
+            const x = Math.random() * (window.innerWidth - 180) + 20;
+            thoughtEl.style.left = `${x}px`;
+            thoughtEl.style.top = `-60px`;
+
+            gameContainer.appendChild(thoughtEl);
+
+            let posY = -60;
+            const speed = isGood ? 2 : (2.5 + Math.random() * 3); // Bad thoughts fall faster
+            
+            const animation = setInterval(() => {
+                if (!gameActive) {
+                    clearInterval(animation);
+                    thoughtEl.remove();
+                    return;
+                }
+
+                posY += speed;
+                thoughtEl.style.top = `${posY}px`;
+
+                if (posY > window.innerHeight) {
+                    if (isGood) {
+                        clarity -= 10;
+                        showMessage("Lost focus...");
+                    } else {
+                        // Successfully ignored an urge by letting it pass (though swiping is better)
+                        clarity -= 2; 
+                    }
+                    clearInterval(animation);
+                    thoughtEl.remove();
+                    updateUI();
+                }
+            }, 20);
+
+            // Interaction
+            let startX = 0;
+            thoughtEl.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+            });
+
+            thoughtEl.addEventListener('touchend', (e) => {
+                const endX = e.changedTouches[0].clientX;
+                const diff = endX - startX;
+
+                if (Math.abs(diff) > 40) {
+                    // SWIPE logic
+                    if (!isGood) {
+                        clarity += 4;
+                        showMessage("Denied the urge.");
+                        popEffect(thoughtEl, '#854d0e');
+                    } else {
+                        clarity -= 15;
+                        showMessage("Wait, I needed that peace!");
+                        popEffect(thoughtEl, '#fde047');
+                    }
+                } else {
+                    // TAP logic
+                    if (isGood) {
+                        clarity += 8;
+                        showMessage("Mantra: " + text);
+                        popEffect(thoughtEl, '#fde047');
+                    } else {
+                        clarity -= 25; // Tapping a bad thought is disastrous
+                        showMessage("OH NO. YOU FOCUSSED ON IT.");
+                        popEffect(thoughtEl, '#422006');
+                    }
+                }
+                
+                clearInterval(animation);
+                thoughtEl.remove();
+                updateUI();
+            });
+
+            // Mouse Click fallback
+            thoughtEl.addEventListener('mousedown', () => {
+                 if (isGood) {
+                    clarity += 8;
+                    showMessage(text);
+                    popEffect(thoughtEl, '#fde047');
+                } else {
+                    clarity -= 25;
+                    showMessage("DON'T THINK ABOUT THE POOP.");
+                    popEffect(thoughtEl, '#422006');
+                }
+                clearInterval(animation);
+                thoughtEl.remove();
+                updateUI();
+            });
+        }
+
+        function showMessage(txt) {
+            messageLog.innerText = txt;
+            messageLog.style.opacity = 1;
+        }
+
+        function popEffect(el, color) {
+            const rect = el.getBoundingClientRect();
+            const burst = document.createElement('div');
+            burst.style.position = 'absolute';
+            burst.style.left = `${rect.left + rect.width/2}px`;
+            burst.style.top = `${rect.top + rect.height/2}px`;
+            burst.style.width = '15px';
+            burst.style.height = '15px';
+            burst.style.background = color;
+            burst.style.borderRadius = '50%';
+            burst.style.boxShadow = `0 0 30px ${color}`;
+            burst.style.pointerEvents = 'none';
+            burst.style.transition = 'all 0.4s ease-out';
+            burst.style.zIndex = 100;
+            
+            gameContainer.appendChild(burst);
+            
+            requestAnimationFrame(() => {
+                burst.style.transform = 'scale(8)';
+                burst.style.opacity = '0';
+            });
+            
+            setTimeout(() => burst.remove(), 400);
+        }
+
+        function startGame() {
+            clarity = 60;
+            gameActive = true;
+            startScreen.classList.add('hidden');
+            endScreen.classList.add('hidden');
+            updateUI();
+            
+            if (spawnTimer) clearInterval(spawnTimer);
+            // Spawn very frequently
+            spawnTimer = setInterval(createThought, 800);
+            
+            showMessage("The park walk begins...");
+        }
+
+        function endGame(won) {
+            gameActive = false;
+            clearInterval(spawnTimer);
+            endScreen.classList.remove('hidden');
+            
+            if (won) {
+                document.getElementById('end-title').innerText = "Sanctuary!";
+                document.getElementById('end-title').className = "text-3xl font-bold mb-4 text-green-500";
+                document.getElementById('end-desc').innerText = "Paul reached the porcelain throne just in time. Peace at last.";
+            } else {
+                document.getElementById('end-title').innerText = "Total Failure";
+                document.getElementById('end-title').className = "text-3xl font-bold mb-4 text-yellow-900";
+                document.getElementById('end-desc').innerText = "Nature called. Paul didn't hang up. It's going to be a long walk home.";
+            }
+        }
+
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+    </script>
+</body>
+</html>
