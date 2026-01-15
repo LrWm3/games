@@ -1345,17 +1345,21 @@
             return true;
         }
 
-        function pickWeightedRarity(stage) {
+        function getArenaPool(stage) {
             const pools = [
-                { max: 3, weights: { trash: 0.45, common: 0.35, uncommon: 0.15, rare: 0.05 } },
-                { max: 7, weights: { common: 0.38, uncommon: 0.26, rare: 0.22, epic: 0.1, legendary: 0.04 } },
-                { max: 14, weights: { uncommon: 0.3, rare: 0.28, epic: 0.22, legendary: 0.15, divine: 0.05 } },
-                { max: 24, weights: { rare: 0.35, epic: 0.27, legendary: 0.22, divine: 0.12, eternal: 0.04 } },
-                { max: 39, weights: { epic: 0.34, legendary: 0.3, divine: 0.22, eternal: 0.14 } },
-                { max: 45, weights: { legendary: 0.36, divine: 0.34, eternal: 0.3 } },
-                { max: Infinity, weights: { divine: 0.55, eternal: 0.45 } }
+                { max: 3, label: 'Trash', weights: { trash: 0.45, common: 0.35, uncommon: 0.15, rare: 0.05 } },
+                { max: 7, label: 'Common', weights: { common: 0.38, uncommon: 0.26, rare: 0.22, epic: 0.1, legendary: 0.04 } },
+                { max: 14, label: 'Uncommon', weights: { uncommon: 0.3, rare: 0.28, epic: 0.22, legendary: 0.15, divine: 0.05 } },
+                { max: 24, label: 'Rare', weights: { rare: 0.35, epic: 0.27, legendary: 0.22, divine: 0.12, eternal: 0.04 } },
+                { max: 39, label: 'Epic', weights: { epic: 0.34, legendary: 0.3, divine: 0.22, eternal: 0.14 } },
+                { max: 45, label: 'Legendary', weights: { legendary: 0.36, divine: 0.34, eternal: 0.3 } },
+                { max: Infinity, label: 'Divine', weights: { divine: 0.55, eternal: 0.45 } }
             ];
-            const bucket = pools.find(p => stage <= p.max);
+            return pools.find(p => stage <= p.max);
+        }
+
+        function pickWeightedRarity(stage) {
+            const bucket = getArenaPool(stage);
             const roll = Math.random();
             let total = 0;
             for (const [rarity, weight] of Object.entries(bucket.weights)) {
@@ -1661,6 +1665,8 @@
                 return unit;
             });
             let eUnits = generateEnemyTeam(state.stage);
+            const pool = getArenaPool(state.stage);
+            document.getElementById('combat-enemy-title').innerText = `${pool.label.toUpperCase()} POOL • ${getEnemyTitle(eUnits)}`;
             pUnits.forEach(resetBaseStats);
             eUnits.forEach(resetBaseStats);
 
