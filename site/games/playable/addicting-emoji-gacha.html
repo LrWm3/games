@@ -68,6 +68,14 @@
         
         .type-badge { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,0.3); border: 1px border-white/10; }
         .tutorial-highlight { box-shadow: 0 0 0 2px rgba(255,255,255,0.7), 0 0 18px rgba(59,130,246,0.7); border-color: rgba(59,130,246,0.8) !important; }
+        .starter-wiggle { animation: starter-wiggle 0.6s ease-in-out; }
+        @keyframes starter-wiggle {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(-2px, -1px) rotate(-2deg); }
+            50% { transform: translate(2px, 1px) rotate(2deg); }
+            75% { transform: translate(-1px, 2px) rotate(-1deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -377,164 +385,164 @@
         // --- MASTER DATA (151 TOTAL) ---
         const EMOJIS = [
             // TRASH (8)
-            { id: 101, char: '🗑️', name: 'Tin Can', rarity: 'trash', element: 'dark', type: 'Tank' },
-            { id: 102, char: '💩', name: 'Nugget', rarity: 'trash', element: 'nature', type: 'Striker' },
-            { id: 103, char: '🦴', name: 'Old Bone', rarity: 'trash', element: 'dark', type: 'Striker' },
-            { id: 104, char: '🏚️', name: 'Shack', rarity: 'trash', element: 'nature', type: 'Tank' },
-            { id: 105, char: '👞', name: 'Old Boot', rarity: 'trash', element: 'water', type: 'Speedster' },
-            { id: 106, char: '🧦', name: 'Stray Sock', rarity: 'trash', element: 'light', type: 'Speedster' },
-            { id: 107, char: '🍌', name: 'Peel', rarity: 'trash', element: 'nature', type: 'Speedster' },
-            { id: 108, char: '🔋', name: 'Dead Cell', rarity: 'trash', element: 'light', type: 'Striker' },
+            { id: 101, char: '🗑️', name: 'Tin Can', rarity: 'trash', element: 'dark', defaultMove: 'gloom_slash', type: 'Tank' },
+            { id: 102, char: '💩', name: 'Nugget', rarity: 'trash', element: 'nature', defaultMove: 'briar_strike', type: 'Striker' },
+            { id: 103, char: '🦴', name: 'Old Bone', rarity: 'trash', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' },
+            { id: 104, char: '🏚️', name: 'Shack', rarity: 'trash', element: 'nature', defaultMove: 'briar_strike', type: 'Tank' },
+            { id: 105, char: '👞', name: 'Old Boot', rarity: 'trash', element: 'water', defaultMove: 'ripple_cut', type: 'Speedster' },
+            { id: 106, char: '🧦', name: 'Stray Sock', rarity: 'trash', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
+            { id: 107, char: '🍌', name: 'Peel', rarity: 'trash', element: 'nature', defaultMove: 'briar_strike', type: 'Speedster' },
+            { id: 108, char: '🔋', name: 'Dead Cell', rarity: 'trash', element: 'light', defaultMove: 'spark_jab', type: 'Striker' },
             // FIRE (25)
-            { id: 1, char: '🔥', name: 'Inferno', rarity: 'rare', element: 'fire', type: 'Striker' },
-            { id: 2, char: '🌋', name: 'Magma', rarity: 'epic', element: 'fire', type: 'Tank' },
-            { id: 3, char: '🐉', name: 'Drake', rarity: 'legendary', element: 'fire', type: 'Striker' },
-            { id: 4, char: '☄️', name: 'Comet', rarity: 'uncommon', element: 'fire', type: 'Striker' },
-            { id: 5, char: '🦁', name: 'Leonis', rarity: 'epic', element: 'fire', type: 'Striker' },
-            { id: 61, char: '🌶️', name: 'Pepper', rarity: 'uncommon', element: 'fire', type: 'Speedster' },
-            { id: 62, char: '🥓', name: 'Sizzle', rarity: 'common', element: 'fire', type: 'Tank' },
-            { id: 64, char: '👺', name: 'Oni', rarity: 'legendary', element: 'fire', type: 'Striker' },
-            { id: 109, char: '🧨', name: 'Dynamo', rarity: 'rare', element: 'fire', type: 'Striker' },
-            { id: 110, char: '🍣', name: 'Spicy Roll', rarity: 'common', element: 'fire', type: 'Speedster' },
-            { id: 146, char: '🍕', name: 'Slice', rarity: 'rare', element: 'fire', type: 'Striker' },
-            { id: 147, char: '🌮', name: 'Crunch', rarity: 'common', element: 'fire', type: 'Striker' },
-            { id: 148, char: '🎸', name: 'Riff', rarity: 'epic', element: 'fire', type: 'Striker' },
-            { id: 149, char: '🚀', name: 'Apex', rarity: 'legendary', element: 'fire', type: 'Speedster' },
-            { id: 150, char: '🍔', name: 'Beef', rarity: 'rare', element: 'fire', type: 'Tank' },
-            { id: 151, char: '🍺', name: 'Froth', rarity: 'common', element: 'fire', type: 'Tank' },
-            { id: 152, char: '🌞', name: 'Solaris', rarity: 'legendary', element: 'fire', type: 'Striker' },
-            { id: 153, char: '🍩', name: 'Glaze', rarity: 'uncommon', element: 'fire', type: 'Speedster' },
+            { id: 1, char: '🔥', name: 'Inferno', rarity: 'rare', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
+            { id: 2, char: '🌋', name: 'Magma', rarity: 'epic', element: 'fire', defaultMove: 'cinder_jab', type: 'Tank' },
+            { id: 3, char: '🐉', name: 'Drake', rarity: 'legendary', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
+            { id: 4, char: '☄️', name: 'Comet', rarity: 'uncommon', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
+            { id: 5, char: '🦁', name: 'Leonis', rarity: 'epic', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
+            { id: 61, char: '🌶️', name: 'Pepper', rarity: 'uncommon', element: 'fire', defaultMove: 'cinder_jab', type: 'Speedster' },
+            { id: 62, char: '🥓', name: 'Sizzle', rarity: 'common', element: 'fire', defaultMove: 'cinder_jab', type: 'Tank' },
+            { id: 64, char: '👺', name: 'Oni', rarity: 'legendary', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
+            { id: 109, char: '🧨', name: 'Dynamo', rarity: 'rare', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
+            { id: 110, char: '🍣', name: 'Spicy Roll', rarity: 'common', element: 'fire', defaultMove: 'cinder_jab', type: 'Speedster' },
+            { id: 146, char: '🍕', name: 'Slice', rarity: 'rare', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
+            { id: 147, char: '🌮', name: 'Crunch', rarity: 'common', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
+            { id: 148, char: '🎸', name: 'Riff', rarity: 'epic', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
+            { id: 149, char: '🚀', name: 'Apex', rarity: 'legendary', element: 'fire', defaultMove: 'cinder_jab', type: 'Speedster' },
+            { id: 150, char: '🍔', name: 'Beef', rarity: 'rare', element: 'fire', defaultMove: 'cinder_jab', type: 'Tank' },
+            { id: 151, char: '🍺', name: 'Froth', rarity: 'common', element: 'fire', defaultMove: 'cinder_jab', type: 'Tank' },
+            { id: 152, char: '🌞', name: 'Solaris', rarity: 'legendary', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
+            { id: 153, char: '🍩', name: 'Glaze', rarity: 'uncommon', element: 'fire', defaultMove: 'cinder_jab', type: 'Speedster' },
             // WATER (25)
-            { id: 6, char: '💧', name: 'Aqua', rarity: 'uncommon', element: 'water', type: 'Speedster' },
-            { id: 7, char: '🦈', name: 'Meg', rarity: 'rare', element: 'water', type: 'Striker' },
-            { id: 8, char: '🐳', name: 'Levi', rarity: 'legendary', element: 'water', type: 'Tank' },
-            { id: 9, char: '🧜', name: 'Siren', rarity: 'divine', element: 'water', type: 'Speedster' },
-            { id: 10, char: '🐙', name: 'Kraken', rarity: 'epic', element: 'water', type: 'Tank' },
-            { id: 66, char: '🧊', name: 'Frost', rarity: 'uncommon', element: 'water', type: 'Tank' },
-            { id: 111, char: '🛶', name: 'Drift', rarity: 'uncommon', element: 'water', type: 'Speedster' },
-            { id: 112, char: '⛲', name: 'Geyser', rarity: 'rare', element: 'water', type: 'Striker' },
-            { id: 113, char: '⛵', name: 'Skiff', rarity: 'rare', element: 'water', type: 'Tank' },
-            { id: 154, char: '🦞', name: 'Claw', rarity: 'rare', element: 'water', type: 'Striker' },
-            { id: 155, char: '🦀', name: 'Shell', rarity: 'uncommon', element: 'water', type: 'Tank' },
-            { id: 156, char: '🦐', name: 'Prawn', rarity: 'eternal', element: 'water', type: 'Speedster' },
-            { id: 157, char: '🐡', name: 'Puff', rarity: 'rare', element: 'water', type: 'Tank' },
-            { id: 158, char: '🐧', name: 'Waddle', rarity: 'epic', element: 'water', type: 'Speedster' },
-            { id: 159, char: '🦢', name: 'Grace', rarity: 'rare', element: 'water', type: 'Speedster' },
-            { id: 160, char: '🐬', name: 'Echo', rarity: 'legendary', element: 'water', type: 'Speedster' },
-            { id: 161, char: '☔', name: 'Shield', rarity: 'common', element: 'water', type: 'Tank' },
+            { id: 6, char: '💧', name: 'Aqua', rarity: 'uncommon', element: 'water', defaultMove: 'ripple_cut', type: 'Speedster' },
+            { id: 7, char: '🦈', name: 'Meg', rarity: 'rare', element: 'water', defaultMove: 'ripple_cut', type: 'Striker' },
+            { id: 8, char: '🐳', name: 'Levi', rarity: 'legendary', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
+            { id: 9, char: '🧜', name: 'Siren', rarity: 'divine', element: 'water', defaultMove: 'ripple_cut', type: 'Speedster' },
+            { id: 10, char: '🐙', name: 'Kraken', rarity: 'epic', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
+            { id: 66, char: '🧊', name: 'Frost', rarity: 'uncommon', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
+            { id: 111, char: '🛶', name: 'Drift', rarity: 'uncommon', element: 'water', defaultMove: 'ripple_cut', type: 'Speedster' },
+            { id: 112, char: '⛲', name: 'Geyser', rarity: 'rare', element: 'water', defaultMove: 'ripple_cut', type: 'Striker' },
+            { id: 113, char: '⛵', name: 'Skiff', rarity: 'rare', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
+            { id: 154, char: '🦞', name: 'Claw', rarity: 'rare', element: 'water', defaultMove: 'ripple_cut', type: 'Striker' },
+            { id: 155, char: '🦀', name: 'Shell', rarity: 'uncommon', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
+            { id: 156, char: '🦐', name: 'Prawn', rarity: 'eternal', element: 'water', defaultMove: 'ripple_cut', type: 'Speedster' },
+            { id: 157, char: '🐡', name: 'Puff', rarity: 'rare', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
+            { id: 158, char: '🐧', name: 'Waddle', rarity: 'epic', element: 'water', defaultMove: 'ripple_cut', type: 'Speedster' },
+            { id: 159, char: '🦢', name: 'Grace', rarity: 'rare', element: 'water', defaultMove: 'ripple_cut', type: 'Speedster' },
+            { id: 160, char: '🐬', name: 'Echo', rarity: 'legendary', element: 'water', defaultMove: 'ripple_cut', type: 'Speedster' },
+            { id: 161, char: '☔', name: 'Shield', rarity: 'common', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
             // NATURE (25)
-            { id: 11, char: '🌿', name: 'Sprout', rarity: 'uncommon', element: 'nature', type: 'Tank' },
-            { id: 12, char: '🐯', name: 'Jungle', rarity: 'rare', element: 'nature', type: 'Striker' },
-            { id: 13, char: '🦄', name: 'Mythic', rarity: 'epic', element: 'nature', type: 'Speedster' },
-            { id: 14, char: '🌳', name: 'Oak', rarity: 'legendary', element: 'nature', type: 'Tank' },
-            { id: 15, char: '🌻', name: 'Sunny', rarity: 'uncommon', element: 'nature', type: 'Striker' },
-            { id: 70, char: '🦋', name: 'Morpho', rarity: 'epic', element: 'nature', type: 'Speedster' },
-            { id: 114, char: '🍄', name: 'Toad', rarity: 'uncommon', element: 'nature', type: 'Tank' },
-            { id: 115, char: '🦗', name: 'Chirp', rarity: 'rare', element: 'nature', type: 'Speedster' },
-            { id: 162, char: '🦍', name: 'Kong', rarity: 'legendary', element: 'nature', type: 'Striker' },
-            { id: 163, char: '🐘', name: 'Pach', rarity: 'legendary', element: 'nature', type: 'Tank' },
-            { id: 164, char: '🦒', name: 'Tall', rarity: 'rare', element: 'nature', type: 'Tank' },
-            { id: 165, char: '🦓', name: 'Stripe', rarity: 'common', element: 'nature', type: 'Speedster' },
-            { id: 166, char: '🐍', name: 'Coil', rarity: 'rare', element: 'nature', type: 'Striker' },
-            { id: 167, char: '🐢', name: 'Shell', rarity: 'common', element: 'nature', type: 'Tank' },
-            { id: 168, char: '🌵', name: 'Spine', rarity: 'common', element: 'nature', type: 'Tank' },
-            { id: 169, char: '🍀', name: 'Luck', rarity: 'epic', element: 'nature', type: 'Speedster' },
+            { id: 11, char: '🌿', name: 'Sprout', rarity: 'uncommon', element: 'nature', defaultMove: 'briar_strike', type: 'Tank' },
+            { id: 12, char: '🐯', name: 'Jungle', rarity: 'rare', element: 'nature', defaultMove: 'briar_strike', type: 'Striker' },
+            { id: 13, char: '🦄', name: 'Mythic', rarity: 'epic', element: 'nature', defaultMove: 'briar_strike', type: 'Speedster' },
+            { id: 14, char: '🌳', name: 'Oak', rarity: 'legendary', element: 'nature', defaultMove: 'briar_strike', type: 'Tank' },
+            { id: 15, char: '🌻', name: 'Sunny', rarity: 'uncommon', element: 'nature', defaultMove: 'briar_strike', type: 'Striker' },
+            { id: 70, char: '🦋', name: 'Morpho', rarity: 'epic', element: 'nature', defaultMove: 'briar_strike', type: 'Speedster' },
+            { id: 114, char: '🍄', name: 'Toad', rarity: 'uncommon', element: 'nature', defaultMove: 'briar_strike', type: 'Tank' },
+            { id: 115, char: '🦗', name: 'Chirp', rarity: 'rare', element: 'nature', defaultMove: 'briar_strike', type: 'Speedster' },
+            { id: 162, char: '🦍', name: 'Kong', rarity: 'legendary', element: 'nature', defaultMove: 'briar_strike', type: 'Striker' },
+            { id: 163, char: '🐘', name: 'Pach', rarity: 'legendary', element: 'nature', defaultMove: 'briar_strike', type: 'Tank' },
+            { id: 164, char: '🦒', name: 'Tall', rarity: 'rare', element: 'nature', defaultMove: 'briar_strike', type: 'Tank' },
+            { id: 165, char: '🦓', name: 'Stripe', rarity: 'common', element: 'nature', defaultMove: 'briar_strike', type: 'Speedster' },
+            { id: 166, char: '🐍', name: 'Coil', rarity: 'rare', element: 'nature', defaultMove: 'briar_strike', type: 'Striker' },
+            { id: 167, char: '🐢', name: 'Shell', rarity: 'common', element: 'nature', defaultMove: 'briar_strike', type: 'Tank' },
+            { id: 168, char: '🌵', name: 'Spine', rarity: 'common', element: 'nature', defaultMove: 'briar_strike', type: 'Tank' },
+            { id: 169, char: '🍀', name: 'Luck', rarity: 'epic', element: 'nature', defaultMove: 'briar_strike', type: 'Speedster' },
             // LIGHT (25)
-            { id: 16, char: '✨', name: 'Star', rarity: 'common', element: 'light', type: 'Speedster' },
-            { id: 17, char: '😇', name: 'Aegis', rarity: 'rare', element: 'light', type: 'Tank' },
-            { id: 18, char: '👑', name: 'Sov', rarity: 'legendary', element: 'light', type: 'Striker' },
-            { id: 19, char: '💎', name: 'Gem', rarity: 'epic', element: 'light', type: 'Tank' },
-            { id: 20, char: '🧿', name: 'Eye', rarity: 'divine', element: 'light', type: 'Tank' },
-            { id: 117, char: '🏰', name: 'Fort', rarity: 'legendary', element: 'light', type: 'Tank' },
-            { id: 118, char: '🕊️', name: 'Peace', rarity: 'rare', element: 'light', type: 'Speedster' },
-            { id: 170, char: '🦄', name: 'Aurelia', rarity: 'divine', element: 'light', type: 'Speedster' },
-            { id: 171, char: '👼', name: 'Seraph', rarity: 'legendary', element: 'light', type: 'Striker' },
-            { id: 172, char: '🌈', name: 'Prism', rarity: 'legendary', element: 'light', type: 'Speedster' },
-            { id: 173, char: '💍', name: 'Wealth', rarity: 'epic', element: 'light', type: 'Tank' },
-            { id: 174, char: '🧞', name: 'Grant', rarity: 'divine', element: 'light', type: 'Striker' },
-            { id: 175, char: '💡', name: 'Volt', rarity: 'uncommon', element: 'light', type: 'Striker' },
-            { id: 176, char: '🎻', name: 'Solo', rarity: 'rare', element: 'light', type: 'Speedster' },
+            { id: 16, char: '✨', name: 'Star', rarity: 'common', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
+            { id: 17, char: '😇', name: 'Aegis', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Tank' },
+            { id: 18, char: '👑', name: 'Sov', rarity: 'legendary', element: 'light', defaultMove: 'spark_jab', type: 'Striker' },
+            { id: 19, char: '💎', name: 'Gem', rarity: 'epic', element: 'light', defaultMove: 'spark_jab', type: 'Tank' },
+            { id: 20, char: '🧿', name: 'Eye', rarity: 'divine', element: 'light', defaultMove: 'spark_jab', type: 'Tank' },
+            { id: 117, char: '🏰', name: 'Fort', rarity: 'legendary', element: 'light', defaultMove: 'spark_jab', type: 'Tank' },
+            { id: 118, char: '🕊️', name: 'Peace', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
+            { id: 170, char: '🦄', name: 'Aurelia', rarity: 'divine', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
+            { id: 171, char: '👼', name: 'Seraph', rarity: 'legendary', element: 'light', defaultMove: 'spark_jab', type: 'Striker' },
+            { id: 172, char: '🌈', name: 'Prism', rarity: 'legendary', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
+            { id: 173, char: '💍', name: 'Wealth', rarity: 'epic', element: 'light', defaultMove: 'spark_jab', type: 'Tank' },
+            { id: 174, char: '🧞', name: 'Grant', rarity: 'divine', element: 'light', defaultMove: 'spark_jab', type: 'Striker' },
+            { id: 175, char: '💡', name: 'Volt', rarity: 'uncommon', element: 'light', defaultMove: 'spark_jab', type: 'Striker' },
+            { id: 176, char: '🎻', name: 'Solo', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
             // DARK (25)
-            { id: 21, char: '🌑', name: 'Eclip', rarity: 'uncommon', element: 'dark', type: 'Speedster' },
-            { id: 22, char: '🦇', name: 'Vamp', rarity: 'rare', element: 'dark', type: 'Striker' },
-            { id: 23, char: '👁️', name: 'Void', rarity: 'divine', element: 'dark', type: 'Striker' },
-            { id: 24, char: '👻', name: 'Wraith', rarity: 'epic', element: 'dark', type: 'Speedster' },
-            { id: 120, char: '💣', name: 'Blast', rarity: 'epic', element: 'dark', type: 'Striker' },
-            { id: 121, char: '🕷️', name: 'Widow', rarity: 'rare', element: 'dark', type: 'Striker' },
-            { id: 177, char: '🪐', name: 'Abyss', rarity: 'legendary', element: 'dark', type: 'Tank' },
-            { id: 178, char: '🛸', name: 'Visitor', rarity: 'epic', element: 'dark', type: 'Speedster' },
-            { id: 179, char: '💀', name: 'Reap', rarity: 'legendary', element: 'dark', type: 'Striker' },
-            { id: 180, char: '🕷️', name: 'Fang', rarity: 'rare', element: 'dark', type: 'Striker' },
-            { id: 181, char: '🔮', name: 'Oracle', rarity: 'divine', element: 'dark', type: 'Speedster' },
-            { id: 182, char: '👽', name: 'Zor', rarity: 'epic', element: 'dark', type: 'Striker' },
-            { id: 183, char: '👾', name: 'Shadow', rarity: 'eternal', element: 'dark', type: 'Striker' },
-            { id: 184, char: '🕰️', name: 'Dread', rarity: 'rare', element: 'dark', type: 'Tank' },
+            { id: 21, char: '🌑', name: 'Eclip', rarity: 'uncommon', element: 'dark', defaultMove: 'gloom_slash', type: 'Speedster' },
+            { id: 22, char: '🦇', name: 'Vamp', rarity: 'rare', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' },
+            { id: 23, char: '👁️', name: 'Void', rarity: 'divine', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' },
+            { id: 24, char: '👻', name: 'Wraith', rarity: 'epic', element: 'dark', defaultMove: 'gloom_slash', type: 'Speedster' },
+            { id: 120, char: '💣', name: 'Blast', rarity: 'epic', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' },
+            { id: 121, char: '🕷️', name: 'Widow', rarity: 'rare', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' },
+            { id: 177, char: '🪐', name: 'Abyss', rarity: 'legendary', element: 'dark', defaultMove: 'gloom_slash', type: 'Tank' },
+            { id: 178, char: '🛸', name: 'Visitor', rarity: 'epic', element: 'dark', defaultMove: 'gloom_slash', type: 'Speedster' },
+            { id: 179, char: '💀', name: 'Reap', rarity: 'legendary', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' },
+            { id: 180, char: '🕷️', name: 'Fang', rarity: 'rare', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' },
+            { id: 181, char: '🔮', name: 'Oracle', rarity: 'divine', element: 'dark', defaultMove: 'gloom_slash', type: 'Speedster' },
+            { id: 182, char: '👽', name: 'Zor', rarity: 'epic', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' },
+            { id: 183, char: '👾', name: 'Shadow', rarity: 'eternal', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' },
+            { id: 184, char: '🕰️', name: 'Dread', rarity: 'rare', element: 'dark', defaultMove: 'gloom_slash', type: 'Tank' },
             // MIXED/ETERNAL (Remaining)
-            { id: 58, char: '🌀', name: 'Singu', rarity: 'eternal', element: 'dark', type: 'Striker' },
-            { id: 59, char: '♾️', name: 'Infin', rarity: 'eternal', element: 'light', type: 'Tank' },
-            { id: 60, char: '🏔️', name: 'Zenith', rarity: 'eternal', element: 'nature', type: 'Speedster' },
-            { id: 185, char: '🍳', name: 'Sizzle', rarity: 'common', element: 'fire', type: 'Tank' },
-            { id: 186, char: '🤡', name: 'Chaos', rarity: 'epic', element: 'dark', type: 'Striker' },
-            { id: 187, char: '🎷', name: 'Jazz', rarity: 'rare', element: 'light', type: 'Speedster' },
-            { id: 188, char: '🎾', name: 'Bounce', rarity: 'common', element: 'nature', type: 'Speedster' },
-            { id: 189, char: '📷', name: 'Snap', rarity: 'common', element: 'light', type: 'Speedster' },
-            { id: 190, char: '🧊', name: 'Zero', rarity: 'legendary', element: 'water', type: 'Tank' },
+            { id: 58, char: '🌀', name: 'Singu', rarity: 'eternal', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' },
+            { id: 59, char: '♾️', name: 'Infin', rarity: 'eternal', element: 'light', defaultMove: 'spark_jab', type: 'Tank' },
+            { id: 60, char: '🏔️', name: 'Zenith', rarity: 'eternal', element: 'nature', defaultMove: 'briar_strike', type: 'Speedster' },
+            { id: 185, char: '🍳', name: 'Sizzle', rarity: 'common', element: 'fire', defaultMove: 'cinder_jab', type: 'Tank' },
+            { id: 186, char: '🤡', name: 'Chaos', rarity: 'epic', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' },
+            { id: 187, char: '🎷', name: 'Jazz', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
+            { id: 188, char: '🎾', name: 'Bounce', rarity: 'common', element: 'nature', defaultMove: 'briar_strike', type: 'Speedster' },
+            { id: 189, char: '📷', name: 'Snap', rarity: 'common', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
+            { id: 190, char: '🧊', name: 'Zero', rarity: 'legendary', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
             // EXPANSION (55)
-            { id: 191, char: '🧱', name: 'Brick', rarity: 'common', element: 'nature', type: 'Tank' },
-            { id: 192, char: '🪵', name: 'Log', rarity: 'common', element: 'nature', type: 'Tank' },
-            { id: 193, char: '🪨', name: 'Boulder', rarity: 'rare', element: 'nature', type: 'Tank' },
-            { id: 194, char: '🧯', name: 'Exting', rarity: 'rare', element: 'fire', type: 'Tank' },
-            { id: 195, char: '🪓', name: 'Axe', rarity: 'rare', element: 'nature', type: 'Striker' },
-            { id: 196, char: '🧲', name: 'Magnet', rarity: 'common', element: 'light', type: 'Striker' },
-            { id: 197, char: '🧪', name: 'Elixir', rarity: 'rare', element: 'light', type: 'Speedster' },
-            { id: 198, char: '🛡️', name: 'Bulwark', rarity: 'epic', element: 'light', type: 'Tank' },
-            { id: 199, char: '⚡', name: 'Bolt', rarity: 'rare', element: 'light', type: 'Striker' },
-            { id: 200, char: '🌊', name: 'Surge', rarity: 'epic', element: 'water', type: 'Striker' },
-            { id: 201, char: '🐚', name: 'Pearl', rarity: 'common', element: 'water', type: 'Tank' },
-            { id: 202, char: '🐟', name: 'Fin', rarity: 'common', element: 'water', type: 'Speedster' },
-            { id: 203, char: '🐊', name: 'Gator', rarity: 'rare', element: 'water', type: 'Tank' },
-            { id: 204, char: '🐋', name: 'Coloss', rarity: 'legendary', element: 'water', type: 'Tank' },
-            { id: 205, char: '🧜‍♂️', name: 'Merman', rarity: 'epic', element: 'water', type: 'Speedster' },
-            { id: 206, char: '🦭', name: 'Harbor', rarity: 'common', element: 'water', type: 'Tank' },
-            { id: 207, char: '🦅', name: 'Talon', rarity: 'rare', element: 'light', type: 'Striker' },
-            { id: 208, char: '🦉', name: 'Owl', rarity: 'epic', element: 'dark', type: 'Speedster' },
-            { id: 209, char: '🐺', name: 'Howl', rarity: 'legendary', element: 'dark', type: 'Striker' },
-            { id: 210, char: '🦂', name: 'Scorch', rarity: 'rare', element: 'fire', type: 'Striker' },
-            { id: 211, char: '🐝', name: 'Buzz', rarity: 'common', element: 'nature', type: 'Speedster' },
-            { id: 212, char: '🧄', name: 'Garlic', rarity: 'common', element: 'nature', type: 'Striker' },
-            { id: 213, char: '🥕', name: 'Carrot', rarity: 'common', element: 'nature', type: 'Speedster' },
-            { id: 214, char: '🥔', name: 'Spud', rarity: 'common', element: 'nature', type: 'Tank' },
-            { id: 215, char: '🥩', name: 'Steak', rarity: 'rare', element: 'fire', type: 'Striker' },
-            { id: 216, char: '🥨', name: 'Twist', rarity: 'common', element: 'fire', type: 'Speedster' },
-            { id: 217, char: '🥯', name: 'Bagel', rarity: 'common', element: 'fire', type: 'Tank' },
-            { id: 218, char: '🍜', name: 'Noodle', rarity: 'rare', element: 'fire', type: 'Speedster' },
-            { id: 219, char: '🍙', name: 'Onigiri', rarity: 'common', element: 'fire', type: 'Tank' },
-            { id: 220, char: '🧁', name: 'Cupcake', rarity: 'rare', element: 'light', type: 'Speedster' },
-            { id: 221, char: '🎇', name: 'Spark', rarity: 'epic', element: 'fire', type: 'Speedster' },
-            { id: 222, char: '🎆', name: 'Burst', rarity: 'epic', element: 'fire', type: 'Striker' },
-            { id: 223, char: '🪬', name: 'Charm', rarity: 'divine', element: 'light', type: 'Striker' },
-            { id: 224, char: '🧟', name: 'Zombie', rarity: 'epic', element: 'dark', type: 'Tank' },
-            { id: 225, char: '🧛‍♂️', name: 'Lord', rarity: 'legendary', element: 'dark', type: 'Striker' },
-            { id: 226, char: '🐜', name: 'Ant', rarity: 'trash', element: 'nature', type: 'Speedster' },
-            { id: 227, char: '🪳', name: 'Roach', rarity: 'trash', element: 'dark', type: 'Speedster' },
-            { id: 228, char: '🧻', name: 'Tissue', rarity: 'trash', element: 'light', type: 'Speedster' },
-            { id: 229, char: '🥀', name: 'Wilt', rarity: 'trash', element: 'nature', type: 'Striker' },
-            { id: 230, char: '🪣', name: 'Bucket', rarity: 'trash', element: 'water', type: 'Tank' },
-            { id: 231, char: '🕸️', name: 'Web', rarity: 'rare', element: 'dark', type: 'Tank' },
-            { id: 232, char: '🕯️', name: 'Candle', rarity: 'uncommon', element: 'light', type: 'Striker' },
-            { id: 233, char: '🌒', name: 'Crescent', rarity: 'uncommon', element: 'dark', type: 'Speedster' },
-            { id: 234, char: '🌌', name: 'Cosmos', rarity: 'epic', element: 'dark', type: 'Striker' },
-            { id: 235, char: '🪄', name: 'Wand', rarity: 'legendary', element: 'light', type: 'Striker' },
-            { id: 236, char: '🎲', name: 'Dice', rarity: 'rare', element: 'dark', type: 'Speedster' },
-            { id: 237, char: '📿', name: 'Beads', rarity: 'rare', element: 'light', type: 'Tank' },
-            { id: 238, char: '🪙', name: 'Coin', rarity: 'uncommon', element: 'light', type: 'Tank' },
-            { id: 239, char: '🧵', name: 'Thread', rarity: 'uncommon', element: 'dark', type: 'Speedster' },
-            { id: 240, char: '🪡', name: 'Needle', rarity: 'rare', element: 'dark', type: 'Striker' },
-            { id: 241, char: '🧭', name: 'Compass', rarity: 'epic', element: 'light', type: 'Speedster' },
-            { id: 242, char: '🥶', name: 'Chill', rarity: 'epic', element: 'water', type: 'Tank' },
-            { id: 243, char: '🗡️', name: 'Blade', rarity: 'legendary', element: 'fire', type: 'Striker' },
-            { id: 244, char: '🧋', name: 'Boba', rarity: 'common', element: 'water', type: 'Speedster' },
-            { id: 245, char: '🧠', name: 'Mind', rarity: 'eternal', element: 'dark', type: 'Striker' }
+            { id: 191, char: '🧱', name: 'Brick', rarity: 'common', element: 'nature', defaultMove: 'briar_strike', type: 'Tank' },
+            { id: 192, char: '🪵', name: 'Log', rarity: 'common', element: 'nature', defaultMove: 'briar_strike', type: 'Tank' },
+            { id: 193, char: '🪨', name: 'Boulder', rarity: 'rare', element: 'nature', defaultMove: 'briar_strike', type: 'Tank' },
+            { id: 194, char: '🧯', name: 'Exting', rarity: 'rare', element: 'fire', defaultMove: 'cinder_jab', type: 'Tank' },
+            { id: 195, char: '🪓', name: 'Axe', rarity: 'rare', element: 'nature', defaultMove: 'briar_strike', type: 'Striker' },
+            { id: 196, char: '🧲', name: 'Magnet', rarity: 'common', element: 'light', defaultMove: 'spark_jab', type: 'Striker' },
+            { id: 197, char: '🧪', name: 'Elixir', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
+            { id: 198, char: '🛡️', name: 'Bulwark', rarity: 'epic', element: 'light', defaultMove: 'spark_jab', type: 'Tank' },
+            { id: 199, char: '⚡', name: 'Bolt', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Striker' },
+            { id: 200, char: '🌊', name: 'Surge', rarity: 'epic', element: 'water', defaultMove: 'ripple_cut', type: 'Striker' },
+            { id: 201, char: '🐚', name: 'Pearl', rarity: 'common', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
+            { id: 202, char: '🐟', name: 'Fin', rarity: 'common', element: 'water', defaultMove: 'ripple_cut', type: 'Speedster' },
+            { id: 203, char: '🐊', name: 'Gator', rarity: 'rare', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
+            { id: 204, char: '🐋', name: 'Coloss', rarity: 'legendary', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
+            { id: 205, char: '🧜‍♂️', name: 'Merman', rarity: 'epic', element: 'water', defaultMove: 'ripple_cut', type: 'Speedster' },
+            { id: 206, char: '🦭', name: 'Harbor', rarity: 'common', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
+            { id: 207, char: '🦅', name: 'Talon', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Striker' },
+            { id: 208, char: '🦉', name: 'Owl', rarity: 'epic', element: 'dark', defaultMove: 'gloom_slash', type: 'Speedster' },
+            { id: 209, char: '🐺', name: 'Howl', rarity: 'legendary', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' },
+            { id: 210, char: '🦂', name: 'Scorch', rarity: 'rare', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
+            { id: 211, char: '🐝', name: 'Buzz', rarity: 'common', element: 'nature', defaultMove: 'briar_strike', type: 'Speedster' },
+            { id: 212, char: '🧄', name: 'Garlic', rarity: 'common', element: 'nature', defaultMove: 'briar_strike', type: 'Striker' },
+            { id: 213, char: '🥕', name: 'Carrot', rarity: 'common', element: 'nature', defaultMove: 'briar_strike', type: 'Speedster' },
+            { id: 214, char: '🥔', name: 'Spud', rarity: 'common', element: 'nature', defaultMove: 'briar_strike', type: 'Tank' },
+            { id: 215, char: '🥩', name: 'Steak', rarity: 'rare', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
+            { id: 216, char: '🥨', name: 'Twist', rarity: 'common', element: 'fire', defaultMove: 'cinder_jab', type: 'Speedster' },
+            { id: 217, char: '🥯', name: 'Bagel', rarity: 'common', element: 'fire', defaultMove: 'cinder_jab', type: 'Tank' },
+            { id: 218, char: '🍜', name: 'Noodle', rarity: 'rare', element: 'fire', defaultMove: 'cinder_jab', type: 'Speedster' },
+            { id: 219, char: '🍙', name: 'Onigiri', rarity: 'common', element: 'fire', defaultMove: 'cinder_jab', type: 'Tank' },
+            { id: 220, char: '🧁', name: 'Cupcake', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
+            { id: 221, char: '🎇', name: 'Spark', rarity: 'epic', element: 'fire', defaultMove: 'cinder_jab', type: 'Speedster' },
+            { id: 222, char: '🎆', name: 'Burst', rarity: 'epic', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
+            { id: 223, char: '🪬', name: 'Charm', rarity: 'divine', element: 'light', defaultMove: 'spark_jab', type: 'Striker' },
+            { id: 224, char: '🧟', name: 'Zombie', rarity: 'epic', element: 'dark', defaultMove: 'gloom_slash', type: 'Tank' },
+            { id: 225, char: '🧛‍♂️', name: 'Lord', rarity: 'legendary', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' },
+            { id: 226, char: '🐜', name: 'Ant', rarity: 'trash', element: 'nature', defaultMove: 'briar_strike', type: 'Speedster' },
+            { id: 227, char: '🪳', name: 'Roach', rarity: 'trash', element: 'dark', defaultMove: 'gloom_slash', type: 'Speedster' },
+            { id: 228, char: '🧻', name: 'Tissue', rarity: 'trash', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
+            { id: 229, char: '🥀', name: 'Wilt', rarity: 'trash', element: 'nature', defaultMove: 'briar_strike', type: 'Striker' },
+            { id: 230, char: '🪣', name: 'Bucket', rarity: 'trash', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
+            { id: 231, char: '🕸️', name: 'Web', rarity: 'rare', element: 'dark', defaultMove: 'gloom_slash', type: 'Tank' },
+            { id: 232, char: '🕯️', name: 'Candle', rarity: 'uncommon', element: 'light', defaultMove: 'spark_jab', type: 'Striker' },
+            { id: 233, char: '🌒', name: 'Crescent', rarity: 'uncommon', element: 'dark', defaultMove: 'gloom_slash', type: 'Speedster' },
+            { id: 234, char: '🌌', name: 'Cosmos', rarity: 'epic', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' },
+            { id: 235, char: '🪄', name: 'Wand', rarity: 'legendary', element: 'light', defaultMove: 'spark_jab', type: 'Striker' },
+            { id: 236, char: '🎲', name: 'Dice', rarity: 'rare', element: 'dark', defaultMove: 'gloom_slash', type: 'Speedster' },
+            { id: 237, char: '📿', name: 'Beads', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Tank' },
+            { id: 238, char: '🪙', name: 'Coin', rarity: 'uncommon', element: 'light', defaultMove: 'spark_jab', type: 'Tank' },
+            { id: 239, char: '🧵', name: 'Thread', rarity: 'uncommon', element: 'dark', defaultMove: 'gloom_slash', type: 'Speedster' },
+            { id: 240, char: '🪡', name: 'Needle', rarity: 'rare', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' },
+            { id: 241, char: '🧭', name: 'Compass', rarity: 'epic', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
+            { id: 242, char: '🥶', name: 'Chill', rarity: 'epic', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
+            { id: 243, char: '🗡️', name: 'Blade', rarity: 'legendary', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
+            { id: 244, char: '🧋', name: 'Boba', rarity: 'common', element: 'water', defaultMove: 'ripple_cut', type: 'Speedster' },
+            { id: 245, char: '🧠', name: 'Mind', rarity: 'eternal', element: 'dark', defaultMove: 'gloom_slash', type: 'Striker' }
         ];
 
         const RARITY_ORDER = ['trash', 'common', 'uncommon', 'rare', 'epic', 'legendary', 'divine', 'eternal'];
@@ -738,159 +746,6 @@
             { num: 101, id: 'endless_night', name: 'Endless Night', power: 100, cooldown: 5, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'eternal', effect: { selfStages: { atk: 1, spAtk: 1 }, recoilPct: 0.35 }, statuses: [{ id: 'curse', chance: 0.6 }], special: null }
         ];
 
-        const EMOJI_DEFAULT_MOVES = {
-            1: 'basic_strike',
-            2: 'basic_strike',
-            3: 'basic_strike',
-            4: 'basic_strike',
-            5: 'basic_strike',
-            6: 'basic_strike',
-            7: 'basic_strike',
-            8: 'basic_strike',
-            9: 'basic_strike',
-            10: 'basic_strike',
-            11: 'basic_strike',
-            12: 'basic_strike',
-            13: 'basic_strike',
-            14: 'basic_strike',
-            15: 'basic_strike',
-            16: 'basic_strike',
-            17: 'basic_strike',
-            18: 'basic_strike',
-            19: 'basic_strike',
-            20: 'basic_strike',
-            21: 'basic_strike',
-            22: 'basic_strike',
-            23: 'basic_strike',
-            24: 'basic_strike',
-            58: 'basic_strike',
-            59: 'basic_strike',
-            60: 'basic_strike',
-            61: 'basic_strike',
-            62: 'basic_strike',
-            64: 'basic_strike',
-            66: 'basic_strike',
-            70: 'basic_strike',
-            101: 'basic_strike',
-            102: 'basic_strike',
-            103: 'basic_strike',
-            104: 'basic_strike',
-            105: 'basic_strike',
-            106: 'basic_strike',
-            107: 'basic_strike',
-            108: 'basic_strike',
-            109: 'basic_strike',
-            110: 'basic_strike',
-            111: 'basic_strike',
-            112: 'basic_strike',
-            113: 'basic_strike',
-            114: 'basic_strike',
-            115: 'basic_strike',
-            117: 'basic_strike',
-            118: 'basic_strike',
-            120: 'basic_strike',
-            121: 'basic_strike',
-            146: 'basic_strike',
-            147: 'basic_strike',
-            148: 'basic_strike',
-            149: 'basic_strike',
-            150: 'basic_strike',
-            151: 'basic_strike',
-            152: 'basic_strike',
-            153: 'basic_strike',
-            154: 'basic_strike',
-            155: 'basic_strike',
-            156: 'basic_strike',
-            157: 'basic_strike',
-            158: 'basic_strike',
-            159: 'basic_strike',
-            160: 'basic_strike',
-            161: 'basic_strike',
-            162: 'basic_strike',
-            163: 'basic_strike',
-            164: 'basic_strike',
-            165: 'basic_strike',
-            166: 'basic_strike',
-            167: 'basic_strike',
-            168: 'basic_strike',
-            169: 'basic_strike',
-            170: 'basic_strike',
-            171: 'basic_strike',
-            172: 'basic_strike',
-            173: 'basic_strike',
-            174: 'basic_strike',
-            175: 'basic_strike',
-            176: 'basic_strike',
-            177: 'basic_strike',
-            178: 'basic_strike',
-            179: 'basic_strike',
-            180: 'basic_strike',
-            181: 'basic_strike',
-            182: 'basic_strike',
-            183: 'basic_strike',
-            184: 'basic_strike',
-            185: 'basic_strike',
-            186: 'basic_strike',
-            187: 'basic_strike',
-            188: 'basic_strike',
-            189: 'basic_strike',
-            190: 'basic_strike',
-            191: 'basic_strike',
-            192: 'basic_strike',
-            193: 'basic_strike',
-            194: 'basic_strike',
-            195: 'basic_strike',
-            196: 'basic_strike',
-            197: 'basic_strike',
-            198: 'basic_strike',
-            199: 'basic_strike',
-            200: 'basic_strike',
-            201: 'basic_strike',
-            202: 'basic_strike',
-            203: 'basic_strike',
-            204: 'basic_strike',
-            205: 'basic_strike',
-            206: 'basic_strike',
-            207: 'basic_strike',
-            208: 'basic_strike',
-            209: 'basic_strike',
-            210: 'basic_strike',
-            211: 'basic_strike',
-            212: 'basic_strike',
-            213: 'basic_strike',
-            214: 'basic_strike',
-            215: 'basic_strike',
-            216: 'basic_strike',
-            217: 'basic_strike',
-            218: 'basic_strike',
-            219: 'basic_strike',
-            220: 'basic_strike',
-            221: 'basic_strike',
-            222: 'basic_strike',
-            223: 'basic_strike',
-            224: 'basic_strike',
-            225: 'basic_strike',
-            226: 'basic_strike',
-            227: 'basic_strike',
-            228: 'basic_strike',
-            229: 'basic_strike',
-            230: 'basic_strike',
-            231: 'basic_strike',
-            232: 'basic_strike',
-            233: 'basic_strike',
-            234: 'basic_strike',
-            235: 'basic_strike',
-            236: 'basic_strike',
-            237: 'basic_strike',
-            238: 'basic_strike',
-            239: 'basic_strike',
-            240: 'basic_strike',
-            241: 'basic_strike',
-            242: 'basic_strike',
-            243: 'basic_strike',
-            244: 'basic_strike',
-            245: 'basic_strike',
-        };
         const EMOJI_DESCS = {
             101: 'Rattles around, stubbornly guards scraps.',
             102: 'Smug little lump that never backs down.',
@@ -1265,6 +1120,10 @@
                 const selected = EMOJIS.find(e => e.id === state.tutorial.starterId);
                 const preview = selected ? renderStarterPreview(selected) : '<div class="text-[9px] text-slate-500">Select a starter to view details.</div>';
                 content.innerHTML = `
+                    <div class="flex items-center gap-3 bg-black/40 border border-white/10 rounded-2xl px-3 py-2 mb-4">
+                        <div class="text-2xl">🧙</div>
+                        <div class="text-[10px] text-slate-200 font-black uppercase tracking-[0.2em]">Welcome to the wonderful world of emojis!</div>
+                    </div>
                     <div class="text-xs font-black uppercase tracking-[0.2em] text-emerald-300 mb-2">Choose Starter</div>
                     <h3 class="text-xl font-black mb-4">Pick your first ally</h3>
                     <div class="grid grid-cols-3 gap-3 mb-4">
@@ -1272,7 +1131,7 @@
                             const emoji = EMOJIS.find(e => e.id === id);
                             const isSelected = state.tutorial.starterId === id;
                             return `
-                                <button onclick="selectStarterChoice(${id})" class="p-3 rounded-2xl border ${isSelected ? 'border-emerald-400 bg-emerald-500/20' : 'border-white/10 bg-black/40 hover:bg-slate-800'} text-center">
+                                <button onclick="selectStarterChoice(${id})" class="p-3 rounded-2xl border ${isSelected ? 'border-emerald-400 bg-emerald-500/20 starter-wiggle' : 'border-white/10 bg-black/40 hover:bg-slate-800'} text-center">
                                     <div class="text-3xl">${emoji.char}</div>
                                     <div class="text-[9px] font-black uppercase mt-1">${emoji.name}</div>
                                 </button>
@@ -1534,7 +1393,7 @@
         }
 
         function getMoveIdForEmoji(emoji) {
-            return EMOJI_DEFAULT_MOVES[emoji.id] || 'basic_strike';
+            return emoji.defaultMove || 'basic_strike';
         }
 
         function attachMoves(unit, learnedMoves = []) {
@@ -1876,7 +1735,9 @@
             const clearedCount = state.adventure.regions.filter(r => r.cleared).length;
             document.getElementById('adventure-progress').innerText = `${clearedCount}/${state.adventure.regions.length} Cleared`;
             list.innerHTML = '';
-            state.adventure.regions.forEach(region => {
+            const nextUnbeaten = state.adventure.regions.find(r => !r.cleared);
+            const visibleRegions = state.adventure.regions.filter(region => region.cleared || (nextUnbeaten && region.id === nextUnbeaten.id));
+            visibleRegions.forEach(region => {
                 const btn = document.createElement('button');
                 btn.className = `w-full text-left px-4 py-3 rounded-2xl border ${region.cleared ? 'bg-black/30 border-white/5 text-slate-400 hover:bg-slate-800/70' : 'bg-slate-800 border-white/10 text-white hover:bg-slate-700'}`;
                 btn.innerHTML = `
@@ -2211,7 +2072,7 @@
             const ownedIds = new Set(Object.keys(state.inventory).map(id => parseInt(id, 10)));
             const discoveredMoves = new Set(['basic_strike']);
             ownedIds.forEach(id => {
-                const moveId = EMOJI_DEFAULT_MOVES[id];
+                const moveId = (EMOJIS.find(e => e.id === id) || {}).defaultMove;
                 if (moveId) discoveredMoves.add(moveId);
                 const learned = state.inventory[id]?.learnedMoves || [];
                 learned.forEach(learnedId => discoveredMoves.add(learnedId));
@@ -2258,7 +2119,7 @@
             state.tutorPairs.forEach(pair => {
                 if (!pair.mentorId || !pair.studentId) return;
                 if (!state.team.includes(pair.mentorId) || !state.team.includes(pair.studentId)) return;
-                const mentorMoveId = EMOJI_DEFAULT_MOVES[pair.mentorId];
+                const mentorMoveId = (EMOJIS.find(e => e.id === pair.mentorId) || {}).defaultMove;
                 const mentorMove = getMoveById(mentorMoveId);
                 if (!mentorMove) return;
                 if (rarityRank(poolRarity) < rarityRank(mentorMove.rarity)) return;
@@ -2266,7 +2127,7 @@
                 if (!studentInv) return;
                 const studentBase = studentInv.baseRarity || (EMOJIS.find(e => e.id === pair.studentId)?.rarity);
                 const requiredWins = getTutorRequirement(studentBase);
-                const alreadyKnown = mentorMoveId === getMoveIdForEmoji({ id: pair.studentId }) || (studentInv.learnedMoves || []).includes(mentorMoveId);
+                const alreadyKnown = mentorMoveId === getMoveIdForEmoji(EMOJIS.find(e => e.id === pair.studentId) || {}) || (studentInv.learnedMoves || []).includes(mentorMoveId);
                 if (alreadyKnown) return;
                 if ((studentInv.learnedMoves || []).length >= 2) return;
                 pair.progress = Math.min(requiredWins, (pair.progress || 0) + 1);
@@ -2311,7 +2172,7 @@
                 const pair = state.tutorPairs[i - 1] || { mentorId: null, studentId: null, progress: 0 };
                 const mentorEmoji = EMOJIS.find(e => e.id === pair.mentorId);
                 const studentEmoji = EMOJIS.find(e => e.id === pair.studentId);
-                const mentorMoveId = mentorEmoji ? EMOJI_DEFAULT_MOVES[mentorEmoji.id] : null;
+                const mentorMoveId = mentorEmoji ? mentorEmoji.defaultMove : null;
                 const mentorMove = mentorMoveId ? getMoveById(mentorMoveId) : null;
                 const studentInv = studentEmoji ? state.inventory[studentEmoji.id] : null;
                 const studentBase = studentInv?.baseRarity || studentEmoji?.rarity;
