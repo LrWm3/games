@@ -140,13 +140,22 @@
                 <div class="relative z-10">
                     <h2 class="text-2xl font-black mb-1 italic">THE WORLD GATE</h2>
                     <p class="text-[9px] text-indigo-400 font-bold mb-4 tracking-[0.4em]">DISCOVER 151 HEROES</p>
-                    <div class="inline-block bg-black/60 px-4 py-1.5 rounded-full border border-white/10 text-[10px]">
-                        Pity: <span id="pity-count" class="text-yellow-400">0/50</span>
-                    </div>
                 </div>
             </div>
             <div class="flex flex-col gap-4 max-w-xs mx-auto">
-                <button onclick="openSummonDialog()" class="bg-white text-black py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">OPEN SUMMONS</button>
+                <div class="text-[9px] font-black uppercase tracking-[0.35em] text-slate-400">Standard Tickets</div>
+                <button id="btn-single-summon" onclick="startSummonSequence(1, 'standard')" class="bg-white text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">SINGLE SUMMON</button>
+                <button onclick="startSummonSequence(10, 'standard')" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-indigo-900 transition-all">MULTI SUMMON (10x)</button>
+                <div id="rare-summon-block">
+                    <div class="text-[9px] font-black uppercase tracking-[0.35em] text-blue-300 mt-2">Rare Tickets</div>
+                    <button onclick="startSummonSequence(1, 'rare')" class="bg-blue-500 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-blue-900 transition-all">RARE SUMMON</button>
+                    <button onclick="startSummonSequence(10, 'rare')" class="bg-gradient-to-r from-sky-500 to-blue-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-blue-900 transition-all">RARE MULTI (10x)</button>
+                </div>
+                <div id="legendary-summon-block">
+                    <div class="text-[9px] font-black uppercase tracking-[0.35em] text-amber-300 mt-2">Legendary Tickets</div>
+                    <button onclick="startSummonSequence(1, 'legendary')" class="bg-amber-400 text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">LEGEND SUMMON</button>
+                    <button onclick="startSummonSequence(10, 'legendary')" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-amber-900 transition-all">LEGEND MULTI (10x)</button>
+                </div>
             </div>
         </section>
 
@@ -163,24 +172,26 @@
                 </div>
 
                 <!-- Inspect Panel -->
-                <div id="inspect-panel" class="bg-slate-900 border border-white/10 rounded-[2.5rem] p-6 h-fit sticky top-40 shadow-2xl">
+                <div id="inspect-panel" class="bg-slate-900 border border-white/10 rounded-[2.5rem] p-5 md:p-6 h-fit md:sticky md:top-40 shadow-2xl">
                     <div id="inspect-content" class="text-center">
-                        <div id="inspect-emoji" class="text-7xl mb-4 drop-shadow-2xl">❓</div>
-                        <h4 id="inspect-name" class="text-xl font-black mb-1 leading-none">Hero Name</h4>
-                        
-                        <div class="flex justify-center gap-2 mb-4">
-                             <div id="inspect-type-badge" class="type-badge text-white">TYPE</div>
-                             <div id="inspect-element-badge" class="type-badge">ELEMENT</div>
+                        <div class="flex items-center justify-center gap-4 mb-4">
+                            <div id="inspect-emoji" class="text-6xl md:text-7xl drop-shadow-2xl">❓</div>
+                            <div class="text-left">
+                                <h4 id="inspect-name" class="text-lg md:text-xl font-black leading-tight">Hero Name</h4>
+                                <div class="flex gap-2 mt-2">
+                                     <div id="inspect-type-badge" class="type-badge text-white">TYPE</div>
+                                     <div id="inspect-element-badge" class="type-badge">ELEMENT</div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div id="inspect-rarity-badge" class="inline-block px-3 py-1 rounded-full text-[7px] font-black uppercase mb-6 tracking-[0.2em] border">RARITY</div>
-                        <p id="inspect-desc" class="text-[10px] text-slate-300 leading-relaxed mb-6">A short description.</p>
-                        <div id="inspect-type-count" class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">Type Found: 0</div>
-                        <div id="inspect-dupe-count" class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-6">Duplicates: 0</div>
+                        <div id="inspect-rarity-badge" class="inline-block px-3 py-1 rounded-full text-[7px] font-black uppercase mb-4 tracking-[0.2em] border">RARITY</div>
+                        <p id="inspect-desc" class="text-[10px] text-slate-300 leading-relaxed mb-4">A short description.</p>
+                        <div id="inspect-dupe-count" class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-5">Duplicates: 0</div>
                         <div class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Moves</div>
-                        <div id="inspect-moves" class="text-[9px] text-slate-300 space-y-1 mb-6"></div>
+                        <div id="inspect-moves" class="text-[9px] text-slate-300 space-y-1 mb-5"></div>
                         
-                        <div class="grid grid-cols-3 gap-2 text-left mb-6">
+                        <div class="grid grid-cols-3 gap-2 text-left mb-5">
                             <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-slate-500 uppercase">LV</p><span class="font-bold text-sm" id="inspect-lvl">0</span></div>
                             <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-green-500 uppercase">HP</p><span class="font-bold text-sm" id="inspect-hp">0</span></div>
                             <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-red-500 uppercase">ATK</p><span class="font-bold text-sm" id="inspect-atk">0</span></div>
@@ -341,11 +352,18 @@
 
     </main>
 
-    <!-- Results Overlay -->
-    <div id="summon-result-overlay" class="fixed inset-0 z-[100] bg-black/98 flex flex-col hidden overflow-hidden">
-        <div class="flex-shrink-0 p-8 text-center"><h2 class="text-2xl font-black italic tracking-tighter">PORTAL SUMMONS</h2></div>
-        <div id="summon-grid" class="flex-grow overflow-y-auto px-6 py-4 flex flex-wrap justify-center content-start gap-4 custom-scrollbar"></div>
-        <div class="flex-shrink-0 p-10 flex justify-center bg-black/80"><button onclick="closeSummonResults()" id="btn-summon-close" class="hidden bg-white text-black px-16 py-5 rounded-2xl font-black active:scale-95 transition-all">CONTINUE</button></div>
+    <!-- Results Dialog -->
+    <div id="summon-result-overlay" class="fixed inset-0 z-[100] bg-black/90 hidden">
+        <div class="max-w-2xl mx-auto mt-10 bg-slate-900/95 border border-white/10 rounded-[2rem] p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-black uppercase tracking-[0.2em]">Portal Summons</h2>
+                <button onclick="closeSummonResults()" class="text-[9px] font-black uppercase text-slate-400 underline">Close</button>
+            </div>
+            <div id="summon-grid" class="max-h-[60vh] overflow-y-auto px-2 py-2 flex flex-wrap justify-center content-start gap-4 custom-scrollbar"></div>
+            <div class="mt-6 flex justify-center">
+                <button onclick="closeSummonResults()" id="btn-summon-close" class="hidden bg-white text-black px-10 py-3 rounded-2xl font-black active:scale-95 transition-all">CONTINUE</button>
+            </div>
+        </div>
     </div>
 
     <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 px-6 py-3 bg-white text-black text-[10px] rounded-full font-black shadow-2xl opacity-0 transition-all duration-500 z-[300] uppercase tracking-widest">NOTIFY</div>
@@ -373,38 +391,6 @@
         </div>
     </div>
 
-    <!-- Summon Dialog -->
-    <div id="summon-dialog" class="fixed inset-0 z-[230] bg-black/90 hidden">
-        <div class="max-w-lg mx-auto mt-10 bg-slate-900/95 border border-white/10 rounded-[2rem] p-6 shadow-2xl">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-black uppercase tracking-[0.2em]">World Gate</h3>
-                <button onclick="closeSummonDialog()" class="text-[9px] font-black uppercase text-slate-400 underline">Close</button>
-            </div>
-            <div class="space-y-5">
-                <div>
-                    <div class="text-[9px] font-black uppercase tracking-[0.35em] text-slate-400 mb-2">Standard Tickets</div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button id="btn-single-summon" onclick="startSummonSequence(1, 'standard')" class="bg-white text-black py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">SINGLE SUMMON</button>
-                        <button onclick="startSummonSequence(10, 'standard')" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">MULTI SUMMON (10x)</button>
-                    </div>
-                </div>
-                <div id="rare-summon-block">
-                    <div class="text-[9px] font-black uppercase tracking-[0.35em] text-blue-300 mb-2">Rare Tickets</div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button onclick="startSummonSequence(1, 'rare')" class="bg-blue-400 text-black py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">RARE SUMMON</button>
-                        <button onclick="startSummonSequence(10, 'rare')" class="bg-gradient-to-r from-sky-500 to-blue-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">RARE MULTI (10x)</button>
-                    </div>
-                </div>
-                <div id="legendary-summon-block">
-                    <div class="text-[9px] font-black uppercase tracking-[0.35em] text-amber-300 mb-2">Legendary Tickets</div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button onclick="startSummonSequence(1, 'legendary')" class="bg-amber-400 text-black py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">LEGEND SUMMON</button>
-                        <button onclick="startSummonSequence(10, 'legendary')" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">LEGEND MULTI (10x)</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script>
         // --- MASTER DATA (151 TOTAL) ---
@@ -587,8 +573,8 @@
         const GROWTH_RATES = { trash: 0.12, common: 0.15, uncommon: 0.165, rare: 0.18, epic: 0.22, legendary: 0.28, divine: 0.38, eternal: 0.55 };
         const ELEMENTS = { fire: { beats: 'nature' }, water: { beats: 'fire' }, nature: { beats: 'water' }, light: { beats: 'dark' }, dark: { beats: 'light' } };
         const PROB_TABLES = {
-            standard: { trash: 0.05, common: 0.55, uncommon: 0.75, rare: 0.88, epic: 0.965, legendary: 0.995, divine: 0.999, eternal: 1.0 },
-            rare: { trash: 0.0, common: 0.0, uncommon: 0.5, rare: 0.82, epic: 0.94, legendary: 0.990, divine: 0.997, eternal: 1.0 },
+            standard: { trash: 0.05, common: 0.6, uncommon: 0.8, rare: 0.95, epic: 0.99, legendary: 0.998, divine: 1.0, eternal: 1.0 },
+            rare: { trash: 0.0, common: 0.0, uncommon: 0.5, rare: 0.82, epic: 0.94, legendary: 0.99, divine: 0.998, eternal: 1.0 },
             legendary: { trash: 0.0, common: 0.0, uncommon: 0.0, rare: 0.6, epic: 0.85, legendary: 0.980, divine: 0.995, eternal: 1.0 }
         };
         const RARITY_COST_MULTIPLIERS = { trash: 0.7, common: 1.0, uncommon: 1.3, rare: 1.7, epic: 2.6, legendary: 4.0, divine: 6.5, eternal: 9.0 };
@@ -620,6 +606,14 @@
             { pool: 'epic', name: 'Crownspire', rarity: 'epic', element: 'light', desc: 'Elite formations guard the high paths.' },
             { pool: 'legendary', name: 'Obsidian Gate', rarity: 'legendary', element: 'dark', desc: 'Only the strongest survive the gauntlet.' }
         ];
+        const ADVENTURE_BOSS_TRAINERS = {
+            trash: { emoji: '🧑‍🏭', name: 'Brigg "Scrapking" Scroby Jr.', line: 'Out here, you either break... or you get rebuilt tougher.' },
+            common: { emoji: '🧑‍🌾', name: 'Mara Trailwarden', line: 'No tricks. No shortcuts. Just good steps and better timing.' },
+            uncommon: { emoji: '🧑‍🎨', name: 'Sable Scroby', line: "Let's see you win when the battlefield won't sit still." },
+            rare: { emoji: '🧑‍✈️', name: 'Captain Neris Waveborne', line: 'Hold formation—when the surge hits, hesitation sinks you.' },
+            epic: { emoji: '🤴', name: 'Lord Scroby', line: 'Kneel to discipline, or be scattered by it.' },
+            legendary: { emoji: '🧑‍🚀', name: 'Scrobest, the Last Challenger', line: "You've come far and defeated my fellow Scrobies. Now prove you're ready to take on the stars." }
+        };
         const ADVENTURE_STAGE_BY_RARITY = { trash: 1, common: 4, uncommon: 7, rare: 12, epic: 18, legendary: 24 };
         const ADVENTURE_POOLS = [
             { label: 'Trash', maxRarity: 'trash', weights: { trash: 1.0 } },
@@ -940,7 +934,6 @@
             rareTickets: 0,
             legendaryTickets: 0,
             playerName: '',
-            pity: 0,
             inventory: {},
             team: [],
             stage: 1,
@@ -966,6 +959,7 @@
                 inBossRush: false,
                 bossRushIndex: 0,
                 playerTeamState: null,
+                awaitingBattle: false,
                 training: false,
                 trainingWins: 0
             },
@@ -1027,6 +1021,7 @@
             }
             if (state.adventure.training === undefined) state.adventure.training = false;
             if (state.adventure.trainingWins === undefined) state.adventure.trainingWins = 0;
+            if (state.adventure.awaitingBattle === undefined) state.adventure.awaitingBattle = false;
             if (!state.tutorial) state.tutorial = { ...DEFAULT_STATE.tutorial };
             if (state.tutorial.step === undefined) state.tutorial.step = DEFAULT_STATE.tutorial.step;
             if (state.tutorial.guidedPulls === undefined) state.tutorial.guidedPulls = 0;
@@ -1073,7 +1068,6 @@
             document.getElementById('stat-tickets').innerText = state.tickets.toLocaleString();
             document.getElementById('stat-rare-tickets').innerText = state.rareTickets.toLocaleString();
             document.getElementById('stat-legendary-tickets').innerText = state.legendaryTickets.toLocaleString();
-            document.getElementById('pity-count').innerText = `${state.pity}/50`;
             document.getElementById('arena-stage-title').innerText = state.stage;
             document.getElementById('collection-count').innerText = `${Object.keys(state.inventory).length}/${EMOJIS.length}`;
             document.getElementById('player-name').innerText = state.playerName ? state.playerName : 'Traveler';
@@ -1195,8 +1189,8 @@
             if (step === TUTORIAL_STEPS.PULL_ONE) {
                 content.innerHTML = `
                     <div class="text-xs font-black uppercase tracking-[0.2em] text-indigo-300 mb-2">Portal Basics</div>
-                    <h3 class="text-xl font-black mb-3">First pull: Tin Can</h3>
-                    <p class="text-[10px] text-slate-400 mb-4">Click the Portal tab, then press the SINGLE SUMMON button to pull Tin Can.</p>
+                    <h3 class="text-xl font-black mb-3">First Pull</h3>
+                    <p class="text-[10px] text-slate-400 mb-4">You have two tickets. Lets pull your first emoji.</p>
                     <button onclick="prepGuidedSummon()" class="w-full bg-white text-black py-3 rounded-xl font-black text-xs uppercase">Go to Portal</button>
                 `;
                 return;
@@ -1204,8 +1198,8 @@
             if (step === TUTORIAL_STEPS.PULL_TWO) {
                 content.innerHTML = `
                     <div class="text-xs font-black uppercase tracking-[0.2em] text-indigo-300 mb-2">Second Pull</div>
-                    <h3 class="text-xl font-black mb-3">Next pull: Star</h3>
-                    <p class="text-[10px] text-slate-400 mb-4">Press SINGLE SUMMON again to pull Star.</p>
+                    <h3 class="text-xl font-black mb-3">One More Try</h3>
+                    <p class="text-[10px] text-slate-400 mb-4">Aw, bad luck. Lets try pulling again with your remaining ticket.</p>
                     <button onclick="prepGuidedSummon()" class="w-full bg-white text-black py-3 rounded-xl font-black text-xs uppercase">Go to Portal</button>
                 `;
                 return;
@@ -1213,8 +1207,9 @@
             if (step === TUTORIAL_STEPS.TEAM) {
                 content.innerHTML = `
                     <div class="text-xs font-black uppercase tracking-[0.2em] text-amber-300 mb-2">Build Squad</div>
-                    <h3 class="text-xl font-black mb-3">Assemble your team</h3>
-                    <p class="text-[10px] text-slate-400 mb-4">Click the Squad tab to manage your team and see stats.</p>
+                    <h3 class="text-xl font-black mb-3">Squad & Adventure</h3>
+                    <p class="text-[10px] text-slate-400 mb-4">Your team has already been assembled, but manage it in the 'Squad' tab, where you can swap teammates and upgrade your emojis.</p>
+                    <p class="text-[10px] text-slate-400 mb-4">To begin your adventure, head to the 'Adventure' tab.</p>
                     <button onclick="openTeamForTutorial()" class="w-full bg-amber-400 text-black py-3 rounded-xl font-black text-xs uppercase">Open Squad</button>
                 `;
                 return;
@@ -1325,13 +1320,6 @@
             document.getElementById('data-dialog').classList.add('hidden');
         }
 
-        function openSummonDialog() {
-            document.getElementById('summon-dialog').classList.remove('hidden');
-        }
-
-        function closeSummonDialog() {
-            document.getElementById('summon-dialog').classList.add('hidden');
-        }
 
         function renderDataDialog() {
             const grid = document.getElementById('data-slot-grid');
@@ -1786,10 +1774,11 @@
             state.adventure.playerTeamState = null;
             state.adventure.training = region.cleared;
             state.adventure.trainingWins = 0;
+            state.adventure.awaitingBattle = !state.adventure.training;
             save();
             updateStatsUI();
             renderAdventure();
-            startAdventureBattle();
+            if (state.adventure.training) startAdventureBattle();
         }
 
         function renderAdventure() {
@@ -1800,6 +1789,11 @@
             const nextUnbeaten = state.adventure.regions.find(r => !r.cleared);
             const visibleRegions = state.adventure.regions.filter(region => region.cleared || (nextUnbeaten && region.id === nextUnbeaten.id));
             visibleRegions.forEach(region => {
+                const isActive = region.id === state.adventure.currentRegionId;
+                let stageLabel = 'Challenger 1';
+                if (region.cleared) stageLabel = 'Cleared';
+                else if (isActive && state.adventure.inBossRush) stageLabel = 'Boss Rush';
+                else if (isActive) stageLabel = `Challenger ${state.adventure.progressIndex + 1}`;
                 const btn = document.createElement('button');
                 btn.className = `w-full text-left px-4 py-3 rounded-2xl border ${region.cleared ? 'bg-black/30 border-white/5 text-slate-400 hover:bg-slate-800/70' : 'bg-slate-800 border-white/10 text-white hover:bg-slate-700'}`;
                 btn.innerHTML = `
@@ -1809,12 +1803,40 @@
                     </div>
                     <div class="text-[9px] text-slate-400 mt-1">${region.description}</div>
                     <div class="text-[8px] text-slate-500 uppercase tracking-[0.2em] mt-1">Element: ${region.element}</div>
+                    <div class="text-[8px] text-slate-500 uppercase tracking-[0.2em] mt-1">${stageLabel}</div>
                 `;
                 btn.onclick = () => startAdventureRegion(region.id);
                 list.appendChild(btn);
             });
             const active = getAdventureRegionById(state.adventure.currentRegionId);
             document.getElementById('adventure-region-title').innerText = active ? active.name : 'No Region';
+            const lobby = document.getElementById('adventure-lobby');
+            if (active && !active.cleared && !state.adventure.training) {
+                const trainer = state.adventure.inBossRush ? ADVENTURE_BOSS_TRAINERS[active.poolLabel] : null;
+                const trainerBlock = trainer ? `
+                    <div class="bg-black/40 border border-white/10 rounded-2xl px-4 py-3 mb-4 text-left">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="text-2xl">${trainer.emoji}</div>
+                            <div>
+                                <div class="text-[8px] text-slate-400 uppercase tracking-[0.2em]">Boss Trainer</div>
+                                <div class="text-[10px] font-black uppercase">${trainer.name}</div>
+                            </div>
+                        </div>
+                        <div class="text-[9px] text-slate-300 italic">"${trainer.line}"</div>
+                    </div>
+                ` : '';
+                lobby.innerHTML = `
+                    <div class="text-[70px] mb-3">⚔️</div>
+                    <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.3em] mb-3">${state.adventure.inBossRush ? 'Boss Rush' : `Challenger ${state.adventure.progressIndex + 1}`}</p>
+                    ${trainerBlock}
+                    <button onclick="startAdventureBattle()" class="bg-emerald-400 text-black px-8 py-3 rounded-2xl font-black text-xs uppercase">Start Battle</button>
+                `;
+            } else if (!active) {
+                lobby.innerHTML = `
+                    <div class="text-[80px] mb-3">🧭</div>
+                    <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em]">Select a Region</p>
+                `;
+            }
         }
 
         function buildAdventurePlayerTeam() {
@@ -1836,6 +1858,7 @@
             const stageType = state.adventure.training ? 'Training' : (state.adventure.inBossRush ? 'Boss Rush' : 'Skirmish');
             document.getElementById('adventure-stage-type').innerText = stageType;
             document.getElementById('adventure-stage-num').innerText = state.adventure.training ? state.adventure.trainingWins + 1 : (state.adventure.inBossRush ? state.adventure.bossRushIndex + 1 : state.adventure.progressIndex + 1);
+            state.adventure.awaitingBattle = false;
             const leaveBtn = document.getElementById('adventure-leave-training');
             const modeNote = document.getElementById('adventure-mode-note');
             if (state.adventure.training) {
@@ -1948,7 +1971,6 @@
             };
             if (state.adventure.inBossRush) {
                 state.adventure.bossRushIndex += 1;
-                grantTeamReward();
                 if (state.adventure.bossRushIndex >= region.bossRush.length) {
                     grantBossReward();
                     region.cleared = true;
@@ -1957,6 +1979,7 @@
                     state.adventure.progressIndex = 0;
                     state.adventure.bossRushIndex = 0;
                     state.adventure.playerTeamState = null;
+                    state.adventure.awaitingBattle = false;
                     save();
                     updateStatsUI();
                     renderAdventure();
@@ -1973,19 +1996,25 @@
                     state.adventure.bossRushIndex = 0;
                 }
             }
+            state.adventure.awaitingBattle = true;
             save();
             updateStatsUI();
-            startAdventureBattle();
+            renderAdventure();
+            document.getElementById('adventure-lobby').classList.remove('hidden');
+            document.getElementById('adventure-combat').classList.add('hidden');
         }
 
         function handleAdventureLoss() {
-            state.adventure.currentRegionId = null;
-            state.adventure.progressIndex = 0;
-            state.adventure.inBossRush = false;
-            state.adventure.bossRushIndex = 0;
+            if (state.adventure.training) {
+                state.adventure.currentRegionId = null;
+                state.adventure.progressIndex = 0;
+                state.adventure.inBossRush = false;
+                state.adventure.bossRushIndex = 0;
+                state.adventure.training = false;
+                state.adventure.trainingWins = 0;
+            }
             state.adventure.playerTeamState = null;
-            state.adventure.training = false;
-            state.adventure.trainingWins = 0;
+            state.adventure.awaitingBattle = true;
             save();
             updateStatsUI();
             renderAdventure();
@@ -2039,7 +2068,6 @@
             state[typeConfig.key] -= count; updateStatsUI();
             const results = [];
             for (let i = 0; i < count; i++) {
-                state.pity++;
                 let rarity = 'common';
                 let emoji = null;
                 if (isGuided) {
@@ -2047,8 +2075,7 @@
                     emoji = EMOJIS.find(e => e.id === forcedId);
                     rarity = emoji.rarity;
                 } else {
-                    if (state.pity >= 50) { rarity = 'legendary'; state.pity = 0; }
-                    else rarity = rollRarity(typeConfig.probs);
+                    rarity = rollRarity(typeConfig.probs);
                     const pool = EMOJIS.filter(e => e.rarity === rarity);
                     emoji = pool[Math.floor(Math.random() * pool.length)];
                 }
@@ -2321,12 +2348,6 @@
             rarityBadge.innerText = `${inv.currentRarity.toUpperCase()} (NAT ${inv.baseRarity.toUpperCase()})`;
             rarityBadge.className = `inline-block px-3 py-1 rounded-full text-[7px] font-black uppercase mb-4 tracking-widest border border-white/20 text-${inv.currentRarity}`;
             document.getElementById('inspect-desc').innerText = e.desc;
-            const typeCount = Object.keys(state.inventory).filter(idStr => {
-                const id = parseInt(idStr, 10);
-                const entry = EMOJIS.find(x => x.id === id);
-                return entry && entry.type === e.type;
-            }).length;
-            document.getElementById('inspect-type-count').innerText = `${e.type.toUpperCase()} FOUND: ${typeCount}`;
             document.getElementById('inspect-dupe-count').innerText = `DUPLICATES: ${inv.dupes || 0}`;
             const moveList = getMoveListForEmoji(e, inv);
             const moveTargetLabels = {
