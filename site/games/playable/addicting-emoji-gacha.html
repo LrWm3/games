@@ -365,6 +365,13 @@
                     </div>
                     <div id="emojidex-status-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
                 </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 lg:col-span-2">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xs font-black uppercase tracking-widest">Element Chart</h3>
+                        <div class="text-[9px] bg-slate-800 px-3 py-1 rounded-full">Effectiveness</div>
+                    </div>
+                    <div id="emojidex-element-chart" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+                </div>
             </div>
         </section>
 
@@ -1958,7 +1965,7 @@
                 const emoji = EMOJIS.find(x => x.id === id);
                 const stats = calcStats(id);
                 const inv = state.inventory[id];
-                const unit = { ...emoji, ...stats, maxHp: stats.hp, isPlayer: true };
+                const unit = { ...emoji, ...stats, maxHp: stats.hp, isPlayer: true, lvl: inv?.lvl || 1 };
                 attachMoves(unit, inv?.learnedMoves || []);
                 resetBaseStats(unit);
                 return unit;
@@ -2026,14 +2033,23 @@
             const updateUI = () => {
                 document.getElementById('adventure-player-team').innerHTML = pUnits.map(u => `
                     <div class="${u.hp<=0?'opacity-20':''}">
-                        <div class="flex justify-between font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div>
+                        <div class="flex justify-between items-center font-black uppercase">
+                            <span class="flex items-center gap-2">
+                                <span class="text-3xl">${u.char}</span>
+                                <span class="text-sm text-slate-400">Lv ${u.lvl || 1}</span>
+                            </span>
+                            <span>${Math.max(0,Math.floor(u.hp))}</span>
+                        </div>
                         <div class="h-1 bg-black overflow-hidden"><div class="h-full bg-green-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div>
                         <div class="flex flex-wrap gap-2 mt-2">${renderCooldowns(u)}</div>
                     </div>
                 `).join('');
                 document.getElementById('adventure-enemy-team').innerHTML = eUnits.map(u => `
                     <div class="${u.hp<=0?'opacity-20':''}">
-                        <div class="flex justify-between font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div>
+                        <div class="flex justify-between items-center font-black uppercase">
+                            <span class="text-3xl">${u.char}</span>
+                            <span>${Math.max(0,Math.floor(u.hp))}</span>
+                        </div>
                         <div class="h-1 bg-black overflow-hidden"><div class="h-full bg-red-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div>
                         <div class="flex flex-wrap gap-2 mt-2">${renderCooldowns(u)}</div>
                     </div>
@@ -2295,8 +2311,11 @@
                 if (id) {
                     const inv = state.inventory[id];
                     const e = EMOJIS.find(x => x.id === id) || EMOJIS[0];
-                    slot.className = `flex-1 rounded-xl border-2 flex items-center justify-center text-4xl bg-slate-900 cursor-pointer card-base rarity-card-${inv.currentRarity}`;
-                    slot.innerHTML = e.char;
+                    slot.className = `flex-1 rounded-xl border-2 flex flex-col items-center justify-center gap-1 text-4xl bg-slate-900 cursor-pointer card-base rarity-card-${inv.currentRarity}`;
+                    slot.innerHTML = `
+                        <div class="text-4xl">${e.char}</div>
+                        <div class="text-sm font-black uppercase">Lv ${inv.lvl}</div>
+                    `;
                     slot.onclick = () => inspect(id);
                 }
                 teamSlots.appendChild(slot);
@@ -2370,6 +2389,7 @@
             const emojiGrid = document.getElementById('emojidex-emoji-grid');
             const moveList = document.getElementById('emojidex-move-list');
             const statusList = document.getElementById('emojidex-status-list');
+            const elementChart = document.getElementById('emojidex-element-chart');
             const ownedIds = new Set(Object.keys(state.inventory).map(id => parseInt(id, 10)));
             const discoveredMoves = new Set(['basic_strike']);
             ownedIds.forEach(id => {
@@ -2445,6 +2465,23 @@
                         <div class="text-[9px] text-slate-300 leading-relaxed">${status.desc}</div>
                     `;
                     statusList.appendChild(card);
+                });
+            }
+            if (elementChart) {
+                elementChart.innerHTML = '';
+                Object.entries(ELEMENTS).forEach(([element, data]) => {
+                    const meta = ELEMENT_METADATA[element] || { emoji: '✨', name: element };
+                    const beatsMeta = ELEMENT_METADATA[data.beats] || { emoji: '✨', name: data.beats };
+                    const card = document.createElement('div');
+                    card.className = 'bg-black/40 border border-white/10 rounded-2xl p-4';
+                    card.innerHTML = `
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="text-base">${meta.emoji}</div>
+                            <div class="text-[10px] font-black uppercase tracking-widest">${meta.name}</div>
+                        </div>
+                        <div class="text-[9px] text-slate-300 leading-relaxed">Strong vs ${beatsMeta.emoji} ${beatsMeta.name}</div>
+                    `;
+                    elementChart.appendChild(card);
                 });
             }
         }
@@ -2726,7 +2763,7 @@
                 const emoji = EMOJIS.find(x => x.id === id);
                 const stats = calcStats(id);
                 const inv = state.inventory[id];
-                const unit = { ...emoji, ...stats, maxHp: stats.hp, isPlayer: true };
+                const unit = { ...emoji, ...stats, maxHp: stats.hp, isPlayer: true, lvl: inv?.lvl || 1 };
                 attachMoves(unit, inv?.learnedMoves || []);
                 return unit;
             });
@@ -2739,14 +2776,23 @@
             const updateUI = () => {
                 document.getElementById('battle-player-team').innerHTML = pUnits.map(u => `
                     <div class="${u.hp<=0?'opacity-20':''}">
-                        <div class="flex justify-between font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div>
+                        <div class="flex justify-between items-center font-black uppercase">
+                            <span class="flex items-center gap-2">
+                                <span class="text-3xl">${u.char}</span>
+                                <span class="text-sm text-slate-400">Lv ${u.lvl || 1}</span>
+                            </span>
+                            <span>${Math.max(0,Math.floor(u.hp))}</span>
+                        </div>
                         <div class="h-1 bg-black overflow-hidden"><div class="h-full bg-green-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div>
                         <div class="flex flex-wrap gap-2 mt-2">${renderCooldowns(u)}</div>
                     </div>
                 `).join('');
                 document.getElementById('battle-enemy-team').innerHTML = eUnits.map(u => `
                     <div class="${u.hp<=0?'opacity-20':''}">
-                        <div class="flex justify-between font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div>
+                        <div class="flex justify-between items-center font-black uppercase">
+                            <span class="text-3xl">${u.char}</span>
+                            <span>${Math.max(0,Math.floor(u.hp))}</span>
+                        </div>
                         <div class="h-1 bg-black overflow-hidden"><div class="h-full bg-red-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div>
                         <div class="flex flex-wrap gap-2 mt-2">${renderCooldowns(u)}</div>
                     </div>
