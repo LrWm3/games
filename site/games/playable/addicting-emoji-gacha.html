@@ -183,7 +183,11 @@
         <section id="view-team" class="tab-content hidden">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="md:col-span-2 space-y-4">
-                    <div id="team-slots" class="grid grid-cols-3 gap-3 h-28 mb-6"></div>
+                    <div id="team-slots" class="grid grid-cols-3 gap-3 h-28"></div>
+                    <div class="flex flex-col gap-2">
+                        <button id="btn-add-team" onclick="toggleSelectedTeam()" class="w-full bg-indigo-600 hover:bg-indigo-700 py-3.5 rounded-2xl font-black text-xs transition-all disabled:opacity-20">DEPLOY</button>
+                        <button id="btn-lvl-up" onclick="levelUpSelected()" class="w-full bg-green-600 hover:bg-green-700 py-3.5 rounded-2xl font-black text-xs transition-all disabled:opacity-20">UPGRADE</button>
+                    </div>
                     <div class="flex justify-between items-center border-b border-white/10 pb-2">
                         <h3 class="text-xs font-black uppercase tracking-widest">Collection</h3>
                         <div class="text-[9px] bg-slate-800 px-3 py-1 rounded-full" id="collection-count">0/151</div>
@@ -227,9 +231,7 @@
                         </div>
 
                         <div class="space-y-2">
-                            <button id="btn-lvl-up" onclick="levelUpSelected()" class="w-full bg-green-600 hover:bg-green-700 py-3.5 rounded-2xl font-black text-xs transition-all disabled:opacity-20">UPGRADE</button>
                             <button id="btn-promote" onclick="promoteSelected()" class="w-full bg-amber-500 hover:bg-amber-600 py-3.5 rounded-2xl font-black text-xs hidden transition-all">ASCEND</button>
-                            <button id="btn-add-team" onclick="toggleSelectedTeam()" class="w-full bg-indigo-600 hover:bg-indigo-700 py-3.5 rounded-2xl font-black text-xs transition-all disabled:opacity-20">DEPLOY</button>
                         </div>
                     </div>
                 </div>
@@ -2284,6 +2286,7 @@
         function renderTeam() {
             const rosterGrid = document.getElementById('roster-grid');
             const teamSlots = document.getElementById('team-slots');
+            const lvlBtn = document.getElementById('btn-lvl-up');
             rosterGrid.innerHTML = ''; teamSlots.innerHTML = '';
             for (let i = 0; i < 3; i++) {
                 const id = state.team[i];
@@ -2308,6 +2311,10 @@
                 item.onclick = () => inspect(id);
                 rosterGrid.appendChild(item);
             });
+            if (lvlBtn && !selectedId) {
+                lvlBtn.disabled = true;
+                lvlBtn.innerText = 'SELECT EMOJI';
+            }
         }
 
         function formatStageChanges(stages) {
