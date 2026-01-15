@@ -25,16 +25,21 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        html, body {
+            height: 100%;
+        }
+
         body {
             font-family: 'Segoe UI', system-ui, sans-serif;
             margin: 0;
             padding: 0;
             background-color: var(--bg-color);
             color: var(--text-color);
-            height: 100vh;
+            height: var(--app-height, 100vh);
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
         #controls {
@@ -229,6 +234,12 @@
 </div>
 
 <script>
+const setAppHeight = () => {
+    document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+};
+setAppHeight();
+window.addEventListener('resize', setAppHeight);
+
 const HAND_SIZE_LIMIT = 8;
 const ANIMATION_DELAY_MS = 80;
 const SNAP_DURATION_MS = 80;

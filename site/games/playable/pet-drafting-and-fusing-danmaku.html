@@ -9,6 +9,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap');
+        html, body {
+            height: 100%;
+        }
+
         body {
             font-family: 'Outfit', sans-serif;
             background-color: #020617;
@@ -16,6 +20,7 @@
             overflow: hidden;
             touch-action: none;
             user-select: none;
+            padding-bottom: env(safe-area-inset-bottom);
         }
         #arena-container {
             flex-grow: 1;
@@ -55,9 +60,12 @@
             pointer-events: none;
             letter-spacing: -0.05em;
         }
+        .app-shell {
+            height: var(--app-height, 100vh);
+        }
     </style>
 </head>
-<body class="flex flex-col h-screen">
+<body class="app-shell flex flex-col">
 
     <!-- Header -->
     <header class="p-3 border-b border-slate-800 flex justify-between items-center shrink-0 z-50 ui-panel">
@@ -111,6 +119,12 @@
     </div>
 
     <script>
+        const setAppHeight = () => {
+            document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+        };
+        setAppHeight();
+        window.addEventListener('resize', setAppHeight);
+
         const UNIT_LIMIT = 5;
         const PROXIMITY_RADIUS = 25; 
         const AVOIDANCE_RADIUS = 120;

@@ -16,12 +16,17 @@
             --amason-bg: #0f172a;
         }
 
+        html, body {
+            height: 100%;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--amason-bg);
             color: #f1f5f9;
             overflow: hidden;
             touch-action: manipulation;
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
         .mono { font-family: 'JetBrains Mono', monospace; }
@@ -102,9 +107,13 @@
             font-size: 11px;
             line-height: 1.3;
         }
+
+        .app-shell {
+            height: var(--app-height, 100vh);
+        }
     </style>
 </head>
-<body class="h-screen flex flex-col select-none overflow-hidden bg-[#0f172a]">
+<body class="app-shell flex flex-col select-none overflow-hidden bg-[#0f172a]">
 
     <div class="scanline"></div>
 
@@ -268,6 +277,12 @@
     </div>
 
     <script>
+        const setAppHeight = () => {
+            document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+        };
+        setAppHeight();
+        window.addEventListener('resize', setAppHeight);
+
         const game = {
             startTime: Date.now(),
             cash: 5000,
