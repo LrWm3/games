@@ -91,6 +91,8 @@
         .move-card.physical { border-left: 3px solid rgba(239,68,68,0.7); }
         .move-card.special { border-left: 3px solid rgba(59,130,246,0.7); }
         .move-card.status { border-left: 3px solid rgba(148,163,184,0.7); }
+        .text-\[7px\], .text-\[8px\], .text-\[9px\], .text-\[10px\], .text-\[11px\], .text-\[12px\], .text-\[13px\], .text-xs { font-size: 14px !important; }
+        .text-sm { font-size: 16px !important; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -161,7 +163,7 @@
                 <div class="text-[9px] font-black uppercase tracking-[0.35em] text-slate-400">Standard Tickets</div>
                 <button id="btn-single-summon" onclick="startSummonSequence(1, 'standard')" class="bg-white text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">SINGLE SUMMON</button>
                 <button onclick="startSummonSequence(10, 'standard')" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-indigo-900 transition-all">MULTI SUMMON (10x)</button>
-                <div id="rare-summon-block">
+                <div id="rare-summon-block" class="space-y-4">
                     <div class="text-[9px] font-black uppercase tracking-[0.35em] text-blue-300 mt-2">Rare Tickets</div>
                     <button onclick="startSummonSequence(1, 'rare')" class="bg-blue-500 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-blue-900 transition-all">RARE SUMMON</button>
                     <button onclick="startSummonSequence(10, 'rare')" class="bg-gradient-to-r from-sky-500 to-blue-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-blue-900 transition-all">RARE MULTI (10x)</button>
@@ -358,9 +360,8 @@
             <div class="text-center mb-8">
                 <h2 class="text-3xl font-black uppercase">Move Tutor</h2>
                 <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.25em]">Teach Moves Through Arena Wins</p>
-                <div class="max-w-xl mx-auto mt-4 text-[10px] text-slate-400 leading-relaxed">
-                    Pair a mentor and a student from your squad. Wins against pools at or above the mentor move's rarity count toward teaching that move.
-                    Higher base rarities take more wins. Learned moves fill slot 2 or 3, and you can forget them to make room.
+                <div class="max-w-xl mx-auto mt-4 text-[10px] text-slate-400 text-left leading-relaxed">
+                    Emojis can teach each other their natural special moves.<br>Teach a student emoji a new move of the master emoji.
                 </div>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -428,7 +429,7 @@
             { id: 1, char: '🔥', name: 'Inferno', rarity: 'rare', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
             { id: 2, char: '🌋', name: 'Magma', rarity: 'epic', element: 'fire', defaultMove: 'cinder_jab', type: 'Tank' },
             { id: 3, char: '🐉', name: 'Drake', rarity: 'legendary', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
-            { id: 4, char: '☄️', name: 'Comet', rarity: 'uncommon', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
+            { id: 4, char: '☄️', name: 'Comet', rarity: 'uncommon', element: 'fire', defaultMove: 'cinder_jab', type: 'Speedster' },
             { id: 5, char: '🦁', name: 'Leonis', rarity: 'epic', element: 'fire', defaultMove: 'cinder_jab', type: 'Striker' },
             { id: 61, char: '🌶️', name: 'Pepper', rarity: 'uncommon', element: 'fire', defaultMove: 'cinder_jab', type: 'Speedster' },
             { id: 62, char: '🥓', name: 'Sizzle', rarity: 'common', element: 'fire', defaultMove: 'cinder_jab', type: 'Tank' },
@@ -592,6 +593,18 @@
         const RARITY_MULTIPLIERS = { trash: 0.4, common: 1.0, uncommon: 1.25, rare: 1.5, epic: 2.5, legendary: 4.5, divine: 8.5, eternal: 20.0 };
         const GROWTH_RATES = { trash: 0.12, common: 0.15, uncommon: 0.165, rare: 0.18, epic: 0.22, legendary: 0.28, divine: 0.38, eternal: 0.55 };
         const ELEMENTS = { fire: { beats: 'nature' }, water: { beats: 'fire' }, nature: { beats: 'water' }, light: { beats: 'dark' }, dark: { beats: 'light' } };
+        const ELEMENT_METADATA = {
+            fire: { emoji: '🔥', name: 'Fire' },
+            water: { emoji: '💧', name: 'Water' },
+            nature: { emoji: '🌿', name: 'Nature' },
+            light: { emoji: '✨', name: 'Light' },
+            dark: { emoji: '🌑', name: 'Dark' }
+        };
+        const TYPE_METADATA = {
+            Striker: { emoji: '⚔️', name: 'Striker' },
+            Tank: { emoji: '🛡️', name: 'Tank' },
+            Speedster: { emoji: '💨', name: 'Speedster' }
+        };
         const PROB_TABLES = {
             standard: { trash: 0.05, common: 0.6, uncommon: 0.8, rare: 0.95, epic: 0.99, legendary: 0.998, divine: 1.0, eternal: 1.0 },
             rare: { trash: 0.0, common: 0.0, uncommon: 0.5, rare: 0.82, epic: 0.94, legendary: 0.99, divine: 0.998, eternal: 1.0 },
@@ -1149,8 +1162,10 @@
 
         function setTutorialHighlights(isActive) {
             const squadBtn = document.getElementById('btn-tab-team');
+            const adventureBtn = document.getElementById('btn-tab-adventure');
             const summonBtn = document.getElementById('btn-single-summon');
             if (squadBtn) squadBtn.classList.toggle('tutorial-highlight', isActive && state.tutorial.step === TUTORIAL_STEPS.TEAM);
+            if (adventureBtn) adventureBtn.classList.toggle('tutorial-highlight', isActive && state.tutorial.step === TUTORIAL_STEPS.TEAM);
             if (summonBtn) summonBtn.classList.toggle('tutorial-highlight', isActive && (state.tutorial.step === TUTORIAL_STEPS.PULL_ONE || state.tutorial.step === TUTORIAL_STEPS.PULL_TWO));
         }
 
@@ -1232,10 +1247,10 @@
             if (step === TUTORIAL_STEPS.TEAM) {
                 content.innerHTML = `
                     <div class="text-xs font-black uppercase tracking-[0.2em] text-amber-300 mb-2">Build Squad</div>
-                    <h3 class="text-xl font-black mb-3">Squad & Adventure</h3>
-                    <p class="text-[10px] text-slate-400 mb-4">Your team has already been assembled, but manage it in the 'Squad' tab, where you can swap teammates and upgrade your emojis.</p>
+                    <h3 class="text-xl font-black mb-3">Ready for Adventure</h3>
+                    <p class="text-[10px] text-slate-400 mb-4">Your team is already assembled. You can manage it later in the 'Squad' tab.</p>
                     <p class="text-[10px] text-slate-400 mb-4">To begin your adventure, head to the 'Adventure' tab.</p>
-                    <button onclick="openTeamForTutorial()" class="w-full bg-amber-400 text-black py-3 rounded-xl font-black text-xs uppercase">Open Squad</button>
+                    <button onclick="openAdventureForTutorial()" class="w-full bg-amber-400 text-black py-3 rounded-xl font-black text-xs uppercase">Open Adventure</button>
                 `;
                 return;
             }
@@ -1322,11 +1337,11 @@
             setTutorialHighlights(true);
         }
 
-        function openTeamForTutorial() {
+        function openAdventureForTutorial() {
             state.tutorial.allowTeamBuild = true;
             save();
             document.getElementById('tutorial-overlay').classList.add('hidden');
-            switchTab('team');
+            switchTab('adventure');
         }
 
         function finishTutorial() {
@@ -1660,7 +1675,7 @@
                         appendLog(log, `<div>${target.char} is soaked!</div>`);
                     }
                     target.hp -= dmg;
-                    appendLog(log, `<div>${user.char} uses ${move.name} for ${Math.floor(dmg)}</div>`);
+                    appendLog(log, `<div>${user.char} uses ${move.name} on ${target.char} for ${Math.floor(dmg)}</div>`);
                     applyStageChanges(target, move.effect?.targetStages);
                     applyStageChanges(user, move.effect?.selfStages);
                     applyRecoil(user, dmg, move.effect?.recoilPct, log);
@@ -1893,7 +1908,7 @@
             const modeNote = document.getElementById('adventure-mode-note');
             if (state.adventure.training) {
                 leaveBtn.classList.remove('hidden');
-                modeNote.innerText = 'Training rewards are low and fixed.';
+                modeNote.innerText = 'Training rewards gold.';
             } else {
                 leaveBtn.classList.add('hidden');
                 modeNote.innerText = '';
@@ -1961,7 +1976,7 @@
                         const basic = getMoveById('basic_strike');
                         const dmg = calcDamage(u, targets[0], basic.power, basic);
                         targets[0].hp -= dmg;
-                        appendLog(log, `<div>${u.char} attacks for ${Math.floor(dmg)}</div>`);
+                        appendLog(log, `<div>${u.char} attacks ${targets[0].char} for ${Math.floor(dmg)}</div>`);
                     }
                     updateUI(); await new Promise(r=>setTimeout(r, 350));
                 }
@@ -2207,8 +2222,8 @@
                 const card = document.createElement('div');
                 card.className = `card-base aspect-square rounded-xl border-2 flex flex-col items-center justify-center text-center ${owned ? `rarity-card-${emoji.rarity}` : 'bg-slate-900/60 border-white/5 text-slate-600'}`;
                 card.innerHTML = `
-                    <div class="text-xl ${owned ? '' : 'opacity-20'}">${emoji.char}</div>
-                    <div class="text-[7px] font-black uppercase mt-1">${owned ? emoji.name : 'Unknown'}</div>
+                    <div class="text-xl ${owned ? '' : 'opacity-20'}">${owned ? emoji.char : '?'}</div>
+                    <div class="text-[7px] font-black uppercase mt-1">${owned ? emoji.name : '???'}</div>
                 `;
                 emojiGrid.appendChild(card);
             });
@@ -2218,10 +2233,38 @@
             moveList.innerHTML = '';
             discoveredMoveList.forEach(move => {
                 const row = document.createElement('div');
-                row.className = 'bg-black/30 border border-white/5 rounded-2xl px-3 py-2 text-[9px]';
+                const power = (move.kind === 'buff' || move.kind === 'status') ? '—' : move.power;
+                const element = move.element ? move.element.toLowerCase() : 'neutral';
+                const dmgType = move.damageType ? move.damageType.toLowerCase() : 'status';
+                const rarity = (move.rarity || 'common').toLowerCase();
+                const targetLabels = {
+                    'enemy-single': 'Targets one',
+                    'enemy-all': 'Targets all',
+                    'ally-single': 'Targets ally',
+                    'ally-all': 'Targets allies',
+                    'self': 'Self'
+                };
+                const target = targetLabels[move.target] || move.target || '—';
+                const extras = [];
+                if (move.effect?.recoilPct) extras.push(`Recoil for ${Math.round(move.effect.recoilPct * 100)}% of damage dealt`);
+                if (move.effect?.drainPct) extras.push(`Drains ${Math.round(move.effect.drainPct * 100)}% of damage dealt`);
+                row.className = `move-card ${element} ${rarity} ${dmgType}`;
                 row.innerHTML = `
-                    <div class="font-black uppercase tracking-[0.2em] text-slate-200">${move.name}</div>
-                    <div class="text-slate-400">${move.element.toUpperCase()} • ${move.rarity.toUpperCase()} • ${move.kind.toUpperCase()}</div>
+                    <div class="flex justify-between items-start gap-2">
+                        <div class="font-black uppercase text-[9px] text-slate-100">${move.name}</div>
+                        <div class="text-[8px] text-slate-400 uppercase">CD ${move.cooldown}</div>
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <div class="text-[10px] font-black text-white">Power ${power}</div>
+                        <div class="move-chip">${dmgType.toUpperCase()}</div>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mt-2 text-[7px] text-slate-300 uppercase tracking-[0.2em]">
+                        <span class="move-chip">${move.name}</span>
+                        <span class="move-chip">${rarity.toUpperCase()}</span>
+                        <span class="move-chip">${dmgType.toUpperCase()}</span>
+                        <span class="move-chip">${target}</span>
+                    </div>
+                    ${extras.length ? `<div class="text-[9px] text-slate-200 mt-2">${extras.join(' • ')}</div>` : ''}
                 `;
                 moveList.appendChild(row);
             });
@@ -2534,7 +2577,7 @@
                         const basic = getMoveById('basic_strike');
                         const dmg = calcDamage(u, targets[0], basic.power, basic);
                         targets[0].hp -= dmg;
-                        appendLog(log, `<div>${u.char} attacks for ${Math.floor(dmg)}</div>`);
+                        appendLog(log, `<div>${u.char} attacks ${targets[0].char} for ${Math.floor(dmg)}</div>`);
                     }
                     updateUI(); await new Promise(r=>setTimeout(r, 450));
                 }
