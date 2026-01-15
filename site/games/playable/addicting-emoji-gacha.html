@@ -2502,7 +2502,6 @@
             const poolRarity = poolLabel.toLowerCase();
             state.tutorPairs.forEach(pair => {
                 if (!pair.mentorId || !pair.studentId) return;
-                if (!state.team.includes(pair.mentorId) || !state.team.includes(pair.studentId)) return;
                 const mentorMoveId = (EMOJIS.find(e => e.id === pair.mentorId) || {}).defaultMove;
                 const mentorMove = getMoveById(mentorMoveId);
                 if (!mentorMove) return;
