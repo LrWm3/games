@@ -180,11 +180,14 @@
                         <div class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Moves</div>
                         <div id="inspect-moves" class="text-[9px] text-slate-300 space-y-1 mb-6"></div>
                         
-                        <div class="grid grid-cols-2 gap-2 text-left mb-6">
+                        <div class="grid grid-cols-3 gap-2 text-left mb-6">
                             <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-slate-500 uppercase">LV</p><span class="font-bold text-sm" id="inspect-lvl">0</span></div>
                             <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-green-500 uppercase">HP</p><span class="font-bold text-sm" id="inspect-hp">0</span></div>
                             <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-red-500 uppercase">ATK</p><span class="font-bold text-sm" id="inspect-atk">0</span></div>
                             <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-blue-500 uppercase">SPD</p><span class="font-bold text-sm" id="inspect-spd">0</span></div>
+                            <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-amber-400 uppercase">DEF</p><span class="font-bold text-sm" id="inspect-def">0</span></div>
+                            <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-pink-400 uppercase">SP. ATK</p><span class="font-bold text-sm" id="inspect-spatk">0</span></div>
+                            <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-cyan-300 uppercase">SP. DEF</p><span class="font-bold text-sm" id="inspect-spdef">0</span></div>
                         </div>
 
                         <div class="space-y-2">
@@ -430,8 +433,18 @@
         ];
 
         const RARITY_ORDER = ['trash', 'common', 'uncommon', 'rare', 'epic', 'legendary', 'divine', 'eternal'];
-        const TYPE_WEIGHTS = { Striker: { hp: 0.6, atk: 1.5, spd: 0.9 }, Tank: { hp: 1.8, atk: 0.6, spd: 0.6 }, Speedster: { hp: 0.8, atk: 0.8, spd: 1.4 } };
-        const ELEMENT_BONUSES = { fire: { hp: 1.0, atk: 1.2, spd: 1.0 }, water: { hp: 1.2, atk: 1.0, spd: 1.0 }, nature: { hp: 1.1, atk: 1.1, spd: 1.0 }, light: { hp: 1.0, atk: 1.0, spd: 1.2 }, dark: { hp: 0.9, atk: 1.3, spd: 1.0 } };
+        const TYPE_WEIGHTS = {
+            Striker: { hp: 0.6, atk: 1.5, spd: 0.9, def: 0.7, spAtk: 1.3, spDef: 0.7 },
+            Tank: { hp: 1.8, atk: 0.6, spd: 0.6, def: 1.6, spAtk: 0.6, spDef: 1.5 },
+            Speedster: { hp: 0.8, atk: 0.8, spd: 1.4, def: 0.8, spAtk: 0.9, spDef: 0.8 }
+        };
+        const ELEMENT_BONUSES = {
+            fire: { hp: 1.0, atk: 1.2, spd: 1.0, def: 0.95, spAtk: 1.2, spDef: 0.95 },
+            water: { hp: 1.2, atk: 1.0, spd: 1.0, def: 1.0, spAtk: 1.0, spDef: 1.15 },
+            nature: { hp: 1.1, atk: 1.1, spd: 1.0, def: 1.1, spAtk: 1.0, spDef: 1.0 },
+            light: { hp: 1.0, atk: 1.0, spd: 1.2, def: 1.0, spAtk: 1.05, spDef: 1.1 },
+            dark: { hp: 0.9, atk: 1.3, spd: 1.0, def: 0.95, spAtk: 1.15, spDef: 0.95 }
+        };
         const RARITY_MULTIPLIERS = { trash: 0.4, common: 1.0, uncommon: 1.25, rare: 1.5, epic: 2.5, legendary: 4.5, divine: 8.5, eternal: 20.0 };
         const GROWTH_RATES = { trash: 0.12, common: 0.15, uncommon: 0.165, rare: 0.18, epic: 0.22, legendary: 0.28, divine: 0.38, eternal: 0.55 };
         const ELEMENTS = { fire: { beats: 'nature' }, water: { beats: 'fire' }, nature: { beats: 'water' }, light: { beats: 'dark' }, dark: { beats: 'light' } };
@@ -443,19 +456,19 @@
         const RARITY_COST_MULTIPLIERS = { trash: 0.7, common: 1.0, uncommon: 1.3, rare: 1.7, epic: 2.6, legendary: 4.0, divine: 6.5, eternal: 9.0 };
         const PROMOTE_COST_MULTIPLIERS = { trash: 0.8, common: 1.2, uncommon: 1.6, rare: 2.0, epic: 3.2, legendary: 5.0, divine: 8.0 };
         const MOVES = [
-            { id: 'basic_strike', name: 'Basic Strike', power: 50, cooldown: 1, kind: 'damage', target: 'enemy-single', element: 'neutral', special: null },
-            { id: 'flame_rush', name: 'Flame Rush', power: 70, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', special: null },
-            { id: 'ember_wave', name: 'Ember Wave', power: 35, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'fire', special: null },
-            { id: 'heat_shield', name: 'Heat Shield', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'fire', effect: { hpPct: 0.2 }, special: null },
-            { id: 'tidal_spear', name: 'Tidal Spear', power: 60, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'water', special: null },
-            { id: 'soothing_rain', name: 'Soothing Rain', power: 35, cooldown: 4, kind: 'heal', target: 'ally-all', element: 'water', special: null },
-            { id: 'ice_barbs', name: 'Ice Barbs', power: 28, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'water', special: null },
-            { id: 'vine_lash', name: 'Vine Lash', power: 55, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', special: null },
-            { id: 'seed_bloom', name: 'Seed Bloom', power: 50, cooldown: 3, kind: 'heal', target: 'ally-single', element: 'nature', special: null },
-            { id: 'radiant_burst', name: 'Radiant Burst', power: 30, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'light', special: null },
-            { id: 'blessing_wall', name: 'Blessing Wall', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'light', effect: { hpPct: 0.12 }, special: null },
-            { id: 'shadow_slice', name: 'Shadow Slice', power: 75, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', special: null },
-            { id: 'night_howl', name: 'Night Howl', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'dark', effect: { atkPct: 0.18, spdPct: 0.1 }, special: null }
+            { id: 'basic_strike', name: 'Basic Strike', power: 50, cooldown: 1, kind: 'damage', target: 'enemy-single', element: 'neutral', damageType: 'physical', special: null },
+            { id: 'flame_rush', name: 'Flame Rush', power: 70, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', special: null },
+            { id: 'ember_wave', name: 'Ember Wave', power: 35, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', special: null },
+            { id: 'heat_shield', name: 'Heat Shield', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'fire', damageType: 'status', effect: { def: 1, spDef: 1 }, special: null },
+            { id: 'tidal_spear', name: 'Tidal Spear', power: 60, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'special', special: null },
+            { id: 'soothing_rain', name: 'Soothing Rain', power: 35, cooldown: 4, kind: 'heal', target: 'ally-all', element: 'water', damageType: 'status', special: null },
+            { id: 'ice_barbs', name: 'Ice Barbs', power: 28, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'water', damageType: 'special', special: null },
+            { id: 'vine_lash', name: 'Vine Lash', power: 55, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', special: null },
+            { id: 'seed_bloom', name: 'Seed Bloom', power: 50, cooldown: 3, kind: 'heal', target: 'ally-single', element: 'nature', damageType: 'status', special: null },
+            { id: 'radiant_burst', name: 'Radiant Burst', power: 30, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'light', damageType: 'special', special: null },
+            { id: 'blessing_wall', name: 'Blessing Wall', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'light', damageType: 'status', effect: { def: 1, spDef: 1 }, special: null },
+            { id: 'shadow_slice', name: 'Shadow Slice', power: 75, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', special: null },
+            { id: 'night_howl', name: 'Night Howl', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'dark', damageType: 'status', effect: { atk: 1, spd: 1 }, special: null }
         ];
         const EMOJI_DESCS = {
             101: 'Rattles around, stubbornly guards scraps.',
@@ -715,13 +728,16 @@
         function calcStats(id) {
             const e = EMOJIS.find(x => x.id === id) || EMOJIS[0];
             const inv = state.inventory[id];
-            const baseObj = { hp: 100, atk: 20, spd: 10 };
+            const baseObj = { hp: 100, atk: 20, spd: 10, def: 15, spAtk: 18, spDef: 15 };
             const weights = TYPE_WEIGHTS[e.type];
             let hp = baseObj.hp * weights.hp;
             let atk = baseObj.atk * weights.atk;
             let spd = baseObj.spd * weights.spd;
+            let def = baseObj.def * weights.def;
+            let spAtk = baseObj.spAtk * weights.spAtk;
+            let spDef = baseObj.spDef * weights.spDef;
             const aff = ELEMENT_BONUSES[e.element];
-            hp *= aff.hp; atk *= aff.atk; spd *= aff.spd;
+            hp *= aff.hp; atk *= aff.atk; spd *= aff.spd; def *= aff.def; spAtk *= aff.spAtk; spDef *= aff.spDef;
             
             const multCurrent = RARITY_MULTIPLIERS[inv.currentRarity];
             const multBase = RARITY_MULTIPLIERS[inv.baseRarity];
@@ -732,22 +748,39 @@
             if (rarityGap > 2) {
                 rarityModifier *= Math.pow(0.65, rarityGap - 2);
             }
-            hp *= rarityModifier; atk *= rarityModifier; spd *= rarityModifier;
+            hp *= rarityModifier; atk *= rarityModifier; spd *= rarityModifier; def *= rarityModifier; spAtk *= rarityModifier; spDef *= rarityModifier;
             const growth = 1 + ((inv.lvl - 1) * GROWTH_RATES[inv.currentRarity]);
-            return { hp: Math.floor(hp * growth), atk: Math.floor(atk * growth), spd: Math.floor(spd * growth) };
+            return {
+                hp: Math.floor(hp * growth),
+                atk: Math.floor(atk * growth),
+                spd: Math.floor(spd * growth),
+                def: Math.floor(def * growth),
+                spAtk: Math.floor(spAtk * growth),
+                spDef: Math.floor(spDef * growth)
+            };
         }
 
         function calcEnemyStats(emoji, level, rarity) {
-            const baseObj = { hp: 100, atk: 20, spd: 10 };
+            const baseObj = { hp: 100, atk: 20, spd: 10, def: 15, spAtk: 18, spDef: 15 };
             const weights = TYPE_WEIGHTS[emoji.type];
             let hp = baseObj.hp * weights.hp;
             let atk = baseObj.atk * weights.atk;
             let spd = baseObj.spd * weights.spd;
+            let def = baseObj.def * weights.def;
+            let spAtk = baseObj.spAtk * weights.spAtk;
+            let spDef = baseObj.spDef * weights.spDef;
             const aff = ELEMENT_BONUSES[emoji.element];
-            hp *= aff.hp; atk *= aff.atk; spd *= aff.spd;
+            hp *= aff.hp; atk *= aff.atk; spd *= aff.spd; def *= aff.def; spAtk *= aff.spAtk; spDef *= aff.spDef;
             const rarityModifier = RARITY_MULTIPLIERS[rarity];
             const growth = 1 + ((level - 1) * GROWTH_RATES[rarity]);
-            return { hp: Math.floor(hp * rarityModifier * growth), atk: Math.floor(atk * rarityModifier * growth), spd: Math.floor(spd * rarityModifier * growth) };
+            return {
+                hp: Math.floor(hp * rarityModifier * growth),
+                atk: Math.floor(atk * rarityModifier * growth),
+                spd: Math.floor(spd * rarityModifier * growth),
+                def: Math.floor(def * rarityModifier * growth),
+                spAtk: Math.floor(spAtk * rarityModifier * growth),
+                spDef: Math.floor(spDef * rarityModifier * growth)
+            };
         }
 
         function getMoveById(id) {
@@ -791,6 +824,17 @@
             unit.moves = [...new Set(moveList)];
             unit.cooldowns = {};
             unit.moves.forEach(id => { unit.cooldowns[id] = 0; });
+            unit.statStages = { atk: 0, def: 0, spAtk: 0, spDef: 0, spd: 0 };
+        }
+
+        function resetBaseStats(unit) {
+            unit.baseStats = {
+                atk: unit.atk,
+                def: unit.def,
+                spAtk: unit.spAtk,
+                spDef: unit.spDef,
+                spd: unit.spd
+            };
         }
 
         function tickCooldowns(unit) {
@@ -816,16 +860,32 @@
             return basePower;
         }
 
-        function calcDamage(attacker, power, move) {
+        function getStageMultiplier(stage) {
+            const table = { '-3': 0.34, '-2': 0.5, '-1': 0.67, '0': 1, '1': 1.5, '2': 2.0, '3': 2.5 };
+            return table[stage] || 1;
+        }
+
+        function getModifiedStat(unit, stat) {
+            const base = unit.baseStats?.[stat] ?? unit[stat];
+            const stage = unit.statStages?.[stat] ?? 0;
+            return base * getStageMultiplier(stage);
+        }
+
+        function calcDamage(attacker, defender, power, move) {
             const effectivePower = getEffectivePower(attacker, move, power);
             const variance = 0.85 + Math.random() * 0.3;
-            return Math.max(1, Math.floor(attacker.atk * (effectivePower / 50) * variance));
+            const isSpecial = move?.damageType === 'special';
+            const atkStat = getModifiedStat(attacker, isSpecial ? 'spAtk' : 'atk');
+            const defStat = Math.max(1, getModifiedStat(defender, isSpecial ? 'spDef' : 'def'));
+            const base = atkStat * (effectivePower / 50) * variance;
+            const mitigation = 100 / (100 + defStat);
+            return Math.max(1, Math.floor(base * mitigation));
         }
 
         function calcHeal(user, power, move) {
             const effectivePower = getEffectivePower(user, move, power);
             const variance = 0.9 + Math.random() * 0.2;
-            return Math.max(1, Math.floor(user.atk * (effectivePower / 50) * variance));
+            return Math.max(1, Math.floor(getModifiedStat(user, 'spAtk') * (effectivePower / 50) * variance));
         }
 
         function getTargets(move, user, allies, enemies) {
@@ -850,7 +910,7 @@
             if (!targets.length) return false;
             if (move.kind === 'damage') {
                 targets.forEach(target => {
-                    const dmg = calcDamage(user, move.power, move);
+                    const dmg = calcDamage(user, target, move.power, move);
                     target.hp -= dmg;
                     log.innerHTML += `<div>${user.char} uses ${move.name} for ${Math.floor(dmg)}</div>`;
                 });
@@ -862,14 +922,11 @@
                 });
             } else if (move.kind === 'buff') {
                 targets.forEach(target => {
-                    if (move.effect?.atkPct) target.atk = Math.floor(target.atk * (1 + move.effect.atkPct));
-                    if (move.effect?.spdPct) target.spd = Math.floor(target.spd * (1 + move.effect.spdPct));
-                    if (move.effect?.hpPct) {
-                        const newHp = Math.floor(target.hp * (1 + move.effect.hpPct));
-                        const delta = newHp - target.hp;
-                        target.hp = newHp;
-                        target.maxHp += delta;
-                    }
+                    if (move.effect?.atk) target.statStages.atk = Math.max(-3, Math.min(3, target.statStages.atk + move.effect.atk));
+                    if (move.effect?.def) target.statStages.def = Math.max(-3, Math.min(3, target.statStages.def + move.effect.def));
+                    if (move.effect?.spAtk) target.statStages.spAtk = Math.max(-3, Math.min(3, target.statStages.spAtk + move.effect.spAtk));
+                    if (move.effect?.spDef) target.statStages.spDef = Math.max(-3, Math.min(3, target.statStages.spDef + move.effect.spDef));
+                    if (move.effect?.spd) target.statStages.spd = Math.max(-3, Math.min(3, target.statStages.spd + move.effect.spd));
                     log.innerHTML += `<div>${user.char} uses ${move.name}</div>`;
                 });
             }
@@ -1042,6 +1099,9 @@
             document.getElementById('inspect-hp').innerText = stats.hp.toLocaleString();
             document.getElementById('inspect-atk').innerText = stats.atk.toLocaleString();
             document.getElementById('inspect-spd').innerText = stats.spd.toLocaleString();
+            document.getElementById('inspect-def').innerText = stats.def.toLocaleString();
+            document.getElementById('inspect-spatk').innerText = stats.spAtk.toLocaleString();
+            document.getElementById('inspect-spdef').innerText = stats.spDef.toLocaleString();
             
             // New Badge Logic
             const elBadge = document.getElementById('inspect-element-badge');
@@ -1072,8 +1132,9 @@
             document.getElementById('inspect-moves').innerHTML = moveList.map(move => {
                 const power = move.kind === 'buff' ? '—' : move.power;
                 const element = move.element ? move.element.toUpperCase() : 'NEUTRAL';
+                const dmgType = move.damageType ? move.damageType.toUpperCase() : '—';
                 const target = moveTargetLabels[move.target] || move.target;
-                return `<div>${move.name} (${element}) • ${move.kind.toUpperCase()} ${power} • CD ${move.cooldown} • ${target}</div>`;
+                return `<div>${move.name} (${element}) • ${move.kind.toUpperCase()} ${power} • ${dmgType} • CD ${move.cooldown} • ${target}</div>`;
             }).join('');
             
             const lvlCost = getLevelUpCost(inv);
@@ -1151,6 +1212,8 @@
                 return unit;
             });
             let eUnits = generateEnemyTeam(state.stage);
+            pUnits.forEach(resetBaseStats);
+            eUnits.forEach(resetBaseStats);
 
             const updateUI = () => {
                 document.getElementById('battle-player-team').innerHTML = pUnits.map(u => `<div class="${u.hp<=0?'opacity-20':''}"><div class="flex justify-between text-[7px] font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div><div class="h-1 bg-black overflow-hidden"><div class="h-full bg-green-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div></div>`).join('');
@@ -1159,7 +1222,7 @@
 
             while (pUnits.some(u=>u.hp>0) && eUnits.some(u=>u.hp>0) && state.isAutoBattling) {
                 updateUI();
-                let actors = [...pUnits, ...eUnits].filter(u=>u.hp>0).sort((a,b)=>b.spd - a.spd);
+                let actors = [...pUnits, ...eUnits].filter(u=>u.hp>0).sort((a,b)=>getModifiedStat(b, 'spd') - getModifiedStat(a, 'spd'));
                 for (let u of actors) {
                     if (u.hp <= 0 || !state.isAutoBattling) continue;
                     tickCooldowns(u);
@@ -1173,7 +1236,7 @@
                         if (used) u.cooldowns[move.id] = move.cooldown;
                     } else {
                         const basic = getMoveById('basic_strike');
-                        const dmg = calcDamage(u, basic.power, basic);
+                        const dmg = calcDamage(u, targets[0], basic.power, basic);
                         targets[0].hp -= dmg;
                         log.innerHTML += `<div>${u.char} attacks for ${Math.floor(dmg)}</div>`;
                     }
