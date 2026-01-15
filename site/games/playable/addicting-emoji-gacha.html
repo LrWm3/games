@@ -102,33 +102,32 @@
 <body class="min-h-screen flex flex-col">
 
     <!-- Header -->
-    <header class="bg-slate-900/95 backdrop-blur-md border-b border-white/10 p-3 sticky top-0 z-50">
-        <div class="max-w-5xl mx-auto flex flex-col sm:flex-row sm:justify-between sm:items-center items-start gap-3">
+    <header class="bg-slate-900/95 backdrop-blur-md border-b border-white/10 p-2 sm:p-3 sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto flex flex-col sm:flex-row sm:justify-between sm:items-center items-start gap-2 sm:gap-3">
             <div class="flex items-center gap-2 min-w-0">
                 <span class="text-2xl">🌍</span>
                 <div class="leading-none">
                     <h1 class="text-lg font-bold uppercase tracking-tight">Emoji Saga</h1>
-                    <span class="text-[8px] text-indigo-400 font-black uppercase tracking-[0.2em]">152 Heroes Update</span>
                     <div class="text-[8px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1">
                         <span id="player-name">Traveler</span> • <span id="player-region">No Region</span>
                     </div>
                 </div>
             </div>
-            <div class="flex flex-col items-start sm:items-end gap-2 w-full sm:w-auto">
-                <div class="flex flex-wrap gap-2 justify-start sm:justify-end w-full">
-                <div class="bg-black/40 px-3 py-1.5 rounded-full border border-yellow-500/30 flex items-center gap-2 text-xs">
+            <div class="flex flex-col items-start sm:items-end gap-1.5 sm:gap-2 w-full sm:w-auto">
+                <div class="flex flex-wrap gap-1.5 sm:gap-2 justify-start sm:justify-end w-full">
+                <div class="bg-black/40 px-2.5 py-1.5 rounded-full border border-yellow-500/30 flex items-center gap-2 text-xs">
                     <i class="fas fa-coins text-yellow-500"></i>
                     <span id="stat-gold" class="font-bold">0</span>
                 </div>
-                <div class="bg-black/40 px-3 py-1.5 rounded-full border border-indigo-500/30 flex items-center gap-2 text-xs">
+                <div class="bg-black/40 px-2.5 py-1.5 rounded-full border border-indigo-500/30 flex items-center gap-2 text-xs">
                     <i class="fas fa-ticket text-indigo-400"></i>
                     <span id="stat-tickets" class="font-bold">0</span>
                 </div>
-                <div id="header-rare-tickets" class="bg-black/40 px-3 py-1.5 rounded-full border border-blue-400/30 flex items-center gap-2 text-xs">
+                <div id="header-rare-tickets" class="bg-black/40 px-2.5 py-1.5 rounded-full border border-blue-400/30 flex items-center gap-2 text-xs">
                     <i class="fas fa-ticket text-blue-300"></i>
                     <span id="stat-rare-tickets" class="font-bold">0</span>
                 </div>
-                <div id="header-legendary-tickets" class="bg-black/40 px-3 py-1.5 rounded-full border border-amber-400/30 flex items-center gap-2 text-xs">
+                <div id="header-legendary-tickets" class="bg-black/40 px-2.5 py-1.5 rounded-full border border-amber-400/30 flex items-center gap-2 text-xs">
                     <i class="fas fa-ticket text-amber-300"></i>
                     <span id="stat-legendary-tickets" class="font-bold">0</span>
                 </div>
@@ -138,14 +137,14 @@
         </div>
     </header>
 
-    <nav class="bg-slate-900 border-b border-white/5 p-1 flex justify-center gap-1 sticky top-[61px] z-40 overflow-x-auto no-scrollbar">
-        <button onclick="switchTab('summon')" id="btn-tab-summon" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Portal</button>
-        <button onclick="switchTab('team')" id="btn-tab-team" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Squad</button>
-        <button onclick="switchTab('arena')" id="btn-tab-arena" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Arena</button>
-        <button onclick="switchTab('adventure')" id="btn-tab-adventure" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Adventure</button>
-        <button onclick="switchTab('shop')" id="btn-tab-shop" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Market</button>
-        <button onclick="switchTab('emojidex')" id="btn-tab-emojidex" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Emojidex</button>
-        <button onclick="switchTab('tutor')" id="btn-tab-tutor" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Move Tutor</button>
+    <nav class="bg-slate-900 border-b border-white/5 p-2 flex flex-wrap justify-center gap-2 sticky top-[56px] sm:top-[61px] z-40">
+        <button onclick="switchTab('summon')" id="btn-tab-summon" class="flex-1 min-w-[120px] max-w-[160px] px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Portal</button>
+        <button onclick="switchTab('team')" id="btn-tab-team" class="flex-1 min-w-[120px] max-w-[160px] px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Squad</button>
+        <button onclick="switchTab('arena')" id="btn-tab-arena" class="flex-1 min-w-[120px] max-w-[160px] px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Arena</button>
+        <button onclick="switchTab('adventure')" id="btn-tab-adventure" class="flex-1 min-w-[120px] max-w-[160px] px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Adventure</button>
+        <button onclick="switchTab('shop')" id="btn-tab-shop" class="flex-1 min-w-[120px] max-w-[160px] px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Market</button>
+        <button onclick="switchTab('emojidex')" id="btn-tab-emojidex" class="flex-1 min-w-[120px] max-w-[160px] px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Emojidex</button>
+        <button onclick="switchTab('tutor')" id="btn-tab-tutor" class="flex-1 min-w-[120px] max-w-[160px] px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Move Tutor</button>
     </nav>
     <div id="arena-info-bar" class="hidden bg-slate-900/90 border-b border-white/5 text-center text-[9px] font-black uppercase tracking-[0.3em] text-red-300 py-2">
         Arena Live • Stage <span id="arena-info-stage" class="text-white">1</span>
