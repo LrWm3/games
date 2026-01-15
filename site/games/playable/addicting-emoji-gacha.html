@@ -116,6 +116,7 @@
         <button onclick="switchTab('summon')" id="btn-tab-summon" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Portal</button>
         <button onclick="switchTab('team')" id="btn-tab-team" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Squad</button>
         <button onclick="switchTab('arena')" id="btn-tab-arena" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Arena</button>
+        <button onclick="switchTab('adventure')" id="btn-tab-adventure" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Adventure</button>
         <button onclick="switchTab('shop')" id="btn-tab-shop" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Market</button>
         <button onclick="switchTab('emojidex')" id="btn-tab-emojidex" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Emojidex</button>
         <button onclick="switchTab('tutor')" id="btn-tab-tutor" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Move Tutor</button>
@@ -225,6 +226,47 @@
                     <div id="battle-enemy-team" class="space-y-3"></div>
                 </div>
                 <div id="battle-log" class="mt-6 bg-black h-44 rounded-2xl p-4 overflow-y-auto custom-scrollbar flex flex-col-reverse text-[9px] font-mono border border-white/5"></div>
+            </div>
+        </section>
+
+        <!-- Adventure -->
+        <section id="view-adventure" class="tab-content hidden py-6">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-black uppercase">Adventure</h2>
+                <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.25em]">Regions & Boss Rush</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xs font-black uppercase tracking-widest">Regions</h3>
+                        <div class="text-[9px] bg-slate-800 px-3 py-1 rounded-full" id="adventure-progress">0/0 Cleared</div>
+                    </div>
+                    <div id="adventure-region-list" class="space-y-2 max-h-[440px] overflow-y-auto custom-scrollbar pr-1"></div>
+                </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xs font-black uppercase tracking-widest">Region Battle</h3>
+                        <div class="text-[9px] bg-slate-800 px-3 py-1 rounded-full" id="adventure-region-title">No Region</div>
+                    </div>
+                    <div id="adventure-lobby" class="text-center py-6">
+                        <div class="text-[80px] mb-3">🧭</div>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em]">Select a Region</p>
+                    </div>
+                    <div id="adventure-combat" class="hidden">
+                        <div class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-300 mb-3">
+                            Stage <span id="adventure-stage-num">1</span> • <span id="adventure-stage-type">Skirmish</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-[9px] text-slate-500 uppercase tracking-[0.2em]" id="adventure-mode-note"></span>
+                            <button id="adventure-leave-training" onclick="leaveAdventureTraining()" class="hidden text-[9px] font-black text-slate-400 underline uppercase">Leave Training</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div id="adventure-player-team" class="space-y-3"></div>
+                            <div id="adventure-enemy-team" class="space-y-3"></div>
+                        </div>
+                        <div id="adventure-log" class="mt-4 bg-black h-44 rounded-2xl p-4 overflow-y-auto custom-scrollbar flex flex-col-reverse text-[9px] font-mono border border-white/5"></div>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -513,6 +555,14 @@
             curse: { healMult: 0.6 }
         };
         const STATUS_APPLY_CHANCE = 0.2;
+        const ADVENTURE_REGION_POOLS = [
+            { pool: 'trash', name: 'Cinder Wastes', rarity: 'trash', element: 'fire', desc: 'A scrapyard frontier full of brittle fighters.' },
+            { pool: 'common', name: 'Rusted Crossing', rarity: 'common', element: 'nature', desc: 'Weathered trails where basic tactics rule.' },
+            { pool: 'uncommon', name: 'Gleamwood', rarity: 'uncommon', element: 'light', desc: 'A bright thicket of tricky skirmishers.' },
+            { pool: 'rare', name: 'Stormreef', rarity: 'rare', element: 'water', desc: 'Seasoned squads clash in rolling surges.' },
+            { pool: 'epic', name: 'Crownspire', rarity: 'epic', element: 'light', desc: 'Elite formations guard the high paths.' },
+            { pool: 'legendary', name: 'Obsidian Gate', rarity: 'legendary', element: 'dark', desc: 'Only the strongest survive the gauntlet.' }
+        ];
         /*
          * Move Identity + Rarity Philosophy (balance rework notes)
          * Elements:
@@ -981,11 +1031,22 @@
             team: [],
             stage: 1,
             isAutoBattling: false,
+            arenaWinStreak: 0,
             tutorPairs: [
                 { mentorId: null, studentId: null, progress: 0 },
                 { mentorId: null, studentId: null, progress: 0 },
                 { mentorId: null, studentId: null, progress: 0 }
-            ]
+            ],
+            adventure: {
+                regions: [],
+                currentRegionId: null,
+                progressIndex: 0,
+                inBossRush: false,
+                bossRushIndex: 0,
+                playerTeamState: null,
+                training: false,
+                trainingWins: 0
+            }
         };
         let state = { ...DEFAULT_STATE };
         let selectedId = null;
@@ -1032,6 +1093,15 @@
             if (state.tutorPairs.length < 3) {
                 while (state.tutorPairs.length < 3) state.tutorPairs.push({ mentorId: null, studentId: null, progress: 0 });
             }
+            if (!state.adventure || !Array.isArray(state.adventure?.regions)) {
+                state.adventure = JSON.parse(JSON.stringify(DEFAULT_STATE.adventure));
+            }
+            if (!state.adventure.regions.length) {
+                state.adventure.regions = generateAdventureRegions();
+            }
+            if (state.adventure.training === undefined) state.adventure.training = false;
+            if (state.adventure.trainingWins === undefined) state.adventure.trainingWins = 0;
+            if (state.arenaWinStreak === undefined) state.arenaWinStreak = 0;
             state.isAutoBattling = false;
             selectedId = null;
             updateSlotUI();
@@ -1088,6 +1158,7 @@
             if (tab === 'team') renderTeam();
             if (tab === 'emojidex') renderEmojidex();
             if (tab === 'tutor') renderMoveTutor();
+            if (tab === 'adventure') renderAdventure();
         }
 
         function toast(msg) {
@@ -1407,7 +1478,17 @@
             return 'common';
         }
 
-        function generateEnemyTeam(stage) {
+        function pickWeightedRarityFromPool(pool) {
+            const roll = Math.random();
+            let total = 0;
+            for (const [rarity, weight] of Object.entries(pool.weights)) {
+                total += weight;
+                if (roll <= total) return rarity;
+            }
+            return Object.keys(pool.weights)[0];
+        }
+
+        function generateEnemyTeam(stage, poolOverride = null, elementBias = null) {
             let teamSize;
             if (stage < 3) teamSize = 1;
             else if (stage < 6) teamSize = 2;
@@ -1417,12 +1498,17 @@
             const levelSpread = Math.min(6, Math.floor(stage / 6) + 1);
             const usedIds = new Set();
             const team = [];
+            const pool = poolOverride || getArenaPool(stage);
 
             for (let i = 0; i < teamSize; i++) {
-                const rarity = pickWeightedRarity(stage);
-                const pool = EMOJIS.filter(e => e.rarity === rarity && !usedIds.has(e.id));
+                const rarity = pickWeightedRarityFromPool(pool);
+                const rarityPool = EMOJIS.filter(e => e.rarity === rarity && !usedIds.has(e.id));
                 const fallbackPool = EMOJIS.filter(e => e.rarity === rarity);
-                const choices = pool.length ? pool : fallbackPool;
+                let choices = rarityPool.length ? rarityPool : fallbackPool;
+                if (elementBias) {
+                    const biased = choices.filter(e => e.element === elementBias);
+                    if (biased.length && Math.random() < 0.65) choices = biased;
+                }
                 const emoji = choices[Math.floor(Math.random() * choices.length)];
                 usedIds.add(emoji.id);
                 const level = Math.max(1, baseLevel + Math.floor(Math.random() * levelSpread) - Math.floor(levelSpread / 2));
@@ -1439,6 +1525,249 @@
             if (stage <= 7) return 160 * stage;
             if (stage <= 15) return 280 * stage;
             return 400 * stage;
+        }
+
+        function generateAdventureRegions() {
+            return ADVENTURE_REGION_POOLS.map((region, index) => {
+                const poolWeights = getArenaPool((index + 1) * 6);
+                const opponents = [];
+                for (let i = 0; i < 3; i++) {
+                    opponents.push(generateEnemyTeam(999, poolWeights, region.element));
+                }
+                const bossRush = [];
+                for (let i = 0; i < 3; i++) {
+                    bossRush.push(generateEnemyTeam(999, poolWeights, region.element));
+                }
+                return {
+                    id: `region-${region.pool}`,
+                    name: region.name,
+                    description: region.desc,
+                    poolLabel: region.pool,
+                    rarity: region.rarity,
+                    element: region.element,
+                    cleared: false,
+                    opponents,
+                    bossRush
+                };
+            });
+        }
+
+        function getAdventureRegionById(id) {
+            return state.adventure.regions.find(region => region.id === id);
+        }
+
+        function startAdventureRegion(id) {
+            if (!state.team.length) { switchTab('team'); return; }
+            const region = getAdventureRegionById(id);
+            if (!region) return;
+            state.adventure.currentRegionId = id;
+            state.adventure.progressIndex = 0;
+            state.adventure.inBossRush = false;
+            state.adventure.bossRushIndex = 0;
+            state.adventure.playerTeamState = null;
+            state.adventure.training = region.cleared;
+            state.adventure.trainingWins = 0;
+            save();
+            renderAdventure();
+            startAdventureBattle();
+        }
+
+        function renderAdventure() {
+            const list = document.getElementById('adventure-region-list');
+            const clearedCount = state.adventure.regions.filter(r => r.cleared).length;
+            document.getElementById('adventure-progress').innerText = `${clearedCount}/${state.adventure.regions.length} Cleared`;
+            list.innerHTML = '';
+            state.adventure.regions.forEach(region => {
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left px-4 py-3 rounded-2xl border ${region.cleared ? 'bg-black/30 border-white/5 text-slate-400 hover:bg-slate-800/70' : 'bg-slate-800 border-white/10 text-white hover:bg-slate-700'}`;
+                btn.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-black uppercase tracking-[0.2em]">${region.name}</span>
+                        <span class="text-[8px] font-black uppercase ${region.cleared ? 'text-emerald-400' : 'text-amber-300'}">${region.cleared ? 'Cleared • Train' : region.rarity}</span>
+                    </div>
+                    <div class="text-[9px] text-slate-400 mt-1">${region.description}</div>
+                    <div class="text-[8px] text-slate-500 uppercase tracking-[0.2em] mt-1">Element: ${region.element}</div>
+                `;
+                btn.onclick = () => startAdventureRegion(region.id);
+                list.appendChild(btn);
+            });
+            const active = getAdventureRegionById(state.adventure.currentRegionId);
+            document.getElementById('adventure-region-title').innerText = active ? active.name : 'No Region';
+        }
+
+        function buildAdventurePlayerTeam() {
+            const team = state.team.map(id => {
+                const emoji = EMOJIS.find(x => x.id === id);
+                const stats = calcStats(id);
+                const inv = state.inventory[id];
+                const unit = { ...emoji, ...stats, maxHp: stats.hp, isPlayer: true };
+                attachMoves(unit, inv?.learnedMoves || []);
+                resetBaseStats(unit);
+                return unit;
+            });
+            return team;
+        }
+
+        function startAdventureBattle() {
+            const region = getAdventureRegionById(state.adventure.currentRegionId);
+            if (!region) return;
+            const stageType = state.adventure.training ? 'Training' : (state.adventure.inBossRush ? 'Boss Rush' : 'Skirmish');
+            document.getElementById('adventure-stage-type').innerText = stageType;
+            document.getElementById('adventure-stage-num').innerText = state.adventure.training ? state.adventure.trainingWins + 1 : (state.adventure.inBossRush ? state.adventure.bossRushIndex + 1 : state.adventure.progressIndex + 1);
+            const leaveBtn = document.getElementById('adventure-leave-training');
+            const modeNote = document.getElementById('adventure-mode-note');
+            if (state.adventure.training) {
+                leaveBtn.classList.remove('hidden');
+                modeNote.innerText = 'Training rewards are low and fixed.';
+            } else {
+                leaveBtn.classList.add('hidden');
+                modeNote.innerText = '';
+            }
+            document.getElementById('adventure-lobby').classList.add('hidden');
+            document.getElementById('adventure-combat').classList.remove('hidden');
+            if (state.adventure.training) {
+                if (!state.adventure.playerTeamState || state.adventure.trainingWins % 3 === 0) {
+                    state.adventure.playerTeamState = buildAdventurePlayerTeam();
+                }
+            } else if (!state.adventure.playerTeamState || !state.adventure.inBossRush) {
+                state.adventure.playerTeamState = buildAdventurePlayerTeam();
+            }
+            const enemyTeams = state.adventure.training ? region.opponents : (state.adventure.inBossRush ? region.bossRush : region.opponents);
+            const enemyTeam = state.adventure.training ? enemyTeams[Math.floor(Math.random() * enemyTeams.length)] : enemyTeams[state.adventure.inBossRush ? state.adventure.bossRushIndex : state.adventure.progressIndex];
+            const eUnits = enemyTeam.map(unit => {
+                const clone = { ...unit };
+                attachMoves(clone, []);
+                resetBaseStats(clone);
+                return clone;
+            });
+            runAdventureCombat(state.adventure.playerTeamState, eUnits);
+        }
+
+        function leaveAdventureTraining() {
+            if (!state.adventure.training) return;
+            state.adventure.currentRegionId = null;
+            state.adventure.progressIndex = 0;
+            state.adventure.inBossRush = false;
+            state.adventure.bossRushIndex = 0;
+            state.adventure.playerTeamState = null;
+            state.adventure.training = false;
+            state.adventure.trainingWins = 0;
+            save();
+            renderAdventure();
+            document.getElementById('adventure-lobby').classList.remove('hidden');
+            document.getElementById('adventure-combat').classList.add('hidden');
+            toast('TRAINING ENDED');
+        }
+
+        async function runAdventureCombat(pUnits, eUnits) {
+            const log = document.getElementById('adventure-log');
+            log.innerHTML = `<div class="text-white border-b border-white/5 mb-1 pb-1">ADVENTURE</div>`;
+            const updateUI = () => {
+                document.getElementById('adventure-player-team').innerHTML = pUnits.map(u => `<div class="${u.hp<=0?'opacity-20':''}"><div class="flex justify-between text-[7px] font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div><div class="h-1 bg-black overflow-hidden"><div class="h-full bg-green-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div></div>`).join('');
+                document.getElementById('adventure-enemy-team').innerHTML = eUnits.map(u => `<div class="${u.hp<=0?'opacity-20':''}"><div class="flex justify-between text-[7px] font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div><div class="h-1 bg-black overflow-hidden"><div class="h-full bg-red-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div></div>`).join('');
+            };
+            while (pUnits.some(u => u.hp > 0) && eUnits.some(u => u.hp > 0)) {
+                updateUI();
+                let actors = [...pUnits, ...eUnits].filter(u=>u.hp>0).sort((a,b)=>getModifiedStat(b, 'spd') - getModifiedStat(a, 'spd'));
+                for (let u of actors) {
+                    if (u.hp <= 0) continue;
+                    applyStatusTick(u, log);
+                    if (u.hp <= 0) { updateUI(); continue; }
+                    tickCooldowns(u);
+                    let targets = u.isPlayer ? eUnits.filter(t=>t.hp>0) : pUnits.filter(t=>t.hp>0);
+                    if (!targets.length) break;
+                    const allies = u.isPlayer ? pUnits : eUnits;
+                    const enemies = u.isPlayer ? eUnits : pUnits;
+                    const move = pickMove(u);
+                    if (move) {
+                        const used = applyMove(u, move, allies, enemies, log);
+                        if (used) u.cooldowns[move.id] = move.cooldown;
+                    } else {
+                        const basic = getMoveById('basic_strike');
+                        const dmg = calcDamage(u, targets[0], basic.power, basic);
+                        targets[0].hp -= dmg;
+                        log.innerHTML += `<div>${u.char} attacks for ${Math.floor(dmg)}</div>`;
+                    }
+                    updateUI(); await new Promise(r=>setTimeout(r, 350));
+                }
+            }
+            if (eUnits.every(u => u.hp <= 0)) handleAdventureWin();
+            else handleAdventureLoss();
+        }
+
+        function handleAdventureWin() {
+            const region = getAdventureRegionById(state.adventure.currentRegionId);
+            if (!region) return;
+            const isEpicPlus = rarityRank(region.rarity) >= rarityRank('epic');
+            const rewardGold = (isBoss) => {
+                const table = { trash: 120, common: 180, uncommon: 240, rare: 320, epic: 480, legendary: 650 };
+                const base = table[region.rarity] || 200;
+                return isBoss ? Math.floor(base * 3.2) : base;
+            };
+            if (state.adventure.training) {
+                const trainingGold = Math.max(1, Math.floor(rewardGold(false) * 0.1));
+                state.gold += trainingGold;
+                state.adventure.trainingWins += 1;
+                save();
+                updateStatsUI();
+                startAdventureBattle();
+                return;
+            }
+            const grantTeamReward = () => {
+                const ticketKey = isEpicPlus ? 'rareTickets' : 'tickets';
+                state[ticketKey] += 1;
+                state.gold += rewardGold(false);
+            };
+            const grantBossReward = () => {
+                const ticketKey = isEpicPlus ? 'legendaryTickets' : 'rareTickets';
+                state[ticketKey] += 1;
+                state.gold += rewardGold(true);
+            };
+            if (state.adventure.inBossRush) {
+                state.adventure.bossRushIndex += 1;
+                grantTeamReward();
+                if (state.adventure.bossRushIndex >= region.bossRush.length) {
+                    grantBossReward();
+                    region.cleared = true;
+                    state.adventure.currentRegionId = null;
+                    state.adventure.inBossRush = false;
+                    state.adventure.progressIndex = 0;
+                    state.adventure.bossRushIndex = 0;
+                    state.adventure.playerTeamState = null;
+                    save();
+                    updateStatsUI();
+                    renderAdventure();
+                    document.getElementById('adventure-lobby').classList.remove('hidden');
+                    document.getElementById('adventure-combat').classList.add('hidden');
+                    toast(`${region.name} CLEARED`);
+                    return;
+                }
+            } else {
+                state.adventure.progressIndex += 1;
+                grantTeamReward();
+                if (state.adventure.progressIndex >= region.opponents.length) {
+                    state.adventure.inBossRush = true;
+                    state.adventure.bossRushIndex = 0;
+                }
+            }
+            save();
+            updateStatsUI();
+            startAdventureBattle();
+        }
+
+        function handleAdventureLoss() {
+            state.adventure.currentRegionId = null;
+            state.adventure.progressIndex = 0;
+            state.adventure.inBossRush = false;
+            state.adventure.bossRushIndex = 0;
+            state.adventure.playerTeamState = null;
+            state.adventure.training = false;
+            state.adventure.trainingWins = 0;
+            save();
+            renderAdventure();
+            document.getElementById('adventure-lobby').classList.remove('hidden');
+            document.getElementById('adventure-combat').classList.add('hidden');
+            toast('ADVENTURE FAILED');
         }
 
         function getLevelUpCost(inv) {
@@ -1848,9 +2177,23 @@
             if (!state.isAutoBattling) return;
             if (eUnits.every(u => u.hp <= 0)) {
                 const pool = getArenaPool(state.stage);
-                state.gold += getArenaReward(state.stage); processTutorWin(pool.label); state.stage++; save(); updateStatsUI(); setTimeout(startAutoCycle, 1500);
+                state.gold += getArenaReward(state.stage);
+                processTutorWin(pool.label);
+                state.stage++;
+                state.arenaWinStreak = (state.arenaWinStreak || 0) + 1;
+                if (state.arenaWinStreak >= 3) {
+                    pUnits.forEach(unit => {
+                        unit.hp = unit.maxHp;
+                        unit.cooldowns = Object.fromEntries((unit.moves || []).map(id => [id, 0]));
+                        unit.status = null;
+                        unit.statStages = { atk: 0, def: 0, spAtk: 0, spDef: 0, spd: 0 };
+                        resetBaseStats(unit);
+                    });
+                    state.arenaWinStreak = 0;
+                }
+                save(); updateStatsUI(); setTimeout(startAutoCycle, 1500);
             } else {
-                state.stage = 1; save(); updateStatsUI(); setTimeout(startAutoCycle, 800);
+                state.stage = 1; state.arenaWinStreak = 0; save(); updateStatsUI(); setTimeout(startAutoCycle, 800);
             }
         }
 
