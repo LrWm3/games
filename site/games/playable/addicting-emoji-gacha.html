@@ -2100,6 +2100,7 @@
             if (activeBattle.training) {
                 const trainingGold = Math.max(1, Math.floor(rewardGold(false) * 0.1));
                 state.gold += trainingGold;
+                processTutorWin(region.rarity);
                 if (state.adventure.training && state.adventure.currentRegionId === region.id) {
                     state.adventure.trainingWins += 1;
                     save();
@@ -2136,6 +2137,7 @@
                 region.bossRushIndex += 1;
                 if (region.bossRushIndex >= region.bossRush.length) {
                     grantBossReward();
+                    processTutorWin(region.rarity);
                     region.cleared = true;
                     state.adventure.currentRegionId = null;
                     region.inBossRush = false;
@@ -2156,6 +2158,7 @@
             } else {
                 region.progressIndex += 1;
                 grantTeamReward();
+                processTutorWin(region.rarity);
                 if (region.progressIndex >= region.opponents.length) {
                     region.inBossRush = true;
                     region.bossRushIndex = 0;
