@@ -76,6 +76,21 @@
             75% { transform: translate(-1px, 2px) rotate(-1deg); }
             100% { transform: translate(0, 0) rotate(0deg); }
         }
+        .move-card { border-radius: 18px; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.35); padding: 10px 12px; }
+        .move-chip { font-size: 0.5rem; letter-spacing: 0.18em; text-transform: uppercase; padding: 2px 6px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.35); }
+        .move-card.rare { border-color: rgba(59,130,246,0.5); box-shadow: 0 0 0 1px rgba(59,130,246,0.15) inset; }
+        .move-card.epic { border-color: rgba(16,185,129,0.5); box-shadow: 0 0 0 1px rgba(16,185,129,0.15) inset; }
+        .move-card.legendary { border-color: rgba(245,158,11,0.55); box-shadow: 0 0 0 1px rgba(245,158,11,0.18) inset; }
+        .move-card.divine { border-color: rgba(56,189,248,0.6); box-shadow: 0 0 0 1px rgba(56,189,248,0.2) inset; }
+        .move-card.eternal { border-color: rgba(255,255,255,0.7); box-shadow: 0 0 0 1px rgba(255,255,255,0.25) inset; }
+        .move-card.fire { background: linear-gradient(120deg, rgba(244,63,94,0.15), rgba(0,0,0,0.45)); }
+        .move-card.water { background: linear-gradient(120deg, rgba(56,189,248,0.15), rgba(0,0,0,0.45)); }
+        .move-card.nature { background: linear-gradient(120deg, rgba(34,197,94,0.15), rgba(0,0,0,0.45)); }
+        .move-card.light { background: linear-gradient(120deg, rgba(250,204,21,0.12), rgba(0,0,0,0.45)); }
+        .move-card.dark { background: linear-gradient(120deg, rgba(148,163,184,0.15), rgba(0,0,0,0.5)); }
+        .move-card.physical { border-left: 3px solid rgba(239,68,68,0.7); }
+        .move-card.special { border-left: 3px solid rgba(59,130,246,0.7); }
+        .move-card.status { border-left: 3px solid rgba(148,163,184,0.7); }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -173,8 +188,8 @@
 
                 <!-- Inspect Panel -->
                 <div id="inspect-panel" class="bg-slate-900 border border-white/10 rounded-[2.5rem] p-5 md:p-6 h-fit md:sticky md:top-40 shadow-2xl">
-                    <div id="inspect-content" class="text-center">
-                        <div class="flex items-center justify-center gap-4 mb-4">
+                    <div id="inspect-content" class="text-left">
+                        <div class="flex items-center gap-4 mb-4">
                             <div id="inspect-emoji" class="text-6xl md:text-7xl drop-shadow-2xl">❓</div>
                             <div class="text-left">
                                 <h4 id="inspect-name" class="text-lg md:text-xl font-black leading-tight">Hero Name</h4>
@@ -185,14 +200,19 @@
                             </div>
                         </div>
 
-                        <div id="inspect-rarity-badge" class="inline-block px-3 py-1 rounded-full text-[7px] font-black uppercase mb-4 tracking-[0.2em] border">RARITY</div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div id="inspect-rarity-badge" class="inline-block px-3 py-1 rounded-full text-[7px] font-black uppercase tracking-[0.2em] border">RARITY</div>
+                            <div class="bg-black/40 px-3 py-2 rounded-2xl border border-white/5 text-right">
+                                <div class="text-[7px] text-slate-500 uppercase">LV</div>
+                                <span class="font-bold text-sm" id="inspect-lvl">0</span>
+                            </div>
+                        </div>
                         <p id="inspect-desc" class="text-[10px] text-slate-300 leading-relaxed mb-4">A short description.</p>
                         <div id="inspect-dupe-count" class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-5">Duplicates: 0</div>
                         <div class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Moves</div>
-                        <div id="inspect-moves" class="text-[9px] text-slate-300 space-y-1 mb-5"></div>
+                        <div id="inspect-moves" class="text-[9px] text-slate-300 space-y-2 mb-5"></div>
                         
                         <div class="grid grid-cols-3 gap-2 text-left mb-5">
-                            <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-slate-500 uppercase">LV</p><span class="font-bold text-sm" id="inspect-lvl">0</span></div>
                             <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-green-500 uppercase">HP</p><span class="font-bold text-sm" id="inspect-hp">0</span></div>
                             <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-red-500 uppercase">ATK</p><span class="font-bold text-sm" id="inspect-atk">0</span></div>
                             <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-blue-500 uppercase">SPD</p><span class="font-bold text-sm" id="inspect-spd">0</span></div>
@@ -233,7 +253,7 @@
                     <div id="battle-player-team" class="space-y-3"></div>
                     <div id="battle-enemy-team" class="space-y-3"></div>
                 </div>
-                <div id="battle-log" class="mt-6 bg-black h-44 rounded-2xl p-4 overflow-y-auto custom-scrollbar flex flex-col-reverse text-[9px] font-mono border border-white/5"></div>
+                <div id="battle-log" class="mt-6 bg-black h-44 rounded-2xl p-4 overflow-y-auto custom-scrollbar text-[9px] font-mono border border-white/5"></div>
             </div>
         </section>
 
@@ -272,7 +292,7 @@
                             <div id="adventure-player-team" class="space-y-3"></div>
                             <div id="adventure-enemy-team" class="space-y-3"></div>
                         </div>
-                        <div id="adventure-log" class="mt-4 bg-black h-44 rounded-2xl p-4 overflow-y-auto custom-scrollbar flex flex-col-reverse text-[9px] font-mono border border-white/5"></div>
+                        <div id="adventure-log" class="mt-4 bg-black h-44 rounded-2xl p-4 overflow-y-auto custom-scrollbar text-[9px] font-mono border border-white/5"></div>
                     </div>
                 </div>
             </div>
@@ -1019,6 +1039,11 @@
             if (!state.adventure.regions.length) {
                 state.adventure.regions = generateAdventureRegions();
             }
+            state.adventure.regions.forEach(region => {
+                if (region.progressIndex === undefined) region.progressIndex = 0;
+                if (region.inBossRush === undefined) region.inBossRush = false;
+                if (region.bossRushIndex === undefined) region.bossRushIndex = 0;
+            });
             if (state.adventure.training === undefined) state.adventure.training = false;
             if (state.adventure.trainingWins === undefined) state.adventure.trainingWins = 0;
             if (state.adventure.awaitingBattle === undefined) state.adventure.awaitingBattle = false;
@@ -1431,6 +1456,11 @@
             return MOVES.find(move => move.id === id);
         }
 
+        function appendLog(log, html) {
+            log.innerHTML += html;
+            log.scrollTop = log.scrollHeight;
+        }
+
         function getMoveListForEmoji(emoji, inv = null) {
             const learned = inv?.learnedMoves || [];
             const moveIds = ['basic_strike', getMoveIdForEmoji(emoji), ...learned];
@@ -1541,7 +1571,7 @@
                 if (!force && Math.random() > chance) continue;
                 target.status = { id: status.id, name: status.name, element: move.element };
                 if (status.id === 'dazzle') target.cooldownSlowToggle = false;
-                log.innerHTML += `<div>${target.char} is afflicted with ${status.name}</div>`;
+                appendLog(log, `<div>${target.char} is afflicted with ${status.name}</div>`);
                 return;
             }
         }
@@ -1553,12 +1583,12 @@
             if (rules.tickDamagePct) {
                 const dmg = Math.max(1, Math.floor(unit.maxHp * rules.tickDamagePct));
                 unit.hp -= dmg;
-                log.innerHTML += `<div>${unit.char} suffers ${dmg} from ${unit.status.name}</div>`;
+                appendLog(log, `<div>${unit.char} suffers ${dmg} from ${unit.status.name}</div>`);
             }
             if (rules.tickDrainPct) {
                 const dmg = Math.max(1, Math.floor(unit.maxHp * rules.tickDrainPct));
                 unit.hp -= dmg;
-                log.innerHTML += `<div>${unit.char} is drained for ${dmg}</div>`;
+                appendLog(log, `<div>${unit.char} is drained for ${dmg}</div>`);
             }
         }
 
@@ -1583,7 +1613,7 @@
             if (!recoilPct) return;
             const recoil = Math.max(1, Math.floor(dmg * recoilPct));
             user.hp -= recoil;
-            log.innerHTML += `<div>${user.char} takes ${recoil} recoil</div>`;
+            appendLog(log, `<div>${user.char} takes ${recoil} recoil</div>`);
         }
 
         function applyDrain(user, dmg, drainPct, log) {
@@ -1593,7 +1623,7 @@
                 heal = Math.floor(heal * STATUS_RULES.curse.healMult);
             }
             user.hp = Math.min(user.maxHp, user.hp + heal);
-            log.innerHTML += `<div>${user.char} drains ${heal} HP</div>`;
+            appendLog(log, `<div>${user.char} drains ${heal} HP</div>`);
         }
 
         function getTargets(move, user, allies, enemies) {
@@ -1620,17 +1650,17 @@
                 targets.forEach(target => {
                     applyStatuses(user, target, move, log, true);
                 });
-                log.innerHTML += `<div>${user.char} uses ${move.name}</div>`;
+                appendLog(log, `<div>${user.char} uses ${move.name}</div>`);
             } else if (move.kind === 'damage') {
                 targets.forEach(target => {
                     let dmg = calcDamage(user, target, move.power, move);
                     if (target.status?.id === 'soak') {
                         dmg = Math.floor(dmg * STATUS_RULES.soak.damageAmp);
                         target.status = null;
-                        log.innerHTML += `<div>${target.char} is soaked!</div>`;
+                        appendLog(log, `<div>${target.char} is soaked!</div>`);
                     }
                     target.hp -= dmg;
-                    log.innerHTML += `<div>${user.char} uses ${move.name} for ${Math.floor(dmg)}</div>`;
+                    appendLog(log, `<div>${user.char} uses ${move.name} for ${Math.floor(dmg)}</div>`);
                     applyStageChanges(target, move.effect?.targetStages);
                     applyStageChanges(user, move.effect?.selfStages);
                     applyRecoil(user, dmg, move.effect?.recoilPct, log);
@@ -1644,13 +1674,13 @@
                         heal = Math.floor(heal * STATUS_RULES.curse.healMult);
                     }
                     target.hp = Math.min(target.maxHp, target.hp + heal);
-                    log.innerHTML += `<div>${user.char} uses ${move.name} for ${heal} HP</div>`;
+                    appendLog(log, `<div>${user.char} uses ${move.name} for ${heal} HP</div>`);
                 });
             } else if (move.kind === 'buff') {
                 targets.forEach(target => {
                     const stages = move.effect?.stages || move.effect?.targetStages || move.effect;
                     applyStageChanges(target, stages);
-                    log.innerHTML += `<div>${user.char} uses ${move.name}</div>`;
+                    appendLog(log, `<div>${user.char} uses ${move.name}</div>`);
                 });
             }
             return true;
@@ -1753,6 +1783,9 @@
                     rarity: region.rarity,
                     element: region.element,
                     cleared: false,
+                    progressIndex: 0,
+                    inBossRush: false,
+                    bossRushIndex: 0,
                     opponents,
                     bossRush
                 };
@@ -1768,9 +1801,6 @@
             const region = getAdventureRegionById(id);
             if (!region) return;
             state.adventure.currentRegionId = id;
-            state.adventure.progressIndex = 0;
-            state.adventure.inBossRush = false;
-            state.adventure.bossRushIndex = 0;
             state.adventure.playerTeamState = null;
             state.adventure.training = region.cleared;
             state.adventure.trainingWins = 0;
@@ -1792,8 +1822,8 @@
                 const isActive = region.id === state.adventure.currentRegionId;
                 let stageLabel = 'Challenger 1';
                 if (region.cleared) stageLabel = 'Cleared';
-                else if (isActive && state.adventure.inBossRush) stageLabel = 'Boss Rush';
-                else if (isActive) stageLabel = `Challenger ${state.adventure.progressIndex + 1}`;
+                else if (isActive && region.inBossRush) stageLabel = 'Boss Rush';
+                else if (isActive) stageLabel = `Challenger ${region.progressIndex + 1}`;
                 const btn = document.createElement('button');
                 btn.className = `w-full text-left px-4 py-3 rounded-2xl border ${region.cleared ? 'bg-black/30 border-white/5 text-slate-400 hover:bg-slate-800/70' : 'bg-slate-800 border-white/10 text-white hover:bg-slate-700'}`;
                 btn.innerHTML = `
@@ -1812,7 +1842,7 @@
             document.getElementById('adventure-region-title').innerText = active ? active.name : 'No Region';
             const lobby = document.getElementById('adventure-lobby');
             if (active && !active.cleared && !state.adventure.training) {
-                const trainer = state.adventure.inBossRush ? ADVENTURE_BOSS_TRAINERS[active.poolLabel] : null;
+                const trainer = active.inBossRush ? ADVENTURE_BOSS_TRAINERS[active.poolLabel] : null;
                 const trainerBlock = trainer ? `
                     <div class="bg-black/40 border border-white/10 rounded-2xl px-4 py-3 mb-4 text-left">
                         <div class="flex items-center gap-3 mb-2">
@@ -1827,7 +1857,7 @@
                 ` : '';
                 lobby.innerHTML = `
                     <div class="text-[70px] mb-3">⚔️</div>
-                    <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.3em] mb-3">${state.adventure.inBossRush ? 'Boss Rush' : `Challenger ${state.adventure.progressIndex + 1}`}</p>
+                    <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.3em] mb-3">${active.inBossRush ? 'Boss Rush' : `Challenger ${active.progressIndex + 1}`}</p>
                     ${trainerBlock}
                     <button onclick="startAdventureBattle()" class="bg-emerald-400 text-black px-8 py-3 rounded-2xl font-black text-xs uppercase">Start Battle</button>
                 `;
@@ -1855,9 +1885,9 @@
         function startAdventureBattle() {
             const region = getAdventureRegionById(state.adventure.currentRegionId);
             if (!region) return;
-            const stageType = state.adventure.training ? 'Training' : (state.adventure.inBossRush ? 'Boss Rush' : 'Skirmish');
+            const stageType = state.adventure.training ? 'Training' : (region.inBossRush ? 'Boss Rush' : 'Skirmish');
             document.getElementById('adventure-stage-type').innerText = stageType;
-            document.getElementById('adventure-stage-num').innerText = state.adventure.training ? state.adventure.trainingWins + 1 : (state.adventure.inBossRush ? state.adventure.bossRushIndex + 1 : state.adventure.progressIndex + 1);
+            document.getElementById('adventure-stage-num').innerText = state.adventure.training ? state.adventure.trainingWins + 1 : (region.inBossRush ? region.bossRushIndex + 1 : region.progressIndex + 1);
             state.adventure.awaitingBattle = false;
             const leaveBtn = document.getElementById('adventure-leave-training');
             const modeNote = document.getElementById('adventure-mode-note');
@@ -1874,11 +1904,11 @@
                 if (!state.adventure.playerTeamState || state.adventure.trainingWins % 3 === 0) {
                     state.adventure.playerTeamState = buildAdventurePlayerTeam();
                 }
-            } else if (!state.adventure.playerTeamState || !state.adventure.inBossRush) {
+            } else if (!state.adventure.playerTeamState || !region.inBossRush) {
                 state.adventure.playerTeamState = buildAdventurePlayerTeam();
             }
-            const enemyTeams = state.adventure.training ? region.opponents : (state.adventure.inBossRush ? region.bossRush : region.opponents);
-            const enemyTeam = state.adventure.training ? enemyTeams[Math.floor(Math.random() * enemyTeams.length)] : enemyTeams[state.adventure.inBossRush ? state.adventure.bossRushIndex : state.adventure.progressIndex];
+            const enemyTeams = state.adventure.training ? region.opponents : (region.inBossRush ? region.bossRush : region.opponents);
+            const enemyTeam = state.adventure.training ? enemyTeams[Math.floor(Math.random() * enemyTeams.length)] : enemyTeams[region.inBossRush ? region.bossRushIndex : region.progressIndex];
             const eUnits = enemyTeam.map(unit => {
                 const clone = { ...unit };
                 attachMoves(clone, []);
@@ -1891,9 +1921,6 @@
         function leaveAdventureTraining() {
             if (!state.adventure.training) return;
             state.adventure.currentRegionId = null;
-            state.adventure.progressIndex = 0;
-            state.adventure.inBossRush = false;
-            state.adventure.bossRushIndex = 0;
             state.adventure.playerTeamState = null;
             state.adventure.training = false;
             state.adventure.trainingWins = 0;
@@ -1908,12 +1935,14 @@
         async function runAdventureCombat(pUnits, eUnits) {
             const log = document.getElementById('adventure-log');
             log.innerHTML = `<div class="text-white border-b border-white/5 mb-1 pb-1">ADVENTURE</div>`;
+            let round = 1;
             const updateUI = () => {
                 document.getElementById('adventure-player-team').innerHTML = pUnits.map(u => `<div class="${u.hp<=0?'opacity-20':''}"><div class="flex justify-between text-[7px] font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div><div class="h-1 bg-black overflow-hidden"><div class="h-full bg-green-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div></div>`).join('');
                 document.getElementById('adventure-enemy-team').innerHTML = eUnits.map(u => `<div class="${u.hp<=0?'opacity-20':''}"><div class="flex justify-between text-[7px] font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div><div class="h-1 bg-black overflow-hidden"><div class="h-full bg-red-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div></div>`).join('');
             };
             while (pUnits.some(u => u.hp > 0) && eUnits.some(u => u.hp > 0)) {
                 updateUI();
+                appendLog(log, `<div class="text-slate-400">Round ${round}</div>`);
                 let actors = [...pUnits, ...eUnits].filter(u=>u.hp>0).sort((a,b)=>getModifiedStat(b, 'spd') - getModifiedStat(a, 'spd'));
                 for (let u of actors) {
                     if (u.hp <= 0) continue;
@@ -1932,10 +1961,11 @@
                         const basic = getMoveById('basic_strike');
                         const dmg = calcDamage(u, targets[0], basic.power, basic);
                         targets[0].hp -= dmg;
-                        log.innerHTML += `<div>${u.char} attacks for ${Math.floor(dmg)}</div>`;
+                        appendLog(log, `<div>${u.char} attacks for ${Math.floor(dmg)}</div>`);
                     }
                     updateUI(); await new Promise(r=>setTimeout(r, 350));
                 }
+                round += 1;
             }
             if (eUnits.every(u => u.hp <= 0)) handleAdventureWin();
             else handleAdventureLoss();
@@ -1969,15 +1999,15 @@
                 state[ticketKey] += 1;
                 state.gold += rewardGold(true);
             };
-            if (state.adventure.inBossRush) {
-                state.adventure.bossRushIndex += 1;
-                if (state.adventure.bossRushIndex >= region.bossRush.length) {
+            if (region.inBossRush) {
+                region.bossRushIndex += 1;
+                if (region.bossRushIndex >= region.bossRush.length) {
                     grantBossReward();
                     region.cleared = true;
                     state.adventure.currentRegionId = null;
-                    state.adventure.inBossRush = false;
-                    state.adventure.progressIndex = 0;
-                    state.adventure.bossRushIndex = 0;
+                    region.inBossRush = false;
+                    region.progressIndex = 0;
+                    region.bossRushIndex = 0;
                     state.adventure.playerTeamState = null;
                     state.adventure.awaitingBattle = false;
                     save();
@@ -1989,30 +2019,33 @@
                     return;
                 }
             } else {
-                state.adventure.progressIndex += 1;
+                region.progressIndex += 1;
                 grantTeamReward();
-                if (state.adventure.progressIndex >= region.opponents.length) {
-                    state.adventure.inBossRush = true;
-                    state.adventure.bossRushIndex = 0;
+                if (region.progressIndex >= region.opponents.length) {
+                    region.inBossRush = true;
+                    region.bossRushIndex = 0;
                 }
             }
-            state.adventure.awaitingBattle = true;
             save();
             updateStatsUI();
-            renderAdventure();
-            document.getElementById('adventure-lobby').classList.remove('hidden');
-            document.getElementById('adventure-combat').classList.add('hidden');
+            if (region.inBossRush) {
+                startAdventureBattle();
+            } else {
+                state.adventure.awaitingBattle = true;
+                renderAdventure();
+                document.getElementById('adventure-lobby').classList.remove('hidden');
+                document.getElementById('adventure-combat').classList.add('hidden');
+            }
         }
 
         function handleAdventureLoss() {
             if (state.adventure.training) {
                 state.adventure.currentRegionId = null;
-                state.adventure.progressIndex = 0;
-                state.adventure.inBossRush = false;
-                state.adventure.bossRushIndex = 0;
                 state.adventure.training = false;
                 state.adventure.trainingWins = 0;
             }
+            const region = getAdventureRegionById(state.adventure.currentRegionId);
+            if (region && region.inBossRush) region.bossRushIndex = 0;
             state.adventure.playerTeamState = null;
             state.adventure.awaitingBattle = true;
             save();
@@ -2351,18 +2384,40 @@
             document.getElementById('inspect-dupe-count').innerText = `DUPLICATES: ${inv.dupes || 0}`;
             const moveList = getMoveListForEmoji(e, inv);
             const moveTargetLabels = {
-                'enemy-single': 'Enemy Single',
-                'enemy-all': 'Enemy All',
-                'ally-single': 'Ally Single',
-                'ally-all': 'All Allies',
+                'enemy-single': 'Targets one',
+                'enemy-all': 'Targets all',
+                'ally-single': 'Targets ally',
+                'ally-all': 'Targets allies',
                 'self': 'Self'
             };
             document.getElementById('inspect-moves').innerHTML = moveList.map(move => {
                 const power = (move.kind === 'buff' || move.kind === 'status') ? '—' : move.power;
-                const element = move.element ? move.element.toUpperCase() : 'NEUTRAL';
-                const dmgType = move.damageType ? move.damageType.toUpperCase() : '—';
+                const element = move.element ? move.element.toLowerCase() : 'neutral';
+                const dmgType = move.damageType ? move.damageType.toLowerCase() : 'status';
                 const target = moveTargetLabels[move.target] || move.target;
-                return `<div>${move.name} (${element}) • ${move.kind.toUpperCase()} ${power} • ${dmgType} • CD ${move.cooldown} • ${target}</div>`;
+                const rarity = (move.rarity || 'common').toLowerCase();
+                const extras = [];
+                if (move.effect?.recoilPct) extras.push(`Recoil for ${Math.round(move.effect.recoilPct * 100)}% of damage dealt`);
+                if (move.effect?.drainPct) extras.push(`Drains ${Math.round(move.effect.drainPct * 100)}% of damage dealt`);
+                return `
+                    <div class="move-card ${element} ${rarity} ${dmgType}">
+                        <div class="flex justify-between items-start gap-2">
+                            <div class="font-black uppercase text-[9px] text-slate-100">${move.name}</div>
+                            <div class="text-[8px] text-slate-400 uppercase">CD ${move.cooldown}</div>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
+                            <div class="text-[10px] font-black text-white">Power ${power}</div>
+                            <div class="move-chip">${dmgType.toUpperCase()}</div>
+                        </div>
+                        <div class="flex flex-wrap gap-2 mt-2 text-[7px] text-slate-300 uppercase tracking-[0.2em]">
+                            <span class="move-chip">${move.name}</span>
+                            <span class="move-chip">${rarity.toUpperCase()}</span>
+                            <span class="move-chip">${dmgType.toUpperCase()}</span>
+                            <span class="move-chip">${target}</span>
+                        </div>
+                        ${extras.length ? `<div class="text-[9px] text-slate-200 mt-2">${extras.join(' • ')}</div>` : ''}
+                    </div>
+                `;
             }).join('');
             
             const lvlCost = getLevelUpCost(inv);
@@ -2437,6 +2492,7 @@
             document.getElementById('combat-stage-num').innerText = state.stage;
             document.getElementById('arena-info-stage').innerText = state.stage;
             log.innerHTML = `<div class="text-white border-b border-white/5 mb-1 pb-1">STAGE ${state.stage}</div>`;
+            let round = 1;
             
             let pUnits = state.team.map(id => {
                 const emoji = EMOJIS.find(x => x.id === id);
@@ -2459,6 +2515,7 @@
 
             while (pUnits.some(u=>u.hp>0) && eUnits.some(u=>u.hp>0) && state.isAutoBattling) {
                 updateUI();
+                appendLog(log, `<div class="text-slate-400">Round ${round}</div>`);
                 let actors = [...pUnits, ...eUnits].filter(u=>u.hp>0).sort((a,b)=>getModifiedStat(b, 'spd') - getModifiedStat(a, 'spd'));
                 for (let u of actors) {
                     if (u.hp <= 0 || !state.isAutoBattling) continue;
@@ -2477,10 +2534,11 @@
                         const basic = getMoveById('basic_strike');
                         const dmg = calcDamage(u, targets[0], basic.power, basic);
                         targets[0].hp -= dmg;
-                        log.innerHTML += `<div>${u.char} attacks for ${Math.floor(dmg)}</div>`;
+                        appendLog(log, `<div>${u.char} attacks for ${Math.floor(dmg)}</div>`);
                     }
                     updateUI(); await new Promise(r=>setTimeout(r, 450));
                 }
+                round += 1;
             }
             if (!state.isAutoBattling) return;
             if (eUnits.every(u => u.hp <= 0)) {
