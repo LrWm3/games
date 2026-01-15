@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Emoji Saga: Ultimate Gacha</title>
+    
+    <!-- Game Metadata -->
+    <meta name="game-description" content="A vibrant emoji gacha game featuring auto-battle arena, shop trading, and collection growth.">
+    <meta name="game-tags" content="gacha, rpg, emoji, auto-battle, collection, addiction">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+        
+        :root {
+            --common: #94a3b8;
+            --rare: #3b82f6;
+            --epic: #a855f7;
+            --legendary: #f59e0b;
+            --divine: #ef4444;
+        }
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: #0f172a;
+            color: white;
+            overflow-x: hidden;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        /* Rarity Classes */
+        .border-common { border-color: var(--common); }
+        .border-rare { border-color: var(--rare); box-shadow: 0 0 10px rgba(59, 130, 246, 0.4); }
+        .border-epic { border-color: var(--epic); box-shadow: 0 0 15px rgba(168, 85, 247, 0.5); }
+        .border-legendary { border-color: var(--legendary); box-shadow: 0 0 20px rgba(245, 158, 11, 0.6); }
+        .border-divine { border-color: var(--divine); box-shadow: 0 0 25px rgba(239, 68, 68, 0.7); animation: divine-pulse 2s infinite; }
+
+        .text-common { color: var(--common); }
+        .text-rare { color: var(--rare); }
+        .text-epic { color: var(--epic); }
+        .text-legendary { color: var(--legendary); }
+        .text-divine { color: var(--divine); }
+
+        @keyframes divine-pulse {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.02); filter: brightness(1.3); }
+        }
+
+        @keyframes portal-spin {
+            from { transform: rotate(0deg) scale(1); }
+            to { transform: rotate(360deg) scale(1.2); }
+        }
+        .animate-portal { animation: portal-spin 3s linear infinite; }
+
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(-5px, 5px); }
+            50% { transform: translate(5px, -5px); }
+            75% { transform: translate(-5px, -5px); }
+        }
+        .screen-shake { animation: shake 0.2s ease-in-out infinite; }
+
+        @keyframes card-reveal {
+            0% { transform: scale(0) rotateY(180deg); opacity: 0; }
+            70% { transform: scale(1.1) rotateY(0deg); opacity: 1; }
+            100% { transform: scale(1) rotateY(0deg); opacity: 1; }
+        }
+        .card-reveal { animation: card-reveal 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+        .tab-active { background: #6366f1 !important; color: white !important; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 10px; }
+
+        .tutorial-mask {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            pointer-events: none;
+            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), transparent 80px, rgba(0,0,0,0.8) 100px);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tutorial-mask.active { opacity: 1; }
+
+        .spotlight-target {
+            position: relative;
+            z-index: 110 !important;
+            pointer-events: auto !important;
+            box-shadow: 0 0 0 4px white, 0 0 20px white !important;
+        }
+
+        .battle-btn-pulse {
+            animation: pulse-red 1.5s infinite;
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+
+        @media (max-width: 640px) {
+            .gacha-card { width: 80px; height: 110px; }
+            .gacha-card .text-5xl { font-size: 2.5rem; }
+            .gacha-card .text-xs { font-size: 0.6rem; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header Stats -->
+    <header class="bg-slate-900 border-b border-slate-800 p-3 sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">✨</span>
+                <h1 class="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">Emoji Saga</h1>
+            </div>
+            <div class="flex gap-2">
+                <div class="bg-slate-800 px-2 py-1 rounded-full border border-slate-700 flex items-center gap-1.5 text-xs">
+                    <i class="fas fa-coins text-yellow-500"></i>
+                    <span id="stat-gold" class="font-bold">0</span>
+                </div>
+                <div class="bg-slate-800 px-2 py-1 rounded-full border border-slate-700 flex items-center gap-1.5 text-xs">
+                    <i class="fas fa-ticket text-indigo-400"></i>
+                    <span id="stat-tickets" class="font-bold">0</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="bg-slate-900/50 backdrop-blur-md p-1.5 flex flex-wrap justify-center gap-1 sticky top-[57px] z-40 border-b border-slate-800">
+        <button onclick="switchTab('summon')" id="btn-tab-summon" class="flex-1 min-w-[70px] py-2 rounded-lg text-[9px] font-bold bg-slate-800 text-slate-400 transition-all uppercase">Summon</button>
+        <button onclick="switchTab('team')" id="btn-tab-team" class="flex-1 min-w-[70px] py-2 rounded-lg text-[9px] font-bold bg-slate-800 text-slate-400 transition-all uppercase">Team</button>
+        <button onclick="switchTab('arena')" id="btn-tab-arena" class="flex-1 min-w-[70px] py-2 rounded-lg text-[9px] font-bold bg-slate-800 text-slate-400 transition-all uppercase">Arena</button>
+        <button onclick="switchTab('exp')" id="btn-tab-exp" class="flex-1 min-w-[70px] py-2 rounded-lg text-[9px] font-bold bg-slate-800 text-slate-400 transition-all uppercase">Scout</button>
+        <button onclick="switchTab('shop')" id="btn-tab-shop" class="flex-1 min-w-[70px] py-2 rounded-lg text-[9px] font-bold bg-slate-800 text-slate-400 transition-all uppercase">Shop</button>
+    </nav>
+
+    <main class="flex-grow container mx-auto max-w-5xl p-4 mb-16">
+        
+        <!-- Summon View -->
+        <section id="view-summon" class="tab-content py-4">
+            <div id="summon-portal-container" class="relative max-w-xs mx-auto aspect-square bg-indigo-950/20 rounded-full border-4 border-indigo-500/20 flex items-center justify-center overflow-hidden mb-8 shadow-[0_0_50px_rgba(79,70,229,0.2)]">
+                <div id="portal-gfx" class="absolute text-[180px] opacity-10 animate-portal">🌀</div>
+                <div class="relative z-10 text-center p-4">
+                    <h2 class="text-2xl font-bold mb-2">Celestial Gate</h2>
+                    <p class="text-indigo-300 italic text-xs mb-4">Summon legendary emojis</p>
+                    <div class="inline-block bg-black/40 px-3 py-1 rounded-full border border-indigo-500/30 text-[10px]">
+                        Pity: <span id="pity-count" class="text-indigo-400 font-bold">0/50</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-col gap-3 max-w-xs mx-auto">
+                <button id="btn-summon-1" onclick="startSummonSequence(1)" class="bg-white text-slate-900 py-4 rounded-xl font-black text-sm hover:scale-105 transition-transform active:scale-95 shadow-xl">SUMMON x1</button>
+                <button id="btn-summon-10" onclick="startSummonSequence(10)" class="bg-indigo-600 text-white py-4 rounded-xl font-black text-sm hover:scale-105 transition-transform active:scale-95 shadow-xl border-b-4 border-indigo-800">SUMMON x10</button>
+            </div>
+        </section>
+
+        <!-- Team View -->
+        <section id="view-team" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="flex justify-between items-end border-b border-slate-800 pb-1">
+                        <h3 class="text-lg font-bold">Active Squad</h3>
+                        <span class="text-[10px] text-red-400 font-bold animate-pulse">Changing team resets Arena!</span>
+                    </div>
+                    <div id="team-slots" class="grid grid-cols-3 gap-2 h-24"></div>
+                    <h3 class="text-lg font-bold border-b border-slate-800 pb-1 pt-2">Collection</h3>
+                    <div id="roster-grid" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 max-h-[300px] overflow-y-auto custom-scrollbar p-1"></div>
+                </div>
+                <div id="inspect-panel" class="bg-slate-900 rounded-2xl p-4 border border-slate-800 h-fit">
+                    <div id="inspect-content" class="text-center">
+                        <div class="text-5xl mb-2" id="inspect-emoji">❓</div>
+                        <h4 class="text-xl font-bold" id="inspect-name">Select Emoji</h4>
+                        <p class="text-[10px] uppercase text-slate-500 mb-4" id="inspect-rarity-type">-</p>
+                        <div class="grid grid-cols-2 gap-2 text-left mb-4 text-xs">
+                            <div class="bg-slate-800 p-2 rounded-lg">Lvl <span class="font-bold ml-1" id="inspect-lvl">0/10</span></div>
+                            <div class="bg-slate-800 p-2 rounded-lg text-green-400">HP <span class="font-bold ml-1" id="inspect-hp">0</span></div>
+                            <div class="bg-slate-800 p-2 rounded-lg text-red-400">ATK <span class="font-bold ml-1" id="inspect-atk">0</span></div>
+                            <div class="bg-slate-800 p-2 rounded-lg text-blue-400">SPD <span class="font-bold ml-1" id="inspect-spd">0</span></div>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <button id="btn-lvl-up" onclick="levelUpSelected()" class="w-full bg-green-600 py-2.5 rounded-xl font-bold text-sm disabled:opacity-20">Level Up</button>
+                            <button id="btn-add-team" onclick="toggleSelectedTeam()" class="w-full bg-indigo-600 py-2.5 rounded-xl font-bold text-sm disabled:opacity-20">Add to Squad</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Arena View (Now Automated) -->
+        <section id="view-arena" class="tab-content hidden">
+            <div id="arena-lobby" class="text-center py-6">
+                <div class="text-6xl mb-4 relative inline-block">
+                    ⚔️
+                    <div id="auto-pulse" class="absolute -inset-2 bg-red-500/20 rounded-full animate-ping hidden"></div>
+                </div>
+                <h2 class="text-2xl font-bold mb-2">Auto Arena</h2>
+                <p class="text-[10px] text-slate-400 mb-6 px-4">Fight automatically. Advance on Win. Reset to 1 on Loss.</p>
+                
+                <div class="flex items-center justify-center gap-4 mb-8">
+                    <div class="bg-slate-900 px-12 py-4 rounded-3xl border-2 border-red-500 shadow-lg shadow-red-500/10">
+                        <p class="text-[10px] text-red-400 uppercase font-bold tracking-widest">Current Stage</p>
+                        <p id="arena-stage" class="text-5xl font-bold">1</p>
+                    </div>
+                </div>
+                
+                <button id="btn-auto-battle" onclick="toggleAutoBattle()" class="battle-btn-pulse bg-red-600 text-white px-16 py-4 rounded-2xl font-black text-xl hover:scale-105 active:scale-95 transition-all">
+                    START AUTO-ARENA
+                </button>
+            </div>
+            
+            <div id="arena-combat" class="hidden space-y-4 max-w-lg mx-auto">
+                <div class="flex justify-between items-center bg-slate-900/80 px-4 py-2 rounded-full border border-slate-700">
+                    <span class="text-[10px] font-bold text-red-400 uppercase">Automated Combat in Progress...</span>
+                    <button onclick="stopAutoBattle()" class="text-[10px] text-slate-400 hover:text-white underline">Stop Auto</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div id="battle-player-team" class="space-y-2 bg-indigo-950/20 p-2 rounded-xl border border-indigo-500/20"></div>
+                    <div id="battle-enemy-team" class="space-y-2 bg-red-950/20 p-2 rounded-xl border border-red-500/20"></div>
+                </div>
+                <div id="battle-log" class="bg-black/60 h-40 rounded-xl p-3 overflow-y-auto custom-scrollbar flex flex-col-reverse text-[10px] font-mono border border-slate-800"></div>
+            </div>
+        </section>
+
+        <!-- Scout View -->
+        <section id="view-exp" class="tab-content hidden">
+            <div class="grid grid-cols-1 gap-4">
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold">Wildwood Scout</h3>
+                        <p id="exp-timer-1" class="text-xs text-slate-500">Idle</p>
+                    </div>
+                    <button id="btn-exp-1" onclick="handleExpedition(1)" class="bg-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition-colors">Start</button>
+                </div>
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold">Treasure Raid</h3>
+                        <p id="exp-timer-2" class="text-xs text-slate-500">Idle</p>
+                    </div>
+                    <button id="btn-exp-2" onclick="handleExpedition(2)" class="bg-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition-colors">Start</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Shop View -->
+        <section id="view-shop" class="tab-content hidden py-4">
+            <div class="text-center mb-6">
+                <div class="text-6xl mb-2">🏪</div>
+                <h2 class="text-2xl font-bold">Marketplace</h2>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto">
+                <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col items-center">
+                    <div class="text-4xl mb-3 text-indigo-400"><i class="fas fa-ticket"></i></div>
+                    <h3 class="font-bold mb-1 text-sm">Single Ticket</h3>
+                    <button onclick="buyTickets(1, 1000)" class="w-full bg-indigo-600 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                        <i class="fas fa-coins text-yellow-400"></i> 1,000
+                    </button>
+                </div>
+                <div class="bg-slate-900 border-2 border-indigo-500/50 p-5 rounded-2xl flex flex-col items-center relative overflow-hidden">
+                    <div class="absolute top-2 right-2 bg-indigo-500 text-[8px] font-bold px-2 py-0.5 rounded-full uppercase">Value</div>
+                    <div class="text-4xl mb-3 text-indigo-400"><i class="fas fa-ticket"></i><i class="fas fa-ticket ml-[-15px] opacity-70"></i></div>
+                    <h3 class="font-bold mb-1 text-sm">Value Pack (10)</h3>
+                    <button onclick="buyTickets(10, 9000)" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                        <i class="fas fa-coins text-yellow-400"></i> 9,000
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Summon Result -->
+    <div id="summon-result-overlay" class="fixed inset-0 z-[100] bg-black/95 flex flex-col hidden overflow-hidden">
+        <div class="flex-shrink-0 p-4 text-center">
+            <h2 id="summon-header" class="text-xl font-bold text-white animate-pulse">REVEALING...</h2>
+        </div>
+        <div id="summon-grid" class="flex-grow overflow-y-auto px-4 py-2 flex flex-wrap justify-center content-start gap-3 custom-scrollbar"></div>
+        <div class="flex-shrink-0 p-6 flex justify-center">
+            <button id="btn-summon-close" onclick="closeSummonResults()" class="hidden bg-indigo-600 text-white px-12 py-3 rounded-xl font-bold shadow-xl active:scale-95 transition-all">CONTINUE</button>
+        </div>
+    </div>
+
+    <!-- Tutorial Overlay -->
+    <div id="tutorial-mask" class="tutorial-mask"></div>
+    <div id="tutorial-overlay" class="fixed inset-0 z-[120] flex items-center justify-center p-6 pointer-events-none hidden">
+        <div id="tutorial-box" class="bg-slate-900 border-2 border-indigo-500 p-5 rounded-2xl max-w-xs w-full text-center pointer-events-auto shadow-2xl">
+            <div id="tuto-emoji" class="text-4xl mb-2">👋</div>
+            <h3 id="tuto-title" class="text-lg font-bold mb-1">Welcome!</h3>
+            <p id="tuto-text" class="text-slate-300 text-xs mb-4 leading-snug">Let's learn how to play.</p>
+            <button id="tuto-btn" class="w-full bg-indigo-600 py-3 rounded-xl font-bold text-xs">Next Step</button>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-indigo-600 text-white text-xs rounded-full font-bold shadow-2xl opacity-0 transition-all duration-300 z-[300]">Notification</div>
+
+    <script>
+        // --- MASTER DATA ---
+        const EMOJIS = [
+            { id: 1, char: '😀', name: 'Joy', rarity: 'common', type: 'Striker' },
+            { id: 2, char: '😐', name: 'Blank', rarity: 'common', type: 'Tank' },
+            { id: 3, char: '🐶', name: 'Doggo', rarity: 'common', type: 'Speedster' },
+            { id: 4, char: '🍎', name: 'Apple', rarity: 'common', type: 'Tank' },
+            { id: 5, char: '😎', name: 'Cool', rarity: 'rare', type: 'Striker' },
+            { id: 6, char: '🔥', name: 'Fire', rarity: 'rare', type: 'Striker' },
+            { id: 7, char: '🛡️', name: 'Shield', rarity: 'rare', type: 'Tank' },
+            { id: 8, char: '⚡', name: 'Bolt', rarity: 'epic', type: 'Speedster' },
+            { id: 9, char: '🦄', name: 'Unicorn', rarity: 'epic', type: 'Striker' },
+            { id: 10, char: '👑', name: 'King', rarity: 'legendary', type: 'Striker' },
+            { id: 11, char: '🌌', name: 'Cosmos', rarity: 'legendary', type: 'Tank' },
+            { id: 12, char: '👁️', name: 'Void', rarity: 'divine', type: 'Striker' },
+            // NEW EMOJI BATCH
+            { id: 13, char: '🐢', name: 'Turtle', rarity: 'common', type: 'Tank' },
+            { id: 14, char: '🌻', name: 'Sunny', rarity: 'common', type: 'Striker' },
+            { id: 15, char: '🍔', name: 'Borgar', rarity: 'common', type: 'Tank' },
+            { id: 16, char: '🎈', name: 'Balloony', rarity: 'common', type: 'Speedster' },
+            { id: 17, char: '🦇', name: 'Vamp', rarity: 'rare', type: 'Speedster' },
+            { id: 18, char: '🤖', name: 'Beep', rarity: 'rare', type: 'Striker' },
+            { id: 19, char: '👻', name: 'Spook', rarity: 'rare', type: 'Speedster' },
+            { id: 20, char: '🎭', name: 'Drama', rarity: 'epic', type: 'Striker' },
+            { id: 21, char: '🧬', name: 'Helix', rarity: 'epic', type: 'Tank' },
+            { id: 22, char: '🧿', name: 'Nazar', rarity: 'epic', type: 'Speedster' },
+            { id: 23, char: '🐉', name: 'Drake', rarity: 'legendary', type: 'Striker' },
+            { id: 24, char: '🏹', name: 'Archer', rarity: 'legendary', type: 'Striker' },
+            { id: 25, char: '🧜', name: 'Siren', rarity: 'divine', type: 'Speedster' }
+        ];
+
+        const BASE_STATS = {
+            common: { hp: 100, atk: 20, spd: 10 },
+            rare: { hp: 200, atk: 40, spd: 15 },
+            epic: { hp: 400, atk: 80, spd: 25 },
+            legendary: { hp: 800, atk: 150, spd: 40 },
+            divine: { hp: 1600, atk: 300, spd: 60 }
+        };
+
+        const PROBS = { common: 0.70, rare: 0.92, epic: 0.98, legendary: 0.998, divine: 1.0 };
+
+        let state = {
+            gold: 500, tickets: 10, pity: 0, inventory: {}, team: [], stage: 1,
+            exp: { 1: null, 2: null }, tutorialStep: 0, completedTutorial: false,
+            isAutoBattling: false
+        };
+
+        let selectedEmojiId = null;
+
+        // --- ENGINE ---
+        function init() {
+            load();
+            updateStatsUI();
+            switchTab('summon');
+            if (!state.completedTutorial) runTutorial();
+            setInterval(updateExpTimers, 1000);
+        }
+
+        function save() { localStorage.setItem('emojiSaga_v7', JSON.stringify(state)); }
+        function load() {
+            const saved = localStorage.getItem('emojiSaga_v7');
+            if (saved) state = { ...state, ...JSON.parse(saved) };
+            // Ensure auto-battle is false on fresh load to prevent ghost cycles
+            state.isAutoBattling = false;
+        }
+
+        function updateStatsUI() {
+            document.getElementById('stat-gold').innerText = state.gold.toLocaleString();
+            document.getElementById('stat-tickets').innerText = state.tickets.toLocaleString();
+            document.getElementById('arena-stage').innerText = state.stage;
+            document.getElementById('pity-count').innerText = `${state.pity}/50`;
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active'));
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.getElementById(`btn-tab-${tab}`).classList.add('tab-active');
+            if (tab === 'team') renderTeam();
+            if (tab === 'arena') renderArenaLobby();
+        }
+
+        function toast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.replace('opacity-0', 'opacity-100');
+            setTimeout(() => t.classList.replace('opacity-100', 'opacity-0'), 2000);
+        }
+
+        // --- SHOP ---
+        function buyTickets(amount, cost) {
+            if (state.gold < cost) { toast("Not enough Gold!"); return; }
+            state.gold -= cost; state.tickets += amount; save(); updateStatsUI();
+            toast(`Bought ${amount} Ticket${amount > 1 ? 's' : ''}!`);
+        }
+
+        // --- SUMMON ---
+        async function startSummonSequence(count) {
+            if (state.tickets < count) { toast("Need more tickets!"); return; }
+            state.tickets -= count; updateStatsUI();
+            const results = [];
+            let highestRarity = 'common';
+            for (let i = 0; i < count; i++) {
+                state.pity++;
+                let rarity = 'common';
+                let rand = Math.random();
+                if (state.pity >= 50) { rarity = 'legendary'; state.pity = 0; }
+                else {
+                    if (rand < PROBS.common) rarity = 'common';
+                    else if (rand < PROBS.rare) rarity = 'rare';
+                    else if (rand < PROBS.epic) rarity = 'epic';
+                    else if (rand < PROBS.legendary) rarity = 'legendary';
+                    else rarity = 'divine';
+                }
+                if (rarity === 'legendary' || rarity === 'divine') state.pity = 0;
+                const pool = EMOJIS.filter(e => e.rarity === rarity);
+                const emoji = pool[Math.floor(Math.random() * pool.length)];
+                results.push(emoji);
+                if (!state.inventory[emoji.id]) state.inventory[emoji.id] = { lvl: 1 };
+                const ranks = ['common', 'rare', 'epic', 'legendary', 'divine'];
+                if (ranks.indexOf(rarity) > ranks.indexOf(highestRarity)) highestRarity = rarity;
+            }
+            save(); renderSummonResults(results, highestRarity);
+        }
+
+        async function renderSummonResults(results, highest) {
+            const overlay = document.getElementById('summon-result-overlay');
+            const grid = document.getElementById('summon-grid');
+            const closeBtn = document.getElementById('btn-summon-close');
+            grid.innerHTML = ''; grid.scrollTop = 0; closeBtn.classList.add('hidden');
+            overlay.classList.remove('hidden');
+            if (['legendary', 'divine'].includes(highest)) document.body.classList.add('screen-shake');
+            for (let i = 0; i < results.length; i++) {
+                await new Promise(r => setTimeout(r, 200));
+                const res = results[i];
+                const card = document.createElement('div');
+                card.className = `gacha-card w-24 sm:w-32 h-36 sm:h-44 rounded-xl border-4 bg-slate-900 flex flex-col items-center justify-center p-2 card-reveal border-${res.rarity}`;
+                card.innerHTML = `<div class="text-[8px] font-bold text-${res.rarity} mb-1 uppercase">${res.rarity}</div><div class="text-4xl sm:text-5xl mb-2">${res.char}</div><div class="text-[10px] font-bold text-center leading-tight">${res.name}</div>`;
+                grid.appendChild(card);
+                grid.scrollTo({ top: grid.scrollHeight, behavior: 'smooth' });
+            }
+            document.body.classList.remove('screen-shake');
+            closeBtn.classList.remove('hidden');
+        }
+
+        function closeSummonResults() {
+            document.getElementById('summon-result-overlay').classList.add('hidden');
+            if (!state.completedTutorial && state.tutorialStep === 1) { state.tutorialStep++; save(); runTutorial(); }
+        }
+
+        // --- TEAM ---
+        function renderTeam() {
+            const rosterGrid = document.getElementById('roster-grid');
+            const teamSlots = document.getElementById('team-slots');
+            rosterGrid.innerHTML = ''; teamSlots.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                const id = state.team[i];
+                const slot = document.createElement('div');
+                slot.className = "flex-1 rounded-xl border-2 border-dashed border-slate-700 bg-slate-900/50 flex items-center justify-center text-3xl";
+                if (id) {
+                    const e = EMOJIS.find(x => x.id === id);
+                    slot.className = `flex-1 rounded-xl border-2 flex items-center justify-center text-3xl border-${e.rarity} bg-slate-900 cursor-pointer`;
+                    slot.innerHTML = e.char;
+                    slot.onclick = () => inspect(id);
+                }
+                teamSlots.appendChild(slot);
+            }
+            Object.keys(state.inventory).forEach(idStr => {
+                const id = parseInt(idStr);
+                const e = EMOJIS.find(x => x.id === id);
+                const inTeam = state.team.includes(id);
+                const item = document.createElement('div');
+                item.className = `aspect-square rounded-lg border-2 flex flex-col items-center justify-center cursor-pointer border-${e.rarity} ${inTeam ? 'opacity-40' : ''} ${selectedEmojiId === id ? 'ring-2 ring-white' : ''}`;
+                item.innerHTML = `<div class="text-2xl">${e.char}</div>`;
+                item.onclick = () => inspect(id);
+                rosterGrid.appendChild(item);
+            });
+        }
+
+        function inspect(id) {
+            selectedEmojiId = id;
+            const e = EMOJIS.find(x => x.id === id);
+            const inv = state.inventory[id];
+            const stats = calcStats(id);
+            document.getElementById('inspect-emoji').innerText = e.char;
+            document.getElementById('inspect-name').innerText = e.name;
+            document.getElementById('inspect-rarity-type').innerText = `${e.rarity} ${e.type}`;
+            document.getElementById('inspect-lvl').innerText = `${inv.lvl}/10`;
+            document.getElementById('inspect-hp').innerText = stats.hp;
+            document.getElementById('inspect-atk').innerText = stats.atk;
+            document.getElementById('inspect-spd').innerText = stats.spd;
+            document.getElementById('btn-lvl-up').disabled = (state.gold < inv.lvl * 150 || inv.lvl >= 10);
+            document.getElementById('btn-add-team').innerText = state.team.includes(id) ? "Remove" : "Add";
+            renderTeam();
+        }
+
+        function calcStats(id) {
+            const e = EMOJIS.find(x => x.id === id);
+            const inv = state.inventory[id];
+            const base = BASE_STATS[e.rarity];
+            const mult = 1 + (inv.lvl - 1) * 0.3;
+            return { hp: Math.floor(base.hp * mult), atk: Math.floor(base.atk * mult), spd: Math.floor(base.spd * mult) };
+        }
+
+        function levelUpSelected() {
+            if (!selectedEmojiId) return;
+            const inv = state.inventory[selectedEmojiId];
+            const cost = inv.lvl * 150;
+            if (state.gold >= cost) { state.gold -= cost; inv.lvl++; save(); inspect(selectedEmojiId); updateStatsUI(); toast("Level Up!"); }
+        }
+
+        function toggleSelectedTeam() {
+            if (!selectedEmojiId) return;
+            const idx = state.team.indexOf(selectedEmojiId);
+            
+            // RESET ARENA LOGIC: If team changes, reset progress
+            state.stage = 1;
+            stopAutoBattle(); // Stop if active to prevent weird errors
+
+            if (idx > -1) state.team.splice(idx, 1);
+            else if (state.team.length < 3) state.team.push(selectedEmojiId);
+            else { toast("Full!"); return; }
+            
+            save(); updateStatsUI(); inspect(selectedEmojiId);
+            if (!state.completedTutorial && state.tutorialStep === 2 && state.team.length >= 1) {
+                state.tutorialStep++; save(); runTutorial();
+            }
+        }
+
+        // --- ARENA (AUTOMATED) ---
+        function renderArenaLobby() {
+            if (state.isAutoBattling) {
+                document.getElementById('arena-lobby').classList.add('hidden');
+                document.getElementById('arena-combat').classList.remove('hidden');
+            } else {
+                document.getElementById('arena-lobby').classList.remove('hidden');
+                document.getElementById('arena-combat').classList.add('hidden');
+            }
+            updateStatsUI();
+        }
+
+        function toggleAutoBattle() {
+            if (!state.team.length) { toast("Assemble a team first!"); switchTab('team'); return; }
+            state.isAutoBattling = true;
+            document.getElementById('auto-pulse').classList.remove('hidden');
+            renderArenaLobby();
+            startAutoBattleCycle();
+        }
+
+        function stopAutoBattle() {
+            state.isAutoBattling = false;
+            document.getElementById('auto-pulse').classList.add('hidden');
+            renderArenaLobby();
+        }
+
+        async function startAutoBattleCycle() {
+            if (!state.isAutoBattling) return;
+
+            const log = document.getElementById('battle-log');
+            log.innerHTML = `<div class="text-red-400 font-bold uppercase tracking-widest border-b border-red-900/30 mb-2 pb-1 text-center">--- Stage ${state.stage} ---</div>`;
+            
+            let pUnits = state.team.map(id => ({ ...EMOJIS.find(x => x.id === id), ...calcStats(id), maxHp: calcStats(id).hp, isPlayer: true }));
+            let eUnits = [{ char: '👾', name: `Void Shadow`, hp: 100 + state.stage * 135, maxHp: 100 + state.stage * 135, atk: 25 + state.stage * 16, spd: 8 + Math.floor(state.stage/2), isPlayer: false }];
+            
+            const updateBars = () => {
+                document.getElementById('battle-player-team').innerHTML = pUnits.map(u => `<div class="${u.hp<=0?'opacity-30':''}"><div class="text-[8px] flex justify-between"><span>${u.char} ${u.name}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div><div class="h-1 bg-slate-800 rounded-full"><div class="h-full bg-green-500 transition-all" style="width:${(u.hp/u.maxHp)*100}%"></div></div></div>`).join('');
+                document.getElementById('battle-enemy-team').innerHTML = eUnits.map(u => `<div class="${u.hp<=0?'opacity-30':''}"><div class="text-[8px] flex justify-between"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div><div class="h-1 bg-slate-800 rounded-full"><div class="h-full bg-red-500 transition-all" style="width:${(u.hp/u.maxHp)*100}%"></div></div></div>`).join('');
+            };
+            
+            while (pUnits.some(u=>u.hp>0) && eUnits.some(u=>u.hp>0) && state.isAutoBattling) {
+                updateBars();
+                let actors = [...pUnits, ...eUnits].filter(u=>u.hp>0).sort((a,b)=>b.spd - a.spd);
+                for (let u of actors) {
+                    if (u.hp<=0 || !state.isAutoBattling) continue;
+                    let targets = u.isPlayer ? eUnits.filter(t=>t.hp>0) : pUnits.filter(t=>t.hp>0);
+                    if (!targets.length) break;
+                    let t = targets[Math.floor(Math.random() * targets.length)];
+                    let dmg = u.atk * (0.8 + Math.random()*0.4);
+                    t.hp -= dmg;
+                    log.innerHTML += `<div>${u.char} strikes for ${Math.floor(dmg)}</div>`;
+                    updateBars();
+                    await new Promise(r=>setTimeout(r, 450));
+                }
+            }
+            
+            if (!state.isAutoBattling) return;
+
+            const victory = eUnits.every(u => u.hp <= 0);
+            if (victory) {
+                state.gold += state.stage * 200;
+                log.innerHTML += `<div class="text-green-400 font-bold mt-2">VICTORY! Advancing...</div>`;
+                state.stage++;
+                save(); updateStatsUI();
+                if (!state.completedTutorial && state.tutorialStep === 3) { state.tutorialStep++; save(); runTutorial(); }
+                setTimeout(() => startAutoBattleCycle(), 2000);
+            } else {
+                log.innerHTML += `<div class="text-red-500 font-bold mt-2">DEFEAT! Resetting to Stage 1...</div>`;
+                state.stage = 1;
+                state.isAutoBattling = false;
+                save(); updateStatsUI();
+                setTimeout(() => renderArenaLobby(), 3000);
+            }
+        }
+
+        // --- EXPEDITIONS ---
+        function handleExpedition(id) {
+            if (!state.exp[id]) state.exp[id] = Date.now() + (id === 1 ? 60000 : 300000);
+            else if (Date.now() >= state.exp[id]) { 
+                if (id === 1) state.gold += 400; else state.tickets += 2;
+                state.exp[id] = null;
+            }
+            save(); updateStatsUI();
+        }
+
+        function updateExpTimers() {
+            [1, 2].forEach(id => {
+                const end = state.exp[id];
+                const btn = document.getElementById(`btn-exp-${id}`);
+                const display = document.getElementById(`exp-timer-${id}`);
+                if (!end) { display.innerText = "Idle"; btn.innerText = "Start"; btn.classList.replace('bg-green-600', 'bg-slate-700'); }
+                else {
+                    const diff = end - Date.now();
+                    if (diff > 0) { display.innerText = `${Math.ceil(diff/1000)}s left`; btn.disabled = true; }
+                    else { display.innerText = "DONE!"; btn.disabled = false; btn.innerText = "Claim"; btn.classList.replace('bg-slate-700', 'bg-green-600'); }
+                }
+            });
+        }
+
+        // --- TUTORIAL ---
+        const tutorialData = [
+            { emoji: '👋', title: 'Welcome Seeker!', text: 'The Emoji Realm is in danger. Use your tickets to summon heroes!', spotlight: 'view-summon', pos: 'center' },
+            { emoji: '🌀', title: 'The Portal', text: 'Tap SUMMON x10 to call your heroes.', spotlight: 'btn-summon-10', pos: 'bottom' },
+            { emoji: '🛡️', title: 'Assemble Squad', text: 'Add a hero to your active squad. Note: Changing your team resets arena progress!', spotlight: 'btn-tab-team', pos: 'bottom' },
+            { emoji: '⚔️', title: 'Auto Battle!', text: 'The Arena is now automated. Win to advance, lose to reset!', spotlight: 'btn-tab-arena', pos: 'bottom' },
+            { emoji: '🌟', title: 'Hero Legend', text: 'Good luck! Visit the Shop if you run out of tickets!', spotlight: null, pos: 'center' }
+        ];
+
+        function runTutorial() {
+            if (state.completedTutorial) {
+                document.getElementById('tutorial-overlay').classList.add('hidden');
+                document.getElementById('tutorial-mask').classList.remove('active');
+                return;
+            }
+            const step = tutorialData[state.tutorialStep];
+            if (!step) { state.completedTutorial = true; save(); runTutorial(); return; }
+            const overlay = document.getElementById('tutorial-overlay');
+            const mask = document.getElementById('tutorial-mask');
+            overlay.classList.remove('hidden');
+            mask.classList.add('active');
+            document.getElementById('tuto-emoji').innerText = step.emoji;
+            document.getElementById('tuto-title').innerText = step.title;
+            document.getElementById('tuto-text').innerText = step.text;
+            if (step.pos === 'bottom') { overlay.classList.replace('items-center', 'items-end'); overlay.classList.add('pb-20'); }
+            else { overlay.classList.replace('items-end', 'items-center'); overlay.classList.remove('pb-20'); }
+            document.querySelectorAll('.spotlight-target').forEach(el => el.classList.remove('spotlight-target'));
+            if (step.spotlight) {
+                const target = document.getElementById(step.spotlight);
+                if (target) {
+                    target.classList.add('spotlight-target');
+                    const rect = target.getBoundingClientRect();
+                    mask.style.setProperty('--x', (rect.left + rect.width / 2) + 'px');
+                    mask.style.setProperty('--y', (rect.top + rect.height / 2) + 'px');
+                }
+            } else { mask.style.setProperty('--x', '50%'); mask.style.setProperty('--y', '50%'); }
+            document.getElementById('tuto-btn').onclick = () => {
+                if (state.tutorialStep === 0 || state.tutorialStep === 4) { state.tutorialStep++; save(); runTutorial(); }
+                else { overlay.classList.add('hidden'); mask.classList.remove('active'); }
+            };
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
