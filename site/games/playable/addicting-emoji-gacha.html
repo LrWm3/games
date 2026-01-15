@@ -440,6 +440,20 @@
         };
         const RARITY_COST_MULTIPLIERS = { trash: 0.7, common: 1.0, uncommon: 1.3, rare: 1.7, epic: 2.6, legendary: 4.0, divine: 6.5, eternal: 9.0 };
         const PROMOTE_COST_MULTIPLIERS = { trash: 0.8, common: 1.2, uncommon: 1.6, rare: 2.0, epic: 3.2, legendary: 5.0, divine: 8.0 };
+        const MOVES = [
+            { id: 'flame_rush', name: 'Flame Rush', power: 70, cooldown: 2, kind: 'damage', target: 'enemy-single', special: null },
+            { id: 'ember_wave', name: 'Ember Wave', power: 35, cooldown: 3, kind: 'damage', target: 'enemy-all', special: null },
+            { id: 'heat_shield', name: 'Heat Shield', power: 0, cooldown: 4, kind: 'buff', target: 'self', effect: { hpPct: 0.2 }, special: null },
+            { id: 'tidal_spear', name: 'Tidal Spear', power: 60, cooldown: 2, kind: 'damage', target: 'enemy-single', special: null },
+            { id: 'soothing_rain', name: 'Soothing Rain', power: 35, cooldown: 4, kind: 'heal', target: 'ally-all', special: null },
+            { id: 'ice_barbs', name: 'Ice Barbs', power: 28, cooldown: 3, kind: 'damage', target: 'enemy-all', special: null },
+            { id: 'vine_lash', name: 'Vine Lash', power: 55, cooldown: 2, kind: 'damage', target: 'enemy-single', special: null },
+            { id: 'seed_bloom', name: 'Seed Bloom', power: 50, cooldown: 3, kind: 'heal', target: 'ally-single', special: null },
+            { id: 'radiant_burst', name: 'Radiant Burst', power: 30, cooldown: 3, kind: 'damage', target: 'enemy-all', special: null },
+            { id: 'blessing_wall', name: 'Blessing Wall', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', effect: { hpPct: 0.12 }, special: null },
+            { id: 'shadow_slice', name: 'Shadow Slice', power: 75, cooldown: 3, kind: 'damage', target: 'enemy-single', special: null },
+            { id: 'night_howl', name: 'Night Howl', power: 0, cooldown: 4, kind: 'buff', target: 'self', effect: { atkPct: 0.18, spdPct: 0.1 }, special: null }
+        ];
         const EMOJI_DESCS = {
             101: 'Rattles around, stubbornly guards scraps.',
             102: 'Smug little lump that never backs down.',
@@ -733,6 +747,115 @@
             return { hp: Math.floor(hp * rarityModifier * growth), atk: Math.floor(atk * rarityModifier * growth), spd: Math.floor(spd * rarityModifier * growth) };
         }
 
+        function getMoveById(id) {
+            return MOVES.find(move => move.id === id);
+        }
+
+        function getMoveIdForEmoji(emoji) {
+            if (emoji.element === 'fire') {
+                if (emoji.type === 'Tank') return 'heat_shield';
+                if (emoji.type === 'Speedster') return 'ember_wave';
+                return 'flame_rush';
+            }
+            if (emoji.element === 'water') {
+                if (emoji.type === 'Tank') return 'soothing_rain';
+                if (emoji.type === 'Speedster') return 'ice_barbs';
+                return 'tidal_spear';
+            }
+            if (emoji.element === 'nature') {
+                if (emoji.type === 'Tank') return 'seed_bloom';
+                return 'vine_lash';
+            }
+            if (emoji.element === 'light') {
+                if (emoji.type === 'Tank') return 'blessing_wall';
+                return 'radiant_burst';
+            }
+            if (emoji.element === 'dark') {
+                if (emoji.type === 'Speedster') return 'night_howl';
+                return 'shadow_slice';
+            }
+            return 'flame_rush';
+        }
+
+        function attachMoves(unit) {
+            const moveId = getMoveIdForEmoji(unit);
+            unit.moves = [moveId];
+            unit.cooldowns = { [moveId]: 0 };
+        }
+
+        function tickCooldowns(unit) {
+            if (!unit.cooldowns) return;
+            Object.keys(unit.cooldowns).forEach(id => {
+                if (unit.cooldowns[id] > 0) unit.cooldowns[id] -= 1;
+            });
+        }
+
+        function pickMove(unit) {
+            if (!unit.moves) return null;
+            const ready = unit.moves.filter(id => unit.cooldowns[id] === 0);
+            if (!ready.length) return null;
+            const pickId = ready[Math.floor(Math.random() * ready.length)];
+            return getMoveById(pickId);
+        }
+
+        function calcDamage(attacker, power) {
+            const variance = 0.85 + Math.random() * 0.3;
+            return Math.max(1, Math.floor(attacker.atk * (power / 50) * variance));
+        }
+
+        function calcHeal(user, power) {
+            const variance = 0.9 + Math.random() * 0.2;
+            return Math.max(1, Math.floor(user.atk * (power / 50) * variance));
+        }
+
+        function getTargets(move, user, allies, enemies) {
+            const aliveAllies = allies.filter(u => u.hp > 0);
+            const aliveEnemies = enemies.filter(u => u.hp > 0);
+            if (move.target === 'self') return [user];
+            if (move.target === 'ally-single') {
+                if (!aliveAllies.length) return [];
+                return [aliveAllies.sort((a, b) => a.hp - b.hp)[0]];
+            }
+            if (move.target === 'ally-all') return aliveAllies;
+            if (move.target === 'enemy-all') return aliveEnemies;
+            if (move.target === 'enemy-single') {
+                if (!aliveEnemies.length) return [];
+                return [aliveEnemies.sort((a, b) => a.hp - b.hp)[0]];
+            }
+            return [];
+        }
+
+        function applyMove(user, move, allies, enemies, log) {
+            const targets = getTargets(move, user, allies, enemies);
+            if (!targets.length) return false;
+            if (move.kind === 'damage') {
+                targets.forEach(target => {
+                    const dmg = calcDamage(user, move.power);
+                    target.hp -= dmg;
+                    log.innerHTML += `<div>${user.char} uses ${move.name} for ${Math.floor(dmg)}</div>`;
+                });
+            } else if (move.kind === 'heal') {
+                targets.forEach(target => {
+                    const heal = calcHeal(user, move.power);
+                    target.hp = Math.min(target.maxHp, target.hp + heal);
+                    log.innerHTML += `<div>${user.char} uses ${move.name} for ${heal} HP</div>`;
+                });
+            } else if (move.kind === 'buff') {
+                targets.forEach(target => {
+                    if (move.effect?.atkPct) target.atk = Math.floor(target.atk * (1 + move.effect.atkPct));
+                    if (move.effect?.spdPct) target.spd = Math.floor(target.spd * (1 + move.effect.spdPct));
+                    if (move.effect?.hpPct) {
+                        const newHp = Math.floor(target.hp * (1 + move.effect.hpPct));
+                        const delta = newHp - target.hp;
+                        target.hp = newHp;
+                        target.maxHp += delta;
+                    }
+                    log.innerHTML += `<div>${user.char} uses ${move.name}</div>`;
+                });
+            }
+            return true;
+        }
+
         function pickWeightedRarity(stage) {
             const pools = [
                 { max: 3, weights: { trash: 0.45, common: 0.35, uncommon: 0.15, rare: 0.05 } },
@@ -773,7 +896,9 @@
                 usedIds.add(emoji.id);
                 const level = Math.max(1, baseLevel + Math.floor(Math.random() * levelSpread) - Math.floor(levelSpread / 2));
                 const stats = calcEnemyStats(emoji, level, rarity);
-                team.push({ ...emoji, ...stats, lvl: level, maxHp: stats.hp, isPlayer: false, currentRarity: rarity });
+                const unit = { ...emoji, ...stats, lvl: level, maxHp: stats.hp, isPlayer: false, currentRarity: rarity };
+                attachMoves(unit);
+                team.push(unit);
             }
             return team.sort(() => Math.random() - 0.5);
         }
@@ -984,7 +1109,13 @@
             document.getElementById('arena-info-stage').innerText = state.stage;
             log.innerHTML = `<div class="text-white border-b border-white/5 mb-1 pb-1">STAGE ${state.stage}</div>`;
             
-            let pUnits = state.team.map(id => ({ ...EMOJIS.find(x => x.id === id), ...calcStats(id), maxHp: calcStats(id).hp, isPlayer: true }));
+            let pUnits = state.team.map(id => {
+                const emoji = EMOJIS.find(x => x.id === id);
+                const stats = calcStats(id);
+                const unit = { ...emoji, ...stats, maxHp: stats.hp, isPlayer: true };
+                attachMoves(unit);
+                return unit;
+            });
             let eUnits = generateEnemyTeam(state.stage);
 
             const updateUI = () => {
@@ -997,11 +1128,20 @@
                 let actors = [...pUnits, ...eUnits].filter(u=>u.hp>0).sort((a,b)=>b.spd - a.spd);
                 for (let u of actors) {
                     if (u.hp <= 0 || !state.isAutoBattling) continue;
+                    tickCooldowns(u);
                     let targets = u.isPlayer ? eUnits.filter(t=>t.hp>0) : pUnits.filter(t=>t.hp>0);
                     if (!targets.length) break;
-                    let dmg = u.atk * (0.8 + Math.random()*0.4);
-                    targets[0].hp -= dmg;
-                    log.innerHTML += `<div>${u.char} deals ${Math.floor(dmg)}</div>`;
+                    const allies = u.isPlayer ? pUnits : eUnits;
+                    const enemies = u.isPlayer ? eUnits : pUnits;
+                    const move = pickMove(u);
+                    if (move) {
+                        const used = applyMove(u, move, allies, enemies, log);
+                        if (used) u.cooldowns[move.id] = move.cooldown;
+                    } else {
+                        const dmg = calcDamage(u, 50);
+                        targets[0].hp -= dmg;
+                        log.innerHTML += `<div>${u.char} attacks for ${Math.floor(dmg)}</div>`;
+                    }
                     updateUI(); await new Promise(r=>setTimeout(r, 450));
                 }
             }
