@@ -165,13 +165,13 @@
                 <button onclick="startSummonSequence(10, 'standard')" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-indigo-900 transition-all">MULTI SUMMON (10x)</button>
                 <div id="rare-summon-block" class="space-y-4">
                     <div class="text-[9px] font-black uppercase tracking-[0.35em] text-blue-300 mt-2">Rare Tickets</div>
-                    <button onclick="startSummonSequence(1, 'rare')" class="bg-blue-500 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-blue-900 transition-all">RARE SUMMON</button>
-                    <button onclick="startSummonSequence(10, 'rare')" class="bg-gradient-to-r from-sky-500 to-blue-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-blue-900 transition-all">RARE MULTI (10x)</button>
+                    <button onclick="startSummonSequence(1, 'rare')" class="w-full bg-blue-500 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-blue-900 transition-all">RARE SUMMON</button>
+                    <button onclick="startSummonSequence(10, 'rare')" class="w-full bg-gradient-to-r from-sky-500 to-blue-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-blue-900 transition-all">RARE MULTI (10x)</button>
                 </div>
                 <div id="legendary-summon-block">
                     <div class="text-[9px] font-black uppercase tracking-[0.35em] text-amber-300 mt-2">Legendary Tickets</div>
-                    <button onclick="startSummonSequence(1, 'legendary')" class="bg-amber-400 text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">LEGEND SUMMON</button>
-                    <button onclick="startSummonSequence(10, 'legendary')" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-amber-900 transition-all">LEGEND MULTI (10x)</button>
+                    <button onclick="startSummonSequence(1, 'legendary')" class="w-full bg-amber-400 text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">LEGEND SUMMON</button>
+                    <button onclick="startSummonSequence(10, 'legendary')" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-amber-900 transition-all">LEGEND MULTI (10x)</button>
                 </div>
             </div>
         </section>
@@ -480,7 +480,7 @@
             { id: 168, char: '🌵', name: 'Spine', rarity: 'common', element: 'nature', defaultMove: 'briar_strike', type: 'Tank' },
             { id: 169, char: '🍀', name: 'Luck', rarity: 'epic', element: 'nature', defaultMove: 'briar_strike', type: 'Speedster' },
             // LIGHT (25)
-            { id: 16, char: '✨', name: 'Star', rarity: 'common', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
+            { id: 16, char: '🕯️', name: 'Candle', rarity: 'common', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
             { id: 17, char: '😇', name: 'Aegis', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Tank' },
             { id: 18, char: '👑', name: 'Sov', rarity: 'legendary', element: 'light', defaultMove: 'spark_jab', type: 'Striker' },
             { id: 19, char: '💎', name: 'Gem', rarity: 'epic', element: 'light', defaultMove: 'spark_jab', type: 'Tank' },
@@ -600,6 +600,16 @@
             light: { emoji: '✨', name: 'Light' },
             dark: { emoji: '🌑', name: 'Dark' }
         };
+        const RARITY_METADATA = {
+            trash: { emoji: '🗑️', name: 'Trash' },
+            common: { emoji: '⚪', name: 'Common' },
+            uncommon: { emoji: '🟢', name: 'Uncommon' },
+            rare: { emoji: '🔵', name: 'Rare' },
+            epic: { emoji: '🟣', name: 'Epic' },
+            legendary: { emoji: '🟡', name: 'Legendary' },
+            divine: { emoji: '💠', name: 'Divine' },
+            eternal: { emoji: '♾️', name: 'Eternal' }
+        };
         const TYPE_METADATA = {
             Striker: { emoji: '⚔️', name: 'Striker' },
             Tank: { emoji: '🛡️', name: 'Tank' },
@@ -640,7 +650,7 @@
             { pool: 'legendary', name: 'Obsidian Gate', rarity: 'legendary', element: 'dark', desc: 'Only the strongest survive the gauntlet.' }
         ];
         const ADVENTURE_BOSS_TRAINERS = {
-            trash: { emoji: '🧑‍🏭', name: 'Brigg "Scrapking" Scroby Jr.', line: 'Out here, you either break... or you get rebuilt tougher.' },
+            trash: { emoji: '🧑‍🏭', name: 'Scroby "Scrapking" Jr.', line: 'Out here, you either break... or you get rebuilt tougher.' },
             common: { emoji: '🧑‍🌾', name: 'Mara Trailwarden', line: 'No tricks. No shortcuts. Just good steps and better timing.' },
             uncommon: { emoji: '🧑‍🎨', name: 'Sable Scroby', line: "Let's see you win when the battlefield won't sit still." },
             rare: { emoji: '🧑‍✈️', name: 'Captain Neris Waveborne', line: 'Hold formation—when the surge hits, hesitation sinks you.' },
@@ -963,7 +973,7 @@
 
         const DEFAULT_STATE = {
             gold: 1000,
-            tickets: 1,
+            tickets: 2,
             rareTickets: 0,
             legendaryTickets: 0,
             playerName: '',
@@ -993,6 +1003,8 @@
                 bossRushIndex: 0,
                 playerTeamState: null,
                 awaitingBattle: false,
+                inCombat: false,
+                activeBattle: null,
                 training: false,
                 trainingWins: 0
             },
@@ -1060,6 +1072,8 @@
             if (state.adventure.training === undefined) state.adventure.training = false;
             if (state.adventure.trainingWins === undefined) state.adventure.trainingWins = 0;
             if (state.adventure.awaitingBattle === undefined) state.adventure.awaitingBattle = false;
+            if (state.adventure.inCombat === undefined) state.adventure.inCombat = false;
+            if (state.adventure.activeBattle === undefined) state.adventure.activeBattle = null;
             if (!state.tutorial) state.tutorial = { ...DEFAULT_STATE.tutorial };
             if (state.tutorial.step === undefined) state.tutorial.step = DEFAULT_STATE.tutorial.step;
             if (state.tutorial.guidedPulls === undefined) state.tutorial.guidedPulls = 0;
@@ -1085,7 +1099,7 @@
             stopAutoBattle();
             localStorage.removeItem(getSaveKey(currentSlot));
             state = { ...DEFAULT_STATE };
-            save(); updateStatsUI(); switchTab('summon'); renderTutorial(); toast("NEW GAME");
+            save(); updateStatsUI(); switchTab('summon'); renderTutorial(); closeDataDialog(); toast("NEW GAME");
         }
 
         function deleteCurrentSlot() {
@@ -1813,6 +1827,7 @@
 
         function startAdventureRegion(id) {
             if (!state.team.length) { switchTab('team'); return; }
+            if (state.adventure.inCombat) { toast('BATTLE IN PROGRESS'); return; }
             const region = getAdventureRegionById(id);
             if (!region) return;
             state.adventure.currentRegionId = id;
@@ -1850,7 +1865,11 @@
                     <div class="text-[8px] text-slate-500 uppercase tracking-[0.2em] mt-1">Element: ${region.element}</div>
                     <div class="text-[8px] text-slate-500 uppercase tracking-[0.2em] mt-1">${stageLabel}</div>
                 `;
-                btn.onclick = () => startAdventureRegion(region.id);
+                if (!state.adventure.inCombat) btn.onclick = () => startAdventureRegion(region.id);
+                else {
+                    btn.disabled = true;
+                    btn.className += ' opacity-40 cursor-not-allowed';
+                }
                 list.appendChild(btn);
             });
             const active = getAdventureRegionById(state.adventure.currentRegionId);
@@ -1904,6 +1923,8 @@
             document.getElementById('adventure-stage-type').innerText = stageType;
             document.getElementById('adventure-stage-num').innerText = state.adventure.training ? state.adventure.trainingWins + 1 : (region.inBossRush ? region.bossRushIndex + 1 : region.progressIndex + 1);
             state.adventure.awaitingBattle = false;
+            state.adventure.inCombat = true;
+            state.adventure.activeBattle = { regionId: region.id, training: state.adventure.training };
             const leaveBtn = document.getElementById('adventure-leave-training');
             const modeNote = document.getElementById('adventure-mode-note');
             if (state.adventure.training) {
@@ -1987,7 +2008,8 @@
         }
 
         function handleAdventureWin() {
-            const region = getAdventureRegionById(state.adventure.currentRegionId);
+            const activeBattle = state.adventure.activeBattle || { regionId: state.adventure.currentRegionId, training: state.adventure.training };
+            const region = getAdventureRegionById(activeBattle.regionId);
             if (!region) return;
             const isEpicPlus = rarityRank(region.rarity) >= rarityRank('epic');
             const rewardGold = (isBoss) => {
@@ -1995,13 +2017,23 @@
                 const base = table[region.rarity] || 200;
                 return isBoss ? Math.floor(base * 3.2) : base;
             };
-            if (state.adventure.training) {
+            if (activeBattle.training) {
                 const trainingGold = Math.max(1, Math.floor(rewardGold(false) * 0.1));
                 state.gold += trainingGold;
-                state.adventure.trainingWins += 1;
-                save();
-                updateStatsUI();
-                startAdventureBattle();
+                if (state.adventure.training && state.adventure.currentRegionId === region.id) {
+                    state.adventure.trainingWins += 1;
+                    save();
+                    updateStatsUI();
+                    startAdventureBattle();
+                } else {
+                    state.adventure.inCombat = false;
+                    state.adventure.activeBattle = null;
+                    save();
+                    updateStatsUI();
+                    renderAdventure();
+                    document.getElementById('adventure-lobby').classList.remove('hidden');
+                    document.getElementById('adventure-combat').classList.add('hidden');
+                }
                 return;
             }
             const grantTeamReward = () => {
@@ -2010,8 +2042,14 @@
                 state.gold += rewardGold(false);
             };
             const grantBossReward = () => {
-                const ticketKey = isEpicPlus ? 'legendaryTickets' : 'rareTickets';
-                state[ticketKey] += 1;
+                if (region.rarity === 'trash') {
+                    state.tickets += 2;
+                } else if (region.rarity === 'common') {
+                    state.tickets += 3;
+                } else {
+                    const ticketKey = isEpicPlus ? 'legendaryTickets' : 'rareTickets';
+                    state[ticketKey] += 1;
+                }
                 state.gold += rewardGold(true);
             };
             if (region.inBossRush) {
@@ -2041,9 +2079,11 @@
                     region.bossRushIndex = 0;
                 }
             }
+            state.adventure.inCombat = false;
+            state.adventure.activeBattle = null;
             save();
             updateStatsUI();
-            if (region.inBossRush) {
+            if (region.inBossRush && region.bossRushIndex > 0) {
                 startAdventureBattle();
             } else {
                 state.adventure.awaitingBattle = true;
@@ -2054,15 +2094,18 @@
         }
 
         function handleAdventureLoss() {
-            if (state.adventure.training) {
+            const activeBattle = state.adventure.activeBattle || { regionId: state.adventure.currentRegionId, training: state.adventure.training };
+            if (activeBattle.training) {
                 state.adventure.currentRegionId = null;
                 state.adventure.training = false;
                 state.adventure.trainingWins = 0;
             }
-            const region = getAdventureRegionById(state.adventure.currentRegionId);
+            const region = getAdventureRegionById(activeBattle.regionId);
             if (region && region.inBossRush) region.bossRushIndex = 0;
             state.adventure.playerTeamState = null;
             state.adventure.awaitingBattle = true;
+            state.adventure.inCombat = false;
+            state.adventure.activeBattle = null;
             save();
             updateStatsUI();
             renderAdventure();
@@ -2236,7 +2279,9 @@
                 const power = (move.kind === 'buff' || move.kind === 'status') ? '—' : move.power;
                 const element = move.element ? move.element.toLowerCase() : 'neutral';
                 const dmgType = move.damageType ? move.damageType.toLowerCase() : 'status';
+                const dmgEmoji = dmgType === 'physical' ? '💥' : dmgType === 'special' ? '✨' : '⚪';
                 const rarity = (move.rarity || 'common').toLowerCase();
+                const rarityEmoji = RARITY_METADATA[rarity]?.emoji || '⚪';
                 const targetLabels = {
                     'enemy-single': 'Targets one',
                     'enemy-all': 'Targets all',
@@ -2248,20 +2293,21 @@
                 const extras = [];
                 if (move.effect?.recoilPct) extras.push(`Recoil for ${Math.round(move.effect.recoilPct * 100)}% of damage dealt`);
                 if (move.effect?.drainPct) extras.push(`Drains ${Math.round(move.effect.drainPct * 100)}% of damage dealt`);
+                const elementEmoji = ELEMENT_METADATA[move.element]?.emoji || '✨';
                 row.className = `move-card ${element} ${rarity} ${dmgType}`;
                 row.innerHTML = `
                     <div class="flex justify-between items-start gap-2">
-                        <div class="font-black uppercase text-[9px] text-slate-100">${move.name}</div>
+                        <div class="font-black uppercase text-[9px] text-slate-100">${rarityEmoji} ${elementEmoji} ${move.name}</div>
                         <div class="text-[8px] text-slate-400 uppercase">CD ${move.cooldown}</div>
                     </div>
                     <div class="flex items-center gap-2 mt-2">
                         <div class="text-[10px] font-black text-white">Power ${power}</div>
-                        <div class="move-chip">${dmgType.toUpperCase()}</div>
+                        <div class="move-chip">${dmgEmoji}</div>
                     </div>
                     <div class="flex flex-wrap gap-2 mt-2 text-[7px] text-slate-300 uppercase tracking-[0.2em]">
-                        <span class="move-chip">${move.name}</span>
-                        <span class="move-chip">${rarity.toUpperCase()}</span>
-                        <span class="move-chip">${dmgType.toUpperCase()}</span>
+                        <span class="move-chip">${elementEmoji}</span>
+                        <span class="move-chip">${rarityEmoji}</span>
+                        <span class="move-chip">${dmgEmoji}</span>
                         <span class="move-chip">${target}</span>
                     </div>
                     ${extras.length ? `<div class="text-[9px] text-slate-200 mt-2">${extras.join(' • ')}</div>` : ''}
@@ -2416,13 +2462,20 @@
             // New Badge Logic
             const elBadge = document.getElementById('inspect-element-badge');
             const typeBadge = document.getElementById('inspect-type-badge');
-            elBadge.innerText = e.element;
+            const elementMeta = ELEMENT_METADATA[e.element] || { emoji: '❓', name: e.element };
+            const typeMeta = TYPE_METADATA[e.type] || { emoji: '❓', name: e.type };
+            elBadge.innerText = `${elementMeta.emoji} ${elementMeta.name}`;
             elBadge.className = `type-badge element-${e.element} font-black`;
-            typeBadge.innerText = e.type;
+            typeBadge.innerText = `${typeMeta.emoji} ${typeMeta.name}`;
 
             const rarityBadge = document.getElementById('inspect-rarity-badge');
-            rarityBadge.innerText = `${inv.currentRarity.toUpperCase()} (NAT ${inv.baseRarity.toUpperCase()})`;
-            rarityBadge.className = `inline-block px-3 py-1 rounded-full text-[7px] font-black uppercase mb-4 tracking-widest border border-white/20 text-${inv.currentRarity}`;
+            const currentMeta = RARITY_METADATA[inv.currentRarity] || { emoji: '⚪', name: inv.currentRarity };
+            const baseMeta = RARITY_METADATA[inv.baseRarity] || { emoji: '⚪', name: inv.baseRarity };
+            rarityBadge.innerHTML = `
+                <span class="inline-flex items-center gap-2 bg-black/40 px-3 py-1 rounded-full border border-white/10">${currentMeta.emoji} ${currentMeta.name.toUpperCase()}</span>
+                <span class="inline-flex items-center gap-2 bg-black/30 px-3 py-1 rounded-full border border-white/10 ml-2">${baseMeta.emoji} NAT ${baseMeta.name.toUpperCase()}</span>
+            `;
+            rarityBadge.className = `inline-flex flex-wrap items-center gap-2 text-[7px] font-black uppercase mb-4 tracking-widest`;
             document.getElementById('inspect-desc').innerText = e.desc;
             document.getElementById('inspect-dupe-count').innerText = `DUPLICATES: ${inv.dupes || 0}`;
             const moveList = getMoveListForEmoji(e, inv);
@@ -2437,25 +2490,28 @@
                 const power = (move.kind === 'buff' || move.kind === 'status') ? '—' : move.power;
                 const element = move.element ? move.element.toLowerCase() : 'neutral';
                 const dmgType = move.damageType ? move.damageType.toLowerCase() : 'status';
+                const dmgEmoji = dmgType === 'physical' ? '💥' : dmgType === 'special' ? '✨' : '⚪';
                 const target = moveTargetLabels[move.target] || move.target;
                 const rarity = (move.rarity || 'common').toLowerCase();
+                const rarityEmoji = RARITY_METADATA[rarity]?.emoji || '⚪';
                 const extras = [];
                 if (move.effect?.recoilPct) extras.push(`Recoil for ${Math.round(move.effect.recoilPct * 100)}% of damage dealt`);
                 if (move.effect?.drainPct) extras.push(`Drains ${Math.round(move.effect.drainPct * 100)}% of damage dealt`);
+                const elementEmoji = ELEMENT_METADATA[move.element]?.emoji || '✨';
                 return `
                     <div class="move-card ${element} ${rarity} ${dmgType}">
                         <div class="flex justify-between items-start gap-2">
-                            <div class="font-black uppercase text-[9px] text-slate-100">${move.name}</div>
+                            <div class="font-black uppercase text-[9px] text-slate-100">${rarityEmoji} ${elementEmoji} ${move.name}</div>
                             <div class="text-[8px] text-slate-400 uppercase">CD ${move.cooldown}</div>
                         </div>
                         <div class="flex items-center gap-2 mt-2">
                             <div class="text-[10px] font-black text-white">Power ${power}</div>
-                            <div class="move-chip">${dmgType.toUpperCase()}</div>
+                            <div class="move-chip">${dmgEmoji}</div>
                         </div>
                         <div class="flex flex-wrap gap-2 mt-2 text-[7px] text-slate-300 uppercase tracking-[0.2em]">
-                            <span class="move-chip">${move.name}</span>
-                            <span class="move-chip">${rarity.toUpperCase()}</span>
-                            <span class="move-chip">${dmgType.toUpperCase()}</span>
+                            <span class="move-chip">${elementEmoji}</span>
+                            <span class="move-chip">${rarityEmoji}</span>
+                            <span class="move-chip">${dmgEmoji}</span>
                             <span class="move-chip">${target}</span>
                         </div>
                         ${extras.length ? `<div class="text-[9px] text-slate-200 mt-2">${extras.join(' • ')}</div>` : ''}
