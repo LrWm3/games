@@ -81,7 +81,8 @@
                     <span class="text-[8px] text-indigo-400 font-black uppercase tracking-[0.2em]">151 Heroes Update</span>
                 </div>
             </div>
-            <div class="flex flex-wrap gap-2 justify-end">
+            <div class="flex flex-col items-end gap-2">
+                <div class="flex flex-wrap gap-2 justify-end">
                 <div class="bg-black/40 px-3 py-1.5 rounded-full border border-yellow-500/30 flex items-center gap-2 text-xs">
                     <i class="fas fa-coins text-yellow-500"></i>
                     <span id="stat-gold" class="font-bold">0</span>
@@ -97,6 +98,15 @@
                 <div class="bg-black/40 px-3 py-1.5 rounded-full border border-amber-400/30 flex items-center gap-2 text-xs">
                     <i class="fas fa-ticket text-amber-300"></i>
                     <span id="stat-legendary-tickets" class="font-bold">0</span>
+                </div>
+                </div>
+                <div class="flex flex-wrap gap-1 items-center text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">
+                    <span class="px-2 py-1 rounded-full bg-black/40 border border-white/10">Save</span>
+                    <button id="slot-btn-1" onclick="selectSaveSlot(1)" class="px-2 py-1 rounded-full bg-slate-800 border border-white/10">1</button>
+                    <button id="slot-btn-2" onclick="selectSaveSlot(2)" class="px-2 py-1 rounded-full bg-slate-800 border border-white/10">2</button>
+                    <button id="slot-btn-3" onclick="selectSaveSlot(3)" class="px-2 py-1 rounded-full bg-slate-800 border border-white/10">3</button>
+                    <button onclick="newGameCurrentSlot()" class="px-2 py-1 rounded-full bg-emerald-600 text-black">New Game</button>
+                    <button onclick="deleteCurrentSlot()" class="px-2 py-1 rounded-full bg-red-600 text-white">Delete</button>
                 </div>
             </div>
         </div>
@@ -582,16 +592,32 @@
             245: 'Ancient thinker, strikes with calm certainty.'
         };
 
-        let state = { gold: 5000, tickets: 20, rareTickets: 0, legendaryTickets: 0, pity: 0, inventory: {}, team: [], stage: 1, isAutoBattling: false };
+        const DEFAULT_STATE = { gold: 5000, tickets: 20, rareTickets: 0, legendaryTickets: 0, pity: 0, inventory: {}, team: [], stage: 1, isAutoBattling: false };
+        let state = { ...DEFAULT_STATE };
         let selectedId = null;
+        let currentSlot = 1;
 
         EMOJIS.forEach(emoji => { emoji.desc = EMOJI_DESCS[emoji.id]; });
 
         // --- CORE ---
-        function init() { load(); updateStatsUI(); switchTab('summon'); }
-        function save() { localStorage.setItem('emojiSaga_vInfinite', JSON.stringify(state)); }
-        function load() {
-            const saved = localStorage.getItem('emojiSaga_vInfinite');
+        function init() { loadSlot(resolveInitialSlot()); updateStatsUI(); switchTab('summon'); }
+        function getSaveKey(slot) { return `emojiSaga_vInfinite_slot${slot}`; }
+        function resolveInitialSlot() {
+            const stored = parseInt(localStorage.getItem('emojiSaga_vInfinite_slot'), 10);
+            const slot = [1, 2, 3].includes(stored) ? stored : 1;
+            const legacy = localStorage.getItem('emojiSaga_vInfinite');
+            if (legacy && !localStorage.getItem(getSaveKey(1))) {
+                localStorage.setItem(getSaveKey(1), legacy);
+                localStorage.removeItem('emojiSaga_vInfinite');
+            }
+            localStorage.setItem('emojiSaga_vInfinite_slot', slot);
+            return slot;
+        }
+        function save() { localStorage.setItem(getSaveKey(currentSlot), JSON.stringify(state)); }
+        function loadSlot(slot) {
+            currentSlot = slot;
+            const saved = localStorage.getItem(getSaveKey(slot));
+            state = { ...DEFAULT_STATE };
             if (saved) {
                 state = { ...state, ...JSON.parse(saved) };
                 if (state.rareKeys) { state.rareTickets = state.rareKeys; delete state.rareKeys; }
@@ -605,6 +631,41 @@
                 });
             }
             state.isAutoBattling = false;
+            selectedId = null;
+            updateSlotUI();
+        }
+
+        function updateSlotUI() {
+            [1, 2, 3].forEach(slot => {
+                const btn = document.getElementById(`slot-btn-${slot}`);
+                if (!btn) return;
+                if (slot === currentSlot) btn.classList.add('bg-indigo-500', 'text-white');
+                else btn.classList.remove('bg-indigo-500', 'text-white');
+            });
+        }
+
+        function selectSaveSlot(slot) {
+            if (slot === currentSlot) return;
+            stopAutoBattle();
+            localStorage.setItem('emojiSaga_vInfinite_slot', slot);
+            loadSlot(slot);
+            updateStatsUI();
+            switchTab('summon');
+        }
+
+        function newGameCurrentSlot() {
+            if (!confirm(`Start a new game in Slot ${currentSlot}? This will overwrite the current save.`)) return;
+            stopAutoBattle();
+            state = { ...DEFAULT_STATE };
+            save(); updateStatsUI(); switchTab('summon'); toast("NEW GAME");
+        }
+
+        function deleteCurrentSlot() {
+            if (!confirm(`Delete Slot ${currentSlot}? This cannot be undone.`)) return;
+            stopAutoBattle();
+            localStorage.removeItem(getSaveKey(currentSlot));
+            state = { ...DEFAULT_STATE };
+            save(); updateStatsUI(); switchTab('summon'); toast("SAVE DELETED");
         }
 
         function updateStatsUI() {
