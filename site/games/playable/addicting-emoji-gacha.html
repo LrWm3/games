@@ -708,121 +708,121 @@
          */
         const MOVES = [
             /* Basic move */
-            { num: 1, id: 'basic_strike', name: 'Basic Strike', power: 50, cooldown: 1, kind: 'damage', target: 'enemy-single', element: 'neutral', damageType: 'physical', rarity: 'common', special: null },
+            { num: 1, id: 'basic_strike', name: 'Basic Strike', power: 50, cooldown: 1, kind: 'damage', target: 'enemy-single', element: 'neutral', damageType: 'physical', rarity: 'common' },
 
             /* Fire Moves */
-            { num: 2, id: 'cinder_jab', name: 'Cinder Jab', power: 48, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'common', special: null },
-            { num: 3, id: 'ash_swipe', name: 'Ash Swipe', power: 44, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'common', special: null },
-            { num: 4, id: 'spark_flick', name: 'Spark Flick', power: 42, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'common', special: null },
-            { num: 5, id: 'flare_step', name: 'Flare Step', power: 0, cooldown: 3, kind: 'buff', target: 'self', element: 'fire', damageType: 'status', rarity: 'common', effect: { spd: 1 }, special: null },
-            { num: 6, id: 'scorch_mark', name: 'Scorch Mark', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'fire', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'burn', chance: 1 }], special: null },
-            { num: 7, id: 'brand_seal', name: 'Brand Seal', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'fire', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'burn', chance: 1 }], special: null },
-            { num: 8, id: 'blister_tag', name: 'Blister Tag', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'fire', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'burn', chance: 1 }], special: null },
-            { num: 9, id: 'ember_wave', name: 'Ember Wave', power: 32, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'rare', special: null },
-            { num: 10, id: 'firebrand', name: 'Firebrand', power: 58, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'rare', statuses: [{ id: 'burn', chance: 0.25 }], special: null },
-            { num: 11, id: 'flame_rush', name: 'Flame Rush', power: 70, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'rare', effect: { recoilPct: 0.2 }, statuses: [{ id: 'burn', chance: 0.3 }], special: null },
-            { num: 12, id: 'blaze_thrust', name: 'Blaze Thrust', power: 68, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'rare', effect: { recoilPct: 0.15 }, special: null },
-            { num: 13, id: 'heat_shield', name: 'Heat Shield', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'fire', damageType: 'status', rarity: 'epic', effect: { def: 1, spDef: 1 }, special: null },
-            { num: 14, id: 'overheat', name: 'Overheat', power: 78, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'epic', effect: { recoilPct: 0.25 }, special: null },
-            { num: 15, id: 'smoldering_guard', name: 'Smoldering Guard', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'fire', damageType: 'status', rarity: 'epic', effect: { atk: 1, spAtk: 1 }, special: null },
-            { num: 16, id: 'magma_quake', name: 'Magma Quake', power: 72, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'legendary', effect: { recoilPct: 0.25 }, statuses: [{ id: 'burn', chance: 0.35 }], special: null },
-            { num: 17, id: 'phoenix_dive', name: 'Phoenix Dive', power: 90, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'legendary', effect: { recoilPct: 0.3 }, statuses: [{ id: 'burn', chance: 0.4 }], special: null },
-            { num: 18, id: 'volcanic_reign', name: 'Volcanic Reign', power: 65, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'legendary', statuses: [{ id: 'burn', chance: 0.3 }], special: null },
-            { num: 19, id: 'solar_flare', name: 'Solar Flare', power: 75, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'divine', statuses: [{ id: 'burn', chance: 0.5 }], special: null },
-            { num: 20, id: 'crimson_pact', name: 'Crimson Pact', power: 95, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'divine', effect: { recoilPct: 0.35, selfStages: { spAtk: 1 } }, special: null },
-            { num: 21, id: 'worldfire', name: 'Worldfire', power: 100, cooldown: 5, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'eternal', effect: { recoilPct: 0.4 }, statuses: [{ id: 'burn', chance: 0.6 }], special: null },
+            { num: 2, id: 'cinder_jab', name: 'Cinder Jab', power: 48, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'common' },
+            { num: 3, id: 'ash_swipe', name: 'Ash Swipe', power: 44, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'common' },
+            { num: 4, id: 'spark_flick', name: 'Spark Flick', power: 42, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'common' },
+            { num: 5, id: 'flare_step', name: 'Flare Step', power: 0, cooldown: 3, kind: 'buff', target: 'self', element: 'fire', damageType: 'status', rarity: 'common', effect: { spd: 1 } },
+            { num: 6, id: 'scorch_mark', name: 'Scorch Mark', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'fire', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'burn', chance: 1 }] },
+            { num: 7, id: 'brand_seal', name: 'Brand Seal', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'fire', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'burn', chance: 1 }] },
+            { num: 8, id: 'blister_tag', name: 'Blister Tag', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'fire', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'burn', chance: 1 }] },
+            { num: 9, id: 'ember_wave', name: 'Ember Wave', power: 32, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'rare' },
+            { num: 10, id: 'firebrand', name: 'Firebrand', power: 58, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'rare', statuses: [{ id: 'burn', chance: 0.25 }] },
+            { num: 11, id: 'flame_rush', name: 'Flame Rush', power: 70, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'rare', effect: { recoilPct: 0.2 }, statuses: [{ id: 'burn', chance: 0.3 }] },
+            { num: 12, id: 'blaze_thrust', name: 'Blaze Thrust', power: 68, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'rare', effect: { recoilPct: 0.15 } },
+            { num: 13, id: 'heat_shield', name: 'Heat Shield', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'fire', damageType: 'status', rarity: 'epic', effect: { def: 1, spDef: 1 } },
+            { num: 14, id: 'overheat', name: 'Overheat', power: 78, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'epic', effect: { recoilPct: 0.25 } },
+            { num: 15, id: 'smoldering_guard', name: 'Smoldering Guard', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'fire', damageType: 'status', rarity: 'epic', effect: { atk: 1, spAtk: 1 } },
+            { num: 16, id: 'magma_quake', name: 'Magma Quake', power: 72, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'legendary', effect: { recoilPct: 0.25 }, statuses: [{ id: 'burn', chance: 0.35 }] },
+            { num: 17, id: 'phoenix_dive', name: 'Phoenix Dive', power: 90, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'legendary', effect: { recoilPct: 0.3 }, statuses: [{ id: 'burn', chance: 0.4 }] },
+            { num: 18, id: 'volcanic_reign', name: 'Volcanic Reign', power: 65, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'legendary', statuses: [{ id: 'burn', chance: 0.3 }] },
+            { num: 19, id: 'solar_flare', name: 'Solar Flare', power: 75, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'divine', statuses: [{ id: 'burn', chance: 0.5 }] },
+            { num: 20, id: 'crimson_pact', name: 'Crimson Pact', power: 95, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'divine', effect: { recoilPct: 0.35, selfStages: { spAtk: 1 } } },
+            { num: 21, id: 'worldfire', name: 'Worldfire', power: 100, cooldown: 5, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'eternal', effect: { recoilPct: 0.4 }, statuses: [{ id: 'burn', chance: 0.6 }] },
 
             /* Water Moves */
-            { num: 22, id: 'ice_barbs', name: 'Ice Barbs', power: 24, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'water', damageType: 'special', rarity: 'common', special: null },
-            { num: 23, id: 'ripple_cut', name: 'Ripple Cut', power: 44, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'physical', rarity: 'common', special: null },
-            { num: 24, id: 'mist_jab', name: 'Mist Jab', power: 40, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'special', rarity: 'common', special: null },
-            { num: 25, id: 'current_jab', name: 'Current Jab', power: 42, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'physical', rarity: 'common', special: null },
-            { num: 26, id: 'soak_mark', name: 'Soak Mark', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'water', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'soak', chance: 1 }], special: null },
-            { num: 27, id: 'drench_mark', name: 'Drench Mark', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'water', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'soak', chance: 1 }], special: null },
-            { num: 28, id: 'flood_mark', name: 'Flood Mark', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'water', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'soak', chance: 1 }], special: null },
-            { num: 29, id: 'torrent_edge', name: 'Torrent Edge', power: 56, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'physical', rarity: 'rare', special: null },
-            { num: 30, id: 'tidal_spear', name: 'Tidal Spear', power: 62, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'special', rarity: 'rare', statuses: [{ id: 'soak', chance: 0.3 }], special: null },
-            { num: 31, id: 'undertow', name: 'Undertow', power: 54, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'special', rarity: 'rare', effect: { targetStages: { spd: -1 } }, special: null },
-            { num: 32, id: 'pressure_jet', name: 'Pressure Jet', power: 58, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'special', rarity: 'rare', statuses: [{ id: 'soak', chance: 0.25 }], special: null },
-            { num: 33, id: 'soothing_rain', name: 'Soothing Rain', power: 35, cooldown: 4, kind: 'heal', target: 'ally-all', element: 'water', damageType: 'status', rarity: 'epic', special: null },
-            { num: 34, id: 'frost_shell', name: 'Frost Shell', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'water', damageType: 'status', rarity: 'epic', effect: { def: 1, spDef: 1 }, special: null },
-            { num: 35, id: 'tidal_veil', name: 'Tidal Veil', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'water', damageType: 'status', rarity: 'epic', effect: { def: 1, spDef: 1 }, special: null },
-            { num: 36, id: 'maelstrom', name: 'Maelstrom', power: 70, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'water', damageType: 'special', rarity: 'legendary', special: null },
-            { num: 37, id: 'leviathan_bite', name: 'Leviathan Bite', power: 85, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'special', rarity: 'legendary', statuses: [{ id: 'soak', chance: 0.4 }], special: null },
-            { num: 38, id: 'riptide_fall', name: 'Riptide Fall', power: 65, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'water', damageType: 'special', rarity: 'legendary', effect: { targetStages: { spd: -1 } }, special: null },
-            { num: 39, id: 'abyssal_tide', name: 'Abyssal Tide', power: 78, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'water', damageType: 'special', rarity: 'divine', statuses: [{ id: 'soak', chance: 0.5 }], special: null },
-            { num: 40, id: 'miracle_current', name: 'Miracle Current', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'water', damageType: 'status', rarity: 'divine', effect: { def: 1, spDef: 1, spd: 1 }, special: null },
-            { num: 41, id: 'ocean_end', name: 'Ocean End', power: 105, cooldown: 5, kind: 'damage', target: 'enemy-all', element: 'water', damageType: 'special', rarity: 'eternal', statuses: [{ id: 'soak', chance: 0.6 }], special: null },
+            { num: 22, id: 'ice_barbs', name: 'Ice Barbs', power: 24, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'water', damageType: 'special', rarity: 'common' },
+            { num: 23, id: 'ripple_cut', name: 'Ripple Cut', power: 44, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'physical', rarity: 'common' },
+            { num: 24, id: 'mist_jab', name: 'Mist Jab', power: 40, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'special', rarity: 'common' },
+            { num: 25, id: 'current_jab', name: 'Current Jab', power: 42, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'physical', rarity: 'common' },
+            { num: 26, id: 'soak_mark', name: 'Soak Mark', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'water', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'soak', chance: 1 }] },
+            { num: 27, id: 'drench_mark', name: 'Drench Mark', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'water', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'soak', chance: 1 }] },
+            { num: 28, id: 'flood_mark', name: 'Flood Mark', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'water', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'soak', chance: 1 }] },
+            { num: 29, id: 'torrent_edge', name: 'Torrent Edge', power: 56, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'physical', rarity: 'rare' },
+            { num: 30, id: 'tidal_spear', name: 'Tidal Spear', power: 62, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'special', rarity: 'rare', statuses: [{ id: 'soak', chance: 0.3 }] },
+            { num: 31, id: 'undertow', name: 'Undertow', power: 54, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'special', rarity: 'rare', effect: { targetStages: { spd: -1 } } },
+            { num: 32, id: 'pressure_jet', name: 'Pressure Jet', power: 58, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'special', rarity: 'rare', statuses: [{ id: 'soak', chance: 0.25 }] },
+            { num: 33, id: 'soothing_rain', name: 'Soothing Rain', power: 35, cooldown: 4, kind: 'heal', target: 'ally-all', element: 'water', damageType: 'status', rarity: 'epic' },
+            { num: 34, id: 'frost_shell', name: 'Frost Shell', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'water', damageType: 'status', rarity: 'epic', effect: { def: 1, spDef: 1 } },
+            { num: 35, id: 'tidal_veil', name: 'Tidal Veil', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'water', damageType: 'status', rarity: 'epic', effect: { def: 1, spDef: 1 } },
+            { num: 36, id: 'maelstrom', name: 'Maelstrom', power: 70, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'water', damageType: 'special', rarity: 'legendary' },
+            { num: 37, id: 'leviathan_bite', name: 'Leviathan Bite', power: 85, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'water', damageType: 'special', rarity: 'legendary', statuses: [{ id: 'soak', chance: 0.4 }] },
+            { num: 38, id: 'riptide_fall', name: 'Riptide Fall', power: 65, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'water', damageType: 'special', rarity: 'legendary', effect: { targetStages: { spd: -1 } } },
+            { num: 39, id: 'abyssal_tide', name: 'Abyssal Tide', power: 78, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'water', damageType: 'special', rarity: 'divine', statuses: [{ id: 'soak', chance: 0.5 }] },
+            { num: 40, id: 'miracle_current', name: 'Miracle Current', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'water', damageType: 'status', rarity: 'divine', effect: { def: 1, spDef: 1, spd: 1 } },
+            { num: 41, id: 'ocean_end', name: 'Ocean End', power: 105, cooldown: 5, kind: 'damage', target: 'enemy-all', element: 'water', damageType: 'special', rarity: 'eternal', statuses: [{ id: 'soak', chance: 0.6 }] },
 
             /* Nature Moves */
-            { num: 42, id: 'thorns_pulse', name: 'Thorns Pulse', power: 26, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'nature', damageType: 'special', rarity: 'common', effect: { targetStages: { spd: -1 } }, special: null },
-            { num: 43, id: 'briar_strike', name: 'Briar Strike', power: 48, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', rarity: 'common', effect: { drainPct: 0.3 }, special: null },
-            { num: 44, id: 'sap_strike', name: 'Sap Strike', power: 44, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', rarity: 'common', effect: { targetStages: { atk: -1 } }, special: null },
-            { num: 45, id: 'moss_spike', name: 'Moss Spike', power: 42, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'special', rarity: 'common', effect: { targetStages: { spDef: -1 } }, special: null },
-            { num: 46, id: 'rootbind', name: 'Rootbind', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'nature', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'rooted', chance: 1 }], special: null },
-            { num: 47, id: 'vine_lock', name: 'Vine Lock', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'nature', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'rooted', chance: 1 }], special: null },
-            { num: 48, id: 'snare_bloom', name: 'Snare Bloom', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'nature', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'rooted', chance: 1 }], special: null },
-            { num: 49, id: 'seed_bloom', name: 'Seed Bloom', power: 52, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'special', rarity: 'rare', effect: { drainPct: 0.3 }, special: null },
-            { num: 50, id: 'vine_lash', name: 'Vine Lash', power: 55, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', rarity: 'rare', effect: { drainPct: 0.35 }, special: null },
-            { num: 51, id: 'quicksand', name: 'Quicksand', power: 20, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'nature', damageType: 'special', rarity: 'rare', effect: { targetStages: { spd: -1 } }, special: null },
-            { num: 52, id: 'thorn_bind', name: 'Thorn Bind', power: 54, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', rarity: 'rare', effect: { targetStages: { def: -1 } }, special: null },
-            { num: 53, id: 'forest_crush', name: 'Forest Crush', power: 38, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'nature', damageType: 'special', rarity: 'epic', effect: { targetStages: { def: -1 } }, special: null },
-            { num: 54, id: 'lifebloom', name: 'Lifebloom', power: 60, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'special', rarity: 'epic', effect: { drainPct: 0.4 }, special: null },
-            { num: 55, id: 'bramble_bite', name: 'Bramble Bite', power: 62, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', rarity: 'epic', effect: { targetStages: { spd: -1 } }, special: null },
-            { num: 56, id: 'ancient_growth', name: 'Ancient Growth', power: 80, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', rarity: 'legendary', effect: { targetStages: { def: -1 } }, special: null },
-            { num: 57, id: 'verdant_reckoning', name: 'Verdant Reckoning', power: 50, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'nature', damageType: 'special', rarity: 'legendary', effect: { drainPct: 0.35 }, special: null },
-            { num: 58, id: 'wildroot_lance', name: 'Wildroot Lance', power: 78, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'special', rarity: 'legendary', statuses: [{ id: 'rooted', chance: 0.3 }], special: null },
-            { num: 59, id: 'eden_wrath', name: 'Eden Wrath', power: 60, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'nature', damageType: 'special', rarity: 'divine', effect: { targetStages: { spd: -1 }, drainPct: 0.3 }, special: null },
-            { num: 60, id: 'gaia_grasp', name: 'Gaia Grasp', power: 90, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'special', rarity: 'divine', effect: { drainPct: 0.4 }, statuses: [{ id: 'rooted', chance: 0.5 }], special: null },
-            { num: 61, id: 'worldroot', name: 'Worldroot', power: 95, cooldown: 5, kind: 'damage', target: 'enemy-all', element: 'nature', damageType: 'special', rarity: 'eternal', effect: { drainPct: 0.4 }, statuses: [{ id: 'rooted', chance: 0.6 }], special: null },
+            { num: 42, id: 'thorns_pulse', name: 'Thorns Pulse', power: 26, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'nature', damageType: 'special', rarity: 'common', effect: { targetStages: { spd: -1 } } },
+            { num: 43, id: 'briar_strike', name: 'Briar Strike', power: 48, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', rarity: 'common', effect: { drainPct: 0.3 } },
+            { num: 44, id: 'sap_strike', name: 'Sap Strike', power: 44, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', rarity: 'common', effect: { targetStages: { atk: -1 } } },
+            { num: 45, id: 'moss_spike', name: 'Moss Spike', power: 42, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'special', rarity: 'common', effect: { targetStages: { spDef: -1 } } },
+            { num: 46, id: 'rootbind', name: 'Rootbind', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'nature', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'rooted', chance: 1 }] },
+            { num: 47, id: 'vine_lock', name: 'Vine Lock', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'nature', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'rooted', chance: 1 }] },
+            { num: 48, id: 'snare_bloom', name: 'Snare Bloom', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'nature', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'rooted', chance: 1 }] },
+            { num: 49, id: 'seed_bloom', name: 'Seed Bloom', power: 52, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'special', rarity: 'rare', effect: { drainPct: 0.3 } },
+            { num: 50, id: 'vine_lash', name: 'Vine Lash', power: 55, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', rarity: 'rare', effect: { drainPct: 0.35 } },
+            { num: 51, id: 'quicksand', name: 'Quicksand', power: 20, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'nature', damageType: 'special', rarity: 'rare', effect: { targetStages: { spd: -1 } } },
+            { num: 52, id: 'thorn_bind', name: 'Thorn Bind', power: 54, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', rarity: 'rare', effect: { targetStages: { def: -1 } } },
+            { num: 53, id: 'forest_crush', name: 'Forest Crush', power: 38, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'nature', damageType: 'special', rarity: 'epic', effect: { targetStages: { def: -1 } } },
+            { num: 54, id: 'lifebloom', name: 'Lifebloom', power: 60, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'special', rarity: 'epic', effect: { drainPct: 0.4 } },
+            { num: 55, id: 'bramble_bite', name: 'Bramble Bite', power: 62, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', rarity: 'epic', effect: { targetStages: { spd: -1 } } },
+            { num: 56, id: 'ancient_growth', name: 'Ancient Growth', power: 80, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', rarity: 'legendary', effect: { targetStages: { def: -1 } } },
+            { num: 57, id: 'verdant_reckoning', name: 'Verdant Reckoning', power: 50, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'nature', damageType: 'special', rarity: 'legendary', effect: { drainPct: 0.35 } },
+            { num: 58, id: 'wildroot_lance', name: 'Wildroot Lance', power: 78, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'special', rarity: 'legendary', statuses: [{ id: 'rooted', chance: 0.3 }] },
+            { num: 59, id: 'eden_wrath', name: 'Eden Wrath', power: 60, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'nature', damageType: 'special', rarity: 'divine', effect: { targetStages: { spd: -1 }, drainPct: 0.3 } },
+            { num: 60, id: 'gaia_grasp', name: 'Gaia Grasp', power: 90, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'special', rarity: 'divine', effect: { drainPct: 0.4 }, statuses: [{ id: 'rooted', chance: 0.5 }] },
+            { num: 61, id: 'worldroot', name: 'Worldroot', power: 95, cooldown: 5, kind: 'damage', target: 'enemy-all', element: 'nature', damageType: 'special', rarity: 'eternal', effect: { drainPct: 0.4 }, statuses: [{ id: 'rooted', chance: 0.6 }] },
 
             /* Light Moves */
-            { num: 62, id: 'spark_jab', name: 'Spark Jab', power: 45, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'light', damageType: 'physical', rarity: 'common', special: null },
-            { num: 63, id: 'gleam_shot', name: 'Gleam Shot', power: 42, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'light', damageType: 'special', rarity: 'common', special: null },
-            { num: 64, id: 'lumen_guard', name: 'Lumen Guard', power: 0, cooldown: 3, kind: 'buff', target: 'self', element: 'light', damageType: 'status', rarity: 'common', effect: { def: 1, spDef: 1 }, special: null },
-            { num: 65, id: 'halo_step', name: 'Halo Step', power: 0, cooldown: 3, kind: 'buff', target: 'self', element: 'light', damageType: 'status', rarity: 'common', effect: { spd: 1 }, special: null },
-            { num: 66, id: 'glare', name: 'Glare', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'light', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'dazzle', chance: 1 }], special: null },
-            { num: 67, id: 'prism_seal', name: 'Prism Seal', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'light', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'dazzle', chance: 1 }], special: null },
-            { num: 68, id: 'shine_tag', name: 'Shine Tag', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'light', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'dazzle', chance: 1 }], special: null },
-            { num: 69, id: 'radiant_burst', name: 'Radiant Burst', power: 30, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'light', damageType: 'special', rarity: 'rare', special: null },
-            { num: 70, id: 'sunbeam', name: 'Sunbeam', power: 68, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'light', damageType: 'special', rarity: 'rare', statuses: [{ id: 'dazzle', chance: 0.25 }], special: null },
-            { num: 71, id: 'daybreak_lance', name: 'Daybreak Lance', power: 60, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'light', damageType: 'physical', rarity: 'rare', special: null },
-            { num: 72, id: 'bright_pulse', name: 'Bright Pulse', power: 55, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'light', damageType: 'special', rarity: 'rare', effect: { selfStages: { spDef: 1 } }, special: null },
-            { num: 73, id: 'blessing_wall', name: 'Blessing Wall', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'epic', effect: { def: 1, spDef: 1 }, special: null },
-            { num: 74, id: 'holy_barrier', name: 'Holy Barrier', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'epic', effect: { def: 1, spDef: 1, spd: 1 }, special: null },
-            { num: 75, id: 'luminous_recovery', name: 'Luminous Recovery', power: 35, cooldown: 4, kind: 'heal', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'epic', special: null },
-            { num: 76, id: 'aegis_pulse', name: 'Aegis Pulse', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'legendary', effect: { def: 1, spDef: 1, spd: 1 }, special: null },
-            { num: 77, id: 'judgment_ray', name: 'Judgment Ray', power: 80, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'light', damageType: 'special', rarity: 'legendary', statuses: [{ id: 'dazzle', chance: 0.35 }], special: null },
-            { num: 78, id: 'radiant_surge', name: 'Radiant Surge', power: 55, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'light', damageType: 'special', rarity: 'legendary', statuses: [{ id: 'dazzle', chance: 0.3 }], special: null },
-            { num: 79, id: 'seraphic_wave', name: 'Seraphic Wave', power: 45, cooldown: 4, kind: 'heal', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'divine', special: null },
-            { num: 80, id: 'radiant_crown', name: 'Radiant Crown', power: 65, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'light', damageType: 'special', rarity: 'divine', effect: { selfStages: { spAtk: 1 } }, statuses: [{ id: 'dazzle', chance: 0.5 }], special: null },
-            { num: 81, id: 'dawn_eternum', name: 'Dawn Eternum', power: 95, cooldown: 5, kind: 'damage', target: 'enemy-all', element: 'light', damageType: 'special', rarity: 'eternal', effect: { selfStages: { spAtk: 1, spd: 1 } }, statuses: [{ id: 'dazzle', chance: 0.6 }], special: null },
+            { num: 62, id: 'spark_jab', name: 'Spark Jab', power: 45, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'light', damageType: 'physical', rarity: 'common' },
+            { num: 63, id: 'gleam_shot', name: 'Gleam Shot', power: 42, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'light', damageType: 'special', rarity: 'common' },
+            { num: 64, id: 'lumen_guard', name: 'Lumen Guard', power: 0, cooldown: 3, kind: 'buff', target: 'self', element: 'light', damageType: 'status', rarity: 'common', effect: { def: 1, spDef: 1 } },
+            { num: 65, id: 'halo_step', name: 'Halo Step', power: 0, cooldown: 3, kind: 'buff', target: 'self', element: 'light', damageType: 'status', rarity: 'common', effect: { spd: 1 } },
+            { num: 66, id: 'glare', name: 'Glare', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'light', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'dazzle', chance: 1 }] },
+            { num: 67, id: 'prism_seal', name: 'Prism Seal', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'light', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'dazzle', chance: 1 }] },
+            { num: 68, id: 'shine_tag', name: 'Shine Tag', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'light', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'dazzle', chance: 1 }] },
+            { num: 69, id: 'radiant_burst', name: 'Radiant Burst', power: 30, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'light', damageType: 'special', rarity: 'rare' },
+            { num: 70, id: 'sunbeam', name: 'Sunbeam', power: 68, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'light', damageType: 'special', rarity: 'rare', statuses: [{ id: 'dazzle', chance: 0.25 }] },
+            { num: 71, id: 'daybreak_lance', name: 'Daybreak Lance', power: 60, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'light', damageType: 'physical', rarity: 'rare' },
+            { num: 72, id: 'bright_pulse', name: 'Bright Pulse', power: 55, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'light', damageType: 'special', rarity: 'rare', effect: { selfStages: { spDef: 1 } } },
+            { num: 73, id: 'blessing_wall', name: 'Blessing Wall', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'epic', effect: { def: 1, spDef: 1 } },
+            { num: 74, id: 'holy_barrier', name: 'Holy Barrier', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'epic', effect: { def: 1, spDef: 1, spd: 1 } },
+            { num: 75, id: 'luminous_recovery', name: 'Luminous Recovery', power: 35, cooldown: 4, kind: 'heal', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'epic' },
+            { num: 76, id: 'aegis_pulse', name: 'Aegis Pulse', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'legendary', effect: { def: 1, spDef: 1, spd: 1 } },
+            { num: 77, id: 'judgment_ray', name: 'Judgment Ray', power: 80, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'light', damageType: 'special', rarity: 'legendary', statuses: [{ id: 'dazzle', chance: 0.35 }] },
+            { num: 78, id: 'radiant_surge', name: 'Radiant Surge', power: 55, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'light', damageType: 'special', rarity: 'legendary', statuses: [{ id: 'dazzle', chance: 0.3 }] },
+            { num: 79, id: 'seraphic_wave', name: 'Seraphic Wave', power: 45, cooldown: 4, kind: 'heal', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'divine' },
+            { num: 80, id: 'radiant_crown', name: 'Radiant Crown', power: 65, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'light', damageType: 'special', rarity: 'divine', effect: { selfStages: { spAtk: 1 } }, statuses: [{ id: 'dazzle', chance: 0.5 }] },
+            { num: 81, id: 'dawn_eternum', name: 'Dawn Eternum', power: 95, cooldown: 5, kind: 'damage', target: 'enemy-all', element: 'light', damageType: 'special', rarity: 'eternal', effect: { selfStages: { spAtk: 1, spd: 1 } }, statuses: [{ id: 'dazzle', chance: 0.6 }] },
 
             /* Dark Moves */
-            { num: 82, id: 'gloom_slash', name: 'Gloom Slash', power: 42, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'common', special: null },
-            { num: 83, id: 'shade_bolt', name: 'Shade Bolt', power: 40, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'common', special: null },
-            { num: 84, id: 'night_prick', name: 'Night Prick', power: 44, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'common', special: null },
-            { num: 85, id: 'umbra_shot', name: 'Umbra Shot', power: 42, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'common', special: null },
-            { num: 86, id: 'hex', name: 'Hex', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'dark', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'curse', chance: 1 }], special: null },
-            { num: 87, id: 'malison', name: 'Malison', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'dark', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'curse', chance: 1 }], special: null },
-            { num: 88, id: 'doom_seal', name: 'Doom Seal', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'dark', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'curse', chance: 1 }], special: null },
-            { num: 89, id: 'void_chill', name: 'Void Chill', power: 40, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'rare', effect: { selfStages: { spAtk: 1 } }, special: null },
-            { num: 90, id: 'dusk_cut', name: 'Dusk Cut', power: 48, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'rare', effect: { selfStages: { atk: 1 }, recoilPct: 0.1 }, special: null },
-            { num: 91, id: 'shadow_gale', name: 'Shadow Gale', power: 58, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'rare', effect: { selfStages: { spd: 1 }, recoilPct: 0.1 }, special: null },
-            { num: 92, id: 'moon_slash', name: 'Moon Slash', power: 65, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'rare', effect: { selfStages: { atk: 1 } }, special: null },
-            { num: 93, id: 'night_howl', name: 'Night Howl', power: 60, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'epic', effect: { selfStages: { atk: 1, spd: 1 }, recoilPct: 0.2 }, special: null },
-            { num: 94, id: 'grave_bite', name: 'Grave Bite', power: 72, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'epic', effect: { selfStages: { spAtk: 1 }, recoilPct: 0.2 }, special: null },
-            { num: 95, id: 'shade_rush', name: 'Shade Rush', power: 62, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'epic', effect: { selfStages: { spd: 1 } }, special: null },
-            { num: 96, id: 'shadow_slice', name: 'Shadow Slice', power: 82, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'legendary', effect: { selfStages: { spAtk: 1 }, recoilPct: 0.25 }, statuses: [{ id: 'curse', chance: 0.3 }], special: null },
-            { num: 97, id: 'abyssal_cut', name: 'Abyssal Cut', power: 88, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'legendary', effect: { selfStages: { atk: 1 }, recoilPct: 0.25 }, special: null },
-            { num: 98, id: 'void_requiem', name: 'Void Requiem', power: 80, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'legendary', effect: { selfStages: { spAtk: 1 } }, statuses: [{ id: 'curse', chance: 0.35 }], special: null },
-            { num: 99, id: 'eclipse_edge', name: 'Eclipse Edge', power: 92, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'divine', effect: { selfStages: { atk: 1, spd: 1 }, recoilPct: 0.3 }, special: null },
-            { num: 100, id: 'nightfall_pact', name: 'Nightfall Pact', power: 85, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'divine', effect: { selfStages: { spAtk: 1 }, recoilPct: 0.25 }, statuses: [{ id: 'curse', chance: 0.5 }], special: null },
-            { num: 101, id: 'endless_night', name: 'Endless Night', power: 100, cooldown: 5, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'eternal', effect: { selfStages: { atk: 1, spAtk: 1 }, recoilPct: 0.35 }, statuses: [{ id: 'curse', chance: 0.6 }], special: null }
+            { num: 82, id: 'gloom_slash', name: 'Gloom Slash', power: 42, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'common' },
+            { num: 83, id: 'shade_bolt', name: 'Shade Bolt', power: 40, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'common' },
+            { num: 84, id: 'night_prick', name: 'Night Prick', power: 44, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'common' },
+            { num: 85, id: 'umbra_shot', name: 'Umbra Shot', power: 42, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'common' },
+            { num: 86, id: 'hex', name: 'Hex', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'dark', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'curse', chance: 1 }] },
+            { num: 87, id: 'malison', name: 'Malison', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'dark', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'curse', chance: 1 }] },
+            { num: 88, id: 'doom_seal', name: 'Doom Seal', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'dark', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'curse', chance: 1 }] },
+            { num: 89, id: 'void_chill', name: 'Void Chill', power: 40, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'rare', effect: { selfStages: { spAtk: 1 } } },
+            { num: 90, id: 'dusk_cut', name: 'Dusk Cut', power: 48, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'rare', effect: { selfStages: { atk: 1 }, recoilPct: 0.1 } },
+            { num: 91, id: 'shadow_gale', name: 'Shadow Gale', power: 58, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'rare', effect: { selfStages: { spd: 1 }, recoilPct: 0.1 } },
+            { num: 92, id: 'moon_slash', name: 'Moon Slash', power: 65, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'rare', effect: { selfStages: { atk: 1 } } },
+            { num: 93, id: 'night_howl', name: 'Night Howl', power: 60, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'epic', effect: { selfStages: { atk: 1, spd: 1 }, recoilPct: 0.2 } },
+            { num: 94, id: 'grave_bite', name: 'Grave Bite', power: 72, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'epic', effect: { selfStages: { spAtk: 1 }, recoilPct: 0.2 } },
+            { num: 95, id: 'shade_rush', name: 'Shade Rush', power: 62, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'epic', effect: { selfStages: { spd: 1 } } },
+            { num: 96, id: 'shadow_slice', name: 'Shadow Slice', power: 82, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'legendary', effect: { selfStages: { spAtk: 1 }, recoilPct: 0.25 }, statuses: [{ id: 'curse', chance: 0.3 }] },
+            { num: 97, id: 'abyssal_cut', name: 'Abyssal Cut', power: 88, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'legendary', effect: { selfStages: { atk: 1 }, recoilPct: 0.25 } },
+            { num: 98, id: 'void_requiem', name: 'Void Requiem', power: 80, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'legendary', effect: { selfStages: { spAtk: 1 } }, statuses: [{ id: 'curse', chance: 0.35 }] },
+            { num: 99, id: 'eclipse_edge', name: 'Eclipse Edge', power: 92, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'divine', effect: { selfStages: { atk: 1, spd: 1 }, recoilPct: 0.3 } },
+            { num: 100, id: 'nightfall_pact', name: 'Nightfall Pact', power: 85, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'divine', effect: { selfStages: { spAtk: 1 }, recoilPct: 0.25 }, statuses: [{ id: 'curse', chance: 0.5 }] },
+            { num: 101, id: 'endless_night', name: 'Endless Night', power: 100, cooldown: 5, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'eternal', effect: { selfStages: { atk: 1, spAtk: 1 }, recoilPct: 0.35 }, statuses: [{ id: 'curse', chance: 0.6 }] }
         ];
 
         const EMOJI_DESCS = {
-            101: 'Rattles around, stubbornly guards scraps.',
+            101: 'Should have been disposed of properly.',
             102: 'Smug little lump that never backs down.',
             103: 'Clicks and clacks, chasing any fight.',
             104: 'Creaky but loyal, shelters allies.',
@@ -2292,6 +2292,55 @@
             });
         }
 
+        function formatStageChanges(stages) {
+            const labels = { atk: 'ATK', def: 'DEF', spAtk: 'SP. ATK', spDef: 'SP. DEF', spd: 'SPD' };
+            return Object.entries(stages || {})
+                .filter(([key, value]) => labels[key] && value)
+                .map(([key, value]) => `${labels[key]} ${value > 0 ? `+${value}` : value}`);
+        }
+
+        function getEffectTargetLabel(target) {
+            const labels = {
+                self: 'Self',
+                'ally-single': 'Ally',
+                'ally-all': 'Allies',
+                'enemy-single': 'Target',
+                'enemy-all': 'Targets'
+            };
+            return labels[target] || 'Target';
+        }
+
+        function formatMoveEffects(move) {
+            const effect = move.effect || {};
+            const parts = [];
+            if (effect.recoilPct) parts.push(`Recoil for ${Math.round(effect.recoilPct * 100)}% of damage dealt`);
+            if (effect.drainPct) parts.push(`Drains ${Math.round(effect.drainPct * 100)}% of damage dealt`);
+            if (effect.selfStages) {
+                const list = formatStageChanges(effect.selfStages);
+                if (list.length) parts.push(`Self ${list.join(', ')}`);
+            }
+            if (effect.targetStages) {
+                const list = formatStageChanges(effect.targetStages);
+                if (list.length) parts.push(`Target ${list.join(', ')}`);
+            }
+            const directStages = effect.stages || Object.fromEntries(
+                Object.entries(effect).filter(([key, value]) => ['atk', 'def', 'spAtk', 'spDef', 'spd'].includes(key) && value)
+            );
+            if (directStages && Object.keys(directStages).length) {
+                const list = formatStageChanges(directStages);
+                if (list.length) parts.push(`${getEffectTargetLabel(move.target)} ${list.join(', ')}`);
+            }
+            if (move.statuses?.length) {
+                move.statuses.forEach(entry => {
+                    const statusMeta = STATUS_BY_ID[entry.id];
+                    const name = statusMeta?.name || entry.id;
+                    const pct = Math.round((entry.chance ?? 1) * 100);
+                    parts.push(`Applies ${name} (${pct}%)`);
+                });
+            }
+            return parts;
+        }
+
         function renderEmojidex() {
             const emojiGrid = document.getElementById('emojidex-emoji-grid');
             const moveList = document.getElementById('emojidex-move-list');
@@ -2336,9 +2385,7 @@
                     'self': 'Self'
                 };
                 const target = targetLabels[move.target] || move.target || '—';
-                const extras = [];
-                if (move.effect?.recoilPct) extras.push(`Recoil for ${Math.round(move.effect.recoilPct * 100)}% of damage dealt`);
-                if (move.effect?.drainPct) extras.push(`Drains ${Math.round(move.effect.drainPct * 100)}% of damage dealt`);
+                const extras = formatMoveEffects(move);
                 const elementEmoji = ELEMENT_METADATA[move.element]?.emoji || '✨';
                 row.className = `move-card ${element} ${rarity} ${dmgType}`;
                 row.innerHTML = `
@@ -2353,7 +2400,7 @@
                     <div class="flex flex-wrap gap-2 mt-2 text-[7px] text-slate-300 uppercase tracking-[0.2em]">
                         <span class="move-chip">${target}</span>
                     </div>
-                    <div class="text-[9px] text-slate-200 mt-2">${extras.length ? extras.join(' • ') : 'No special effects'}</div>
+                    <div class="text-[9px] text-slate-200 mt-2">${extras.length ? extras.join(' • ') : 'No additional effects'}</div>
                 `;
                 moveList.appendChild(row);
             });
@@ -2537,9 +2584,7 @@
                 const target = moveTargetLabels[move.target] || move.target;
                 const rarity = (move.rarity || 'common').toLowerCase();
                 const rarityEmoji = RARITY_METADATA[rarity]?.emoji || '⚪';
-                const extras = [];
-                if (move.effect?.recoilPct) extras.push(`Recoil for ${Math.round(move.effect.recoilPct * 100)}% of damage dealt`);
-                if (move.effect?.drainPct) extras.push(`Drains ${Math.round(move.effect.drainPct * 100)}% of damage dealt`);
+                const extras = formatMoveEffects(move);
                 const elementEmoji = ELEMENT_METADATA[move.element]?.emoji || '✨';
                 return `
                     <div class="move-card ${element} ${rarity} ${dmgType}">
@@ -2554,7 +2599,7 @@
                         <div class="flex flex-wrap gap-2 mt-2 text-[7px] text-slate-300 uppercase tracking-[0.2em]">
                             <span class="move-chip">${target}</span>
                         </div>
-                        <div class="text-[9px] text-slate-200 mt-2">${extras.length ? extras.join(' • ') : 'No special effects'}</div>
+                        <div class="text-[9px] text-slate-200 mt-2">${extras.length ? extras.join(' • ') : 'No additional effects'}</div>
                     </div>
                 `;
             }).join('');
