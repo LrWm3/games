@@ -473,7 +473,7 @@
         /*
          * Move Identity + Rarity Philosophy (balance rework notes)
          * Elements:
-         * - Fire: burst damage, pressure, aggressive tempo.
+         * - Fire: burst damage, pressure, aggressive tempo, recoil.
          * - Water: control, sustain, and momentum swings.
          * - Nature: attrition, drains, and debuff + damage.
          * - Light: protection, support, and tempo stabilization.
@@ -484,6 +484,14 @@
          * - rare/epic: clear identity, stronger efficiency or utility, tradeoffs.
          * - legendary/divine/eternal: splashy, high ceiling, longer cooldowns.
          *
+         * Move Effects:
+         * - damage: direct HP impact, varying power and target.
+         * - heal: restore HP to self or allies. Scale less than damage given rarity.
+         * - buff: increase own or allies' stats for the match.
+         * - debuff: decrease enemy stats for the match.
+         * - status: apply status conditions with unique effects.
+         * - recoil: damage self as tradeoff for higher power or more effects.
+         * 
          * Guidelines for new moves:
          * - Always set: power, cooldown, kind, target, element, damageType, rarity.
          * - Use 50 power as baseline; higher power implies higher cooldown or narrower target.
@@ -504,9 +512,9 @@
             { id: 'cinder_jab', name: 'Cinder Jab', power: 48, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'common', special: null },
             { id: 'flare_step', name: 'Flare Step', power: 0, cooldown: 3, kind: 'buff', target: 'self', element: 'fire', damageType: 'status', rarity: 'common', effect: { spd: 1 }, special: null },
             { id: 'ember_wave', name: 'Ember Wave', power: 30, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'uncommon', special: null },
-            { id: 'flame_rush', name: 'Flame Rush', power: 65, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'rare', special: null },
+            { id: 'flame_rush', name: 'Flame Rush', power: 70, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'rare', effect: { recoilPct: 0.2 }, special: null },
             { id: 'heat_shield', name: 'Heat Shield', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'fire', damageType: 'status', rarity: 'epic', effect: { def: 1, spDef: 1 }, special: null },
-            { id: 'magma_quake', name: 'Magma Quake', power: 60, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'legendary', special: null },
+            { id: 'magma_quake', name: 'Magma Quake', power: 70, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'legendary', effect: { recoilPct: 0.25 }, special: null },
 
             /* Water Moves */
             { id: 'ice_barbs', name: 'Ice Barbs', power: 24, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'water', damageType: 'special', rarity: 'common', special: null },
@@ -519,8 +527,8 @@
             /* Nature Moves */
             { id: 'thorns_pulse', name: 'Thorns Pulse', power: 26, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'nature', damageType: 'special', rarity: 'common', effect: { targetStages: { spd: -1 } }, special: null },
             { id: 'briar_strike', name: 'Briar Strike', power: 48, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', rarity: 'common', effect: { targetStages: { def: -1 } }, special: null },
-            { id: 'seed_bloom', name: 'Seed Bloom', power: 50, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'special', rarity: 'uncommon', effect: { targetStages: { spDef: -1 } }, special: null },
-            { id: 'vine_lash', name: 'Vine Lash', power: 55, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', rarity: 'rare', effect: { targetStages: { spd: -1 } }, special: null },
+            { id: 'seed_bloom', name: 'Seed Bloom', power: 50, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'special', rarity: 'uncommon', effect: { drainPct: 0.20 }, special: null },
+            { id: 'vine_lash', name: 'Vine Lash', power: 55, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', damageType: 'physical', rarity: 'rare', effect: { drainPct: 0.35 }, special: null },
             { id: 'quicksand', name: 'Quicksand', power: 20, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'nature', damageType: 'special', rarity: 'rare', effect: { targetStages: { spd: -1 } }, special: null },
 
             /* Light Moves */
@@ -534,10 +542,10 @@
             /* Dark Moves */
             { id: 'void_chill', name: 'Void Chill', power: 40, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'common', effect: { selfStages: { spAtk: 1 } }, special: null },
             { id: 'dusk_cut', name: 'Dusk Cut', power: 48, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'common', effect: { selfStages: { spd: 1 } }, special: null },
-            { id: 'shadow_gale', name: 'Shadow Gale', power: 55, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'uncommon', effect: { selfStages: { spd: 1 } }, special: null },
+            { id: 'shadow_gale', name: 'Shadow Gale', power: 60, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'uncommon', effect: { selfStages: { spd: 1 }, recoilPct: 0.1 }, special: null },
             { id: 'moon_slash', name: 'Moon Slash', power: 65, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'rare', effect: { selfStages: { atk: 1 } }, special: null },
-            { id: 'night_howl', name: 'Night Howl', power: 60, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'epic', effect: { selfStages: { atk: 1, spd: 1 } }, special: null },
-            { id: 'shadow_slice', name: 'Shadow Slice', power: 75, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'legendary', effect: { selfStages: { spAtk: 1 } }, special: null }
+            { id: 'night_howl', name: 'Night Howl', power: 70, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'epic', effect: { selfStages: { atk: 1, spd: 1 }, recoilPct: 0.2 }, special: null },
+            { id: 'shadow_slice', name: 'Shadow Slice', power: 82, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'legendary', effect: { selfStages: { spAtk: 1 }, recoilPct: 0.25 }, special: null }
         ];
         const EMOJI_DESCS = {
             101: 'Rattles around, stubbornly guards scraps.',
@@ -1020,6 +1028,23 @@
             if (stages.spd) target.statStages.spd = Math.max(-3, Math.min(3, target.statStages.spd + stages.spd));
         }
 
+        function applyRecoil(user, dmg, recoilPct, log) {
+            if (!recoilPct) return;
+            const recoil = Math.max(1, Math.floor(dmg * recoilPct));
+            user.hp -= recoil;
+            log.innerHTML += `<div>${user.char} takes ${recoil} recoil</div>`;
+        }
+
+        function applyDrain(user, dmg, drainPct, log) {
+            if (!drainPct) return;
+            let heal = Math.max(1, Math.floor(dmg * drainPct));
+            if (user.status?.id === 'curse') {
+                heal = Math.floor(heal * STATUS_RULES.curse.healMult);
+            }
+            user.hp = Math.min(user.maxHp, user.hp + heal);
+            log.innerHTML += `<div>${user.char} drains ${heal} HP</div>`;
+        }
+
         function getTargets(move, user, allies, enemies) {
             const aliveAllies = allies.filter(u => u.hp > 0);
             const aliveEnemies = enemies.filter(u => u.hp > 0);
@@ -1052,6 +1077,8 @@
                     log.innerHTML += `<div>${user.char} uses ${move.name} for ${Math.floor(dmg)}</div>`;
                     applyStageChanges(target, move.effect?.targetStages);
                     applyStageChanges(user, move.effect?.selfStages);
+                    applyRecoil(user, dmg, move.effect?.recoilPct, log);
+                    applyDrain(user, dmg, move.effect?.drainPct, log);
                     tryApplyStatus(user, target, move, log);
                 });
             } else if (move.kind === 'heal') {
