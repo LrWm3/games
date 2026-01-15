@@ -146,19 +146,7 @@
                 </div>
             </div>
             <div class="flex flex-col gap-4 max-w-xs mx-auto">
-                <div class="text-[9px] font-black uppercase tracking-[0.35em] text-slate-400">Standard Tickets</div>
-                <button id="btn-single-summon" onclick="startSummonSequence(1, 'standard')" class="bg-white text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">SINGLE SUMMON</button>
-                <button onclick="startSummonSequence(10, 'standard')" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-indigo-900 transition-all">MULTI SUMMON (10x)</button>
-                <div id="rare-summon-block">
-                    <div class="text-[9px] font-black uppercase tracking-[0.35em] text-blue-300 mt-2">Rare Tickets</div>
-                    <button onclick="startSummonSequence(1, 'rare')" class="bg-blue-400 text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">RARE SUMMON</button>
-                    <button onclick="startSummonSequence(10, 'rare')" class="bg-gradient-to-r from-sky-500 to-blue-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-blue-900 transition-all">RARE MULTI (10x)</button>
-                </div>
-                <div id="legendary-summon-block">
-                    <div class="text-[9px] font-black uppercase tracking-[0.35em] text-amber-300 mt-2">Legendary Tickets</div>
-                    <button onclick="startSummonSequence(1, 'legendary')" class="bg-amber-400 text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">LEGEND SUMMON</button>
-                    <button onclick="startSummonSequence(10, 'legendary')" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-amber-900 transition-all">LEGEND MULTI (10x)</button>
-                </div>
+                <button onclick="openSummonDialog()" class="bg-white text-black py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">OPEN SUMMONS</button>
             </div>
         </section>
 
@@ -339,6 +327,10 @@
             <div class="text-center mb-8">
                 <h2 class="text-3xl font-black uppercase">Move Tutor</h2>
                 <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.25em]">Teach Moves Through Arena Wins</p>
+                <div class="max-w-xl mx-auto mt-4 text-[10px] text-slate-400 leading-relaxed">
+                    Pair a mentor and a student from your squad. Wins against pools at or above the mentor move's rarity count toward teaching that move.
+                    Higher base rarities take more wins. Learned moves fill slot 2 or 3, and you can forget them to make room.
+                </div>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div id="tutor-slot-1" class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-5"></div>
@@ -377,6 +369,39 @@
                 <button onclick="manualSave()" class="px-4 py-2 rounded-xl bg-slate-800 border border-white/10 text-[9px] font-black uppercase text-slate-300">Save</button>
                 <button onclick="newGameCurrentSlot()" class="px-4 py-2 rounded-xl bg-emerald-500 text-black text-[9px] font-black uppercase">New Game</button>
                 <button onclick="deleteCurrentSlot()" class="px-4 py-2 rounded-xl bg-red-600 text-white text-[9px] font-black uppercase">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summon Dialog -->
+    <div id="summon-dialog" class="fixed inset-0 z-[230] bg-black/90 hidden">
+        <div class="max-w-lg mx-auto mt-10 bg-slate-900/95 border border-white/10 rounded-[2rem] p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-black uppercase tracking-[0.2em]">World Gate</h3>
+                <button onclick="closeSummonDialog()" class="text-[9px] font-black uppercase text-slate-400 underline">Close</button>
+            </div>
+            <div class="space-y-5">
+                <div>
+                    <div class="text-[9px] font-black uppercase tracking-[0.35em] text-slate-400 mb-2">Standard Tickets</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button id="btn-single-summon" onclick="startSummonSequence(1, 'standard')" class="bg-white text-black py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">SINGLE SUMMON</button>
+                        <button onclick="startSummonSequence(10, 'standard')" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">MULTI SUMMON (10x)</button>
+                    </div>
+                </div>
+                <div id="rare-summon-block">
+                    <div class="text-[9px] font-black uppercase tracking-[0.35em] text-blue-300 mb-2">Rare Tickets</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button onclick="startSummonSequence(1, 'rare')" class="bg-blue-400 text-black py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">RARE SUMMON</button>
+                        <button onclick="startSummonSequence(10, 'rare')" class="bg-gradient-to-r from-sky-500 to-blue-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">RARE MULTI (10x)</button>
+                    </div>
+                </div>
+                <div id="legendary-summon-block">
+                    <div class="text-[9px] font-black uppercase tracking-[0.35em] text-amber-300 mb-2">Legendary Tickets</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button onclick="startSummonSequence(1, 'legendary')" class="bg-amber-400 text-black py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">LEGEND SUMMON</button>
+                        <button onclick="startSummonSequence(10, 'legendary')" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">LEGEND MULTI (10x)</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -594,6 +619,15 @@
             { pool: 'rare', name: 'Stormreef', rarity: 'rare', element: 'water', desc: 'Seasoned squads clash in rolling surges.' },
             { pool: 'epic', name: 'Crownspire', rarity: 'epic', element: 'light', desc: 'Elite formations guard the high paths.' },
             { pool: 'legendary', name: 'Obsidian Gate', rarity: 'legendary', element: 'dark', desc: 'Only the strongest survive the gauntlet.' }
+        ];
+        const ADVENTURE_STAGE_BY_RARITY = { trash: 1, common: 4, uncommon: 7, rare: 12, epic: 18, legendary: 24 };
+        const ADVENTURE_POOLS = [
+            { label: 'Trash', maxRarity: 'trash', weights: { trash: 1.0 } },
+            { label: 'Common', maxRarity: 'common', weights: { trash: 0.35, common: 0.65 } },
+            { label: 'Uncommon', maxRarity: 'uncommon', weights: { trash: 0.2, common: 0.45, uncommon: 0.35 } },
+            { label: 'Rare', maxRarity: 'rare', weights: { common: 0.25, uncommon: 0.45, rare: 0.3 } },
+            { label: 'Epic', maxRarity: 'epic', weights: { uncommon: 0.2, rare: 0.45, epic: 0.35 } },
+            { label: 'Legendary', maxRarity: 'legendary', weights: { rare: 0.25, epic: 0.4, legendary: 0.35 } }
         ];
         /*
          * Move Identity + Rarity Philosophy (balance rework notes)
@@ -934,7 +968,8 @@
                 playerTeamState: null,
                 training: false,
                 trainingWins: 0
-            }
+            },
+            tutorUnlockedSlots: 1
         };
         let state = { ...DEFAULT_STATE };
         let selectedId = null;
@@ -1003,6 +1038,7 @@
                 state.tutorial.completed = true;
                 state.tutorial.step = TUTORIAL_STEPS.DONE;
             }
+            if (state.tutorUnlockedSlots === undefined) state.tutorUnlockedSlots = 1;
             if (state.arenaWinStreak === undefined) state.arenaWinStreak = 0;
             state.isAutoBattling = false;
             selectedId = null;
@@ -1046,6 +1082,10 @@
             document.getElementById('header-legendary-tickets').classList.toggle('hidden', state.legendaryTickets <= 0);
             document.getElementById('rare-summon-block').classList.toggle('hidden', state.rareTickets <= 0);
             document.getElementById('legendary-summon-block').classList.toggle('hidden', state.legendaryTickets <= 0);
+            const arenaBtn = document.getElementById('btn-tab-arena');
+            if (arenaBtn) {
+                arenaBtn.classList.toggle('hidden', !isArenaUnlocked());
+            }
         }
 
         function switchTab(tab) {
@@ -1057,6 +1097,11 @@
             if (tab === 'emojidex') renderEmojidex();
             if (tab === 'tutor') renderMoveTutor();
             if (tab === 'adventure') renderAdventure();
+            if (tab === 'arena' && !isArenaUnlocked()) {
+                switchTab('adventure');
+                toast('CLEAR ADVENTURE FIRST');
+                return;
+            }
             if (state.tutorial?.suspended && tab !== 'summon') {
                 state.tutorial.suspended = false;
                 save();
@@ -1077,6 +1122,10 @@
 
         function isTutorialActive() {
             return state.tutorial && !state.tutorial.completed;
+        }
+
+        function isArenaUnlocked() {
+            return state.adventure?.regions?.length && state.adventure.regions.every(r => r.cleared);
         }
 
         function setTutorialHighlights(isActive) {
@@ -1131,8 +1180,8 @@
                             const emoji = EMOJIS.find(e => e.id === id);
                             const isSelected = state.tutorial.starterId === id;
                             return `
-                                <button onclick="selectStarterChoice(${id})" class="p-3 rounded-2xl border ${isSelected ? 'border-emerald-400 bg-emerald-500/20 starter-wiggle' : 'border-white/10 bg-black/40 hover:bg-slate-800'} text-center">
-                                    <div class="text-3xl">${emoji.char}</div>
+                                <button onclick="selectStarterChoice(${id})" class="p-3 rounded-2xl border ${isSelected ? 'border-emerald-400 bg-emerald-500/20' : 'border-white/10 bg-black/40 hover:bg-slate-800'} text-center">
+                                    <div class="text-3xl ${isSelected ? 'starter-wiggle' : ''}">${emoji.char}</div>
                                     <div class="text-[9px] font-black uppercase mt-1">${emoji.name}</div>
                                 </button>
                             `;
@@ -1274,6 +1323,14 @@
 
         function closeDataDialog() {
             document.getElementById('data-dialog').classList.add('hidden');
+        }
+
+        function openSummonDialog() {
+            document.getElementById('summon-dialog').classList.remove('hidden');
+        }
+
+        function closeSummonDialog() {
+            document.getElementById('summon-dialog').classList.add('hidden');
         }
 
         function renderDataDialog() {
@@ -1645,6 +1702,10 @@
             return Object.keys(pool.weights)[0];
         }
 
+        function getAdventurePool(rarity) {
+            return ADVENTURE_POOLS.find(pool => pool.maxRarity === rarity) || ADVENTURE_POOLS[0];
+        }
+
         function generateEnemyTeam(stage, poolOverride = null, elementBias = null) {
             let teamSize;
             if (stage < 3) teamSize = 1;
@@ -1685,15 +1746,16 @@
         }
 
         function generateAdventureRegions() {
-            return ADVENTURE_REGION_POOLS.map((region, index) => {
-                const poolWeights = getArenaPool((index + 1) * 6);
+            return ADVENTURE_REGION_POOLS.map(region => {
+                const poolWeights = getAdventurePool(region.rarity);
+                const stage = ADVENTURE_STAGE_BY_RARITY[region.rarity] || 1;
                 const opponents = [];
                 for (let i = 0; i < 3; i++) {
-                    opponents.push(generateEnemyTeam(999, poolWeights, region.element));
+                    opponents.push(generateEnemyTeam(stage, poolWeights, region.element));
                 }
                 const bossRush = [];
                 for (let i = 0; i < 3; i++) {
-                    bossRush.push(generateEnemyTeam(999, poolWeights, region.element));
+                    bossRush.push(generateEnemyTeam(stage, poolWeights, region.element));
                 }
                 return {
                     id: `region-${region.pool}`,
@@ -2167,8 +2229,18 @@
                 const emoji = EMOJIS.find(e => e.id === id);
                 return { id, label: `${emoji.char} ${emoji.name}` };
             });
+            const slotCosts = [0, 0, 25000, 100000];
             for (let i = 1; i <= 3; i++) {
                 const slot = document.getElementById(`tutor-slot-${i}`);
+                if (i > state.tutorUnlockedSlots) {
+                    const cost = slotCosts[i] || 0;
+                    slot.innerHTML = `
+                        <div class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Pair ${i}</div>
+                        <div class="text-[10px] text-slate-500 mb-4">Unlock this mentor slot to train another move at the same time.</div>
+                        <button onclick="unlockTutorSlot(${i})" class="w-full bg-amber-400 text-black py-2 rounded-xl text-[9px] font-black uppercase">Unlock • ${cost.toLocaleString()} Gold</button>
+                    `;
+                    continue;
+                }
                 const pair = state.tutorPairs[i - 1] || { mentorId: null, studentId: null, progress: 0 };
                 const mentorEmoji = EMOJIS.find(e => e.id === pair.mentorId);
                 const studentEmoji = EMOJIS.find(e => e.id === pair.studentId);
@@ -2207,6 +2279,19 @@
                     </div>
                 `;
             }
+        }
+
+        function unlockTutorSlot(slotIndex) {
+            const costTable = { 2: 25000, 3: 100000 };
+            const cost = costTable[slotIndex];
+            if (!cost) return;
+            if (state.gold < cost) { toast('NOT ENOUGH GOLD'); return; }
+            if (state.tutorUnlockedSlots >= slotIndex) return;
+            state.gold -= cost;
+            state.tutorUnlockedSlots = slotIndex;
+            save();
+            updateStatsUI();
+            renderMoveTutor();
         }
 
         function inspect(id) {
@@ -2307,7 +2392,13 @@
         }
 
         // --- ARENA ---
-        function toggleAutoBattle() { if (!state.team.length) { switchTab('team'); return; } state.isAutoBattling = true; switchTab('arena'); startAutoCycle(); }
+        function toggleAutoBattle() {
+            if (!state.team.length) { switchTab('team'); return; }
+            if (!isArenaUnlocked()) { switchTab('adventure'); toast('CLEAR ADVENTURE FIRST'); return; }
+            state.isAutoBattling = true;
+            switchTab('arena');
+            startAutoCycle();
+        }
         function stopAutoBattle() {
             state.isAutoBattling = false;
             document.getElementById('arena-lobby').classList.remove('hidden');
