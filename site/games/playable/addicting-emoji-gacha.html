@@ -645,7 +645,7 @@
             legendary: { trash: 0.0, common: 0.0, uncommon: 0.0, rare: 0.6, epic: 0.90, legendary: 0.985, divine: 0.995, eternal: 1.0 }
         };
         const RARITY_COST_MULTIPLIERS = { trash: 0.7, common: 1.0, uncommon: 1.3, rare: 1.7, epic: 2.6, legendary: 4.0, divine: 6.5, eternal: 9.0 };
-        const PROMOTE_COST_MULTIPLIERS = { trash: 0.8, common: 1.2, uncommon: 1.6, rare: 2.0, epic: 3.2, legendary: 5.0, divine: 8.0 };
+        const PROMOTE_COST_TABLE = { trash: 500, common: 800, uncommon: 1200, rare: 2500, epic: 4000, legendary: 10000, divine: 25000 };
         const ELEMENT_STATUS_EFFECTS = {
             fire: { id: 'burn', element: 'fire', name: 'Burn', desc: 'Takes damage each turn and deals reduced physical damage. Fire units are immune.' },
             water: { id: 'soak', element: 'water', name: 'Soak', desc: 'Next damage taken is amplified, then clears. Water units are immune.' },
@@ -1484,9 +1484,9 @@
             const baseIdx = RARITY_ORDER.indexOf(inv.baseRarity);
             const currentIdx = RARITY_ORDER.indexOf(inv.currentRarity);
             const rarityGap = Math.max(0, currentIdx - baseIdx);
-            let rarityModifier = multCurrent * Math.pow(multBase / multCurrent, 0.3);
+            let rarityModifier = multCurrent * Math.pow(multBase / multCurrent, 0.2);
             if (rarityGap > 2) {
-                rarityModifier *= Math.pow(0.65, rarityGap - 2);
+                rarityModifier *= Math.pow(0.8, rarityGap - 2);
             }
             hp *= rarityModifier; atk *= rarityModifier; spd *= rarityModifier; def *= rarityModifier; spAtk *= rarityModifier; spDef *= rarityModifier;
             const growth = 1 + ((inv.lvl - 1) * GROWTH_RATES[inv.currentRarity]);
@@ -2200,11 +2200,11 @@
         }
 
         function getLevelUpCost(inv) {
-            return Math.floor(inv.lvl * 250 * RARITY_COST_MULTIPLIERS[inv.currentRarity]);
+            return Math.floor(inv.lvl * 200 * RARITY_COST_MULTIPLIERS[inv.currentRarity]);
         }
 
         function getPromoteCost(inv) {
-            return Math.floor(5000 * PROMOTE_COST_MULTIPLIERS[inv.currentRarity]);
+            return PROMOTE_COST_TABLE[inv.currentRarity] || 0;
         }
 
         function rollRarity(probTable) {
