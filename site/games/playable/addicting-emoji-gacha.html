@@ -455,6 +455,21 @@
         };
         const RARITY_COST_MULTIPLIERS = { trash: 0.7, common: 1.0, uncommon: 1.3, rare: 1.7, epic: 2.6, legendary: 4.0, divine: 6.5, eternal: 9.0 };
         const PROMOTE_COST_MULTIPLIERS = { trash: 0.8, common: 1.2, uncommon: 1.6, rare: 2.0, epic: 3.2, legendary: 5.0, divine: 8.0 };
+        const ELEMENT_STATUS_EFFECTS = {
+            fire: { id: 'burn', name: 'Burn', desc: 'Takes damage each turn and deals reduced physical damage. Fire units are immune.' },
+            water: { id: 'soak', name: 'Soak', desc: 'Next damage taken is amplified, then clears. Water units are immune.' },
+            nature: { id: 'rooted', name: 'Rooted', desc: 'Reduces speed and drains a small amount each turn. Nature units are immune.' },
+            light: { id: 'dazzle', name: 'Dazzle', desc: 'Cannot gain attack or special attack stages and cooldowns recover slower. Light units are immune.' },
+            dark: { id: 'curse', name: 'Curse', desc: 'Healing received is reduced while active. Dark units are immune.' }
+        };
+        const STATUS_RULES = {
+            burn: { tickDamagePct: 0.05, physAtkMult: 0.75 },
+            soak: { damageAmp: 1.35, consumeOnHit: true },
+            rooted: { tickDrainPct: 0.04, spdMult: 0.7 },
+            dazzle: { blockAtkStages: true, blockSpAtkStages: true, cooldownSlow: true },
+            curse: { healMult: 0.6 }
+        };
+        const STATUS_APPLY_CHANCE = 0.2;
         const MOVES = [
             { id: 'basic_strike', name: 'Basic Strike', power: 50, cooldown: 1, kind: 'damage', target: 'enemy-single', element: 'neutral', damageType: 'physical', rarity: 'common', special: null },
             { id: 'flame_rush', name: 'Flame Rush', power: 70, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'rare', special: null },
@@ -837,6 +852,8 @@
             unit.cooldowns = {};
             unit.moves.forEach(id => { unit.cooldowns[id] = 0; });
             unit.statStages = { atk: 0, def: 0, spAtk: 0, spDef: 0, spd: 0 };
+            unit.status = null;
+            unit.cooldownSlowToggle = false;
         }
 
         function resetBaseStats(unit) {
@@ -851,6 +868,10 @@
 
         function tickCooldowns(unit) {
             if (!unit.cooldowns) return;
+            if (unit.status?.id === 'dazzle' && STATUS_RULES.dazzle.cooldownSlow) {
+                unit.cooldownSlowToggle = !unit.cooldownSlowToggle;
+                if (!unit.cooldownSlowToggle) return;
+            }
             Object.keys(unit.cooldowns).forEach(id => {
                 if (unit.cooldowns[id] > 0) unit.cooldowns[id] -= 1;
             });
@@ -880,14 +901,21 @@
         function getModifiedStat(unit, stat) {
             const base = unit.baseStats?.[stat] ?? unit[stat];
             const stage = unit.statStages?.[stat] ?? 0;
-            return base * getStageMultiplier(stage);
+            let value = base * getStageMultiplier(stage);
+            if (stat === 'spd' && unit.status?.id === 'rooted') {
+                value *= STATUS_RULES.rooted.spdMult;
+            }
+            return value;
         }
 
         function calcDamage(attacker, defender, power, move) {
             const effectivePower = getEffectivePower(attacker, move, power);
             const variance = 0.85 + Math.random() * 0.3;
             const isSpecial = move?.damageType === 'special';
-            const atkStat = getModifiedStat(attacker, isSpecial ? 'spAtk' : 'atk');
+            let atkStat = getModifiedStat(attacker, isSpecial ? 'spAtk' : 'atk');
+            if (!isSpecial && attacker.status?.id === 'burn') {
+                atkStat *= STATUS_RULES.burn.physAtkMult;
+            }
             const defStat = Math.max(1, getModifiedStat(defender, isSpecial ? 'spDef' : 'def'));
             const base = atkStat * (effectivePower / 50) * variance;
             const mitigation = 100 / (100 + defStat);
@@ -898,6 +926,39 @@
             const effectivePower = getEffectivePower(user, move, power);
             const variance = 0.9 + Math.random() * 0.2;
             return Math.max(1, Math.floor(getModifiedStat(user, 'spAtk') * (effectivePower / 50) * variance));
+        }
+
+        function canApplyStatus(target, status, sourceElement) {
+            if (!status || target.status) return false;
+            if (target.element === sourceElement) return false;
+            return true;
+        }
+
+        function tryApplyStatus(user, target, move, log) {
+            if (!move || move.kind !== 'damage') return;
+            if (!move.element || move.element === 'neutral') return;
+            const status = ELEMENT_STATUS_EFFECTS[move.element];
+            if (!canApplyStatus(target, status, move.element)) return;
+            if (Math.random() > STATUS_APPLY_CHANCE) return;
+            target.status = { id: status.id, name: status.name, element: move.element };
+            if (status.id === 'dazzle') target.cooldownSlowToggle = false;
+            log.innerHTML += `<div>${target.char} is afflicted with ${status.name}</div>`;
+        }
+
+        function applyStatusTick(unit, log) {
+            if (!unit.status) return;
+            const rules = STATUS_RULES[unit.status.id];
+            if (!rules) return;
+            if (rules.tickDamagePct) {
+                const dmg = Math.max(1, Math.floor(unit.maxHp * rules.tickDamagePct));
+                unit.hp -= dmg;
+                log.innerHTML += `<div>${unit.char} suffers ${dmg} from ${unit.status.name}</div>`;
+            }
+            if (rules.tickDrainPct) {
+                const dmg = Math.max(1, Math.floor(unit.maxHp * rules.tickDrainPct));
+                unit.hp -= dmg;
+                log.innerHTML += `<div>${unit.char} is drained for ${dmg}</div>`;
+            }
         }
 
         function getTargets(move, user, allies, enemies) {
@@ -922,21 +983,38 @@
             if (!targets.length) return false;
             if (move.kind === 'damage') {
                 targets.forEach(target => {
-                    const dmg = calcDamage(user, target, move.power, move);
+                    let dmg = calcDamage(user, target, move.power, move);
+                    if (target.status?.id === 'soak') {
+                        dmg = Math.floor(dmg * STATUS_RULES.soak.damageAmp);
+                        target.status = null;
+                        log.innerHTML += `<div>${target.char} is soaked!</div>`;
+                    }
                     target.hp -= dmg;
                     log.innerHTML += `<div>${user.char} uses ${move.name} for ${Math.floor(dmg)}</div>`;
+                    tryApplyStatus(user, target, move, log);
                 });
             } else if (move.kind === 'heal') {
                 targets.forEach(target => {
-                    const heal = calcHeal(user, move.power, move);
+                    let heal = calcHeal(user, move.power, move);
+                    if (target.status?.id === 'curse') {
+                        heal = Math.floor(heal * STATUS_RULES.curse.healMult);
+                    }
                     target.hp = Math.min(target.maxHp, target.hp + heal);
                     log.innerHTML += `<div>${user.char} uses ${move.name} for ${heal} HP</div>`;
                 });
             } else if (move.kind === 'buff') {
                 targets.forEach(target => {
-                    if (move.effect?.atk) target.statStages.atk = Math.max(-3, Math.min(3, target.statStages.atk + move.effect.atk));
+                    if (move.effect?.atk) {
+                        if (!(target.status?.id === 'dazzle' && move.effect.atk > 0)) {
+                            target.statStages.atk = Math.max(-3, Math.min(3, target.statStages.atk + move.effect.atk));
+                        }
+                    }
                     if (move.effect?.def) target.statStages.def = Math.max(-3, Math.min(3, target.statStages.def + move.effect.def));
-                    if (move.effect?.spAtk) target.statStages.spAtk = Math.max(-3, Math.min(3, target.statStages.spAtk + move.effect.spAtk));
+                    if (move.effect?.spAtk) {
+                        if (!(target.status?.id === 'dazzle' && move.effect.spAtk > 0)) {
+                            target.statStages.spAtk = Math.max(-3, Math.min(3, target.statStages.spAtk + move.effect.spAtk));
+                        }
+                    }
                     if (move.effect?.spDef) target.statStages.spDef = Math.max(-3, Math.min(3, target.statStages.spDef + move.effect.spDef));
                     if (move.effect?.spd) target.statStages.spd = Math.max(-3, Math.min(3, target.statStages.spd + move.effect.spd));
                     log.innerHTML += `<div>${user.char} uses ${move.name}</div>`;
@@ -1237,6 +1315,8 @@
                 let actors = [...pUnits, ...eUnits].filter(u=>u.hp>0).sort((a,b)=>getModifiedStat(b, 'spd') - getModifiedStat(a, 'spd'));
                 for (let u of actors) {
                     if (u.hp <= 0 || !state.isAutoBattling) continue;
+                    applyStatusTick(u, log);
+                    if (u.hp <= 0) { updateUI(); continue; }
                     tickCooldowns(u);
                     let targets = u.isPlayer ? eUnits.filter(t=>t.hp>0) : pUnits.filter(t=>t.hp>0);
                     if (!targets.length) break;
