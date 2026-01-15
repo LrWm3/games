@@ -177,6 +177,8 @@
                         <p id="inspect-desc" class="text-[10px] text-slate-300 leading-relaxed mb-6">A short description.</p>
                         <div id="inspect-type-count" class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">Type Found: 0</div>
                         <div id="inspect-dupe-count" class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-6">Duplicates: 0</div>
+                        <div class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Moves</div>
+                        <div id="inspect-moves" class="text-[9px] text-slate-300 space-y-1 mb-6"></div>
                         
                         <div class="grid grid-cols-2 gap-2 text-left mb-6">
                             <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-slate-500 uppercase">LV</p><span class="font-bold text-sm" id="inspect-lvl">0</span></div>
@@ -441,18 +443,19 @@
         const RARITY_COST_MULTIPLIERS = { trash: 0.7, common: 1.0, uncommon: 1.3, rare: 1.7, epic: 2.6, legendary: 4.0, divine: 6.5, eternal: 9.0 };
         const PROMOTE_COST_MULTIPLIERS = { trash: 0.8, common: 1.2, uncommon: 1.6, rare: 2.0, epic: 3.2, legendary: 5.0, divine: 8.0 };
         const MOVES = [
-            { id: 'flame_rush', name: 'Flame Rush', power: 70, cooldown: 2, kind: 'damage', target: 'enemy-single', special: null },
-            { id: 'ember_wave', name: 'Ember Wave', power: 35, cooldown: 3, kind: 'damage', target: 'enemy-all', special: null },
-            { id: 'heat_shield', name: 'Heat Shield', power: 0, cooldown: 4, kind: 'buff', target: 'self', effect: { hpPct: 0.2 }, special: null },
-            { id: 'tidal_spear', name: 'Tidal Spear', power: 60, cooldown: 2, kind: 'damage', target: 'enemy-single', special: null },
-            { id: 'soothing_rain', name: 'Soothing Rain', power: 35, cooldown: 4, kind: 'heal', target: 'ally-all', special: null },
-            { id: 'ice_barbs', name: 'Ice Barbs', power: 28, cooldown: 3, kind: 'damage', target: 'enemy-all', special: null },
-            { id: 'vine_lash', name: 'Vine Lash', power: 55, cooldown: 2, kind: 'damage', target: 'enemy-single', special: null },
-            { id: 'seed_bloom', name: 'Seed Bloom', power: 50, cooldown: 3, kind: 'heal', target: 'ally-single', special: null },
-            { id: 'radiant_burst', name: 'Radiant Burst', power: 30, cooldown: 3, kind: 'damage', target: 'enemy-all', special: null },
-            { id: 'blessing_wall', name: 'Blessing Wall', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', effect: { hpPct: 0.12 }, special: null },
-            { id: 'shadow_slice', name: 'Shadow Slice', power: 75, cooldown: 3, kind: 'damage', target: 'enemy-single', special: null },
-            { id: 'night_howl', name: 'Night Howl', power: 0, cooldown: 4, kind: 'buff', target: 'self', effect: { atkPct: 0.18, spdPct: 0.1 }, special: null }
+            { id: 'basic_strike', name: 'Basic Strike', power: 50, cooldown: 1, kind: 'damage', target: 'enemy-single', element: 'neutral', special: null },
+            { id: 'flame_rush', name: 'Flame Rush', power: 70, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', special: null },
+            { id: 'ember_wave', name: 'Ember Wave', power: 35, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'fire', special: null },
+            { id: 'heat_shield', name: 'Heat Shield', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'fire', effect: { hpPct: 0.2 }, special: null },
+            { id: 'tidal_spear', name: 'Tidal Spear', power: 60, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'water', special: null },
+            { id: 'soothing_rain', name: 'Soothing Rain', power: 35, cooldown: 4, kind: 'heal', target: 'ally-all', element: 'water', special: null },
+            { id: 'ice_barbs', name: 'Ice Barbs', power: 28, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'water', special: null },
+            { id: 'vine_lash', name: 'Vine Lash', power: 55, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'nature', special: null },
+            { id: 'seed_bloom', name: 'Seed Bloom', power: 50, cooldown: 3, kind: 'heal', target: 'ally-single', element: 'nature', special: null },
+            { id: 'radiant_burst', name: 'Radiant Burst', power: 30, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'light', special: null },
+            { id: 'blessing_wall', name: 'Blessing Wall', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'light', effect: { hpPct: 0.12 }, special: null },
+            { id: 'shadow_slice', name: 'Shadow Slice', power: 75, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', special: null },
+            { id: 'night_howl', name: 'Night Howl', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'dark', effect: { atkPct: 0.18, spdPct: 0.1 }, special: null }
         ];
         const EMOJI_DESCS = {
             101: 'Rattles around, stubbornly guards scraps.',
@@ -751,6 +754,11 @@
             return MOVES.find(move => move.id === id);
         }
 
+        function getMoveListForEmoji(emoji) {
+            const moveIds = ['basic_strike', getMoveIdForEmoji(emoji)];
+            return [...new Set(moveIds)].map(getMoveById).filter(Boolean);
+        }
+
         function getMoveIdForEmoji(emoji) {
             if (emoji.element === 'fire') {
                 if (emoji.type === 'Tank') return 'heat_shield';
@@ -779,8 +787,10 @@
 
         function attachMoves(unit) {
             const moveId = getMoveIdForEmoji(unit);
-            unit.moves = [moveId];
-            unit.cooldowns = { [moveId]: 0 };
+            const moveList = ['basic_strike', moveId];
+            unit.moves = [...new Set(moveList)];
+            unit.cooldowns = {};
+            unit.moves.forEach(id => { unit.cooldowns[id] = 0; });
         }
 
         function tickCooldowns(unit) {
@@ -794,18 +804,28 @@
             if (!unit.moves) return null;
             const ready = unit.moves.filter(id => unit.cooldowns[id] === 0);
             if (!ready.length) return null;
-            const pickId = ready[Math.floor(Math.random() * ready.length)];
+            const nonBasic = ready.filter(id => id !== 'basic_strike');
+            const pool = nonBasic.length ? nonBasic : ready;
+            const pickId = pool[Math.floor(Math.random() * pool.length)];
             return getMoveById(pickId);
         }
 
-        function calcDamage(attacker, power) {
-            const variance = 0.85 + Math.random() * 0.3;
-            return Math.max(1, Math.floor(attacker.atk * (power / 50) * variance));
+        function getEffectivePower(user, move, basePower) {
+            if (!move) return basePower;
+            if (move.element && move.element === user.element) return Math.floor(basePower * 1.5);
+            return basePower;
         }
 
-        function calcHeal(user, power) {
+        function calcDamage(attacker, power, move) {
+            const effectivePower = getEffectivePower(attacker, move, power);
+            const variance = 0.85 + Math.random() * 0.3;
+            return Math.max(1, Math.floor(attacker.atk * (effectivePower / 50) * variance));
+        }
+
+        function calcHeal(user, power, move) {
+            const effectivePower = getEffectivePower(user, move, power);
             const variance = 0.9 + Math.random() * 0.2;
-            return Math.max(1, Math.floor(user.atk * (power / 50) * variance));
+            return Math.max(1, Math.floor(user.atk * (effectivePower / 50) * variance));
         }
 
         function getTargets(move, user, allies, enemies) {
@@ -830,13 +850,13 @@
             if (!targets.length) return false;
             if (move.kind === 'damage') {
                 targets.forEach(target => {
-                    const dmg = calcDamage(user, move.power);
+                    const dmg = calcDamage(user, move.power, move);
                     target.hp -= dmg;
                     log.innerHTML += `<div>${user.char} uses ${move.name} for ${Math.floor(dmg)}</div>`;
                 });
             } else if (move.kind === 'heal') {
                 targets.forEach(target => {
-                    const heal = calcHeal(user, move.power);
+                    const heal = calcHeal(user, move.power, move);
                     target.hp = Math.min(target.maxHp, target.hp + heal);
                     log.innerHTML += `<div>${user.char} uses ${move.name} for ${heal} HP</div>`;
                 });
@@ -1041,6 +1061,20 @@
             }).length;
             document.getElementById('inspect-type-count').innerText = `${e.type.toUpperCase()} FOUND: ${typeCount}`;
             document.getElementById('inspect-dupe-count').innerText = `DUPLICATES: ${inv.dupes || 0}`;
+            const moveList = getMoveListForEmoji(e);
+            const moveTargetLabels = {
+                'enemy-single': 'Enemy Single',
+                'enemy-all': 'Enemy All',
+                'ally-single': 'Ally Single',
+                'ally-all': 'All Allies',
+                'self': 'Self'
+            };
+            document.getElementById('inspect-moves').innerHTML = moveList.map(move => {
+                const power = move.kind === 'buff' ? '—' : move.power;
+                const element = move.element ? move.element.toUpperCase() : 'NEUTRAL';
+                const target = moveTargetLabels[move.target] || move.target;
+                return `<div>${move.name} (${element}) • ${move.kind.toUpperCase()} ${power} • CD ${move.cooldown} • ${target}</div>`;
+            }).join('');
             
             const lvlCost = getLevelUpCost(inv);
             const lvlBtn = document.getElementById('btn-lvl-up');
@@ -1138,7 +1172,8 @@
                         const used = applyMove(u, move, allies, enemies, log);
                         if (used) u.cooldowns[move.id] = move.cooldown;
                     } else {
-                        const dmg = calcDamage(u, 50);
+                        const basic = getMoveById('basic_strike');
+                        const dmg = calcDamage(u, basic.power, basic);
                         targets[0].hp -= dmg;
                         log.innerHTML += `<div>${u.char} attacks for ${Math.floor(dmg)}</div>`;
                     }
