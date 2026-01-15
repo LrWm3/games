@@ -67,6 +67,7 @@
         .element-dark { color: var(--dark); }
         
         .type-badge { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,0.3); border: 1px border-white/10; }
+        .tutorial-highlight { box-shadow: 0 0 0 2px rgba(255,255,255,0.7), 0 0 18px rgba(59,130,246,0.7); border-color: rgba(59,130,246,0.8) !important; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -79,6 +80,9 @@
                 <div class="leading-none">
                     <h1 class="text-lg font-bold uppercase tracking-tight">Emoji Saga</h1>
                     <span class="text-[8px] text-indigo-400 font-black uppercase tracking-[0.2em]">151 Heroes Update</span>
+                    <div class="text-[8px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1">
+                        <span id="player-name">Traveler</span> • <span id="player-region">No Region</span>
+                    </div>
                 </div>
             </div>
             <div class="flex flex-col items-end gap-2">
@@ -348,6 +352,13 @@
     </div>
 
     <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 px-6 py-3 bg-white text-black text-[10px] rounded-full font-black shadow-2xl opacity-0 transition-all duration-500 z-[300] uppercase tracking-widest">NOTIFY</div>
+
+    <!-- Tutorial Overlay -->
+    <div id="tutorial-overlay" class="fixed inset-0 z-[250] bg-black/95 hidden">
+        <div class="max-w-lg mx-auto mt-16 bg-slate-900/95 border border-white/10 rounded-[2rem] p-6 shadow-2xl">
+            <div id="tutorial-content"></div>
+        </div>
+    </div>
 
     <script>
         // --- MASTER DATA (151 TOTAL) ---
@@ -1026,12 +1037,21 @@
             tickets: 1,
             rareTickets: 0,
             legendaryTickets: 0,
+            playerName: '',
             pity: 0,
             inventory: {},
             team: [],
             stage: 1,
             isAutoBattling: false,
             arenaWinStreak: 0,
+            tutorial: {
+                step: 0,
+                guidedPulls: 0,
+                starterId: null,
+                allowTeamBuild: false,
+                suspended: false,
+                completed: false
+            },
             tutorPairs: [
                 { mentorId: null, studentId: null, progress: 0 },
                 { mentorId: null, studentId: null, progress: 0 },
@@ -1051,11 +1071,13 @@
         let state = { ...DEFAULT_STATE };
         let selectedId = null;
         let currentSlot = 1;
+        const STARTER_OPTIONS = [4, 155, 15];
+        const TUTORIAL_STEPS = { NAME: 0, STARTER: 1, PULL_ONE: 2, PULL_TWO: 3, TEAM: 4, HIGHLIGHT: 5, DONE: 6 };
 
         EMOJIS.forEach(emoji => { emoji.desc = EMOJI_DESCS[emoji.id]; });
 
         // --- CORE ---
-        function init() { loadSlot(resolveInitialSlot()); updateStatsUI(); switchTab('summon'); }
+        function init() { loadSlot(resolveInitialSlot()); updateStatsUI(); switchTab('summon'); renderTutorial(); }
         function getSaveKey(slot) { return `emojiSaga_vInfinite_slot${slot}`; }
         function resolveInitialSlot() {
             const stored = parseInt(localStorage.getItem('emojiSaga_vInfinite_slot'), 10);
@@ -1072,6 +1094,7 @@
         function loadSlot(slot) {
             currentSlot = slot;
             const saved = localStorage.getItem(getSaveKey(slot));
+            const hadSave = !!saved;
             state = { ...DEFAULT_STATE };
             if (saved) {
                 state = { ...state, ...JSON.parse(saved) };
@@ -1101,6 +1124,17 @@
             }
             if (state.adventure.training === undefined) state.adventure.training = false;
             if (state.adventure.trainingWins === undefined) state.adventure.trainingWins = 0;
+            if (!state.tutorial) state.tutorial = { ...DEFAULT_STATE.tutorial };
+            if (state.tutorial.step === undefined) state.tutorial.step = DEFAULT_STATE.tutorial.step;
+            if (state.tutorial.guidedPulls === undefined) state.tutorial.guidedPulls = 0;
+            if (state.tutorial.starterId === undefined) state.tutorial.starterId = null;
+            if (state.tutorial.allowTeamBuild === undefined) state.tutorial.allowTeamBuild = false;
+            if (state.tutorial.suspended === undefined) state.tutorial.suspended = false;
+            if (state.tutorial.completed === undefined) state.tutorial.completed = false;
+            if (hadSave && Object.keys(state.inventory).length && !state.tutorial.completed && !state.playerName) {
+                state.tutorial.completed = true;
+                state.tutorial.step = TUTORIAL_STEPS.DONE;
+            }
             if (state.arenaWinStreak === undefined) state.arenaWinStreak = 0;
             state.isAutoBattling = false;
             selectedId = null;
@@ -1123,13 +1157,14 @@
             loadSlot(slot);
             updateStatsUI();
             switchTab('summon');
+            renderTutorial();
         }
 
         function newGameCurrentSlot() {
             if (!confirm(`Start a new game in Slot ${currentSlot}? This will overwrite the current save.`)) return;
             stopAutoBattle();
             state = { ...DEFAULT_STATE };
-            save(); updateStatsUI(); switchTab('summon'); toast("NEW GAME");
+            save(); updateStatsUI(); switchTab('summon'); renderTutorial(); toast("NEW GAME");
         }
 
         function deleteCurrentSlot() {
@@ -1137,7 +1172,7 @@
             stopAutoBattle();
             localStorage.removeItem(getSaveKey(currentSlot));
             state = { ...DEFAULT_STATE };
-            save(); updateStatsUI(); switchTab('summon'); toast("SAVE DELETED");
+            save(); updateStatsUI(); switchTab('summon'); renderTutorial(); toast("SAVE DELETED");
         }
 
         function updateStatsUI() {
@@ -1148,6 +1183,8 @@
             document.getElementById('pity-count').innerText = `${state.pity}/50`;
             document.getElementById('arena-stage-title').innerText = state.stage;
             document.getElementById('collection-count').innerText = `${Object.keys(state.inventory).length}/${EMOJIS.length}`;
+            document.getElementById('player-name').innerText = state.playerName ? state.playerName : 'Traveler';
+            document.getElementById('player-region').innerText = getCurrentRegionLabel();
         }
 
         function switchTab(tab) {
@@ -1159,6 +1196,210 @@
             if (tab === 'emojidex') renderEmojidex();
             if (tab === 'tutor') renderMoveTutor();
             if (tab === 'adventure') renderAdventure();
+            renderTutorial();
+        }
+
+        function getCurrentRegionLabel() {
+            const region = state.adventure?.regions?.find(r => r.id === state.adventure.currentRegionId);
+            return region ? region.name : 'No Region';
+        }
+
+        function isTutorialActive() {
+            return state.tutorial && !state.tutorial.completed;
+        }
+
+        function setTutorialHighlights(isActive) {
+            const adventureBtn = document.getElementById('btn-tab-adventure');
+            const shopBtn = document.getElementById('btn-tab-shop');
+            if (!adventureBtn || !shopBtn) return;
+            adventureBtn.classList.toggle('tutorial-highlight', isActive);
+            shopBtn.classList.toggle('tutorial-highlight', isActive);
+        }
+
+        function renderTutorial() {
+            const overlay = document.getElementById('tutorial-overlay');
+            const content = document.getElementById('tutorial-content');
+            if (!overlay || !content) return;
+            if (!isTutorialActive()) {
+                overlay.classList.add('hidden');
+                setTutorialHighlights(false);
+                return;
+            }
+            if (state.tutorial.suspended) {
+                overlay.classList.add('hidden');
+                return;
+            }
+            const step = state.tutorial.step;
+            if (step === TUTORIAL_STEPS.TEAM && state.tutorial.allowTeamBuild) {
+                overlay.classList.add('hidden');
+                setTutorialHighlights(false);
+                return;
+            }
+            overlay.classList.remove('hidden');
+            setTutorialHighlights(step === TUTORIAL_STEPS.HIGHLIGHT);
+            if (step === TUTORIAL_STEPS.NAME) {
+                content.innerHTML = `
+                    <div class="text-xs font-black uppercase tracking-[0.2em] text-indigo-300 mb-2">Welcome</div>
+                    <h3 class="text-2xl font-black mb-4">What should we call you?</h3>
+                    <input id="tutorial-name-input" class="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white mb-4" placeholder="Enter your name" maxlength="20" />
+                    <button onclick="submitTutorialName()" class="w-full bg-white text-black py-3 rounded-xl font-black text-xs uppercase">Begin Journey</button>
+                `;
+                return;
+            }
+            if (step === TUTORIAL_STEPS.STARTER) {
+                const selected = EMOJIS.find(e => e.id === state.tutorial.starterId);
+                const preview = selected ? renderStarterPreview(selected) : '<div class="text-[9px] text-slate-500">Select a starter to view details.</div>';
+                content.innerHTML = `
+                    <div class="text-xs font-black uppercase tracking-[0.2em] text-emerald-300 mb-2">Choose Starter</div>
+                    <h3 class="text-xl font-black mb-4">Pick your first ally</h3>
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        ${STARTER_OPTIONS.map(id => {
+                            const emoji = EMOJIS.find(e => e.id === id);
+                            const isSelected = state.tutorial.starterId === id;
+                            return `
+                                <button onclick="selectStarterChoice(${id})" class="p-3 rounded-2xl border ${isSelected ? 'border-emerald-400 bg-emerald-500/20' : 'border-white/10 bg-black/40 hover:bg-slate-800'} text-center">
+                                    <div class="text-3xl">${emoji.char}</div>
+                                    <div class="text-[9px] font-black uppercase mt-1">${emoji.name}</div>
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div class="bg-black/40 border border-white/10 rounded-2xl p-4 mb-4">${preview}</div>
+                    <button onclick="confirmStarterChoice()" class="w-full ${state.tutorial.starterId ? 'bg-emerald-400 text-black' : 'bg-slate-700 text-slate-400'} py-3 rounded-xl font-black text-xs uppercase" ${state.tutorial.starterId ? '' : 'disabled'}>Choose Starter</button>
+                `;
+                return;
+            }
+            if (step === TUTORIAL_STEPS.PULL_ONE) {
+                content.innerHTML = `
+                    <div class="text-xs font-black uppercase tracking-[0.2em] text-indigo-300 mb-2">Portal Basics</div>
+                    <h3 class="text-xl font-black mb-3">First pull: Tin Can</h3>
+                    <p class="text-[10px] text-slate-400 mb-4">Your first summon is guided. Head to the Portal and pull your first ally.</p>
+                    <button onclick="startGuidedSummon()" class="w-full bg-white text-black py-3 rounded-xl font-black text-xs uppercase">Summon Tin Can</button>
+                `;
+                return;
+            }
+            if (step === TUTORIAL_STEPS.PULL_TWO) {
+                content.innerHTML = `
+                    <div class="text-xs font-black uppercase tracking-[0.2em] text-indigo-300 mb-2">Second Pull</div>
+                    <h3 class="text-xl font-black mb-3">Next pull: Star</h3>
+                    <p class="text-[10px] text-slate-400 mb-4">This summon is also guided. Grab Star to round out your starters.</p>
+                    <button onclick="startGuidedSummon()" class="w-full bg-white text-black py-3 rounded-xl font-black text-xs uppercase">Summon Star</button>
+                `;
+                return;
+            }
+            if (step === TUTORIAL_STEPS.TEAM) {
+                content.innerHTML = `
+                    <div class="text-xs font-black uppercase tracking-[0.2em] text-amber-300 mb-2">Build Squad</div>
+                    <h3 class="text-xl font-black mb-3">Assemble your team</h3>
+                    <p class="text-[10px] text-slate-400 mb-4">Open the Squad tab and add your starter, Tin Can, and Star to your team slots.</p>
+                    <button onclick="openTeamForTutorial()" class="w-full bg-amber-400 text-black py-3 rounded-xl font-black text-xs uppercase">Open Squad</button>
+                `;
+                return;
+            }
+            if (step === TUTORIAL_STEPS.HIGHLIGHT) {
+                content.innerHTML = `
+                    <div class="text-xs font-black uppercase tracking-[0.2em] text-sky-300 mb-2">Get More Tickets</div>
+                    <h3 class="text-xl font-black mb-3">Adventure + Market</h3>
+                    <p class="text-[10px] text-slate-400 mb-4">Adventure rewards tickets as you clear regions. The Market lets you buy more with gold.</p>
+                    <button onclick="finishTutorial()" class="w-full bg-sky-400 text-black py-3 rounded-xl font-black text-xs uppercase">Got It</button>
+                `;
+                return;
+            }
+            overlay.classList.add('hidden');
+        }
+
+        function submitTutorialName() {
+            const input = document.getElementById('tutorial-name-input');
+            if (!input) return;
+            const name = input.value.trim();
+            if (!name) { toast('ENTER A NAME'); return; }
+            state.playerName = name.slice(0, 20);
+            state.tutorial.step = TUTORIAL_STEPS.STARTER;
+            save(); updateStatsUI(); renderTutorial();
+        }
+
+        function selectStarterChoice(id) {
+            state.tutorial.starterId = id;
+            save(); renderTutorial();
+        }
+
+        function renderStarterPreview(emoji) {
+            const previewStats = calcStarterPreviewStats(emoji);
+            return `
+                <div class="flex items-center gap-3">
+                    <div class="text-4xl">${emoji.char}</div>
+                    <div>
+                        <div class="text-xs font-black uppercase">${emoji.name}</div>
+                        <div class="text-[9px] text-slate-400 uppercase tracking-[0.2em]">${emoji.rarity} • ${emoji.element} • ${emoji.type}</div>
+                        <div class="text-[9px] text-slate-400 mt-2">${emoji.desc}</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-[9px] text-slate-400 mt-3">
+                    <div>HP <span class="text-white">${previewStats.hp}</span></div>
+                    <div>ATK <span class="text-white">${previewStats.atk}</span></div>
+                    <div>SPD <span class="text-white">${previewStats.spd}</span></div>
+                    <div>DEF <span class="text-white">${previewStats.def}</span></div>
+                    <div>SP.ATK <span class="text-white">${previewStats.spAtk}</span></div>
+                    <div>SP.DEF <span class="text-white">${previewStats.spDef}</span></div>
+                </div>
+            `;
+        }
+
+        function calcStarterPreviewStats(emoji) {
+            const baseObj = { hp: 100, atk: 20, spd: 10, def: 15, spAtk: 18, spDef: 15 };
+            const weights = TYPE_WEIGHTS[emoji.type];
+            let hp = baseObj.hp * weights.hp;
+            let atk = baseObj.atk * weights.atk;
+            let spd = baseObj.spd * weights.spd;
+            let def = baseObj.def * weights.def;
+            let spAtk = baseObj.spAtk * weights.spAtk;
+            let spDef = baseObj.spDef * weights.spDef;
+            const aff = ELEMENT_BONUSES[emoji.element];
+            hp *= aff.hp; atk *= aff.atk; spd *= aff.spd; def *= aff.def; spAtk *= aff.spAtk; spDef *= aff.spDef;
+            const multCurrent = RARITY_MULTIPLIERS[emoji.rarity];
+            hp *= multCurrent; atk *= multCurrent; spd *= multCurrent; def *= multCurrent; spAtk *= multCurrent; spDef *= multCurrent;
+            return {
+                hp: Math.floor(hp),
+                atk: Math.floor(atk),
+                spd: Math.floor(spd),
+                def: Math.floor(def),
+                spAtk: Math.floor(spAtk),
+                spDef: Math.floor(spDef)
+            };
+        }
+
+        function confirmStarterChoice() {
+            const id = state.tutorial.starterId;
+            if (!id) return;
+            if (!state.inventory[id]) {
+                const emoji = EMOJIS.find(e => e.id === id);
+                state.inventory[id] = { lvl: 1, baseRarity: emoji.rarity, currentRarity: emoji.rarity, dupes: 0, learnedMoves: [] };
+            }
+            if (!state.team.length) state.team = [id];
+            state.tutorial.step = TUTORIAL_STEPS.PULL_ONE;
+            save(); updateStatsUI(); renderTeam(); renderTutorial();
+        }
+
+        function startGuidedSummon() {
+            if (state.tutorial.step < TUTORIAL_STEPS.PULL_ONE) return;
+            state.tutorial.suspended = true;
+            document.getElementById('tutorial-overlay').classList.add('hidden');
+            switchTab('summon');
+            startSummonSequence(1, 'standard');
+        }
+
+        function openTeamForTutorial() {
+            state.tutorial.allowTeamBuild = true;
+            save();
+            document.getElementById('tutorial-overlay').classList.add('hidden');
+            switchTab('team');
+        }
+
+        function finishTutorial() {
+            state.tutorial.completed = true;
+            state.tutorial.step = TUTORIAL_STEPS.DONE;
+            save();
+            renderTutorial();
         }
 
         function toast(msg) {
@@ -1568,6 +1809,7 @@
             state.adventure.training = region.cleared;
             state.adventure.trainingWins = 0;
             save();
+            updateStatsUI();
             renderAdventure();
             startAdventureBattle();
         }
@@ -1653,6 +1895,7 @@
             state.adventure.training = false;
             state.adventure.trainingWins = 0;
             save();
+            updateStatsUI();
             renderAdventure();
             document.getElementById('adventure-lobby').classList.remove('hidden');
             document.getElementById('adventure-combat').classList.add('hidden');
@@ -1764,6 +2007,7 @@
             state.adventure.training = false;
             state.adventure.trainingWins = 0;
             save();
+            updateStatsUI();
             renderAdventure();
             document.getElementById('adventure-lobby').classList.remove('hidden');
             document.getElementById('adventure-combat').classList.add('hidden');
@@ -1792,25 +2036,47 @@
 
         // --- GACHA ---
         async function startSummonSequence(count, summonType = 'standard') {
+            const guidedAllowed = isTutorialActive() && state.tutorial.step >= TUTORIAL_STEPS.PULL_ONE;
+            const isGuided = guidedAllowed && state.tutorial.guidedPulls < 2;
+            if (isTutorialActive() && state.tutorial.step < TUTORIAL_STEPS.PULL_ONE) {
+                toast('FINISH SETUP FIRST');
+                return;
+            }
+            if (isGuided) { count = 1; summonType = 'standard'; }
             const typeConfig = {
                 standard: { key: 'tickets', probs: PROB_TABLES.standard },
                 rare: { key: 'rareTickets', probs: PROB_TABLES.rare },
                 legendary: { key: 'legendaryTickets', probs: PROB_TABLES.legendary }
             }[summonType] || { key: 'tickets', probs: PROB_TABLES.standard };
-            if (state[typeConfig.key] < count) { toast("NO TICKETS!"); return; }
+            if (state[typeConfig.key] < count) {
+                if (isGuided) state[typeConfig.key] = count;
+                else { toast("NO TICKETS!"); return; }
+            }
             state[typeConfig.key] -= count; updateStatsUI();
             const results = [];
             for (let i = 0; i < count; i++) {
                 state.pity++;
                 let rarity = 'common';
-                if (state.pity >= 50) { rarity = 'legendary'; state.pity = 0; }
-                else rarity = rollRarity(typeConfig.probs);
-                const pool = EMOJIS.filter(e => e.rarity === rarity);
-                const emoji = pool[Math.floor(Math.random() * pool.length)];
+                let emoji = null;
+                if (isGuided) {
+                    const forcedId = state.tutorial.guidedPulls === 0 ? 101 : 16;
+                    emoji = EMOJIS.find(e => e.id === forcedId);
+                    rarity = emoji.rarity;
+                } else {
+                    if (state.pity >= 50) { rarity = 'legendary'; state.pity = 0; }
+                    else rarity = rollRarity(typeConfig.probs);
+                    const pool = EMOJIS.filter(e => e.rarity === rarity);
+                    emoji = pool[Math.floor(Math.random() * pool.length)];
+                }
                 const isNew = !state.inventory[emoji.id];
                 results.push({ emoji, isNew });
                 if (isNew) state.inventory[emoji.id] = { lvl: 1, baseRarity: emoji.rarity, currentRarity: emoji.rarity, dupes: 0, learnedMoves: [] };
                 else state.inventory[emoji.id].dupes = (state.inventory[emoji.id].dupes || 0) + 1;
+            }
+            if (isGuided) {
+                state.tutorial.guidedPulls += 1;
+                state.tutorial.step = state.tutorial.guidedPulls === 1 ? TUTORIAL_STEPS.PULL_TWO : TUTORIAL_STEPS.TEAM;
+                state.tutorial.allowTeamBuild = false;
             }
             save(); renderSummonResults(results);
         }
@@ -1838,7 +2104,11 @@
             document.getElementById('btn-summon-close').classList.remove('hidden');
         }
 
-        function closeSummonResults() { document.getElementById('summon-result-overlay').classList.add('hidden'); }
+        function closeSummonResults() {
+            document.getElementById('summon-result-overlay').classList.add('hidden');
+            if (state.tutorial) state.tutorial.suspended = false;
+            renderTutorial();
+        }
 
         // --- TEAM ---
         function renderTeam() {
@@ -1868,6 +2138,12 @@
                 item.onclick = () => inspect(id);
                 rosterGrid.appendChild(item);
             });
+            if (isTutorialActive() && state.tutorial.step === TUTORIAL_STEPS.TEAM && state.team.length >= 3) {
+                state.tutorial.step = TUTORIAL_STEPS.HIGHLIGHT;
+                state.tutorial.allowTeamBuild = false;
+                save();
+                renderTutorial();
+            }
         }
 
         function renderEmojidex() {
