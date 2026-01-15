@@ -642,12 +642,12 @@
         };
         const STATUS_APPLY_CHANCE = 0.2;
         const ADVENTURE_REGION_POOLS = [
-            { pool: 'trash', name: 'Cinder Wastes', rarity: 'trash', element: 'fire', desc: 'A scrapyard frontier full of brittle fighters.' },
-            { pool: 'common', name: 'Rusted Crossing', rarity: 'common', element: 'nature', desc: 'Weathered trails where basic tactics rule.' },
-            { pool: 'uncommon', name: 'Gleamwood', rarity: 'uncommon', element: 'light', desc: 'A bright thicket of tricky skirmishers.' },
-            { pool: 'rare', name: 'Stormreef', rarity: 'rare', element: 'water', desc: 'Seasoned squads clash in rolling surges.' },
-            { pool: 'epic', name: 'Crownspire', rarity: 'epic', element: 'light', desc: 'Elite formations guard the high paths.' },
-            { pool: 'legendary', name: 'Obsidian Gate', rarity: 'legendary', element: 'dark', desc: 'Only the strongest survive the gauntlet.' }
+            { pool: 'trash', name: 'Cinder Wastes', emoji: '🧱', rarity: 'trash', element: 'fire', desc: 'A scrapyard frontier full of brittle fighters.' },
+            { pool: 'common', name: 'Rusted Crossing', emoji: '🪵', rarity: 'common', element: 'nature', desc: 'Weathered trails where basic tactics rule.' },
+            { pool: 'uncommon', name: 'Gleamwood', emoji: '🪞', rarity: 'uncommon', element: 'light', desc: 'A bright thicket of tricky skirmishers.' },
+            { pool: 'rare', name: 'Stormreef', emoji: '🌊', rarity: 'rare', element: 'water', desc: 'Seasoned squads clash in rolling surges.' },
+            { pool: 'epic', name: 'Crownspire', emoji: '🏰', rarity: 'epic', element: 'light', desc: 'Elite formations guard the high paths.' },
+            { pool: 'legendary', name: 'Obsidian Gate', emoji: '🪐', rarity: 'legendary', element: 'dark', desc: 'Only the strongest survive the gauntlet.' }
         ];
         const ADVENTURE_BOSS_TRAINERS = {
             trash: { emoji: '🧑‍🏭', name: 'Scroby "Scrapking" Jr.', line: 'Out here, you either break... or you get rebuilt tougher.' },
@@ -1068,12 +1068,22 @@
                 if (region.progressIndex === undefined) region.progressIndex = 0;
                 if (region.inBossRush === undefined) region.inBossRush = false;
                 if (region.bossRushIndex === undefined) region.bossRushIndex = 0;
+                if (!region.emoji) {
+                    const match = ADVENTURE_REGION_POOLS.find(r => r.pool === region.poolLabel || r.name === region.name);
+                    region.emoji = match?.emoji || '🧭';
+                }
             });
             if (state.adventure.training === undefined) state.adventure.training = false;
             if (state.adventure.trainingWins === undefined) state.adventure.trainingWins = 0;
             if (state.adventure.awaitingBattle === undefined) state.adventure.awaitingBattle = false;
             if (state.adventure.inCombat === undefined) state.adventure.inCombat = false;
             if (state.adventure.activeBattle === undefined) state.adventure.activeBattle = null;
+            if (state.adventure.inCombat) {
+                state.adventure.inCombat = false;
+                state.adventure.activeBattle = null;
+                state.adventure.playerTeamState = null;
+                state.adventure.awaitingBattle = true;
+            }
             if (!state.tutorial) state.tutorial = { ...DEFAULT_STATE.tutorial };
             if (state.tutorial.step === undefined) state.tutorial.step = DEFAULT_STATE.tutorial.step;
             if (state.tutorial.guidedPulls === undefined) state.tutorial.guidedPulls = 0;
@@ -1807,6 +1817,7 @@
                 return {
                     id: `region-${region.pool}`,
                     name: region.name,
+                    emoji: region.emoji,
                     description: region.desc,
                     poolLabel: region.pool,
                     rarity: region.rarity,
@@ -1854,15 +1865,17 @@
                 if (region.cleared) stageLabel = 'Cleared';
                 else if (isActive && region.inBossRush) stageLabel = 'Boss Rush';
                 else if (isActive) stageLabel = `Challenger ${region.progressIndex + 1}`;
+                const rarityMeta = RARITY_METADATA[region.rarity] || { emoji: '⚪', name: region.rarity };
+                const elementMeta = ELEMENT_METADATA[region.element] || { emoji: '✨', name: region.element };
                 const btn = document.createElement('button');
                 btn.className = `w-full text-left px-4 py-3 rounded-2xl border ${region.cleared ? 'bg-black/30 border-white/5 text-slate-400 hover:bg-slate-800/70' : 'bg-slate-800 border-white/10 text-white hover:bg-slate-700'}`;
                 btn.innerHTML = `
                     <div class="flex justify-between items-center">
-                        <span class="text-[10px] font-black uppercase tracking-[0.2em]">${region.name}</span>
+                        <span class="text-[10px] font-black uppercase tracking-[0.2em]">${region.emoji} ${region.name}</span>
                         <span class="text-[8px] font-black uppercase ${region.cleared ? 'text-emerald-400' : 'text-amber-300'}">${region.cleared ? 'Cleared • Train' : region.rarity}</span>
                     </div>
                     <div class="text-[9px] text-slate-400 mt-1">${region.description}</div>
-                    <div class="text-[8px] text-slate-500 uppercase tracking-[0.2em] mt-1">Element: ${region.element}</div>
+                    <div class="text-[8px] text-slate-500 uppercase tracking-[0.2em] mt-1">${rarityMeta.emoji} ${rarityMeta.name} • ${elementMeta.emoji} ${elementMeta.name}</div>
                     <div class="text-[8px] text-slate-500 uppercase tracking-[0.2em] mt-1">${stageLabel}</div>
                 `;
                 if (!state.adventure.inCombat) btn.onclick = () => startAdventureRegion(region.id);
@@ -1873,7 +1886,7 @@
                 list.appendChild(btn);
             });
             const active = getAdventureRegionById(state.adventure.currentRegionId);
-            document.getElementById('adventure-region-title').innerText = active ? active.name : 'No Region';
+            document.getElementById('adventure-region-title').innerText = active ? `${active.emoji} ${active.name}` : 'No Region';
             const lobby = document.getElementById('adventure-lobby');
             if (active && !active.cleared && !state.adventure.training) {
                 const trainer = active.inBossRush ? ADVENTURE_BOSS_TRAINERS[active.poolLabel] : null;
@@ -2305,12 +2318,9 @@
                         <div class="move-chip">${dmgEmoji}</div>
                     </div>
                     <div class="flex flex-wrap gap-2 mt-2 text-[7px] text-slate-300 uppercase tracking-[0.2em]">
-                        <span class="move-chip">${elementEmoji}</span>
-                        <span class="move-chip">${rarityEmoji}</span>
-                        <span class="move-chip">${dmgEmoji}</span>
                         <span class="move-chip">${target}</span>
                     </div>
-                    ${extras.length ? `<div class="text-[9px] text-slate-200 mt-2">${extras.join(' • ')}</div>` : ''}
+                    <div class="text-[9px] text-slate-200 mt-2">${extras.length ? extras.join(' • ') : 'No special effects'}</div>
                 `;
                 moveList.appendChild(row);
             });
@@ -2509,12 +2519,9 @@
                             <div class="move-chip">${dmgEmoji}</div>
                         </div>
                         <div class="flex flex-wrap gap-2 mt-2 text-[7px] text-slate-300 uppercase tracking-[0.2em]">
-                            <span class="move-chip">${elementEmoji}</span>
-                            <span class="move-chip">${rarityEmoji}</span>
-                            <span class="move-chip">${dmgEmoji}</span>
                             <span class="move-chip">${target}</span>
                         </div>
-                        ${extras.length ? `<div class="text-[9px] text-slate-200 mt-2">${extras.join(' • ')}</div>` : ''}
+                        <div class="text-[9px] text-slate-200 mt-2">${extras.length ? extras.join(' • ') : 'No special effects'}</div>
                     </div>
                 `;
             }).join('');
