@@ -249,6 +249,7 @@
                 <div id="combat-flash-layer" class="absolute inset-0 pointer-events-none rounded-[2.5rem] z-10"></div>
                 <div class="flex justify-between items-center mb-6">
                     <span class="text-xs font-black text-red-400 uppercase tracking-widest">Stage <span id="combat-stage-num">1</span></span>
+                    <span class="text-xs font-black text-slate-300 uppercase tracking-widest">Round <span id="combat-round-num">1</span></span>
                     <button onclick="stopAutoBattle()" class="text-[9px] font-black text-slate-500 underline uppercase">Abort</button>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -284,7 +285,7 @@
                     </div>
                     <div id="adventure-combat" class="hidden">
                         <div class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-300 mb-3">
-                            Stage <span id="adventure-stage-num">1</span> • <span id="adventure-stage-type">Skirmish</span>
+                            Stage <span id="adventure-stage-num">1</span> • <span id="adventure-stage-type">Skirmish</span> • Round <span id="adventure-round-num">1</span>
                         </div>
                         <div class="flex justify-between items-center mb-3">
                             <span class="text-[9px] text-slate-500 uppercase tracking-[0.2em]" id="adventure-mode-note"></span>
@@ -1500,6 +1501,18 @@
             log.scrollTop = log.scrollHeight;
         }
 
+        function renderCooldowns(unit) {
+            if (!unit?.moves?.length) return '';
+            return unit.moves.map(id => {
+                const move = getMoveById(id);
+                if (!move) return '';
+                const cd = unit.cooldowns?.[id] ?? 0;
+                const status = cd > 0 ? `CD ${cd}` : 'Ready';
+                const style = cd > 0 ? 'bg-slate-900/60 text-slate-400' : 'bg-emerald-500/20 text-emerald-200';
+                return `<span class="px-2 py-1 rounded-full border border-white/5 ${style}">${move.name} • ${status}</span>`;
+            }).join('');
+        }
+
         function getMoveListForEmoji(emoji, inv = null) {
             const learned = inv?.learnedMoves || [];
             const moveIds = ['basic_strike', getMoveIdForEmoji(emoji), ...learned];
@@ -1904,7 +1917,7 @@
                 ` : '';
                 lobby.innerHTML = `
                     <div class="text-[70px] mb-3">⚔️</div>
-                    <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.3em] mb-3">${active.inBossRush ? 'Boss Rush' : `Challenger ${active.progressIndex + 1}`}</p>
+                    <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.3em] mb-3">${active.inBossRush ? 'Boss Rush - Defeat 3 Teams' : `Challenger ${active.progressIndex + 1}`}</p>
                     ${trainerBlock}
                     <button onclick="startAdventureBattle()" class="bg-emerald-400 text-black px-8 py-3 rounded-2xl font-black text-xs uppercase">Start Battle</button>
                 `;
@@ -1985,13 +1998,27 @@
             const log = document.getElementById('adventure-log');
             log.innerHTML = `<div class="text-white border-b border-white/5 mb-1 pb-1">ADVENTURE</div>`;
             let round = 1;
+            document.getElementById('adventure-round-num').innerText = round;
             const updateUI = () => {
-                document.getElementById('adventure-player-team').innerHTML = pUnits.map(u => `<div class="${u.hp<=0?'opacity-20':''}"><div class="flex justify-between text-[7px] font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div><div class="h-1 bg-black overflow-hidden"><div class="h-full bg-green-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div></div>`).join('');
-                document.getElementById('adventure-enemy-team').innerHTML = eUnits.map(u => `<div class="${u.hp<=0?'opacity-20':''}"><div class="flex justify-between text-[7px] font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div><div class="h-1 bg-black overflow-hidden"><div class="h-full bg-red-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div></div>`).join('');
+                document.getElementById('adventure-player-team').innerHTML = pUnits.map(u => `
+                    <div class="${u.hp<=0?'opacity-20':''}">
+                        <div class="flex justify-between font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div>
+                        <div class="h-1 bg-black overflow-hidden"><div class="h-full bg-green-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div>
+                        <div class="flex flex-wrap gap-2 mt-2">${renderCooldowns(u)}</div>
+                    </div>
+                `).join('');
+                document.getElementById('adventure-enemy-team').innerHTML = eUnits.map(u => `
+                    <div class="${u.hp<=0?'opacity-20':''}">
+                        <div class="flex justify-between font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div>
+                        <div class="h-1 bg-black overflow-hidden"><div class="h-full bg-red-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div>
+                        <div class="flex flex-wrap gap-2 mt-2">${renderCooldowns(u)}</div>
+                    </div>
+                `).join('');
             };
             while (pUnits.some(u => u.hp > 0) && eUnits.some(u => u.hp > 0)) {
                 updateUI();
                 appendLog(log, `<div class="text-slate-400">Round ${round}</div>`);
+                document.getElementById('adventure-round-num').innerText = round;
                 let actors = [...pUnits, ...eUnits].filter(u=>u.hp>0).sort((a,b)=>getModifiedStat(b, 'spd') - getModifiedStat(a, 'spd'));
                 for (let u of actors) {
                     if (u.hp <= 0) continue;
@@ -2599,6 +2626,7 @@
             document.getElementById('arena-info-stage').innerText = state.stage;
             log.innerHTML = `<div class="text-white border-b border-white/5 mb-1 pb-1">STAGE ${state.stage}</div>`;
             let round = 1;
+            document.getElementById('combat-round-num').innerText = round;
             
             let pUnits = state.team.map(id => {
                 const emoji = EMOJIS.find(x => x.id === id);
@@ -2615,13 +2643,26 @@
             eUnits.forEach(resetBaseStats);
 
             const updateUI = () => {
-                document.getElementById('battle-player-team').innerHTML = pUnits.map(u => `<div class="${u.hp<=0?'opacity-20':''}"><div class="flex justify-between text-[7px] font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div><div class="h-1 bg-black overflow-hidden"><div class="h-full bg-green-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div></div>`).join('');
-                document.getElementById('battle-enemy-team').innerHTML = eUnits.map(u => `<div class="${u.hp<=0?'opacity-20':''}"><div class="flex justify-between text-[7px] font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div><div class="h-1 bg-black overflow-hidden"><div class="h-full bg-red-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div></div>`).join('');
+                document.getElementById('battle-player-team').innerHTML = pUnits.map(u => `
+                    <div class="${u.hp<=0?'opacity-20':''}">
+                        <div class="flex justify-between font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div>
+                        <div class="h-1 bg-black overflow-hidden"><div class="h-full bg-green-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div>
+                        <div class="flex flex-wrap gap-2 mt-2">${renderCooldowns(u)}</div>
+                    </div>
+                `).join('');
+                document.getElementById('battle-enemy-team').innerHTML = eUnits.map(u => `
+                    <div class="${u.hp<=0?'opacity-20':''}">
+                        <div class="flex justify-between font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div>
+                        <div class="h-1 bg-black overflow-hidden"><div class="h-full bg-red-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div>
+                        <div class="flex flex-wrap gap-2 mt-2">${renderCooldowns(u)}</div>
+                    </div>
+                `).join('');
             };
 
             while (pUnits.some(u=>u.hp>0) && eUnits.some(u=>u.hp>0) && state.isAutoBattling) {
                 updateUI();
                 appendLog(log, `<div class="text-slate-400">Round ${round}</div>`);
+                document.getElementById('combat-round-num').innerText = round;
                 let actors = [...pUnits, ...eUnits].filter(u=>u.hp>0).sort((a,b)=>getModifiedStat(b, 'spd') - getModifiedStat(a, 'spd'));
                 for (let u of actors) {
                     if (u.hp <= 0 || !state.isAutoBattling) continue;
