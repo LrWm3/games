@@ -67,7 +67,11 @@
         .element-dark { color: var(--dark); }
         
         .type-badge { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,0.3); border: 1px border-white/10; }
-        .tutorial-highlight { box-shadow: 0 0 0 2px rgba(255,255,255,0.7), 0 0 18px rgba(59,130,246,0.7); border-color: rgba(59,130,246,0.8) !important; }
+        .tutorial-highlight { position: relative; z-index: 6; box-shadow: 0 0 0 3px rgba(255,255,255,0.85), 0 0 22px rgba(59,130,246,0.8); border-color: rgba(59,130,246,0.9) !important; }
+        #view-summon.tutorial-dim { position: relative; }
+        #view-summon.tutorial-dim::after { content: ''; position: absolute; inset: 0; background: rgba(2,6,23,0.72); border-radius: 24px; pointer-events: none; }
+        #view-summon.tutorial-dim > * { position: relative; }
+        #view-summon.tutorial-dim #btn-single-summon { position: relative; z-index: 5; }
         .starter-wiggle { animation: starter-wiggle 0.6s ease-in-out; }
         @keyframes starter-wiggle {
             0% { transform: translate(0, 0) rotate(0deg); }
@@ -99,8 +103,8 @@
 
     <!-- Header -->
     <header class="bg-slate-900/95 backdrop-blur-md border-b border-white/10 p-3 sticky top-0 z-50">
-        <div class="max-w-5xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-2">
+        <div class="max-w-5xl mx-auto flex flex-col sm:flex-row sm:justify-between sm:items-center items-start gap-3">
+            <div class="flex items-center gap-2 min-w-0">
                 <span class="text-2xl">🌍</span>
                 <div class="leading-none">
                     <h1 class="text-lg font-bold uppercase tracking-tight">Emoji Saga</h1>
@@ -110,8 +114,8 @@
                     </div>
                 </div>
             </div>
-            <div class="flex flex-col items-end gap-2">
-                <div class="flex flex-wrap gap-2 justify-end">
+            <div class="flex flex-col items-start sm:items-end gap-2 w-full sm:w-auto">
+                <div class="flex flex-wrap gap-2 justify-start sm:justify-end w-full">
                 <div class="bg-black/40 px-3 py-1.5 rounded-full border border-yellow-500/30 flex items-center gap-2 text-xs">
                     <i class="fas fa-coins text-yellow-500"></i>
                     <span id="stat-gold" class="font-bold">0</span>
@@ -1203,9 +1207,13 @@
             const squadBtn = document.getElementById('btn-tab-team');
             const adventureBtn = document.getElementById('btn-tab-adventure');
             const summonBtn = document.getElementById('btn-single-summon');
+            const summonView = document.getElementById('view-summon');
+            const isPullStep = isActive && (state.tutorial.step === TUTORIAL_STEPS.PULL_ONE || state.tutorial.step === TUTORIAL_STEPS.PULL_TWO);
+            const summonVisible = summonView && !summonView.classList.contains('hidden');
             if (squadBtn) squadBtn.classList.toggle('tutorial-highlight', isActive && state.tutorial.step === TUTORIAL_STEPS.TEAM);
             if (adventureBtn) adventureBtn.classList.toggle('tutorial-highlight', isActive && state.tutorial.step === TUTORIAL_STEPS.TEAM);
-            if (summonBtn) summonBtn.classList.toggle('tutorial-highlight', isActive && (state.tutorial.step === TUTORIAL_STEPS.PULL_ONE || state.tutorial.step === TUTORIAL_STEPS.PULL_TWO));
+            if (summonBtn) summonBtn.classList.toggle('tutorial-highlight', isPullStep);
+            if (summonView) summonView.classList.toggle('tutorial-dim', isPullStep && summonVisible);
         }
 
         function renderTutorial() {
@@ -1219,6 +1227,7 @@
             }
             if (state.tutorial.suspended) {
                 overlay.classList.add('hidden');
+                setTutorialHighlights(true);
                 return;
             }
             const step = state.tutorial.step;
