@@ -175,6 +175,8 @@
 
                         <div id="inspect-rarity-badge" class="inline-block px-3 py-1 rounded-full text-[7px] font-black uppercase mb-6 tracking-[0.2em] border">RARITY</div>
                         <p id="inspect-desc" class="text-[10px] text-slate-300 leading-relaxed mb-6">A short description.</p>
+                        <div id="inspect-type-count" class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">Type Found: 0</div>
+                        <div id="inspect-dupe-count" class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-6">Duplicates: 0</div>
                         
                         <div class="grid grid-cols-2 gap-2 text-left mb-6">
                             <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-slate-500 uppercase">LV</p><span class="font-bold text-sm" id="inspect-lvl">0</span></div>
@@ -628,6 +630,7 @@
                         state.inventory[id].baseRarity = orig.rarity;
                         state.inventory[id].currentRarity = orig.rarity;
                     }
+                    if (state.inventory[id].dupes === undefined) state.inventory[id].dupes = 0;
                 });
             }
             state.isAutoBattling = false;
@@ -733,11 +736,12 @@
         function pickWeightedRarity(stage) {
             const pools = [
                 { max: 3, weights: { trash: 0.45, common: 0.35, uncommon: 0.15, rare: 0.05 } },
-                { max: 7, weights: { trash: 0.25, common: 0.35, uncommon: 0.2, rare: 0.15, epic: 0.05 } },
-                { max: 14, weights: { trash: 0.1, common: 0.3, uncommon: 0.2, rare: 0.2, epic: 0.15, legendary: 0.05 } },
-                { max: 24, weights: { common: 0.25, uncommon: 0.2, rare: 0.25, epic: 0.18, legendary: 0.1, divine: 0.02 } },
-                { max: 39, weights: { common: 0.15, uncommon: 0.15, rare: 0.25, epic: 0.23, legendary: 0.17, divine: 0.04, eternal: 0.01 } },
-                { max: Infinity, weights: { uncommon: 0.12, rare: 0.23, epic: 0.27, legendary: 0.22, divine: 0.12, eternal: 0.04 } }
+                { max: 7, weights: { common: 0.38, uncommon: 0.26, rare: 0.22, epic: 0.1, legendary: 0.04 } },
+                { max: 14, weights: { uncommon: 0.3, rare: 0.28, epic: 0.22, legendary: 0.15, divine: 0.05 } },
+                { max: 24, weights: { rare: 0.35, epic: 0.27, legendary: 0.22, divine: 0.12, eternal: 0.04 } },
+                { max: 39, weights: { epic: 0.34, legendary: 0.3, divine: 0.22, eternal: 0.14 } },
+                { max: 45, weights: { legendary: 0.36, divine: 0.34, eternal: 0.3 } },
+                { max: Infinity, weights: { divine: 0.55, eternal: 0.45 } }
             ];
             const bucket = pools.find(p => stage <= p.max);
             const roll = Math.random();
@@ -772,6 +776,13 @@
                 team.push({ ...emoji, ...stats, lvl: level, maxHp: stats.hp, isPlayer: false, currentRarity: rarity });
             }
             return team.sort(() => Math.random() - 0.5);
+        }
+
+        function getArenaReward(stage) {
+            if (stage <= 3) return 80 * stage;
+            if (stage <= 7) return 160 * stage;
+            if (stage <= 15) return 280 * stage;
+            return 400 * stage;
         }
 
         function getLevelUpCost(inv) {
@@ -813,7 +824,8 @@
                 const emoji = pool[Math.floor(Math.random() * pool.length)];
                 const isNew = !state.inventory[emoji.id];
                 results.push({ emoji, isNew });
-                if (isNew) state.inventory[emoji.id] = { lvl: 1, baseRarity: emoji.rarity, currentRarity: emoji.rarity };
+                if (isNew) state.inventory[emoji.id] = { lvl: 1, baseRarity: emoji.rarity, currentRarity: emoji.rarity, dupes: 0 };
+                else state.inventory[emoji.id].dupes = (state.inventory[emoji.id].dupes || 0) + 1;
             }
             save(); renderSummonResults(results);
         }
@@ -897,6 +909,13 @@
             rarityBadge.innerText = `${inv.currentRarity.toUpperCase()} (NAT ${inv.baseRarity.toUpperCase()})`;
             rarityBadge.className = `inline-block px-3 py-1 rounded-full text-[7px] font-black uppercase mb-4 tracking-widest border border-white/20 text-${inv.currentRarity}`;
             document.getElementById('inspect-desc').innerText = e.desc;
+            const typeCount = Object.keys(state.inventory).filter(idStr => {
+                const id = parseInt(idStr, 10);
+                const entry = EMOJIS.find(x => x.id === id);
+                return entry && entry.type === e.type;
+            }).length;
+            document.getElementById('inspect-type-count').innerText = `${e.type.toUpperCase()} FOUND: ${typeCount}`;
+            document.getElementById('inspect-dupe-count').innerText = `DUPLICATES: ${inv.dupes || 0}`;
             
             const lvlCost = getLevelUpCost(inv);
             const lvlBtn = document.getElementById('btn-lvl-up');
@@ -988,7 +1007,7 @@
             }
             if (!state.isAutoBattling) return;
             if (eUnits.every(u => u.hp <= 0)) {
-                state.gold += state.stage * 400; state.stage++; save(); updateStatsUI(); setTimeout(startAutoCycle, 1500);
+                state.gold += getArenaReward(state.stage); state.stage++; save(); updateStatsUI(); setTimeout(startAutoCycle, 1500);
             } else {
                 state.stage = 1; save(); updateStatsUI(); setTimeout(startAutoCycle, 800);
             }
