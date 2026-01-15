@@ -353,6 +353,13 @@
                     </div>
                     <div id="emojidex-move-list" class="space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar pr-1"></div>
                 </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 lg:col-span-2">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xs font-black uppercase tracking-widest">Status Effects</h3>
+                        <div class="text-[9px] bg-slate-800 px-3 py-1 rounded-full">Arena Rules</div>
+                    </div>
+                    <div id="emojidex-status-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+                </div>
             </div>
         </section>
 
@@ -2109,6 +2116,8 @@
                     region.bossRushIndex = 0;
                     state.adventure.playerTeamState = null;
                     state.adventure.awaitingBattle = false;
+                    state.adventure.inCombat = false;
+                    state.adventure.activeBattle = null;
                     save();
                     updateStatsUI();
                     renderAdventure();
@@ -2344,6 +2353,7 @@
         function renderEmojidex() {
             const emojiGrid = document.getElementById('emojidex-emoji-grid');
             const moveList = document.getElementById('emojidex-move-list');
+            const statusList = document.getElementById('emojidex-status-list');
             const ownedIds = new Set(Object.keys(state.inventory).map(id => parseInt(id, 10)));
             const discoveredMoves = new Set(['basic_strike']);
             ownedIds.forEach(id => {
@@ -2404,6 +2414,23 @@
                 `;
                 moveList.appendChild(row);
             });
+
+            if (statusList) {
+                statusList.innerHTML = '';
+                Object.values(ELEMENT_STATUS_EFFECTS).forEach(status => {
+                    const card = document.createElement('div');
+                    const elementMeta = ELEMENT_METADATA[status.element] || { emoji: '✨', name: status.element };
+                    card.className = 'bg-black/40 border border-white/10 rounded-2xl p-4';
+                    card.innerHTML = `
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="text-base">${elementMeta.emoji}</div>
+                            <div class="text-[10px] font-black uppercase tracking-widest">${status.name}</div>
+                        </div>
+                        <div class="text-[9px] text-slate-300 leading-relaxed">${status.desc}</div>
+                    `;
+                    statusList.appendChild(card);
+                });
+            }
         }
 
         function getTutorRequirement(baseRarity) {
