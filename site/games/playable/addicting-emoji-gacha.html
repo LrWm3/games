@@ -614,7 +614,8 @@
             water: { emoji: '💧', name: 'Water' },
             nature: { emoji: '🌿', name: 'Nature' },
             light: { emoji: '✨', name: 'Light' },
-            dark: { emoji: '🌑', name: 'Dark' }
+            dark: { emoji: '🌑', name: 'Dark' },
+            neutral: { emoji: '⬜', name: 'Neutral' }
         };
         const RARITY_METADATA = {
             trash: { emoji: '🗑️', name: 'Trash' },
@@ -2411,7 +2412,7 @@
                 };
                 const target = targetLabels[move.target] || move.target || '—';
                 const extras = formatMoveEffects(move);
-                const elementEmoji = ELEMENT_METADATA[move.element]?.emoji || '✨';
+                const elementEmoji = ELEMENT_METADATA[move.element]?.emoji || '⬜';
                 row.className = `move-card ${element} ${rarity} ${dmgType}`;
                 row.innerHTML = `
                     <div class="flex justify-between items-start gap-2">
