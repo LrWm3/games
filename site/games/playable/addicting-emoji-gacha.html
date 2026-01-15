@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Emoji Saga: 150 Heroes</title>
+    <title>Emoji Saga: 151 Heroes</title>
     
-    <meta name="game-description" content="Ultimate Emoji Gacha. 150 unique heroes, Trash-to-Eternal ascension, and elemental strategy.">
+    <meta name="game-description" content="Ultimate Emoji Gacha. 151 unique heroes, Trash-to-Eternal ascension, and elemental strategy.">
     <meta name="game-tags" content="gacha, rpg, emoji, card-game, strategy, auto-battle, ascension, collection">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -41,6 +41,7 @@
         .card-base { transition: all 0.2s ease; position: relative; overflow: hidden; border-width: 2px; }
         .rarity-card-trash { background: linear-gradient(135deg, #2d1a12, #1a0f0a); border-color: #442b1d; color: #78716c; }
         .rarity-card-common { background: linear-gradient(135deg, #1e293b, #0f172a); border-color: #475569; }
+        .rarity-card-uncommon { background: linear-gradient(135deg, #0f3d3a, #0a2827); border-color: #14b8a6; box-shadow: inset 0 0 10px rgba(20, 184, 166, 0.3); }
         .rarity-card-rare { background: linear-gradient(135deg, #172554, #1e3a8a); border-color: #3b82f6; box-shadow: inset 0 0 10px rgba(59, 130, 246, 0.3); }
         .rarity-card-epic { background: linear-gradient(135deg, #4c1d95, #581c87); border-color: #a855f7; box-shadow: 0 0 15px rgba(168, 85, 247, 0.2); }
         .rarity-card-legendary { background: linear-gradient(135deg, #78350f, #451a03); border-color: #f59e0b; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
@@ -77,10 +78,10 @@
                 <span class="text-2xl">🌍</span>
                 <div class="leading-none">
                     <h1 class="text-lg font-bold uppercase tracking-tight">Emoji Saga</h1>
-                    <span class="text-[8px] text-indigo-400 font-black uppercase tracking-[0.2em]">150 Heroes Update</span>
+                    <span class="text-[8px] text-indigo-400 font-black uppercase tracking-[0.2em]">151 Heroes Update</span>
                 </div>
             </div>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2 justify-end">
                 <div class="bg-black/40 px-3 py-1.5 rounded-full border border-yellow-500/30 flex items-center gap-2 text-xs">
                     <i class="fas fa-coins text-yellow-500"></i>
                     <span id="stat-gold" class="font-bold">0</span>
@@ -88,6 +89,14 @@
                 <div class="bg-black/40 px-3 py-1.5 rounded-full border border-indigo-500/30 flex items-center gap-2 text-xs">
                     <i class="fas fa-ticket text-indigo-400"></i>
                     <span id="stat-tickets" class="font-bold">0</span>
+                </div>
+                <div class="bg-black/40 px-3 py-1.5 rounded-full border border-blue-400/30 flex items-center gap-2 text-xs">
+                    <i class="fas fa-ticket text-blue-300"></i>
+                    <span id="stat-rare-tickets" class="font-bold">0</span>
+                </div>
+                <div class="bg-black/40 px-3 py-1.5 rounded-full border border-amber-400/30 flex items-center gap-2 text-xs">
+                    <i class="fas fa-ticket text-amber-300"></i>
+                    <span id="stat-legendary-tickets" class="font-bold">0</span>
                 </div>
             </div>
         </div>
@@ -99,6 +108,9 @@
         <button onclick="switchTab('arena')" id="btn-tab-arena" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Arena</button>
         <button onclick="switchTab('shop')" id="btn-tab-shop" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Market</button>
     </nav>
+    <div id="arena-info-bar" class="hidden bg-slate-900/90 border-b border-white/5 text-center text-[9px] font-black uppercase tracking-[0.3em] text-red-300 py-2">
+        Arena Live • Stage <span id="arena-info-stage" class="text-white">1</span>
+    </div>
 
     <main class="flex-grow container mx-auto max-w-5xl p-4 mb-20">
         
@@ -109,15 +121,22 @@
                 <div class="text-[100px] opacity-10 absolute animate-pulse">👑</div>
                 <div class="relative z-10">
                     <h2 class="text-2xl font-black mb-1 italic">THE WORLD GATE</h2>
-                    <p class="text-[9px] text-indigo-400 font-bold mb-4 tracking-[0.4em]">DISCOVER 150 HEROES</p>
+                    <p class="text-[9px] text-indigo-400 font-bold mb-4 tracking-[0.4em]">DISCOVER 151 HEROES</p>
                     <div class="inline-block bg-black/60 px-4 py-1.5 rounded-full border border-white/10 text-[10px]">
                         Pity: <span id="pity-count" class="text-yellow-400">0/50</span>
                     </div>
                 </div>
             </div>
             <div class="flex flex-col gap-4 max-w-xs mx-auto">
-                <button onclick="startSummonSequence(1)" class="bg-white text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">SINGLE SUMMON</button>
-                <button onclick="startSummonSequence(10)" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-indigo-900 transition-all">MULTI SUMMON (10x)</button>
+                <div class="text-[9px] font-black uppercase tracking-[0.35em] text-slate-400">Standard Tickets</div>
+                <button onclick="startSummonSequence(1, 'standard')" class="bg-white text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">SINGLE SUMMON</button>
+                <button onclick="startSummonSequence(10, 'standard')" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-indigo-900 transition-all">MULTI SUMMON (10x)</button>
+                <div class="text-[9px] font-black uppercase tracking-[0.35em] text-blue-300 mt-2">Rare Tickets</div>
+                <button onclick="startSummonSequence(1, 'rare')" class="bg-blue-400 text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">RARE SUMMON</button>
+                <button onclick="startSummonSequence(10, 'rare')" class="bg-gradient-to-r from-sky-500 to-blue-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-blue-900 transition-all">RARE MULTI (10x)</button>
+                <div class="text-[9px] font-black uppercase tracking-[0.35em] text-amber-300 mt-2">Legendary Tickets</div>
+                <button onclick="startSummonSequence(1, 'legendary')" class="bg-amber-400 text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">LEGEND SUMMON</button>
+                <button onclick="startSummonSequence(10, 'legendary')" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-amber-900 transition-all">LEGEND MULTI (10x)</button>
             </div>
         </section>
 
@@ -128,7 +147,7 @@
                     <div id="team-slots" class="grid grid-cols-3 gap-3 h-28 mb-6"></div>
                     <div class="flex justify-between items-center border-b border-white/10 pb-2">
                         <h3 class="text-xs font-black uppercase tracking-widest">Collection</h3>
-                        <div class="text-[9px] bg-slate-800 px-3 py-1 rounded-full" id="collection-count">0/150</div>
+                        <div class="text-[9px] bg-slate-800 px-3 py-1 rounded-full" id="collection-count">0/151</div>
                     </div>
                     <div id="roster-grid" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 max-h-[450px] overflow-y-auto custom-scrollbar p-1"></div>
                 </div>
@@ -145,6 +164,7 @@
                         </div>
 
                         <div id="inspect-rarity-badge" class="inline-block px-3 py-1 rounded-full text-[7px] font-black uppercase mb-6 tracking-[0.2em] border">RARITY</div>
+                        <p id="inspect-desc" class="text-[10px] text-slate-300 leading-relaxed mb-6">A short description.</p>
                         
                         <div class="grid grid-cols-2 gap-2 text-left mb-6">
                             <div class="bg-black/40 p-2.5 rounded-2xl border border-white/5"><p class="text-[7px] text-slate-500 uppercase">LV</p><span class="font-bold text-sm" id="inspect-lvl">0</span></div>
@@ -192,14 +212,30 @@
         <!-- Shop -->
         <section id="view-shop" class="tab-content hidden py-6">
             <div class="text-center mb-10"><h2 class="text-3xl font-black uppercase">Market</h2></div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
                 <div class="bg-slate-900 p-8 rounded-3xl border border-white/5 text-center flex flex-col items-center">
-                    <h3 class="font-black text-lg mb-4 uppercase">1 Key</h3>
-                    <button onclick="buyTickets(1, 1000)" class="w-full bg-indigo-600 py-3 rounded-xl font-black text-xs">1,000 GOLD</button>
+                    <h3 class="font-black text-lg mb-4 uppercase">1 Ticket</h3>
+                    <button onclick="buyTickets('standard', 1, 1000)" class="w-full bg-indigo-600 py-3 rounded-xl font-black text-xs">1,000 GOLD</button>
                 </div>
                 <div class="bg-slate-900 p-8 rounded-3xl border border-indigo-500/30 text-center flex flex-col items-center">
-                    <h3 class="font-black text-lg mb-4 uppercase">10 Keys</h3>
-                    <button onclick="buyTickets(10, 8500)" class="w-full bg-indigo-600 py-3 rounded-xl font-black text-xs">8,500 GOLD</button>
+                    <h3 class="font-black text-lg mb-4 uppercase">10 Tickets</h3>
+                    <button onclick="buyTickets('standard', 10, 8500)" class="w-full bg-indigo-600 py-3 rounded-xl font-black text-xs">8,500 GOLD</button>
+                </div>
+                <div class="bg-slate-900 p-8 rounded-3xl border border-blue-500/30 text-center flex flex-col items-center">
+                    <h3 class="font-black text-lg mb-4 uppercase">1 Rare Ticket</h3>
+                    <button onclick="buyTickets('rare', 1, 2500)" class="w-full bg-blue-500 py-3 rounded-xl font-black text-xs">2,500 GOLD</button>
+                </div>
+                <div class="bg-slate-900 p-8 rounded-3xl border border-blue-500/30 text-center flex flex-col items-center">
+                    <h3 class="font-black text-lg mb-4 uppercase">10 Rare Tickets</h3>
+                    <button onclick="buyTickets('rare', 10, 22500)" class="w-full bg-blue-500 py-3 rounded-xl font-black text-xs">22,500 GOLD</button>
+                </div>
+                <div class="bg-slate-900 p-8 rounded-3xl border border-amber-500/30 text-center flex flex-col items-center">
+                    <h3 class="font-black text-lg mb-4 uppercase">1 Legendary Ticket</h3>
+                    <button onclick="buyTickets('legendary', 1, 6000)" class="w-full bg-amber-500 py-3 rounded-xl font-black text-xs">6,000 GOLD</button>
+                </div>
+                <div class="bg-slate-900 p-8 rounded-3xl border border-amber-500/30 text-center flex flex-col items-center">
+                    <h3 class="font-black text-lg mb-4 uppercase">10 Legendary Tickets</h3>
+                    <button onclick="buyTickets('legendary', 10, 54000)" class="w-full bg-amber-500 py-3 rounded-xl font-black text-xs">54,000 GOLD</button>
                 </div>
             </div>
         </section>
@@ -216,7 +252,7 @@
     <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 px-6 py-3 bg-white text-black text-[10px] rounded-full font-black shadow-2xl opacity-0 transition-all duration-500 z-[300] uppercase tracking-widest">NOTIFY</div>
 
     <script>
-        // --- MASTER DATA (150 TOTAL) ---
+        // --- MASTER DATA (151 TOTAL) ---
         const EMOJIS = [
             // TRASH (8)
             { id: 101, char: '🗑️', name: 'Tin Can', rarity: 'trash', element: 'dark', type: 'Tank' },
@@ -231,9 +267,9 @@
             { id: 1, char: '🔥', name: 'Inferno', rarity: 'rare', element: 'fire', type: 'Striker' },
             { id: 2, char: '🌋', name: 'Magma', rarity: 'epic', element: 'fire', type: 'Tank' },
             { id: 3, char: '🐉', name: 'Drake', rarity: 'legendary', element: 'fire', type: 'Striker' },
-            { id: 4, char: '☄️', name: 'Comet', rarity: 'common', element: 'fire', type: 'Striker' },
+            { id: 4, char: '☄️', name: 'Comet', rarity: 'uncommon', element: 'fire', type: 'Striker' },
             { id: 5, char: '🦁', name: 'Leonis', rarity: 'epic', element: 'fire', type: 'Striker' },
-            { id: 61, char: '🌶️', name: 'Pepper', rarity: 'common', element: 'fire', type: 'Speedster' },
+            { id: 61, char: '🌶️', name: 'Pepper', rarity: 'uncommon', element: 'fire', type: 'Speedster' },
             { id: 62, char: '🥓', name: 'Sizzle', rarity: 'common', element: 'fire', type: 'Tank' },
             { id: 64, char: '👺', name: 'Oni', rarity: 'legendary', element: 'fire', type: 'Striker' },
             { id: 109, char: '🧨', name: 'Dynamo', rarity: 'rare', element: 'fire', type: 'Striker' },
@@ -245,15 +281,15 @@
             { id: 150, char: '🍔', name: 'Beef', rarity: 'rare', element: 'fire', type: 'Tank' },
             { id: 151, char: '🍺', name: 'Froth', rarity: 'common', element: 'fire', type: 'Tank' },
             { id: 152, char: '🌞', name: 'Solaris', rarity: 'legendary', element: 'fire', type: 'Striker' },
-            { id: 153, char: '🍩', name: 'Glaze', rarity: 'common', element: 'fire', type: 'Speedster' },
+            { id: 153, char: '🍩', name: 'Glaze', rarity: 'uncommon', element: 'fire', type: 'Speedster' },
             // WATER (25)
-            { id: 6, char: '💧', name: 'Aqua', rarity: 'common', element: 'water', type: 'Speedster' },
+            { id: 6, char: '💧', name: 'Aqua', rarity: 'uncommon', element: 'water', type: 'Speedster' },
             { id: 7, char: '🦈', name: 'Meg', rarity: 'rare', element: 'water', type: 'Striker' },
             { id: 8, char: '🐳', name: 'Levi', rarity: 'legendary', element: 'water', type: 'Tank' },
             { id: 9, char: '🧜', name: 'Siren', rarity: 'divine', element: 'water', type: 'Speedster' },
             { id: 10, char: '🐙', name: 'Kraken', rarity: 'epic', element: 'water', type: 'Tank' },
-            { id: 66, char: '🧊', name: 'Frost', rarity: 'common', element: 'water', type: 'Tank' },
-            { id: 111, char: '🛶', name: 'Drift', rarity: 'common', element: 'water', type: 'Speedster' },
+            { id: 66, char: '🧊', name: 'Frost', rarity: 'uncommon', element: 'water', type: 'Tank' },
+            { id: 111, char: '🛶', name: 'Drift', rarity: 'uncommon', element: 'water', type: 'Speedster' },
             { id: 112, char: '⛲', name: 'Geyser', rarity: 'rare', element: 'water', type: 'Striker' },
             { id: 113, char: '⛵', name: 'Skiff', rarity: 'rare', element: 'water', type: 'Tank' },
             { id: 154, char: '🦞', name: 'Claw', rarity: 'rare', element: 'water', type: 'Striker' },
@@ -265,13 +301,13 @@
             { id: 160, char: '🐬', name: 'Echo', rarity: 'legendary', element: 'water', type: 'Speedster' },
             { id: 161, char: '☔', name: 'Shield', rarity: 'common', element: 'water', type: 'Tank' },
             // NATURE (25)
-            { id: 11, char: '🌿', name: 'Sprout', rarity: 'common', element: 'nature', type: 'Tank' },
+            { id: 11, char: '🌿', name: 'Sprout', rarity: 'uncommon', element: 'nature', type: 'Tank' },
             { id: 12, char: '🐯', name: 'Jungle', rarity: 'rare', element: 'nature', type: 'Striker' },
             { id: 13, char: '🦄', name: 'Mythic', rarity: 'epic', element: 'nature', type: 'Speedster' },
             { id: 14, char: '🌳', name: 'Oak', rarity: 'legendary', element: 'nature', type: 'Tank' },
-            { id: 15, char: '🌻', name: 'Sunny', rarity: 'common', element: 'nature', type: 'Striker' },
+            { id: 15, char: '🌻', name: 'Sunny', rarity: 'uncommon', element: 'nature', type: 'Striker' },
             { id: 70, char: '🦋', name: 'Morpho', rarity: 'epic', element: 'nature', type: 'Speedster' },
-            { id: 114, char: '🍄', name: 'Toad', rarity: 'common', element: 'nature', type: 'Tank' },
+            { id: 114, char: '🍄', name: 'Toad', rarity: 'uncommon', element: 'nature', type: 'Tank' },
             { id: 115, char: '🦗', name: 'Chirp', rarity: 'rare', element: 'nature', type: 'Speedster' },
             { id: 162, char: '🦍', name: 'Kong', rarity: 'legendary', element: 'nature', type: 'Striker' },
             { id: 163, char: '🐘', name: 'Pach', rarity: 'legendary', element: 'nature', type: 'Tank' },
@@ -282,7 +318,7 @@
             { id: 168, char: '🌵', name: 'Spine', rarity: 'common', element: 'nature', type: 'Tank' },
             { id: 169, char: '🍀', name: 'Luck', rarity: 'epic', element: 'nature', type: 'Speedster' },
             // LIGHT (25)
-            { id: 16, char: '✨', name: 'Star', rarity: 'common', element: 'light', type: 'Speedster' },
+            { id: 16, char: '✨', name: 'Star', rarity: 'uncommon', element: 'light', type: 'Speedster' },
             { id: 17, char: '😇', name: 'Aegis', rarity: 'rare', element: 'light', type: 'Tank' },
             { id: 18, char: '👑', name: 'Sov', rarity: 'legendary', element: 'light', type: 'Striker' },
             { id: 19, char: '💎', name: 'Gem', rarity: 'epic', element: 'light', type: 'Tank' },
@@ -294,10 +330,10 @@
             { id: 172, char: '🌈', name: 'Prism', rarity: 'legendary', element: 'light', type: 'Speedster' },
             { id: 173, char: '💍', name: 'Wealth', rarity: 'epic', element: 'light', type: 'Tank' },
             { id: 174, char: '🧞', name: 'Grant', rarity: 'divine', element: 'light', type: 'Striker' },
-            { id: 175, char: '💡', name: 'Volt', rarity: 'common', element: 'light', type: 'Striker' },
+            { id: 175, char: '💡', name: 'Volt', rarity: 'uncommon', element: 'light', type: 'Striker' },
             { id: 176, char: '🎻', name: 'Solo', rarity: 'rare', element: 'light', type: 'Speedster' },
             // DARK (25)
-            { id: 21, char: '🌑', name: 'Eclip', rarity: 'common', element: 'dark', type: 'Speedster' },
+            { id: 21, char: '🌑', name: 'Eclip', rarity: 'uncommon', element: 'dark', type: 'Speedster' },
             { id: 22, char: '🦇', name: 'Vamp', rarity: 'rare', element: 'dark', type: 'Striker' },
             { id: 23, char: '👁️', name: 'Void', rarity: 'divine', element: 'dark', type: 'Striker' },
             { id: 24, char: '👻', name: 'Wraith', rarity: 'epic', element: 'dark', type: 'Speedster' },
@@ -309,7 +345,7 @@
             { id: 180, char: '🕷️', name: 'Fang', rarity: 'rare', element: 'dark', type: 'Striker' },
             { id: 181, char: '🔮', name: 'Oracle', rarity: 'divine', element: 'dark', type: 'Speedster' },
             { id: 182, char: '👽', name: 'Zor', rarity: 'epic', element: 'dark', type: 'Striker' },
-            { id: 183, char: '🎭', name: 'Shadow', rarity: 'rare', element: 'dark', type: 'Striker' },
+            { id: 183, char: '👾', name: 'Shadow', rarity: 'eternal', element: 'dark', type: 'Striker' },
             { id: 184, char: '🕰️', name: 'Dread', rarity: 'rare', element: 'dark', type: 'Tank' },
             // MIXED/ETERNAL (Remaining)
             { id: 58, char: '🌀', name: 'Singu', rarity: 'eternal', element: 'dark', type: 'Striker' },
@@ -320,19 +356,236 @@
             { id: 187, char: '🎷', name: 'Jazz', rarity: 'rare', element: 'light', type: 'Speedster' },
             { id: 188, char: '🎾', name: 'Bounce', rarity: 'common', element: 'nature', type: 'Speedster' },
             { id: 189, char: '📷', name: 'Snap', rarity: 'common', element: 'light', type: 'Speedster' },
-            { id: 190, char: '🧊', name: 'Zero', rarity: 'legendary', element: 'water', type: 'Tank' }
+            { id: 190, char: '🧊', name: 'Zero', rarity: 'legendary', element: 'water', type: 'Tank' },
+            // EXPANSION (55)
+            { id: 191, char: '🧱', name: 'Brick', rarity: 'common', element: 'nature', type: 'Tank' },
+            { id: 192, char: '🪵', name: 'Log', rarity: 'common', element: 'nature', type: 'Tank' },
+            { id: 193, char: '🪨', name: 'Boulder', rarity: 'rare', element: 'nature', type: 'Tank' },
+            { id: 194, char: '🧯', name: 'Exting', rarity: 'rare', element: 'fire', type: 'Tank' },
+            { id: 195, char: '🪓', name: 'Axe', rarity: 'rare', element: 'nature', type: 'Striker' },
+            { id: 196, char: '🧲', name: 'Magnet', rarity: 'common', element: 'light', type: 'Striker' },
+            { id: 197, char: '🧪', name: 'Elixir', rarity: 'rare', element: 'light', type: 'Speedster' },
+            { id: 198, char: '🛡️', name: 'Bulwark', rarity: 'epic', element: 'light', type: 'Tank' },
+            { id: 199, char: '⚡', name: 'Bolt', rarity: 'rare', element: 'light', type: 'Striker' },
+            { id: 200, char: '🌊', name: 'Surge', rarity: 'epic', element: 'water', type: 'Striker' },
+            { id: 201, char: '🐚', name: 'Pearl', rarity: 'common', element: 'water', type: 'Tank' },
+            { id: 202, char: '🐟', name: 'Fin', rarity: 'common', element: 'water', type: 'Speedster' },
+            { id: 203, char: '🐊', name: 'Gator', rarity: 'rare', element: 'water', type: 'Tank' },
+            { id: 204, char: '🐋', name: 'Coloss', rarity: 'legendary', element: 'water', type: 'Tank' },
+            { id: 205, char: '🧜‍♂️', name: 'Merman', rarity: 'epic', element: 'water', type: 'Speedster' },
+            { id: 206, char: '🦭', name: 'Harbor', rarity: 'common', element: 'water', type: 'Tank' },
+            { id: 207, char: '🦅', name: 'Talon', rarity: 'rare', element: 'light', type: 'Striker' },
+            { id: 208, char: '🦉', name: 'Owl', rarity: 'epic', element: 'dark', type: 'Speedster' },
+            { id: 209, char: '🐺', name: 'Howl', rarity: 'legendary', element: 'dark', type: 'Striker' },
+            { id: 210, char: '🦂', name: 'Scorch', rarity: 'rare', element: 'fire', type: 'Striker' },
+            { id: 211, char: '🐝', name: 'Buzz', rarity: 'common', element: 'nature', type: 'Speedster' },
+            { id: 212, char: '🧄', name: 'Garlic', rarity: 'common', element: 'nature', type: 'Striker' },
+            { id: 213, char: '🥕', name: 'Carrot', rarity: 'common', element: 'nature', type: 'Speedster' },
+            { id: 214, char: '🥔', name: 'Spud', rarity: 'common', element: 'nature', type: 'Tank' },
+            { id: 215, char: '🥩', name: 'Steak', rarity: 'rare', element: 'fire', type: 'Striker' },
+            { id: 216, char: '🥨', name: 'Twist', rarity: 'common', element: 'fire', type: 'Speedster' },
+            { id: 217, char: '🥯', name: 'Bagel', rarity: 'common', element: 'fire', type: 'Tank' },
+            { id: 218, char: '🍜', name: 'Noodle', rarity: 'rare', element: 'fire', type: 'Speedster' },
+            { id: 219, char: '🍙', name: 'Onigiri', rarity: 'common', element: 'fire', type: 'Tank' },
+            { id: 220, char: '🧁', name: 'Cupcake', rarity: 'rare', element: 'light', type: 'Speedster' },
+            { id: 221, char: '🎇', name: 'Spark', rarity: 'epic', element: 'fire', type: 'Speedster' },
+            { id: 222, char: '🎆', name: 'Burst', rarity: 'epic', element: 'fire', type: 'Striker' },
+            { id: 223, char: '🪬', name: 'Charm', rarity: 'divine', element: 'light', type: 'Striker' },
+            { id: 224, char: '🧟', name: 'Zombie', rarity: 'epic', element: 'dark', type: 'Tank' },
+            { id: 225, char: '🧛‍♂️', name: 'Lord', rarity: 'legendary', element: 'dark', type: 'Striker' },
+            { id: 226, char: '🐜', name: 'Ant', rarity: 'trash', element: 'nature', type: 'Speedster' },
+            { id: 227, char: '🪳', name: 'Roach', rarity: 'trash', element: 'dark', type: 'Speedster' },
+            { id: 228, char: '🧻', name: 'Tissue', rarity: 'trash', element: 'light', type: 'Speedster' },
+            { id: 229, char: '🥀', name: 'Wilt', rarity: 'trash', element: 'nature', type: 'Striker' },
+            { id: 230, char: '🪣', name: 'Bucket', rarity: 'trash', element: 'water', type: 'Tank' },
+            { id: 231, char: '🕸️', name: 'Web', rarity: 'rare', element: 'dark', type: 'Tank' },
+            { id: 232, char: '🕯️', name: 'Candle', rarity: 'uncommon', element: 'light', type: 'Striker' },
+            { id: 233, char: '🌒', name: 'Crescent', rarity: 'uncommon', element: 'dark', type: 'Speedster' },
+            { id: 234, char: '🌌', name: 'Cosmos', rarity: 'epic', element: 'dark', type: 'Striker' },
+            { id: 235, char: '🪄', name: 'Wand', rarity: 'legendary', element: 'light', type: 'Striker' },
+            { id: 236, char: '🎲', name: 'Dice', rarity: 'rare', element: 'dark', type: 'Speedster' },
+            { id: 237, char: '📿', name: 'Beads', rarity: 'rare', element: 'light', type: 'Tank' },
+            { id: 238, char: '🪙', name: 'Coin', rarity: 'uncommon', element: 'light', type: 'Tank' },
+            { id: 239, char: '🧵', name: 'Thread', rarity: 'uncommon', element: 'dark', type: 'Speedster' },
+            { id: 240, char: '🪡', name: 'Needle', rarity: 'rare', element: 'dark', type: 'Striker' },
+            { id: 241, char: '🧭', name: 'Compass', rarity: 'epic', element: 'light', type: 'Speedster' },
+            { id: 242, char: '🥶', name: 'Chill', rarity: 'epic', element: 'water', type: 'Tank' },
+            { id: 243, char: '🗡️', name: 'Blade', rarity: 'legendary', element: 'fire', type: 'Striker' },
+            { id: 244, char: '🧋', name: 'Boba', rarity: 'common', element: 'water', type: 'Speedster' },
+            { id: 245, char: '🧠', name: 'Mind', rarity: 'eternal', element: 'dark', type: 'Striker' }
         ];
 
-        const RARITY_ORDER = ['trash', 'common', 'rare', 'epic', 'legendary', 'divine', 'eternal'];
+        const RARITY_ORDER = ['trash', 'common', 'uncommon', 'rare', 'epic', 'legendary', 'divine', 'eternal'];
         const TYPE_WEIGHTS = { Striker: { hp: 0.6, atk: 1.5, spd: 0.9 }, Tank: { hp: 1.8, atk: 0.6, spd: 0.6 }, Speedster: { hp: 0.8, atk: 0.8, spd: 1.4 } };
         const ELEMENT_BONUSES = { fire: { hp: 1.0, atk: 1.2, spd: 1.0 }, water: { hp: 1.2, atk: 1.0, spd: 1.0 }, nature: { hp: 1.1, atk: 1.1, spd: 1.0 }, light: { hp: 1.0, atk: 1.0, spd: 1.2 }, dark: { hp: 0.9, atk: 1.3, spd: 1.0 } };
-        const RARITY_MULTIPLIERS = { trash: 0.4, common: 1.0, rare: 1.5, epic: 2.5, legendary: 4.5, divine: 8.5, eternal: 20.0 };
-        const GROWTH_RATES = { trash: 0.12, common: 0.15, rare: 0.18, epic: 0.22, legendary: 0.28, divine: 0.38, eternal: 0.55 };
+        const RARITY_MULTIPLIERS = { trash: 0.4, common: 1.0, uncommon: 1.25, rare: 1.5, epic: 2.5, legendary: 4.5, divine: 8.5, eternal: 20.0 };
+        const GROWTH_RATES = { trash: 0.12, common: 0.15, uncommon: 0.165, rare: 0.18, epic: 0.22, legendary: 0.28, divine: 0.38, eternal: 0.55 };
         const ELEMENTS = { fire: { beats: 'nature' }, water: { beats: 'fire' }, nature: { beats: 'water' }, light: { beats: 'dark' }, dark: { beats: 'light' } };
-        const PROBS = { trash: 0.05, common: 0.65, rare: 0.85, epic: 0.96, legendary: 0.998, divine: 0.9995, eternal: 1.0 };
+        const PROB_TABLES = {
+            standard: { trash: 0.05, common: 0.55, uncommon: 0.75, rare: 0.88, epic: 0.965, legendary: 0.995, divine: 0.999, eternal: 1.0 },
+            rare: { trash: 0.0, common: 0.0, uncommon: 0.5, rare: 0.82, epic: 0.94, legendary: 0.990, divine: 0.997, eternal: 1.0 },
+            legendary: { trash: 0.0, common: 0.0, uncommon: 0.0, rare: 0.6, epic: 0.85, legendary: 0.980, divine: 0.995, eternal: 1.0 }
+        };
+        const RARITY_COST_MULTIPLIERS = { trash: 0.7, common: 1.0, uncommon: 1.3, rare: 1.7, epic: 2.6, legendary: 4.0, divine: 6.5, eternal: 9.0 };
+        const PROMOTE_COST_MULTIPLIERS = { trash: 0.8, common: 1.2, uncommon: 1.6, rare: 2.0, epic: 3.2, legendary: 5.0, divine: 8.0 };
+        const EMOJI_DESCS = {
+            101: 'Rattles around, stubbornly guards scraps.',
+            102: 'Smug little lump that never backs down.',
+            103: 'Clicks and clacks, chasing any fight.',
+            104: 'Creaky but loyal, shelters allies.',
+            105: 'Kicks first, asks later.',
+            106: 'Sneaky and clingy, loves weird pranks.',
+            107: 'Slips foes and laughs at chaos.',
+            108: 'Dim but persistent, powers through setbacks.',
+            1: 'Blazes in loud bursts and never cools.',
+            2: 'Slow, heavy, and patient, then erupts.',
+            3: 'Proud hunter who strikes with fiery pride.',
+            4: 'Flashes by, leaving scorched trails.',
+            5: 'Roars for attention, fights like royalty.',
+            61: 'Spicy and impatient, always darting in.',
+            62: 'Grills everything, even its own jokes.',
+            64: 'Gruff bruiser who loves a good brawl.',
+            109: 'Crackling energy, never sits still.',
+            110: 'Playful spinner with a hot temper.',
+            146: 'Sharp wit, sharper bite.',
+            147: 'Always chomping, never quiet.',
+            148: 'Loud showoff who fights to a beat.',
+            149: 'Rocket confident, aims straight for glory.',
+            150: 'Stands ground and dares you to move.',
+            151: 'Rowdy tank that toasts every win.',
+            152: 'Radiant leader with scorching resolve.',
+            153: 'Sugary sweet, then suddenly lethal.',
+            6: 'Calm skimmer that dodges in waves.',
+            7: 'Hungry challenger that circles its prey.',
+            8: 'Massive guardian that refuses to fall.',
+            9: 'Charmingly tricky, lures foes off guard.',
+            10: 'Grabs and crushes with steady menace.',
+            66: 'Cold and sturdy, freezes the pace.',
+            111: 'Lazy current, still hits with momentum.',
+            112: 'Bubbly powerhouse that erupts on cue.',
+            113: 'Quick boat that shields and rams.',
+            154: 'Pinches hard, holds on harder.',
+            155: 'Hides, then counters with a snap.',
+            156: 'Nimble swimmer with a mean jab.',
+            157: 'Deflates drama, then strikes back.',
+            158: 'Cute feints, sudden icy rush.',
+            159: 'Elegant dodger that never gets caught.',
+            160: 'Fast talker, faster finisher.',
+            161: 'Umbrella guardian, blocks every storm.',
+            11: 'Earnest helper that grows braver each fight.',
+            12: 'Wild striker who loves ambushes.',
+            13: 'Dreamy runner with dazzling tricks.',
+            14: 'Stoic wall that refuses to budge.',
+            15: 'Cheery fighter who blooms in danger.',
+            70: 'Fluttery artist who drifts past hits.',
+            114: 'Grumpy guardian with a stubborn tongue.',
+            115: 'Hyper scout that never stops moving.',
+            162: 'Big-hearted bruiser with thunderous swings.',
+            163: 'Gentle giant that tramples threats.',
+            164: 'Long sight, slow steps, steady hits.',
+            165: 'Quick zigzag runner with bold stripes.',
+            166: 'Patient striker, squeezes the life out.',
+            167: 'Slow tank that laughs at damage.',
+            168: 'Prickly defender that pokes back.',
+            169: 'Charming speedster who lands lucky hits.',
+            16: 'Sparkly sprinter with restless energy.',
+            17: 'Calm protector who never panics.',
+            18: 'Regal striker who demands respect.',
+            19: 'Glittering bulwark with unbreakable pride.',
+            20: 'Silent watcher that predicts your moves.',
+            117: 'Immovable fortress with iron patience.',
+            118: 'Gentle scout who ends fights quickly.',
+            170: 'Graceful champion who refuses to yield.',
+            171: 'Holy attacker, fearless and bright.',
+            172: 'Colorful runner that refracts danger.',
+            173: 'Opulent tank that hoards the frontline.',
+            174: 'Wishmaker that strikes with calm purpose.',
+            175: 'Quick thinker with sudden jolts.',
+            176: 'Quiet virtuoso who fights in rhythm.',
+            21: 'Chill shadow that glides through blows.',
+            22: 'Hungry duelist with a smirking bite.',
+            23: 'Cold stare, heavy hits, no mercy.',
+            24: 'Ghostly runner that haunts the backline.',
+            120: 'Explosive troublemaker who loves chaos.',
+            121: 'Patient trapper with a cruel grin.',
+            177: 'Deep tank that swallows pressure.',
+            178: 'Curious raider with alien tactics.',
+            179: 'Silent finisher, harvests weak foes.',
+            180: 'Bites fast and disappears.',
+            181: 'Cryptic sprinter that sees the opening.',
+            182: 'Weird genius who fights unpredictably.',
+            183: 'Stage thief who strikes from behind.',
+            184: 'Slow menace that squeezes hope.',
+            58: 'Eternal striker, bends the battlefield.',
+            59: 'Endless wall, never seems to tire.',
+            60: 'Peak runner, always chasing higher ground.',
+            185: 'Breakfast bruiser, sunny but tough.',
+            186: 'Clown of doom, thrives on disorder.',
+            187: 'Smooth dodger who improvises every hit.',
+            188: 'Springy prankster that ricochets around.',
+            189: 'Quick shot, always gets the angle.',
+            190: 'Ice-cold sentinel that shuts down heat.',
+            191: 'Plain but solid, holds the line.',
+            192: 'Lazy lunk that rolls through trouble.',
+            193: 'Heavy hitter that grinds forward.',
+            194: 'Douses drama and tanks the flames.',
+            195: 'Loud lumberer who chops first.',
+            196: 'Attracts hits, then fires back.',
+            197: 'Clever sprinter, always prepared.',
+            198: 'Shining shield that anchors the team.',
+            199: 'Flash attacker with crackling focus.',
+            200: 'Tidal striker that overwhelms fast.',
+            201: 'Quiet guardian with a hidden shine.',
+            202: 'Speedy swimmer, playful but fierce.',
+            203: 'Ambush tank with a death roll.',
+            204: 'Ocean giant that towers over threats.',
+            205: 'Trickster scout, swims in spirals.',
+            206: 'Safe refuge that blocks the storm.',
+            207: 'Sharp-eyed hunter, strikes clean.',
+            208: 'Night scout with silent swoops.',
+            209: 'Pack leader who rallies the charge.',
+            210: 'Hot-tempered duelist, stings hard.',
+            211: 'Tiny blur that never stops.',
+            212: 'Pungent brawler that keeps foes away.',
+            213: 'Bright sprinter with stubborn grit.',
+            214: 'Stout defender with hidden grit.',
+            215: 'Savage striker, always hungry.',
+            216: 'Twisty dodger, hard to pin.',
+            217: 'Dense tank, surprisingly tough.',
+            218: 'Slippery runner, hard to grab.',
+            219: 'Comforting wall, steady and stout.',
+            220: 'Sweet-faced striker with a mean bite.',
+            221: 'Firework sprinter, all flash and speed.',
+            222: 'Big boom bruiser, loves impact.',
+            223: 'Lucky fighter that bends fate.',
+            224: 'Shambling tank, refuses to stay down.',
+            225: 'Noble predator with a velvet menace.',
+            226: 'Tireless worker, swarms the field.',
+            227: 'Survivor that never goes away.',
+            228: 'Fragile prankster, flutters and distracts.',
+            229: 'Sour striker that saps energy.',
+            230: 'Clumsy guard, still catches hits.',
+            231: 'Sticky defender that traps attackers.',
+            232: 'Quiet flame that watches and waits.',
+            233: 'Night runner, glides in arcs.',
+            234: 'Starfield brawler, fights with awe.',
+            235: 'Focused caster with a sharp edge.',
+            236: 'Risky rogue who loves the odds.',
+            237: 'Steady guardian, patient and grounded.',
+            238: 'Greedy wall, guards its stash.',
+            239: 'Sly runner, slips through gaps.',
+            240: 'Precise striker, hits vital points.',
+            241: 'Guiding scout, never loses direction.',
+            242: 'Frost tank that slows the room.',
+            243: 'Relentless duelist, cuts clean.',
+            244: 'Bubbly speedster, playful and quick.',
+            245: 'Ancient thinker, strikes with calm certainty.'
+        };
 
-        let state = { gold: 5000, tickets: 20, pity: 0, inventory: {}, team: [], stage: 1, isAutoBattling: false };
+        let state = { gold: 5000, tickets: 20, rareTickets: 0, legendaryTickets: 0, pity: 0, inventory: {}, team: [], stage: 1, isAutoBattling: false };
         let selectedId = null;
+
+        EMOJIS.forEach(emoji => { emoji.desc = EMOJI_DESCS[emoji.id]; });
 
         // --- CORE ---
         function init() { load(); updateStatsUI(); switchTab('summon'); }
@@ -341,6 +594,8 @@
             const saved = localStorage.getItem('emojiSaga_vInfinite');
             if (saved) {
                 state = { ...state, ...JSON.parse(saved) };
+                if (state.rareKeys) { state.rareTickets = state.rareKeys; delete state.rareKeys; }
+                if (state.legendaryKeys) { state.legendaryTickets = state.legendaryKeys; delete state.legendaryKeys; }
                 Object.keys(state.inventory).forEach(id => {
                     if (!state.inventory[id].baseRarity) {
                         const orig = EMOJIS.find(x => x.id == id) || EMOJIS[0];
@@ -355,9 +610,11 @@
         function updateStatsUI() {
             document.getElementById('stat-gold').innerText = state.gold.toLocaleString();
             document.getElementById('stat-tickets').innerText = state.tickets.toLocaleString();
+            document.getElementById('stat-rare-tickets').innerText = state.rareTickets.toLocaleString();
+            document.getElementById('stat-legendary-tickets').innerText = state.legendaryTickets.toLocaleString();
             document.getElementById('pity-count').innerText = `${state.pity}/50`;
             document.getElementById('arena-stage-title').innerText = state.stage;
-            document.getElementById('collection-count').innerText = `${Object.keys(state.inventory).length}/150`;
+            document.getElementById('collection-count').innerText = `${Object.keys(state.inventory).length}/${EMOJIS.length}`;
         }
 
         function switchTab(tab) {
@@ -386,41 +643,116 @@
             hp *= aff.hp; atk *= aff.atk; spd *= aff.spd;
             
             const multCurrent = RARITY_MULTIPLIERS[inv.currentRarity];
-            let rarityModifier;
-            if (inv.baseRarity === 'trash') {
-                rarityModifier = multCurrent * (1 + (RARITY_ORDER.indexOf(inv.currentRarity) * 0.15));
-            } else {
-                const multBase = RARITY_MULTIPLIERS[inv.baseRarity];
-                rarityModifier = multCurrent * Math.pow(multBase / multCurrent, 0.3);
+            const multBase = RARITY_MULTIPLIERS[inv.baseRarity];
+            const baseIdx = RARITY_ORDER.indexOf(inv.baseRarity);
+            const currentIdx = RARITY_ORDER.indexOf(inv.currentRarity);
+            const rarityGap = Math.max(0, currentIdx - baseIdx);
+            let rarityModifier = multCurrent * Math.pow(multBase / multCurrent, 0.3);
+            if (rarityGap > 2) {
+                rarityModifier *= Math.pow(0.65, rarityGap - 2);
             }
             hp *= rarityModifier; atk *= rarityModifier; spd *= rarityModifier;
             const growth = 1 + ((inv.lvl - 1) * GROWTH_RATES[inv.currentRarity]);
             return { hp: Math.floor(hp * growth), atk: Math.floor(atk * growth), spd: Math.floor(spd * growth) };
         }
 
+        function calcEnemyStats(emoji, level, rarity) {
+            const baseObj = { hp: 100, atk: 20, spd: 10 };
+            const weights = TYPE_WEIGHTS[emoji.type];
+            let hp = baseObj.hp * weights.hp;
+            let atk = baseObj.atk * weights.atk;
+            let spd = baseObj.spd * weights.spd;
+            const aff = ELEMENT_BONUSES[emoji.element];
+            hp *= aff.hp; atk *= aff.atk; spd *= aff.spd;
+            const rarityModifier = RARITY_MULTIPLIERS[rarity];
+            const growth = 1 + ((level - 1) * GROWTH_RATES[rarity]);
+            return { hp: Math.floor(hp * rarityModifier * growth), atk: Math.floor(atk * rarityModifier * growth), spd: Math.floor(spd * rarityModifier * growth) };
+        }
+
+        function pickWeightedRarity(stage) {
+            const pools = [
+                { max: 3, weights: { trash: 0.45, common: 0.35, uncommon: 0.15, rare: 0.05 } },
+                { max: 7, weights: { trash: 0.25, common: 0.35, uncommon: 0.2, rare: 0.15, epic: 0.05 } },
+                { max: 14, weights: { trash: 0.1, common: 0.3, uncommon: 0.2, rare: 0.2, epic: 0.15, legendary: 0.05 } },
+                { max: 24, weights: { common: 0.25, uncommon: 0.2, rare: 0.25, epic: 0.18, legendary: 0.1, divine: 0.02 } },
+                { max: 39, weights: { common: 0.15, uncommon: 0.15, rare: 0.25, epic: 0.23, legendary: 0.17, divine: 0.04, eternal: 0.01 } },
+                { max: Infinity, weights: { uncommon: 0.12, rare: 0.23, epic: 0.27, legendary: 0.22, divine: 0.12, eternal: 0.04 } }
+            ];
+            const bucket = pools.find(p => stage <= p.max);
+            const roll = Math.random();
+            let total = 0;
+            for (const [rarity, weight] of Object.entries(bucket.weights)) {
+                total += weight;
+                if (roll <= total) return rarity;
+            }
+            return 'common';
+        }
+
+        function generateEnemyTeam(stage) {
+            let teamSize;
+            if (stage < 3) teamSize = 1;
+            else if (stage < 6) teamSize = 2;
+            else teamSize = 3;
+
+            const baseLevel = Math.min(30, 1 + Math.floor(stage / 3));
+            const levelSpread = Math.min(6, Math.floor(stage / 6) + 1);
+            const usedIds = new Set();
+            const team = [];
+
+            for (let i = 0; i < teamSize; i++) {
+                const rarity = pickWeightedRarity(stage);
+                const pool = EMOJIS.filter(e => e.rarity === rarity && !usedIds.has(e.id));
+                const fallbackPool = EMOJIS.filter(e => e.rarity === rarity);
+                const choices = pool.length ? pool : fallbackPool;
+                const emoji = choices[Math.floor(Math.random() * choices.length)];
+                usedIds.add(emoji.id);
+                const level = Math.max(1, baseLevel + Math.floor(Math.random() * levelSpread) - Math.floor(levelSpread / 2));
+                const stats = calcEnemyStats(emoji, level, rarity);
+                team.push({ ...emoji, ...stats, lvl: level, maxHp: stats.hp, isPlayer: false, currentRarity: rarity });
+            }
+            return team.sort(() => Math.random() - 0.5);
+        }
+
+        function getLevelUpCost(inv) {
+            return Math.floor(inv.lvl * 250 * RARITY_COST_MULTIPLIERS[inv.currentRarity]);
+        }
+
+        function getPromoteCost(inv) {
+            return Math.floor(5000 * PROMOTE_COST_MULTIPLIERS[inv.currentRarity]);
+        }
+
+        function rollRarity(probTable) {
+            const rand = Math.random();
+            if (rand < probTable.trash) return 'trash';
+            if (rand < probTable.common) return 'common';
+            if (rand < probTable.uncommon) return 'uncommon';
+            if (rand < probTable.rare) return 'rare';
+            if (rand < probTable.epic) return 'epic';
+            if (rand < probTable.legendary) return 'legendary';
+            if (rand < probTable.divine) return 'divine';
+            return 'eternal';
+        }
+
         // --- GACHA ---
-        async function startSummonSequence(count) {
-            if (state.tickets < count) { toast("NO KEYS!"); return; }
-            state.tickets -= count; updateStatsUI();
+        async function startSummonSequence(count, summonType = 'standard') {
+            const typeConfig = {
+                standard: { key: 'tickets', probs: PROB_TABLES.standard },
+                rare: { key: 'rareTickets', probs: PROB_TABLES.rare },
+                legendary: { key: 'legendaryTickets', probs: PROB_TABLES.legendary }
+            }[summonType] || { key: 'tickets', probs: PROB_TABLES.standard };
+            if (state[typeConfig.key] < count) { toast("NO TICKETS!"); return; }
+            state[typeConfig.key] -= count; updateStatsUI();
             const results = [];
             for (let i = 0; i < count; i++) {
                 state.pity++;
                 let rarity = 'common';
-                let rand = Math.random();
                 if (state.pity >= 50) { rarity = 'legendary'; state.pity = 0; }
-                else {
-                    if (rand < 0.05) rarity = 'trash';
-                    else if (rand < PROBS.common) rarity = 'common';
-                    else if (rand < PROBS.rare) rarity = 'rare';
-                    else if (rand < PROBS.epic) rarity = 'epic';
-                    else if (rand < PROBS.legendary) rarity = 'legendary';
-                    else if (rand < PROBS.divine) rarity = 'divine';
-                    else rarity = 'eternal';
-                }
+                else rarity = rollRarity(typeConfig.probs);
                 const pool = EMOJIS.filter(e => e.rarity === rarity);
                 const emoji = pool[Math.floor(Math.random() * pool.length)];
-                results.push(emoji);
-                if (!state.inventory[emoji.id]) state.inventory[emoji.id] = { lvl: 1, baseRarity: emoji.rarity, currentRarity: emoji.rarity };
+                const isNew = !state.inventory[emoji.id];
+                results.push({ emoji, isNew });
+                if (isNew) state.inventory[emoji.id] = { lvl: 1, baseRarity: emoji.rarity, currentRarity: emoji.rarity };
             }
             save(); renderSummonResults(results);
         }
@@ -433,9 +765,16 @@
             for (let i = 0; i < results.length; i++) {
                 await new Promise(r => setTimeout(r, 100));
                 const res = results[i];
+                const emoji = res.emoji || res;
+                const isNew = !!res.isNew;
                 const card = document.createElement('div');
-                card.className = `card-base w-28 h-40 rounded-2xl border-2 flex flex-col items-center justify-center p-3 card-reveal rarity-card-${res.rarity}`;
-                card.innerHTML = `<div class="text-[7px] font-black uppercase mb-1">${res.rarity}</div><div class="text-5xl mb-2">${res.char}</div><div class="text-[9px] font-black text-center uppercase truncate w-full">${res.name}</div>`;
+                card.className = `card-base w-28 h-40 rounded-2xl border-2 flex flex-col items-center justify-center p-3 card-reveal rarity-card-${emoji.rarity}`;
+                card.innerHTML = `
+                    ${isNew ? '<div class="absolute top-2 right-2 bg-emerald-400 text-black text-[7px] font-black px-2 py-1 rounded-full">NEW</div>' : ''}
+                    <div class="text-[7px] font-black uppercase mb-1">${emoji.rarity}</div>
+                    <div class="text-5xl mb-2">${emoji.char}</div>
+                    <div class="text-[9px] font-black text-center uppercase truncate w-full">${emoji.name}</div>
+                `;
                 grid.appendChild(card);
             }
             document.getElementById('btn-summon-close').classList.remove('hidden');
@@ -496,13 +835,19 @@
             const rarityBadge = document.getElementById('inspect-rarity-badge');
             rarityBadge.innerText = `${inv.currentRarity.toUpperCase()} (NAT ${inv.baseRarity.toUpperCase()})`;
             rarityBadge.className = `inline-block px-3 py-1 rounded-full text-[7px] font-black uppercase mb-4 tracking-widest border border-white/20 text-${inv.currentRarity}`;
+            document.getElementById('inspect-desc').innerText = e.desc;
             
-            document.getElementById('btn-lvl-up').disabled = (state.gold < inv.lvl * 250 || inv.lvl >= 10);
+            const lvlCost = getLevelUpCost(inv);
+            const lvlBtn = document.getElementById('btn-lvl-up');
+            lvlBtn.disabled = (state.gold < lvlCost || inv.lvl >= 10);
+            lvlBtn.innerText = inv.lvl >= 10 ? "MAX LEVEL" : `UPGRADE (${lvlCost.toLocaleString()} GOLD)`;
             const canPromote = inv.lvl >= 10 && inv.currentRarity !== 'eternal';
             const promoteBtn = document.getElementById('btn-promote');
             if (canPromote) {
+                const promoteCost = getPromoteCost(inv);
                 promoteBtn.classList.remove('hidden');
-                promoteBtn.disabled = state.gold < 5000;
+                promoteBtn.disabled = state.gold < promoteCost;
+                promoteBtn.innerText = `ASCEND (${promoteCost.toLocaleString()} GOLD)`;
             } else promoteBtn.classList.add('hidden');
             document.getElementById('btn-add-team').innerText = state.team.includes(id) ? "WITHDRAW" : "DEPLOY";
             renderTeam();
@@ -511,16 +856,21 @@
         function levelUpSelected() {
             if (!selectedId) return;
             const inv = state.inventory[selectedId];
-            const cost = inv.lvl * 250;
+            const cost = getLevelUpCost(inv);
             if (state.gold >= cost && inv.lvl < 10) { state.gold -= cost; inv.lvl++; save(); inspect(selectedId); updateStatsUI(); }
         }
 
         function promoteSelected() {
-            if (!selectedId || state.gold < 5000) return;
+            if (!selectedId) return;
             const inv = state.inventory[selectedId];
-            const nextIdx = RARITY_ORDER.indexOf(inv.currentRarity) + 1;
-            if (nextIdx < RARITY_ORDER.length) {
-                state.gold -= 5000; inv.currentRarity = RARITY_ORDER[nextIdx]; inv.lvl = 1;
+            const cost = getPromoteCost(inv);
+            let targetRarity = null;
+            if (inv.currentRarity === 'legendary') targetRarity = 'divine';
+            else if (inv.currentRarity === 'divine') targetRarity = 'eternal';
+            else if (inv.currentRarity !== 'eternal') targetRarity = 'legendary';
+            if (targetRarity) {
+                if (state.gold < cost) return;
+                state.gold -= cost; inv.currentRarity = targetRarity; inv.lvl = 1;
                 save(); inspect(selectedId); updateStatsUI(); toast("ASCENDED!");
             }
         }
@@ -536,19 +886,26 @@
 
         // --- ARENA ---
         function toggleAutoBattle() { if (!state.team.length) { switchTab('team'); return; } state.isAutoBattling = true; switchTab('arena'); startAutoCycle(); }
-        function stopAutoBattle() { state.isAutoBattling = false; document.getElementById('arena-lobby').classList.remove('hidden'); document.getElementById('arena-combat').classList.add('hidden'); }
+        function stopAutoBattle() {
+            state.isAutoBattling = false;
+            document.getElementById('arena-lobby').classList.remove('hidden');
+            document.getElementById('arena-combat').classList.add('hidden');
+            document.getElementById('arena-info-bar').classList.add('hidden');
+        }
 
         async function startAutoCycle() {
             if (!state.isAutoBattling) return;
             document.getElementById('arena-lobby').classList.add('hidden');
             document.getElementById('arena-combat').classList.remove('hidden');
+            document.getElementById('arena-info-bar').classList.remove('hidden');
             const log = document.getElementById('battle-log');
             const flash = document.getElementById('combat-flash-layer');
             document.getElementById('combat-stage-num').innerText = state.stage;
+            document.getElementById('arena-info-stage').innerText = state.stage;
             log.innerHTML = `<div class="text-white border-b border-white/5 mb-1 pb-1">STAGE ${state.stage}</div>`;
             
             let pUnits = state.team.map(id => ({ ...EMOJIS.find(x => x.id === id), ...calcStats(id), maxHp: calcStats(id).hp, isPlayer: true }));
-            let eUnits = [{ char: '👾', name: 'Shadow', hp: 200 + state.stage * 220, maxHp: 200 + state.stage * 220, atk: 40 + state.stage * 28, spd: 12, isPlayer: false }];
+            let eUnits = generateEnemyTeam(state.stage);
 
             const updateUI = () => {
                 document.getElementById('battle-player-team').innerHTML = pUnits.map(u => `<div class="${u.hp<=0?'opacity-20':''}"><div class="flex justify-between text-[7px] font-black uppercase"><span>${u.char}</span><span>${Math.max(0,Math.floor(u.hp))}</span></div><div class="h-1 bg-black overflow-hidden"><div class="h-full bg-green-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div></div>`).join('');
@@ -569,13 +926,17 @@
                 }
             }
             if (!state.isAutoBattling) return;
-            if (eUnits.every(u => u.hp <= 0)) { state.gold += state.stage * 400; state.stage++; save(); updateStatsUI(); setTimeout(startAutoCycle, 1500); }
-            else { state.stage = 1; stopAutoBattle(); updateStatsUI(); }
+            if (eUnits.every(u => u.hp <= 0)) {
+                state.gold += state.stage * 400; state.stage++; save(); updateStatsUI(); setTimeout(startAutoCycle, 1500);
+            } else {
+                state.stage = 1; save(); updateStatsUI(); setTimeout(startAutoCycle, 800);
+            }
         }
 
-        function buyTickets(amount, cost) {
+        function buyTickets(type, amount, cost) {
             if (state.gold < cost) { toast("NO GOLD!"); return; }
-            state.gold -= cost; state.tickets += amount; save(); updateStatsUI(); toast("BOUGHT!");
+            const ticketType = type === 'rare' ? 'rareTickets' : type === 'legendary' ? 'legendaryTickets' : 'tickets';
+            state.gold -= cost; state[ticketType] += amount; save(); updateStatsUI(); toast("BOUGHT!");
         }
 
         window.onload = init;
