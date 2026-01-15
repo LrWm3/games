@@ -118,6 +118,7 @@
         <button onclick="switchTab('arena')" id="btn-tab-arena" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Arena</button>
         <button onclick="switchTab('shop')" id="btn-tab-shop" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Market</button>
         <button onclick="switchTab('emojidex')" id="btn-tab-emojidex" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Emojidex</button>
+        <button onclick="switchTab('tutor')" id="btn-tab-tutor" class="flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Move Tutor</button>
     </nav>
     <div id="arena-info-bar" class="hidden bg-slate-900/90 border-b border-white/5 text-center text-[9px] font-black uppercase tracking-[0.3em] text-red-300 py-2">
         Arena Live • Stage <span id="arena-info-stage" class="text-white">1</span>
@@ -279,6 +280,19 @@
                     </div>
                     <div id="emojidex-move-list" class="space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar pr-1"></div>
                 </div>
+            </div>
+        </section>
+
+        <!-- Move Tutor -->
+        <section id="view-tutor" class="tab-content hidden py-6">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-black uppercase">Move Tutor</h2>
+                <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.25em]">Teach Moves Through Arena Wins</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div id="tutor-slot-1" class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-5"></div>
+                <div id="tutor-slot-2" class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-5"></div>
+                <div id="tutor-slot-3" class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-5"></div>
             </div>
         </section>
 
@@ -957,7 +971,22 @@
             245: 'Ancient thinker, strikes with calm certainty.'
         };
 
-        const DEFAULT_STATE = { gold: 5000, tickets: 3, rareTickets: 0, legendaryTickets: 0, pity: 0, inventory: {}, team: [], stage: 1, isAutoBattling: false };
+        const DEFAULT_STATE = {
+            gold: 5000,
+            tickets: 3,
+            rareTickets: 0,
+            legendaryTickets: 0,
+            pity: 0,
+            inventory: {},
+            team: [],
+            stage: 1,
+            isAutoBattling: false,
+            tutorPairs: [
+                { mentorId: null, studentId: null, progress: 0 },
+                { mentorId: null, studentId: null, progress: 0 },
+                { mentorId: null, studentId: null, progress: 0 }
+            ]
+        };
         let state = { ...DEFAULT_STATE };
         let selectedId = null;
         let currentSlot = 1;
@@ -994,7 +1023,14 @@
                         state.inventory[id].currentRarity = orig.rarity;
                     }
                     if (state.inventory[id].dupes === undefined) state.inventory[id].dupes = 0;
+                    if (!state.inventory[id].learnedMoves) state.inventory[id].learnedMoves = [];
                 });
+            }
+            if (!state.tutorPairs || !Array.isArray(state.tutorPairs)) {
+                state.tutorPairs = DEFAULT_STATE.tutorPairs.map(pair => ({ ...pair }));
+            }
+            if (state.tutorPairs.length < 3) {
+                while (state.tutorPairs.length < 3) state.tutorPairs.push({ mentorId: null, studentId: null, progress: 0 });
             }
             state.isAutoBattling = false;
             selectedId = null;
@@ -1051,6 +1087,7 @@
             document.getElementById(`btn-tab-${tab}`).classList.add('tab-active');
             if (tab === 'team') renderTeam();
             if (tab === 'emojidex') renderEmojidex();
+            if (tab === 'tutor') renderMoveTutor();
         }
 
         function toast(msg) {
@@ -1121,8 +1158,9 @@
             return MOVES.find(move => move.id === id);
         }
 
-        function getMoveListForEmoji(emoji) {
-            const moveIds = ['basic_strike', getMoveIdForEmoji(emoji)];
+        function getMoveListForEmoji(emoji, inv = null) {
+            const learned = inv?.learnedMoves || [];
+            const moveIds = ['basic_strike', getMoveIdForEmoji(emoji), ...learned];
             return [...new Set(moveIds)].map(getMoveById).filter(Boolean);
         }
 
@@ -1130,9 +1168,9 @@
             return EMOJI_DEFAULT_MOVES[emoji.id] || 'basic_strike';
         }
 
-        function attachMoves(unit) {
+        function attachMoves(unit, learnedMoves = []) {
             const moveId = getMoveIdForEmoji(unit);
-            const moveList = ['basic_strike', moveId];
+            const moveList = ['basic_strike', moveId, ...learnedMoves];
             unit.moves = [...new Set(moveList)];
             unit.cooldowns = {};
             unit.moves.forEach(id => { unit.cooldowns[id] = 0; });
@@ -1442,7 +1480,7 @@
                 const emoji = pool[Math.floor(Math.random() * pool.length)];
                 const isNew = !state.inventory[emoji.id];
                 results.push({ emoji, isNew });
-                if (isNew) state.inventory[emoji.id] = { lvl: 1, baseRarity: emoji.rarity, currentRarity: emoji.rarity, dupes: 0 };
+                if (isNew) state.inventory[emoji.id] = { lvl: 1, baseRarity: emoji.rarity, currentRarity: emoji.rarity, dupes: 0, learnedMoves: [] };
                 else state.inventory[emoji.id].dupes = (state.inventory[emoji.id].dupes || 0) + 1;
             }
             save(); renderSummonResults(results);
@@ -1511,6 +1549,8 @@
             ownedIds.forEach(id => {
                 const moveId = EMOJI_DEFAULT_MOVES[id];
                 if (moveId) discoveredMoves.add(moveId);
+                const learned = state.inventory[id]?.learnedMoves || [];
+                learned.forEach(learnedId => discoveredMoves.add(learnedId));
             });
 
             document.getElementById('emojidex-emoji-count').innerText = `${ownedIds.size}/${EMOJIS.length}`;
@@ -1538,6 +1578,110 @@
                 `;
                 moveList.appendChild(row);
             });
+        }
+
+        function getTutorRequirement(baseRarity) {
+            const table = { trash: 1, common: 2, uncommon: 3, rare: 4, epic: 5, legendary: 6, divine: 7, eternal: 8 };
+            return table[baseRarity] || 3;
+        }
+
+        function rarityRank(label) {
+            return RARITY_ORDER.indexOf(label);
+        }
+
+        function processTutorWin(poolLabel) {
+            const poolRarity = poolLabel.toLowerCase();
+            state.tutorPairs.forEach(pair => {
+                if (!pair.mentorId || !pair.studentId) return;
+                if (!state.team.includes(pair.mentorId) || !state.team.includes(pair.studentId)) return;
+                const mentorMoveId = EMOJI_DEFAULT_MOVES[pair.mentorId];
+                const mentorMove = getMoveById(mentorMoveId);
+                if (!mentorMove) return;
+                if (rarityRank(poolRarity) < rarityRank(mentorMove.rarity)) return;
+                const studentInv = state.inventory[pair.studentId];
+                if (!studentInv) return;
+                const studentBase = studentInv.baseRarity || (EMOJIS.find(e => e.id === pair.studentId)?.rarity);
+                const requiredWins = getTutorRequirement(studentBase);
+                const alreadyKnown = mentorMoveId === getMoveIdForEmoji({ id: pair.studentId }) || (studentInv.learnedMoves || []).includes(mentorMoveId);
+                if (alreadyKnown) return;
+                if ((studentInv.learnedMoves || []).length >= 2) return;
+                pair.progress = Math.min(requiredWins, (pair.progress || 0) + 1);
+                if (pair.progress >= requiredWins) {
+                    studentInv.learnedMoves = studentInv.learnedMoves || [];
+                    studentInv.learnedMoves.push(mentorMoveId);
+                    pair.progress = 0;
+                    toast(`${EMOJIS.find(e => e.id === pair.studentId)?.name || 'Student'} learned ${mentorMove.name}!`);
+                }
+            });
+        }
+
+        function updateTutorPair(index) {
+            const mentorSelect = document.getElementById(`tutor-mentor-${index}`);
+            const studentSelect = document.getElementById(`tutor-student-${index}`);
+            const mentorId = mentorSelect.value ? parseInt(mentorSelect.value, 10) : null;
+            const studentId = studentSelect.value ? parseInt(studentSelect.value, 10) : null;
+            state.tutorPairs[index - 1] = { mentorId, studentId, progress: 0 };
+            save(); renderMoveTutor();
+        }
+
+        function clearTutorPair(index) {
+            state.tutorPairs[index - 1] = { mentorId: null, studentId: null, progress: 0 };
+            save(); renderMoveTutor();
+        }
+
+        function forgetLearnedMove(studentId, moveId) {
+            const inv = state.inventory[studentId];
+            if (!inv?.learnedMoves) return;
+            inv.learnedMoves = inv.learnedMoves.filter(id => id !== moveId);
+            save(); renderMoveTutor();
+        }
+
+        function renderMoveTutor() {
+            const owned = Object.keys(state.inventory).map(id => parseInt(id, 10));
+            const options = owned.map(id => {
+                const emoji = EMOJIS.find(e => e.id === id);
+                return { id, label: `${emoji.char} ${emoji.name}` };
+            });
+            for (let i = 1; i <= 3; i++) {
+                const slot = document.getElementById(`tutor-slot-${i}`);
+                const pair = state.tutorPairs[i - 1] || { mentorId: null, studentId: null, progress: 0 };
+                const mentorEmoji = EMOJIS.find(e => e.id === pair.mentorId);
+                const studentEmoji = EMOJIS.find(e => e.id === pair.studentId);
+                const mentorMoveId = mentorEmoji ? EMOJI_DEFAULT_MOVES[mentorEmoji.id] : null;
+                const mentorMove = mentorMoveId ? getMoveById(mentorMoveId) : null;
+                const studentInv = studentEmoji ? state.inventory[studentEmoji.id] : null;
+                const studentBase = studentInv?.baseRarity || studentEmoji?.rarity;
+                const requiredWins = studentBase ? getTutorRequirement(studentBase) : 0;
+                const poolNote = mentorMove ? `Need wins vs ${mentorMove.rarity.toUpperCase()}+ pools` : '';
+                const learnedMoves = studentInv?.learnedMoves || [];
+                const learnedList = learnedMoves.map(id => {
+                    const move = getMoveById(id);
+                    return `<div class="flex justify-between items-center bg-black/40 rounded-xl px-2 py-1">
+                        <span>${move?.name || id}</span>
+                        <button onclick="forgetLearnedMove(${studentEmoji.id}, '${id}')" class="text-[8px] uppercase text-red-300">Forget</button>
+                    </div>`;
+                }).join('');
+                const mentorOptions = ['<option value="">Mentor</option>'].concat(options.map(o => `<option value="${o.id}" ${o.id === pair.mentorId ? 'selected' : ''}>${o.label}</option>`)).join('');
+                const studentOptions = ['<option value="">Student</option>'].concat(options.map(o => `<option value="${o.id}" ${o.id === pair.studentId ? 'selected' : ''}>${o.label}</option>`)).join('');
+                slot.innerHTML = `
+                    <div class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Pair ${i}</div>
+                    <div class="space-y-2 mb-3">
+                        <select id="tutor-mentor-${i}" class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px]">${mentorOptions}</select>
+                        <select id="tutor-student-${i}" class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px]">${studentOptions}</select>
+                    </div>
+                    <div class="flex gap-2 mb-3">
+                        <button onclick="updateTutorPair(${i})" class="flex-1 bg-emerald-500 text-black py-2 rounded-xl text-[9px] font-black uppercase">Set Pair</button>
+                        <button onclick="clearTutorPair(${i})" class="flex-1 bg-slate-700 text-white py-2 rounded-xl text-[9px] font-black uppercase">Clear</button>
+                    </div>
+                    <div class="text-[9px] text-slate-300 space-y-1">
+                        <div><span class="text-slate-500">Mentor Move:</span> ${mentorMove ? `${mentorMove.name} (${mentorMove.rarity.toUpperCase()})` : '—'}</div>
+                        <div><span class="text-slate-500">Student Base:</span> ${studentBase ? studentBase.toUpperCase() : '—'}</div>
+                        <div><span class="text-slate-500">Progress:</span> ${pair.progress || 0}/${requiredWins} ${poolNote ? `• ${poolNote}` : ''}</div>
+                        <div><span class="text-slate-500">Learned Moves:</span></div>
+                        <div class="space-y-1">${learnedList || '<div class="text-slate-500">None</div>'}</div>
+                    </div>
+                `;
+            }
         }
 
         function inspect(id) {
@@ -1574,7 +1718,7 @@
             }).length;
             document.getElementById('inspect-type-count').innerText = `${e.type.toUpperCase()} FOUND: ${typeCount}`;
             document.getElementById('inspect-dupe-count').innerText = `DUPLICATES: ${inv.dupes || 0}`;
-            const moveList = getMoveListForEmoji(e);
+            const moveList = getMoveListForEmoji(e, inv);
             const moveTargetLabels = {
                 'enemy-single': 'Enemy Single',
                 'enemy-all': 'Enemy All',
@@ -1660,8 +1804,9 @@
             let pUnits = state.team.map(id => {
                 const emoji = EMOJIS.find(x => x.id === id);
                 const stats = calcStats(id);
+                const inv = state.inventory[id];
                 const unit = { ...emoji, ...stats, maxHp: stats.hp, isPlayer: true };
-                attachMoves(unit);
+                attachMoves(unit, inv?.learnedMoves || []);
                 return unit;
             });
             let eUnits = generateEnemyTeam(state.stage);
@@ -1702,7 +1847,8 @@
             }
             if (!state.isAutoBattling) return;
             if (eUnits.every(u => u.hp <= 0)) {
-                state.gold += getArenaReward(state.stage); state.stage++; save(); updateStatsUI(); setTimeout(startAutoCycle, 1500);
+                const pool = getArenaPool(state.stage);
+                state.gold += getArenaReward(state.stage); processTutorWin(pool.label); state.stage++; save(); updateStatsUI(); setTimeout(startAutoCycle, 1500);
             } else {
                 state.stage = 1; save(); updateStatsUI(); setTimeout(startAutoCycle, 800);
             }
