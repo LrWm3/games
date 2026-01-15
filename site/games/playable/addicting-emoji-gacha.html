@@ -95,23 +95,16 @@
                     <i class="fas fa-ticket text-indigo-400"></i>
                     <span id="stat-tickets" class="font-bold">0</span>
                 </div>
-                <div class="bg-black/40 px-3 py-1.5 rounded-full border border-blue-400/30 flex items-center gap-2 text-xs">
+                <div id="header-rare-tickets" class="bg-black/40 px-3 py-1.5 rounded-full border border-blue-400/30 flex items-center gap-2 text-xs">
                     <i class="fas fa-ticket text-blue-300"></i>
                     <span id="stat-rare-tickets" class="font-bold">0</span>
                 </div>
-                <div class="bg-black/40 px-3 py-1.5 rounded-full border border-amber-400/30 flex items-center gap-2 text-xs">
+                <div id="header-legendary-tickets" class="bg-black/40 px-3 py-1.5 rounded-full border border-amber-400/30 flex items-center gap-2 text-xs">
                     <i class="fas fa-ticket text-amber-300"></i>
                     <span id="stat-legendary-tickets" class="font-bold">0</span>
                 </div>
                 </div>
-                <div class="flex flex-wrap gap-1 items-center text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">
-                    <span class="px-2 py-1 rounded-full bg-black/40 border border-white/10">Save</span>
-                    <button id="slot-btn-1" onclick="selectSaveSlot(1)" class="px-2 py-1 rounded-full bg-slate-800 border border-white/10">1</button>
-                    <button id="slot-btn-2" onclick="selectSaveSlot(2)" class="px-2 py-1 rounded-full bg-slate-800 border border-white/10">2</button>
-                    <button id="slot-btn-3" onclick="selectSaveSlot(3)" class="px-2 py-1 rounded-full bg-slate-800 border border-white/10">3</button>
-                    <button onclick="newGameCurrentSlot()" class="px-2 py-1 rounded-full bg-emerald-600 text-black">New Game</button>
-                    <button onclick="deleteCurrentSlot()" class="px-2 py-1 rounded-full bg-red-600 text-white">Delete</button>
-                </div>
+                <button onclick="openDataDialog()" class="px-3 py-1.5 rounded-full bg-slate-800 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300 hover:bg-slate-700">Data</button>
             </div>
         </div>
     </header>
@@ -146,14 +139,18 @@
             </div>
             <div class="flex flex-col gap-4 max-w-xs mx-auto">
                 <div class="text-[9px] font-black uppercase tracking-[0.35em] text-slate-400">Standard Tickets</div>
-                <button onclick="startSummonSequence(1, 'standard')" class="bg-white text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">SINGLE SUMMON</button>
+                <button id="btn-single-summon" onclick="startSummonSequence(1, 'standard')" class="bg-white text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">SINGLE SUMMON</button>
                 <button onclick="startSummonSequence(10, 'standard')" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-indigo-900 transition-all">MULTI SUMMON (10x)</button>
-                <div class="text-[9px] font-black uppercase tracking-[0.35em] text-blue-300 mt-2">Rare Tickets</div>
-                <button onclick="startSummonSequence(1, 'rare')" class="bg-blue-400 text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">RARE SUMMON</button>
-                <button onclick="startSummonSequence(10, 'rare')" class="bg-gradient-to-r from-sky-500 to-blue-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-blue-900 transition-all">RARE MULTI (10x)</button>
-                <div class="text-[9px] font-black uppercase tracking-[0.35em] text-amber-300 mt-2">Legendary Tickets</div>
-                <button onclick="startSummonSequence(1, 'legendary')" class="bg-amber-400 text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">LEGEND SUMMON</button>
-                <button onclick="startSummonSequence(10, 'legendary')" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-amber-900 transition-all">LEGEND MULTI (10x)</button>
+                <div id="rare-summon-block">
+                    <div class="text-[9px] font-black uppercase tracking-[0.35em] text-blue-300 mt-2">Rare Tickets</div>
+                    <button onclick="startSummonSequence(1, 'rare')" class="bg-blue-400 text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">RARE SUMMON</button>
+                    <button onclick="startSummonSequence(10, 'rare')" class="bg-gradient-to-r from-sky-500 to-blue-600 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-blue-900 transition-all">RARE MULTI (10x)</button>
+                </div>
+                <div id="legendary-summon-block">
+                    <div class="text-[9px] font-black uppercase tracking-[0.35em] text-amber-300 mt-2">Legendary Tickets</div>
+                    <button onclick="startSummonSequence(1, 'legendary')" class="bg-amber-400 text-black py-4 rounded-2xl font-black text-xs hover:scale-105 active:scale-95 transition-all">LEGEND SUMMON</button>
+                    <button onclick="startSummonSequence(10, 'legendary')" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 border-b-4 border-amber-900 transition-all">LEGEND MULTI (10x)</button>
+                </div>
             </div>
         </section>
 
@@ -357,6 +354,22 @@
     <div id="tutorial-overlay" class="fixed inset-0 z-[250] bg-black/95 hidden">
         <div class="max-w-lg mx-auto mt-16 bg-slate-900/95 border border-white/10 rounded-[2rem] p-6 shadow-2xl">
             <div id="tutorial-content"></div>
+        </div>
+    </div>
+
+    <!-- Data Dialog -->
+    <div id="data-dialog" class="fixed inset-0 z-[240] bg-black/90 hidden">
+        <div class="max-w-3xl mx-auto mt-12 bg-slate-900/95 border border-white/10 rounded-[2rem] p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-black uppercase tracking-[0.2em]">Data</h3>
+                <button onclick="closeDataDialog()" class="text-[9px] font-black uppercase text-slate-400 underline">Close</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6" id="data-slot-grid"></div>
+            <div class="flex flex-wrap gap-2 justify-end">
+                <button onclick="manualSave()" class="px-4 py-2 rounded-xl bg-slate-800 border border-white/10 text-[9px] font-black uppercase text-slate-300">Save</button>
+                <button onclick="newGameCurrentSlot()" class="px-4 py-2 rounded-xl bg-emerald-500 text-black text-[9px] font-black uppercase">New Game</button>
+                <button onclick="deleteCurrentSlot()" class="px-4 py-2 rounded-xl bg-red-600 text-white text-[9px] font-black uppercase">Delete</button>
+            </div>
         </div>
     </div>
 
@@ -1072,7 +1085,7 @@
         let selectedId = null;
         let currentSlot = 1;
         const STARTER_OPTIONS = [4, 155, 15];
-        const TUTORIAL_STEPS = { NAME: 0, STARTER: 1, PULL_ONE: 2, PULL_TWO: 3, TEAM: 4, HIGHLIGHT: 5, DONE: 6 };
+        const TUTORIAL_STEPS = { NAME: 0, STARTER: 1, PULL_ONE: 2, PULL_TWO: 3, TEAM: 4, DONE: 5 };
 
         EMOJIS.forEach(emoji => { emoji.desc = EMOJI_DESCS[emoji.id]; });
 
@@ -1141,28 +1154,12 @@
             updateSlotUI();
         }
 
-        function updateSlotUI() {
-            [1, 2, 3].forEach(slot => {
-                const btn = document.getElementById(`slot-btn-${slot}`);
-                if (!btn) return;
-                if (slot === currentSlot) btn.classList.add('bg-indigo-500', 'text-white');
-                else btn.classList.remove('bg-indigo-500', 'text-white');
-            });
-        }
-
-        function selectSaveSlot(slot) {
-            if (slot === currentSlot) return;
-            stopAutoBattle();
-            localStorage.setItem('emojiSaga_vInfinite_slot', slot);
-            loadSlot(slot);
-            updateStatsUI();
-            switchTab('summon');
-            renderTutorial();
-        }
+        function updateSlotUI() {}
 
         function newGameCurrentSlot() {
             if (!confirm(`Start a new game in Slot ${currentSlot}? This will overwrite the current save.`)) return;
             stopAutoBattle();
+            localStorage.removeItem(getSaveKey(currentSlot));
             state = { ...DEFAULT_STATE };
             save(); updateStatsUI(); switchTab('summon'); renderTutorial(); toast("NEW GAME");
         }
@@ -1175,6 +1172,11 @@
             save(); updateStatsUI(); switchTab('summon'); renderTutorial(); toast("SAVE DELETED");
         }
 
+        function manualSave() {
+            save();
+            toast('SAVED');
+        }
+
         function updateStatsUI() {
             document.getElementById('stat-gold').innerText = state.gold.toLocaleString();
             document.getElementById('stat-tickets').innerText = state.tickets.toLocaleString();
@@ -1185,6 +1187,10 @@
             document.getElementById('collection-count').innerText = `${Object.keys(state.inventory).length}/${EMOJIS.length}`;
             document.getElementById('player-name').innerText = state.playerName ? state.playerName : 'Traveler';
             document.getElementById('player-region').innerText = getCurrentRegionLabel();
+            document.getElementById('header-rare-tickets').classList.toggle('hidden', state.rareTickets <= 0);
+            document.getElementById('header-legendary-tickets').classList.toggle('hidden', state.legendaryTickets <= 0);
+            document.getElementById('rare-summon-block').classList.toggle('hidden', state.rareTickets <= 0);
+            document.getElementById('legendary-summon-block').classList.toggle('hidden', state.legendaryTickets <= 0);
         }
 
         function switchTab(tab) {
@@ -1196,6 +1202,16 @@
             if (tab === 'emojidex') renderEmojidex();
             if (tab === 'tutor') renderMoveTutor();
             if (tab === 'adventure') renderAdventure();
+            if (state.tutorial?.suspended && tab !== 'summon') {
+                state.tutorial.suspended = false;
+                save();
+            }
+            if (isTutorialActive() && state.tutorial.step === TUTORIAL_STEPS.TEAM && tab === 'team') {
+                state.tutorial.completed = true;
+                state.tutorial.step = TUTORIAL_STEPS.DONE;
+                state.tutorial.allowTeamBuild = false;
+                save();
+            }
             renderTutorial();
         }
 
@@ -1209,11 +1225,10 @@
         }
 
         function setTutorialHighlights(isActive) {
-            const adventureBtn = document.getElementById('btn-tab-adventure');
-            const shopBtn = document.getElementById('btn-tab-shop');
-            if (!adventureBtn || !shopBtn) return;
-            adventureBtn.classList.toggle('tutorial-highlight', isActive);
-            shopBtn.classList.toggle('tutorial-highlight', isActive);
+            const squadBtn = document.getElementById('btn-tab-team');
+            const summonBtn = document.getElementById('btn-single-summon');
+            if (squadBtn) squadBtn.classList.toggle('tutorial-highlight', isActive && state.tutorial.step === TUTORIAL_STEPS.TEAM);
+            if (summonBtn) summonBtn.classList.toggle('tutorial-highlight', isActive && (state.tutorial.step === TUTORIAL_STEPS.PULL_ONE || state.tutorial.step === TUTORIAL_STEPS.PULL_TWO));
         }
 
         function renderTutorial() {
@@ -1232,11 +1247,11 @@
             const step = state.tutorial.step;
             if (step === TUTORIAL_STEPS.TEAM && state.tutorial.allowTeamBuild) {
                 overlay.classList.add('hidden');
-                setTutorialHighlights(false);
+                setTutorialHighlights(true);
                 return;
             }
             overlay.classList.remove('hidden');
-            setTutorialHighlights(step === TUTORIAL_STEPS.HIGHLIGHT);
+            setTutorialHighlights(true);
             if (step === TUTORIAL_STEPS.NAME) {
                 content.innerHTML = `
                     <div class="text-xs font-black uppercase tracking-[0.2em] text-indigo-300 mb-2">Welcome</div>
@@ -1273,8 +1288,8 @@
                 content.innerHTML = `
                     <div class="text-xs font-black uppercase tracking-[0.2em] text-indigo-300 mb-2">Portal Basics</div>
                     <h3 class="text-xl font-black mb-3">First pull: Tin Can</h3>
-                    <p class="text-[10px] text-slate-400 mb-4">Your first summon is guided. Head to the Portal and pull your first ally.</p>
-                    <button onclick="startGuidedSummon()" class="w-full bg-white text-black py-3 rounded-xl font-black text-xs uppercase">Summon Tin Can</button>
+                    <p class="text-[10px] text-slate-400 mb-4">Click the Portal tab, then press the SINGLE SUMMON button to pull Tin Can.</p>
+                    <button onclick="prepGuidedSummon()" class="w-full bg-white text-black py-3 rounded-xl font-black text-xs uppercase">Go to Portal</button>
                 `;
                 return;
             }
@@ -1282,8 +1297,8 @@
                 content.innerHTML = `
                     <div class="text-xs font-black uppercase tracking-[0.2em] text-indigo-300 mb-2">Second Pull</div>
                     <h3 class="text-xl font-black mb-3">Next pull: Star</h3>
-                    <p class="text-[10px] text-slate-400 mb-4">This summon is also guided. Grab Star to round out your starters.</p>
-                    <button onclick="startGuidedSummon()" class="w-full bg-white text-black py-3 rounded-xl font-black text-xs uppercase">Summon Star</button>
+                    <p class="text-[10px] text-slate-400 mb-4">Press SINGLE SUMMON again to pull Star.</p>
+                    <button onclick="prepGuidedSummon()" class="w-full bg-white text-black py-3 rounded-xl font-black text-xs uppercase">Go to Portal</button>
                 `;
                 return;
             }
@@ -1291,17 +1306,8 @@
                 content.innerHTML = `
                     <div class="text-xs font-black uppercase tracking-[0.2em] text-amber-300 mb-2">Build Squad</div>
                     <h3 class="text-xl font-black mb-3">Assemble your team</h3>
-                    <p class="text-[10px] text-slate-400 mb-4">Open the Squad tab and add your starter, Tin Can, and Star to your team slots.</p>
+                    <p class="text-[10px] text-slate-400 mb-4">Click the Squad tab to manage your team and see stats.</p>
                     <button onclick="openTeamForTutorial()" class="w-full bg-amber-400 text-black py-3 rounded-xl font-black text-xs uppercase">Open Squad</button>
-                `;
-                return;
-            }
-            if (step === TUTORIAL_STEPS.HIGHLIGHT) {
-                content.innerHTML = `
-                    <div class="text-xs font-black uppercase tracking-[0.2em] text-sky-300 mb-2">Get More Tickets</div>
-                    <h3 class="text-xl font-black mb-3">Adventure + Market</h3>
-                    <p class="text-[10px] text-slate-400 mb-4">Adventure rewards tickets as you clear regions. The Market lets you buy more with gold.</p>
-                    <button onclick="finishTutorial()" class="w-full bg-sky-400 text-black py-3 rounded-xl font-black text-xs uppercase">Got It</button>
                 `;
                 return;
             }
@@ -1380,12 +1386,12 @@
             save(); updateStatsUI(); renderTeam(); renderTutorial();
         }
 
-        function startGuidedSummon() {
+        function prepGuidedSummon() {
             if (state.tutorial.step < TUTORIAL_STEPS.PULL_ONE) return;
             state.tutorial.suspended = true;
             document.getElementById('tutorial-overlay').classList.add('hidden');
             switchTab('summon');
-            startSummonSequence(1, 'standard');
+            setTutorialHighlights(true);
         }
 
         function openTeamForTutorial() {
@@ -1400,6 +1406,57 @@
             state.tutorial.step = TUTORIAL_STEPS.DONE;
             save();
             renderTutorial();
+        }
+
+        function openDataDialog() {
+            renderDataDialog();
+            document.getElementById('data-dialog').classList.remove('hidden');
+        }
+
+        function closeDataDialog() {
+            document.getElementById('data-dialog').classList.add('hidden');
+        }
+
+        function renderDataDialog() {
+            const grid = document.getElementById('data-slot-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            [1, 2, 3].forEach(slot => {
+                const saved = localStorage.getItem(getSaveKey(slot));
+                const data = saved ? JSON.parse(saved) : null;
+                const name = data?.playerName || (saved ? 'Traveler' : 'Empty');
+                const team = (data?.team || []).map(id => (EMOJIS.find(e => e.id === id) || {}).char || '❔');
+                const region = data?.adventure?.regions?.find(r => r.id === data?.adventure?.currentRegionId)?.name || 'No Region';
+                const gold = data?.gold ?? 0;
+                const tickets = data ? `${data.tickets || 0} / ${data.rareTickets || 0} / ${data.legendaryTickets || 0}` : '-';
+                const card = document.createElement('div');
+                card.className = `border rounded-2xl p-4 ${slot === currentSlot ? 'border-emerald-400 bg-emerald-500/10' : 'border-white/10 bg-black/30'}`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[9px] font-black uppercase tracking-[0.2em]">Slot ${slot}</span>
+                        <span class="text-[9px] text-slate-400 uppercase">${saved ? 'Saved' : 'Empty'}</span>
+                    </div>
+                    <div class="text-sm font-black">${name}</div>
+                    <div class="text-[9px] text-slate-400 uppercase tracking-[0.2em] mt-1">Region: ${region}</div>
+                    <div class="text-[9px] text-slate-400 uppercase tracking-[0.2em] mt-1">Income: ${gold.toLocaleString()}</div>
+                    <div class="text-[9px] text-slate-400 uppercase tracking-[0.2em] mt-1">Tickets: ${tickets}</div>
+                    <div class="text-xl mt-2">${team.length ? team.join('') : '—'}</div>
+                    <button onclick="confirmLoadSlot(${slot})" class="mt-3 w-full ${slot === currentSlot ? 'bg-slate-700 text-slate-300' : 'bg-indigo-500 text-black'} py-2 rounded-xl text-[9px] font-black uppercase" ${slot === currentSlot ? 'disabled' : ''}>Load</button>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function confirmLoadSlot(slot) {
+            if (slot === currentSlot) return;
+            if (!confirm(`Load Slot ${slot}? Unsaved progress in the current slot will be lost.`)) return;
+            stopAutoBattle();
+            localStorage.setItem('emojiSaga_vInfinite_slot', slot);
+            loadSlot(slot);
+            updateStatsUI();
+            switchTab('summon');
+            renderTutorial();
+            renderDataDialog();
         }
 
         function toast(msg) {
@@ -2038,6 +2095,10 @@
         async function startSummonSequence(count, summonType = 'standard') {
             const guidedAllowed = isTutorialActive() && state.tutorial.step >= TUTORIAL_STEPS.PULL_ONE;
             const isGuided = guidedAllowed && state.tutorial.guidedPulls < 2;
+            if (isGuided && (summonType !== 'standard' || count !== 1)) {
+                toast('USE SINGLE SUMMON');
+                return;
+            }
             if (isTutorialActive() && state.tutorial.step < TUTORIAL_STEPS.PULL_ONE) {
                 toast('FINISH SETUP FIRST');
                 return;
@@ -2072,11 +2133,15 @@
                 results.push({ emoji, isNew });
                 if (isNew) state.inventory[emoji.id] = { lvl: 1, baseRarity: emoji.rarity, currentRarity: emoji.rarity, dupes: 0, learnedMoves: [] };
                 else state.inventory[emoji.id].dupes = (state.inventory[emoji.id].dupes || 0) + 1;
+                if (isGuided && !state.team.includes(emoji.id)) {
+                    if (state.team.length < 3) state.team.push(emoji.id);
+                }
             }
             if (isGuided) {
                 state.tutorial.guidedPulls += 1;
                 state.tutorial.step = state.tutorial.guidedPulls === 1 ? TUTORIAL_STEPS.PULL_TWO : TUTORIAL_STEPS.TEAM;
                 state.tutorial.allowTeamBuild = false;
+                state.tutorial.suspended = false;
             }
             save(); renderSummonResults(results);
         }
@@ -2138,12 +2203,6 @@
                 item.onclick = () => inspect(id);
                 rosterGrid.appendChild(item);
             });
-            if (isTutorialActive() && state.tutorial.step === TUTORIAL_STEPS.TEAM && state.team.length >= 3) {
-                state.tutorial.step = TUTORIAL_STEPS.HIGHLIGHT;
-                state.tutorial.allowTeamBuild = false;
-                save();
-                renderTutorial();
-            }
         }
 
         function renderEmojidex() {
