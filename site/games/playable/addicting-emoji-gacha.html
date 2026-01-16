@@ -2631,6 +2631,9 @@
             const nextRarity = currentIdx > -1 ? RARITY_ORDER[currentIdx + 1] : null;
             if (!nextRarity) return null;
             if (inv.currentRarity === 'false_divine') return null;
+            if (inv.currentRarity === 'legendary') {
+                return ['legendary', 'divine', 'eternal', 'trash'].includes(inv.baseRarity) ? 'divine' : 'false_divine';
+            }
             if (nextRarity === 'divine' && !['legendary', 'divine', 'eternal', 'trash'].includes(inv.baseRarity)) {
                 return 'false_divine';
             }
