@@ -1301,7 +1301,14 @@
         EMOJIS.forEach(emoji => { emoji.desc = EMOJI_DESCS[emoji.id]; });
 
         // --- CORE ---
-        function init() { loadSlot(resolveInitialSlot()); updateStatsUI(); updateCombatControls(); switchTab('summon'); renderTutorial(); }
+        function init() {
+            loadSlot(resolveInitialSlot());
+            updateStatsUI();
+            updateCombatControls();
+            const lastTab = localStorage.getItem('emojiSaga_lastTab') || 'summon';
+            switchTab(lastTab);
+            renderTutorial();
+        }
         function getSaveKey(slot) { return `emojiSaga_vInfinite_slot${slot}`; }
         function resolveInitialSlot() {
             const stored = parseInt(localStorage.getItem('emojiSaga_vInfinite_slot'), 10);
@@ -1520,6 +1527,7 @@
             document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active'));
             document.getElementById(`view-${tab}`).classList.remove('hidden');
             document.getElementById(`btn-tab-${tab}`).classList.add('tab-active');
+            localStorage.setItem('emojiSaga_lastTab', tab);
             if (tab === 'team') renderTeam();
             if (tab === 'emojidex') renderEmojidex();
             if (tab === 'tutor') renderMoveTutor();
