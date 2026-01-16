@@ -3560,7 +3560,7 @@
             if (baseBtn) {
                 const baseTarget = getBaseAscendTarget(inv.baseRarity);
                 const isEligible = inv.lvl >= 10
-                    && ['false_divine', 'divine'].includes(inv.currentRarity)
+                    && ['false_divine', 'divine', 'eternal'].includes(inv.currentRarity)
                     && baseTarget;
                 const dupes = inv.dupes || 0;
                 if (isEligible) {
@@ -3598,7 +3598,7 @@
             const baseTarget = getBaseAscendTarget(inv.baseRarity);
             if (!baseTarget) return;
             if (inv.lvl < 10) return;
-            if (!['false_divine', 'divine'].includes(inv.currentRarity)) return;
+            if (!['false_divine', 'divine', 'eternal'].includes(inv.currentRarity)) return;
             if ((inv.dupes || 0) < 3) return;
             inv.originalRarity = inv.originalRarity || inv.baseRarity;
             inv.dupes -= 3;
