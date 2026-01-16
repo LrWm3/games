@@ -2076,6 +2076,12 @@
             return team.sort(() => Math.random() - 0.5);
         }
 
+        function getEnemyTitle(units) {
+            if (!units?.length) return 'Unknown';
+            const names = units.map(u => u?.name || u?.id || 'Unknown');
+            return names.join(' • ');
+        }
+
         function getArenaReward(stage) {
             if (stage <= 3) return 80 * stage;
             if (stage <= 7) return 160 * stage;
