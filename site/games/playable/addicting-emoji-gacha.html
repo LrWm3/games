@@ -653,8 +653,9 @@
         };
         const RARITY_MULTIPLIERS = { trash: 0.4, common: 1.0, uncommon: 1.25, rare: 1.5, epic: 2.5, legendary: 4.5, false_divine: 8.0, divine: 8.5, eternal: 20.0 };
         const GROWTH_RATES = { trash: 0.12, common: 0.15, uncommon: 0.165, rare: 0.18, epic: 0.22, legendary: 0.28, false_divine: 0.36, divine: 0.38, eternal: 0.55 };
-        const ELEMENTS = { fire: { beats: 'nature' }, water: { beats: 'fire' }, nature: { beats: 'water' }, light: { beats: 'dark' }, dark: { beats: 'light' } };
+        const ELEMENTS = { fire: { beats: 'nature', resists: 'water' }, water: { beats: 'fire', resists: 'nature' }, nature: { beats: 'water', resists: 'fire' }, light: { beats: 'dark'}, dark: { beats: 'light' } };
         const ELEMENT_ADVANTAGE_MULT = 1.50;
+        const ELEMENT_RESIST_MULT = 0.67;
         const ELEMENT_METADATA = {
             fire: { emoji: '🔥', name: 'Fire' },
             water: { emoji: '💧', name: 'Water' },
@@ -1914,8 +1915,10 @@
             const defRaw = Math.max(1, getModifiedStat(defender, isSpecial ? 'spDef' : 'def'));
             const defScaled = Math.pow(defRaw, 0.78);
             const moveElement = move?.element || attacker.element;
-            const advantage = ELEMENTS[moveElement]?.beats === defender.element ? ELEMENT_ADVANTAGE_MULT : 1;
-            const base = (atkStat / Math.max(1, defScaled / 8)) * (effectivePower / 40) * variance * advantage;
+            const elementRule = ELEMENTS[moveElement] || {};
+            const advantage = elementRule.beats === defender.element ? ELEMENT_ADVANTAGE_MULT : 1;
+            const resist = elementRule.resists === defender.element ? ELEMENT_RESIST_MULT : 1;
+            const base = (atkStat / Math.max(1, defScaled / 8)) * (effectivePower / 40) * variance * advantage * resist;
             return base;
         }
 
@@ -2035,13 +2038,21 @@
             } else if (move.kind === 'damage') {
                 targets.forEach(target => {
                     let dmg = calcDamage(user, target, move.power, move);
+                    const moveElement = move?.element || user.element;
+                    const elementRule = ELEMENTS[moveElement] || {};
+                    let matchupNote = '';
+                    if (elementRule.beats === target.element) {
+                        matchupNote = `, hitting emoji elemental weakness!`;
+                    } else if (elementRule.resists === target.element) {
+                        matchupNote = `, with emoji element resisting the attack.`;
+                    }
                     if (target.status?.id === 'soak') {
                         dmg = Math.floor(dmg * STATUS_RULES.soak.damageAmp);
                         target.status = null;
                         appendLog(log, `<div>${target.char} is soaked!</div>`);
                     }
                     target.hp -= dmg;
-                    appendLog(log, `<div>${user.char} uses ${move.name} on ${target.char} for ${Math.floor(dmg)}</div>`);
+                    appendLog(log, `<div>${user.char} uses ${move.name} on ${target.char} for ${Math.floor(dmg)}${matchupNote}</div>`);
                     const targetChanges = applyStageChanges(target, move.effect?.targetStages);
                     const selfChanges = applyStageChanges(user, move.effect?.selfStages);
                     if (targetChanges.length) appendLog(log, `<div>${target.char} ${formatStageChangesLog(targetChanges)}</div>`);
@@ -2957,7 +2968,9 @@
                 Object.entries(ELEMENTS).forEach(([element, data]) => {
                     const meta = ELEMENT_METADATA[element] || { emoji: '✨', name: element };
                     const beatsMeta = ELEMENT_METADATA[data.beats] || { emoji: '✨', name: data.beats };
+                    const resistsMeta = ELEMENT_METADATA[data.resists] || { emoji: '✨', name: data.resists };
                     const boostPct = Math.round((ELEMENT_ADVANTAGE_MULT - 1) * 100);
+                    const resistPct = Math.round((1 - ELEMENT_RESIST_MULT) * 100);
                     const card = document.createElement('div');
                     card.className = 'bg-black/40 border border-white/10 rounded-2xl p-4';
                     card.innerHTML = `
@@ -2967,6 +2980,7 @@
                         </div>
                         <div class="text-[9px] text-slate-300 leading-relaxed">Strong vs ${beatsMeta.emoji} ${beatsMeta.name}</div>
                         <div class="text-[9px] text-slate-400 leading-relaxed">Damage +${boostPct}%</div>
+                        ${data.resists ? `<div class="text-[9px] text-slate-400 leading-relaxed">Takes ${resistPct}% less from ${resistsMeta.emoji} ${resistsMeta.name}</div>` : ''}
                     `;
                     elementChart.appendChild(card);
                 });
@@ -2997,7 +3011,14 @@
                 const requiredWins = getTutorRequirement(studentBase);
                 const alreadyKnown = mentorMoveId === getMoveIdForEmoji(EMOJIS.find(e => e.id === pair.studentId) || {}) || (studentInv.learnedMoves || []).includes(mentorMoveId);
                 if (alreadyKnown) return;
-                if ((studentInv.learnedMoves || []).length >= 2) return;
+                if ((studentInv.learnedMoves || []).length >= 3) {
+                    if (!pair.fullNotified) {
+                        toast('STUDENT HAS 3 ADDITIONAL MOVES');
+                        pair.fullNotified = true;
+                    }
+                    return;
+                }
+                pair.fullNotified = false;
                 pair.progress = Math.min(requiredWins, (pair.progress || 0) + 1);
                 if (pair.progress >= requiredWins) {
                     studentInv.learnedMoves = studentInv.learnedMoves || [];
@@ -3015,6 +3036,21 @@
             const studentId = studentSelect.value ? parseInt(studentSelect.value, 10) : null;
             state.tutorPairs[index - 1] = { mentorId, studentId, progress: 0 };
             save(); renderMoveTutor();
+        }
+
+        function autoSetTutorPair(index) {
+            if (state.tutorUnlockedSlots < index) return;
+            const mentorSelect = document.getElementById(`tutor-mentor-${index}`);
+            const studentSelect = document.getElementById(`tutor-student-${index}`);
+            if (!mentorSelect || !studentSelect) return;
+            const mentorId = mentorSelect.value ? parseInt(mentorSelect.value, 10) : null;
+            const studentId = studentSelect.value ? parseInt(studentSelect.value, 10) : null;
+            if (!mentorId || !studentId) return;
+            const existing = state.tutorPairs[index - 1] || { mentorId: null, studentId: null, progress: 0 };
+            if (existing.mentorId === mentorId && existing.studentId === studentId) return;
+            state.tutorPairs[index - 1] = { mentorId, studentId, progress: 0 };
+            save();
+            renderMoveTutor();
         }
 
         function clearTutorPair(index) {
@@ -3057,6 +3093,7 @@
                 const requiredWins = studentBase ? getTutorRequirement(studentBase) : 0;
                 const poolNote = mentorMove ? `Need wins vs ${mentorMove.rarity.toUpperCase()}+ pools` : '';
                 const learnedMoves = studentInv?.learnedMoves || [];
+                const learnedCount = learnedMoves.length;
                 const learnedList = learnedMoves.map(id => {
                     const move = getMoveById(id);
                     return `<div class="flex justify-between items-center bg-black/40 rounded-xl px-2 py-1">
@@ -3075,8 +3112,8 @@
                 slot.innerHTML = `
                     <div class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Pair ${i}</div>
                     <div class="space-y-2 mb-3">
-                        <select id="tutor-mentor-${i}" class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px]">${mentorOptions}</select>
-                        <select id="tutor-student-${i}" class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px]">${studentOptions}</select>
+                        <select id="tutor-mentor-${i}" onchange="autoSetTutorPair(${i})" class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px]">${mentorOptions}</select>
+                        <select id="tutor-student-${i}" onchange="autoSetTutorPair(${i})" class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px]">${studentOptions}</select>
                     </div>
                     <div class="flex gap-2 mb-3">
                         <button onclick="updateTutorPair(${i})" class="flex-1 bg-emerald-500 text-black py-2 rounded-xl text-[9px] font-black uppercase">Set Pair</button>
@@ -3085,6 +3122,7 @@
                     <div class="text-[9px] text-slate-300 space-y-1">
                         <div><span class="text-slate-500">Mentor Move:</span> ${mentorMove ? `${mentorMove.name} (${mentorMove.rarity.toUpperCase()})` : '—'}</div>
                         <div><span class="text-slate-500">Student Base:</span> ${studentBase ? studentBase.toUpperCase() : '—'}</div>
+                        <div><span class="text-slate-500">Student Slots:</span> (${learnedCount}/3) ADDL. MOVES LEARNED</div>
                         <div><span class="text-slate-500">Progress:</span> ${pair.progress || 0}/${requiredWins} ${poolNote ? `• ${poolNote}` : ''}</div>
                         <div><span class="text-slate-500">Learned Moves:</span></div>
                         <div class="space-y-1">${learnedList || '<div class="text-slate-500">None</div>'}</div>
