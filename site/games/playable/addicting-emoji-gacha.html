@@ -1890,8 +1890,9 @@
             if (!isSpecial && attacker.status?.id === 'burn') {
                 atkStat *= STATUS_RULES.burn.physAtkMult;
             }
-            const defStat = Math.max(1, getModifiedStat(defender, isSpecial ? 'spDef' : 'def'));
-            const base = (atkStat / Math.max(1, defStat / 10)) * (effectivePower / 40) * variance;
+            const defRaw = Math.max(1, getModifiedStat(defender, isSpecial ? 'spDef' : 'def'));
+            const defScaled = Math.pow(defRaw, 0.85);
+            const base = (atkStat / Math.max(1, defScaled / 8)) * (effectivePower / 40) * variance;
             return base;
         }
 
