@@ -1831,7 +1831,8 @@
 
         function attachMoves(unit, learnedMoves = []) {
             const moveId = getMoveIdForEmoji(unit);
-            const moveList = ['basic_strike', moveId, ...learnedMoves];
+            const starterStrike = unit.type === 'Mystic' ? 'mental_strike' : 'basic_strike';
+            const moveList = [starterStrike, moveId, ...learnedMoves];
             unit.moves = [...new Set(moveList)];
             unit.cooldowns = {};
             unit.moves.forEach(id => { unit.cooldowns[id] = 0; });
