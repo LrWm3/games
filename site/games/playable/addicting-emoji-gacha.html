@@ -2102,7 +2102,9 @@
                     ? 10
                     : Math.max(1, baseLevel + Math.floor(Math.random() * levelSpread) - Math.floor(levelSpread / 2));
                 const currentRarity = isArena
-                    ? (rarityRank(rarity) <= rarityRank('epic') ? 'false_divine' : (rarity === 'legendary' ? 'divine' : rarity))
+                    ? (rarityRank(rarity) <= rarityRank('rare')
+                        ? 'legendary'
+                        : (rarity === 'epic' ? 'false_divine' : (rarity === 'legendary' ? 'divine' : rarity)))
                     : rarity;
                 const stats = calcEnemyStats(emoji, level, currentRarity);
                 const unit = { ...emoji, ...stats, lvl: level, maxHp: stats.hp, isPlayer: false, currentRarity };
