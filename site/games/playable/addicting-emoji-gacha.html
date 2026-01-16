@@ -1556,6 +1556,22 @@
             }).join('');
         }
 
+        function renderStatusBadge(unit) {
+            if (!unit?.status) return '';
+            const status = STATUS_BY_ID[unit.status.id];
+            const emoji = ELEMENT_METADATA[status?.element]?.emoji || '✨';
+            return `<span class="px-2 py-1 rounded-full border border-white/5 bg-amber-500/20 text-amber-200">${emoji} ${status?.name || unit.status.id}</span>`;
+        }
+
+        function renderStatStageBadges(unit) {
+            const labels = { atk: 'ATK', def: 'DEF', spAtk: 'SP. ATK', spDef: 'SP. DEF', spd: 'SPD' };
+            const stages = unit?.statStages || { atk: 0, def: 0, spAtk: 0, spDef: 0, spd: 0 };
+            return Object.entries(labels)
+                .filter(([key]) => stages[key])
+                .map(([key, label]) => `<span class="px-2 py-1 rounded-full border border-white/5 ${stages[key] > 0 ? 'bg-emerald-500/20 text-emerald-200' : 'bg-rose-500/20 text-rose-200'}">${label} ${stages[key] > 0 ? `+${stages[key]}` : stages[key]}</span>`)
+                .join('');
+        }
+
         function getMoveListForEmoji(emoji, inv = null) {
             const learned = inv?.learnedMoves || [];
             const moveIds = ['basic_strike', getMoveIdForEmoji(emoji), ...learned];
@@ -1688,20 +1704,23 @@
         }
 
         function applyStageChanges(target, stages) {
-            if (!stages) return;
-            if (stages.atk) {
-                if (!(target.status?.id === 'dazzle' && stages.atk > 0)) {
-                    target.statStages.atk = Math.max(-3, Math.min(3, target.statStages.atk + stages.atk));
-                }
-            }
-            if (stages.def) target.statStages.def = Math.max(-3, Math.min(3, target.statStages.def + stages.def));
-            if (stages.spAtk) {
-                if (!(target.status?.id === 'dazzle' && stages.spAtk > 0)) {
-                    target.statStages.spAtk = Math.max(-3, Math.min(3, target.statStages.spAtk + stages.spAtk));
-                }
-            }
-            if (stages.spDef) target.statStages.spDef = Math.max(-3, Math.min(3, target.statStages.spDef + stages.spDef));
-            if (stages.spd) target.statStages.spd = Math.max(-3, Math.min(3, target.statStages.spd + stages.spd));
+            if (!stages) return [];
+            const changes = [];
+            const applyStage = (key, delta, blockPositive) => {
+                if (!delta) return;
+                if (blockPositive && delta > 0) return;
+                const before = target.statStages[key];
+                const after = Math.max(-3, Math.min(3, before + delta));
+                target.statStages[key] = after;
+                const applied = after - before;
+                if (applied) changes.push({ key, delta: applied });
+            };
+            applyStage('atk', stages.atk, target.status?.id === 'dazzle');
+            applyStage('def', stages.def, false);
+            applyStage('spAtk', stages.spAtk, target.status?.id === 'dazzle');
+            applyStage('spDef', stages.spDef, false);
+            applyStage('spd', stages.spd, false);
+            return changes;
         }
 
         function applyRecoil(user, dmg, recoilPct, log) {
@@ -1756,8 +1775,10 @@
                     }
                     target.hp -= dmg;
                     appendLog(log, `<div>${user.char} uses ${move.name} on ${target.char} for ${Math.floor(dmg)}</div>`);
-                    applyStageChanges(target, move.effect?.targetStages);
-                    applyStageChanges(user, move.effect?.selfStages);
+                    const targetChanges = applyStageChanges(target, move.effect?.targetStages);
+                    const selfChanges = applyStageChanges(user, move.effect?.selfStages);
+                    if (targetChanges.length) appendLog(log, `<div>${target.char} ${formatStageChangesLog(targetChanges)}</div>`);
+                    if (selfChanges.length) appendLog(log, `<div>${user.char} ${formatStageChangesLog(selfChanges)}</div>`);
                     applyRecoil(user, dmg, move.effect?.recoilPct, log);
                     applyDrain(user, dmg, move.effect?.drainPct, log);
                     applyStatuses(user, target, move, log);
@@ -1774,8 +1795,9 @@
             } else if (move.kind === 'buff') {
                 targets.forEach(target => {
                     const stages = move.effect?.stages || move.effect?.targetStages || move.effect;
-                    applyStageChanges(target, stages);
+                    const changes = applyStageChanges(target, stages);
                     appendLog(log, `<div>${user.char} uses ${move.name}</div>`);
+                    if (changes.length) appendLog(log, `<div>${target.char} ${formatStageChangesLog(changes)}</div>`);
                 });
             }
             return true;
@@ -2073,6 +2095,7 @@
                         </span>
                         <span>${Math.max(0,Math.floor(u.hp))}</span>
                     </div>
+                    <div class="flex flex-wrap gap-2 mt-1">${renderStatusBadge(u)}${renderStatStageBadges(u)}</div>
                     <div class="h-1 bg-black overflow-hidden"><div class="h-full ${hpColor}" style="width:${(u.hp/u.maxHp)*100}%"></div></div>
                     <div class="flex flex-wrap gap-2 mt-2">${renderCooldowns(u)}</div>
                 </div>
@@ -2417,6 +2440,11 @@
             return Object.entries(stages || {})
                 .filter(([key, value]) => labels[key] && value)
                 .map(([key, value]) => `${labels[key]} ${value > 0 ? `+${value}` : value}`);
+        }
+
+        function formatStageChangesLog(changes) {
+            const labels = { atk: 'ATK', def: 'DEF', spAtk: 'SP. ATK', spDef: 'SP. DEF', spd: 'SPD' };
+            return `stat changes: ${changes.map(change => `${labels[change.key]} ${change.delta > 0 ? `+${change.delta}` : change.delta}`).join(', ')}`;
         }
 
         function getEffectTargetLabel(target) {
