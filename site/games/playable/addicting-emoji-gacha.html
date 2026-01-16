@@ -654,6 +654,7 @@
         const RARITY_MULTIPLIERS = { trash: 0.4, common: 1.0, uncommon: 1.25, rare: 1.5, epic: 2.5, legendary: 4.5, false_divine: 8.0, divine: 8.5, eternal: 20.0 };
         const GROWTH_RATES = { trash: 0.12, common: 0.15, uncommon: 0.165, rare: 0.18, epic: 0.22, legendary: 0.28, false_divine: 0.36, divine: 0.38, eternal: 0.55 };
         const ELEMENTS = { fire: { beats: 'nature' }, water: { beats: 'fire' }, nature: { beats: 'water' }, light: { beats: 'dark' }, dark: { beats: 'light' } };
+        const ELEMENT_ADVANTAGE_MULT = 1.50;
         const ELEMENT_METADATA = {
             fire: { emoji: '🔥', name: 'Fire' },
             water: { emoji: '💧', name: 'Water' },
@@ -1912,7 +1913,9 @@
             atkStat = Math.pow(atkStat, 1.16);
             const defRaw = Math.max(1, getModifiedStat(defender, isSpecial ? 'spDef' : 'def'));
             const defScaled = Math.pow(defRaw, 0.78);
-            const base = (atkStat / Math.max(1, defScaled / 8)) * (effectivePower / 40) * variance;
+            const moveElement = move?.element || attacker.element;
+            const advantage = ELEMENTS[moveElement]?.beats === defender.element ? ELEMENT_ADVANTAGE_MULT : 1;
+            const base = (atkStat / Math.max(1, defScaled / 8)) * (effectivePower / 40) * variance * advantage;
             return base;
         }
 
@@ -2954,6 +2957,7 @@
                 Object.entries(ELEMENTS).forEach(([element, data]) => {
                     const meta = ELEMENT_METADATA[element] || { emoji: '✨', name: element };
                     const beatsMeta = ELEMENT_METADATA[data.beats] || { emoji: '✨', name: data.beats };
+                    const boostPct = Math.round((ELEMENT_ADVANTAGE_MULT - 1) * 100);
                     const card = document.createElement('div');
                     card.className = 'bg-black/40 border border-white/10 rounded-2xl p-4';
                     card.innerHTML = `
@@ -2962,6 +2966,7 @@
                             <div class="text-[10px] font-black uppercase tracking-widest">${meta.name}</div>
                         </div>
                         <div class="text-[9px] text-slate-300 leading-relaxed">Strong vs ${beatsMeta.emoji} ${beatsMeta.name}</div>
+                        <div class="text-[9px] text-slate-400 leading-relaxed">Damage +${boostPct}%</div>
                     `;
                     elementChart.appendChild(card);
                 });
