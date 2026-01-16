@@ -320,19 +320,19 @@
                 </div>
                 <div class="bg-slate-900 p-8 rounded-3xl border border-blue-500/30 text-center flex flex-col items-center">
                     <h3 class="font-black text-lg mb-4 uppercase">1 Rare Ticket</h3>
-                    <button onclick="buyTickets('rare', 1, 2500)" class="w-full bg-blue-500 py-3 rounded-xl font-black text-xs">2,500 GOLD</button>
+                    <button onclick="buyTickets('rare', 1, 4000)" class="w-full bg-blue-500 py-3 rounded-xl font-black text-xs">4,000 GOLD</button>
                 </div>
                 <div class="bg-slate-900 p-8 rounded-3xl border border-blue-500/30 text-center flex flex-col items-center">
                     <h3 class="font-black text-lg mb-4 uppercase">10 Rare Tickets</h3>
-                    <button onclick="buyTickets('rare', 10, 22500)" class="w-full bg-blue-500 py-3 rounded-xl font-black text-xs">22,500 GOLD</button>
+                    <button onclick="buyTickets('rare', 10, 36000)" class="w-full bg-blue-500 py-3 rounded-xl font-black text-xs">36,000 GOLD</button>
                 </div>
                 <div class="bg-slate-900 p-8 rounded-3xl border border-amber-500/30 text-center flex flex-col items-center">
                     <h3 class="font-black text-lg mb-4 uppercase">1 Legendary Ticket</h3>
-                    <button onclick="buyTickets('legendary', 1, 6000)" class="w-full bg-amber-500 py-3 rounded-xl font-black text-xs">6,000 GOLD</button>
+                    <button onclick="buyTickets('legendary', 1, 16000)" class="w-full bg-amber-500 py-3 rounded-xl font-black text-xs">16,000 GOLD</button>
                 </div>
                 <div class="bg-slate-900 p-8 rounded-3xl border border-amber-500/30 text-center flex flex-col items-center">
                     <h3 class="font-black text-lg mb-4 uppercase">10 Legendary Tickets</h3>
-                    <button onclick="buyTickets('legendary', 10, 54000)" class="w-full bg-amber-500 py-3 rounded-xl font-black text-xs">54,000 GOLD</button>
+                    <button onclick="buyTickets('legendary', 10, 144000)" class="w-full bg-amber-500 py-3 rounded-xl font-black text-xs">144,000 GOLD</button>
                 </div>
             </div>
         </section>
@@ -1933,6 +1933,18 @@
             document.getElementById('adventure-region-title').innerText = active ? `${active.emoji} ${active.name}` : 'No Region';
             const lobby = document.getElementById('adventure-lobby');
             if (active && !active.cleared && !state.adventure.training) {
+                const regionIndex = Math.max(0, state.adventure.regions.findIndex(r => r.id === active.id));
+                const baseTable = { trash: 120, common: 180, uncommon: 240, rare: 320, epic: 480, legendary: 650 };
+                const baseGold = baseTable[active.rarity] || 200;
+                const regionBoost = 1 + (regionIndex * 0.18);
+                const scaledGold = Math.floor(baseGold * regionBoost);
+                const isEpicPlus = rarityRank(active.rarity) >= rarityRank('epic');
+                const regularRewards = isEpicPlus ? '1 Rare Ticket' : '1 Ticket';
+                const bossRewards = (() => {
+                    if (active.rarity === 'trash') return '2 Tickets';
+                    if (active.rarity === 'common') return '3 Tickets';
+                    return isEpicPlus ? '1 Legendary Ticket' : '1 Rare Ticket';
+                })();
                 const trainer = active.inBossRush ? ADVENTURE_BOSS_TRAINERS[active.poolLabel] : null;
                 const trainerBlock = trainer ? `
                     <div class="bg-black/40 border border-white/10 rounded-2xl px-4 py-3 mb-4 text-left">
@@ -1946,10 +1958,24 @@
                         <div class="text-[9px] text-slate-300 italic">"${trainer.line}"</div>
                     </div>
                 ` : '';
+                const rewardBlock = active.inBossRush ? `
+                    <div class="bg-black/40 border border-white/10 rounded-2xl px-4 py-3 mb-4 text-left">
+                        <div class="text-[8px] text-slate-400 uppercase tracking-[0.2em] mb-2">Boss Rush Completion Rewards</div>
+                        <div class="text-[10px] font-black uppercase text-amber-300">${bossRewards}</div>
+                        <div class="text-[9px] text-slate-300 mt-1">Gold: ${Math.floor(scaledGold * 3.2).toLocaleString()}</div>
+                    </div>
+                ` : `
+                    <div class="bg-black/40 border border-white/10 rounded-2xl px-4 py-3 mb-4 text-left">
+                        <div class="text-[8px] text-slate-400 uppercase tracking-[0.2em] mb-2">Battle Rewards</div>
+                        <div class="text-[10px] font-black uppercase text-emerald-300">${regularRewards}</div>
+                        <div class="text-[9px] text-slate-300 mt-1">Gold: ${scaledGold.toLocaleString()}</div>
+                    </div>
+                `;
                 lobby.innerHTML = `
                     <div class="text-[70px] mb-3">⚔️</div>
                     <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.3em] mb-3">${active.inBossRush ? 'Boss Rush - Defeat 3 Teams' : `Challenger ${active.progressIndex + 1}`}</p>
                     ${trainerBlock}
+                    ${rewardBlock}
                     <button onclick="startAdventureBattle()" class="bg-emerald-400 text-black px-8 py-3 rounded-2xl font-black text-xs uppercase">Start Battle</button>
                 `;
             } else if (!active) {
