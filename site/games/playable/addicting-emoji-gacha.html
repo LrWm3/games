@@ -692,8 +692,8 @@
             fire: { id: 'burn', element: 'fire', name: 'Burn', desc: 'Takes damage each turn and deals reduced physical damage. Fire units are immune.' },
             water: { id: 'soak', element: 'water', name: 'Soak', desc: 'Next damage taken is amplified, then clears. Water units are immune.' },
             nature: { id: 'rooted', element: 'nature', name: 'Rooted', desc: 'Reduces speed and drains a small amount each turn. Nature units are immune.' },
-            light: { id: 'dazzle', element: 'light', name: 'Dazzle', desc: 'Clears stat stages, cannot gain attack or special attack stages, and cooldowns recover slower. Light units are immune.' },
-            dark: { id: 'curse', element: 'dark', name: 'Curse', desc: 'Healing received is reduced while active. Dark units are immune.' }
+            light: { id: 'dazzle', element: 'light', name: 'Dazzle', desc: 'Clears stat stages, cannot gain attack or special attack stages, and cooldowns recover slower.' },
+            dark: { id: 'curse', element: 'dark', name: 'Curse', desc: 'Cannot be healed while active.' }
         };
         const STATUS_BY_ID = Object.values(ELEMENT_STATUS_EFFECTS).reduce((acc, status) => {
             acc[status.id] = status;
@@ -704,7 +704,7 @@
             soak: { damageAmp: 1.35, consumeOnHit: true },
             rooted: { tickDrainPct: 0.04, spdMult: 0.7 },
             dazzle: { blockAtkStages: true, blockSpAtkStages: true, cooldownSlow: true },
-            curse: { healMult: 0.6 }
+            curse: { healMult: 0 }
         };
         const STATUS_APPLY_CHANCE = 0.2;
         const STAT_METADATA = {
@@ -1910,7 +1910,7 @@
 
         function canApplyStatus(target, status, sourceElement) {
             if (!status || target.status) return false;
-            if (target.element === sourceElement) return false;
+            if (target.element === sourceElement && !['light', 'dark'].includes(sourceElement)) return false;
             return true;
         }
 
