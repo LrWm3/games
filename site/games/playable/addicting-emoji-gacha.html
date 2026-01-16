@@ -470,9 +470,16 @@
                 <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
                     <h3 class="text-base font-black uppercase tracking-widest">Status</h3>
                     <p class="text-sm text-slate-300">Emoji special moves may apply status effects or cause stat changes.</p>
-                    <p class="text-sm text-slate-300">Status effects apply unique effects like burn, rooted, curse, soaked, or dazzled.</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li class="text-sm text-slate-300"><b>🔥 Burn:</b> loses 10% max HP each turn and physical damage is reduced by 25%.</li>
+                        <li class="text-sm text-slate-300"><b>💧 Soak:</b> next hit takes +35% damage and then clears.</li>
+                        <li class="text-sm text-slate-300"><b>🌿 Rooted:</b> speed -30% and loses 10% max HP each turn.</li>
+                        <li class="text-sm text-slate-300"><b>✨ Dazzle:</b> clears stat stages, blocks ATK/SP. ATK stage gains, and cooldowns tick every other turn.</li>
+                        <li class="text-sm text-slate-300"><b>🌑 Curse:</b> healing is blocked.</li>
+                    </ul>
+                    <p class="text-sm text-slate-300">Fire emojis cannot be burned, Water emojis cannot be soaked, and Nature emojis cannot be rooted.</p>
                     <p class="text-sm text-slate-300">An emoji may only have one status effect applied to it at a time.</p>
-                    <p class="text-sm text-slate-300"><b>See emojidex for details on all status effects.</b></p>
+                    <p class="text-sm text-slate-300"><b>See emojidex for more details on status effects.</b></p>
                 </div>
                 <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
                     <h3 class="text-base font-black uppercase tracking-widest">Stat Changes</h3>
@@ -866,7 +873,7 @@
             return acc;
         }, {});
         const STATUS_RULES = {
-            burn: { tickDamagePct: 0.05, physAtkMult: 0.75 },
+            burn: { tickDamagePct: 0.10, physAtkMult: 0.75 },
             soak: { damageAmp: 1.35, consumeOnHit: true },
             rooted: { tickDrainPct: 0.10, spdMult: 0.7 },
             dazzle: { cooldownSlow: true },
