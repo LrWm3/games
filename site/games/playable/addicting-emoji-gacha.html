@@ -189,6 +189,7 @@
                         <button id="btn-add-team" onclick="toggleSelectedTeam()" class="w-full bg-indigo-600 hover:bg-indigo-700 py-3.5 rounded-2xl font-black text-xs transition-all disabled:opacity-20">DEPLOY</button>
                         <button id="btn-lvl-up" onclick="levelUpSelected()" class="w-full bg-green-600 hover:bg-green-700 py-3.5 rounded-2xl font-black text-xs transition-all disabled:opacity-20">UPGRADE</button>
                         <button id="btn-promote" onclick="promoteSelected()" class="w-full bg-amber-500 hover:bg-amber-600 py-3.5 rounded-2xl font-black text-xs hidden transition-all">ASCEND</button>
+                        <button id="btn-ascend-base" onclick="ascendBaseSelected()" class="w-full bg-emerald-500 hover:bg-emerald-600 py-3.5 rounded-2xl font-black text-xs hidden transition-all">TRANSCEND</button>
                     </div>
                     <div class="flex justify-between items-center border-b border-white/10 pb-2">
                         <h3 class="text-xs font-black uppercase tracking-widest">Collection</h3>
@@ -472,7 +473,7 @@
             { id: 101, char: '🩹', name: 'Bandaid', rarity: 'trash', element: 'dark', defaultMove: 'gloom_slash', type: 'Trash' },
             { id: 102, char: '💩', name: 'Poo', rarity: 'trash', element: 'nature', defaultMove: 'thorns_pulse', type: 'Striker' },
             { id: 103, char: '🦴', name: 'Old Bone', rarity: 'trash', element: 'dark', defaultMove: 'shade_bolt', type: 'Striker' },
-            { id: 104, char: '🏚️', name: 'Shack', rarity: 'trash', element: 'nature', defaultMove: 'briar_strike', type: 'Tank' },
+            { id: 104, char: '🏚️', name: 'Shack', rarity: 'trash', element: 'nature', defaultMove: 'sap_strike', type: 'Trash' },
             { id: 105, char: '👞', name: 'Worn Boot', rarity: 'trash', element: 'water', defaultMove: 'ice_barbs', type: 'Speedster' },
             { id: 106, char: '🧦', name: 'Stray Sock', rarity: 'trash', element: 'light', defaultMove: 'halo_step', type: 'Speedster' },
             { id: 107, char: '🍌', name: 'Peel', rarity: 'trash', element: 'nature', defaultMove: 'sap_strike', type: 'Speedster' },
@@ -488,7 +489,7 @@
             { id: 64, char: '👺', name: 'Oni', rarity: 'legendary', element: 'fire', defaultMove: 'phoenix_dive', type: 'Brawler' },
             { id: 109, char: '🧨', name: 'Dynamo', rarity: 'rare', element: 'fire', defaultMove: 'firebrand', type: 'Striker' },
             { id: 110, char: '🍣', name: 'Spicy Roll', rarity: 'common', element: 'fire', defaultMove: 'rootbind', type: 'Speedster' },
-            { id: 146, char: '🍕', name: 'Slice', rarity: 'rare', element: 'fire', defaultMove: 'ancient_growth', type: 'Striker' },
+            { id: 146, char: '🍕', name: 'Slice', rarity: 'rare', element: 'fire', defaultMove: 'brand_seal', type: 'Striker' },
             { id: 147, char: '🌮', name: 'Crunch', rarity: 'common', element: 'fire', defaultMove: 'spark_flick', type: 'Striker' },
             { id: 148, char: '🎸', name: 'Riff', rarity: 'epic', element: 'fire', defaultMove: 'heat_shield', type: 'Brawler' },
             { id: 149, char: '🚀', name: 'Apex', rarity: 'legendary', element: 'fire', defaultMove: 'solar_flare', type: 'Speedster' },
@@ -497,12 +498,12 @@
             { id: 152, char: '🌞', name: 'Solaris', rarity: 'legendary', element: 'fire', defaultMove: 'crimson_pact', type: 'Brawler' },
             { id: 153, char: '🍩', name: 'Glaze', rarity: 'uncommon', element: 'fire', defaultMove: 'blister_tag', type: 'Speedster' },
             // WATER (26)
-            { id: 6, char: '💧', name: 'Aqua', rarity: 'uncommon', element: 'water', defaultMove: 'ripple_cut', type: 'Speedster' },
+            { id: 6, char: '💧', name: 'Aqua', rarity: 'uncommon', element: 'water', defaultMove: 'soak', type: 'Speedster' },
             { id: 7, char: '🦈', name: 'Meg', rarity: 'rare', element: 'water', defaultMove: 'torrent_edge', type: 'Striker' },
             { id: 8, char: '🐳', name: 'Levi', rarity: 'legendary', element: 'water', defaultMove: 'maelstrom', type: 'Guardian' },
             { id: 9, char: '🧜', name: 'Siren', rarity: 'divine', element: 'water', defaultMove: 'tidal_veil', type: 'Speedster' },
             { id: 246, char: '🪸', name: 'Coralyn', rarity: 'divine', element: 'water', defaultMove: 'grave_bite', type: 'Guardian' },
-            { id: 10, char: '🐙', name: 'Kraken', rarity: 'epic', element: 'water', defaultMove: 'ripple_cut', type: 'Guardian' },
+            { id: 10, char: '🐙', name: 'Kraken', rarity: 'epic', element: 'water', defaultMove: 'leviathan_bite', type: 'Guardian' },
             { id: 66, char: '🧊', name: 'Frost', rarity: 'uncommon', element: 'water', defaultMove: 'drench_mark', type: 'Tank' },
             { id: 111, char: '🛶', name: 'Drift', rarity: 'uncommon', element: 'water', defaultMove: 'flood_mark', type: 'Speedster' },
             { id: 112, char: '⛲', name: 'Geyser', rarity: 'rare', element: 'water', defaultMove: 'tidal_spear', type: 'Striker' },
@@ -554,14 +555,14 @@
             { id: 22, char: '🦇', name: 'Vamp', rarity: 'rare', element: 'dark', defaultMove: 'doom_seal', type: 'Mystic' },
             { id: 23, char: '👁️', name: 'Void', rarity: 'divine', element: 'dark', defaultMove: 'eclipse_edge', type: 'Mystic' },
             { id: 24, char: '👻', name: 'Wraith', rarity: 'epic', element: 'dark', defaultMove: 'gloom_slash', type: 'Mystic' },
-            { id: 120, char: '💣', name: 'Blast', rarity: 'epic', element: 'dark', defaultMove: 'gloom_slash', type: 'Mystic' },
+            { id: 120, char: '💣', name: 'Blast', rarity: 'epic', element: 'dark', defaultMove: 'doom_seal', type: 'Mystic' },
             { id: 121, char: '🕷️', name: 'Widow', rarity: 'rare', element: 'dark', defaultMove: 'void_chill', type: 'Mystic' },
             { id: 177, char: '🪐', name: 'Abyss', rarity: 'legendary', element: 'dark', defaultMove: 'shadow_slice', type: 'Guardian' },
             { id: 178, char: '🛸', name: 'Visitor', rarity: 'epic', element: 'dark', defaultMove: 'shade_rush', type: 'Mystic' },
             { id: 179, char: '💀', name: 'Reap', rarity: 'legendary', element: 'dark', defaultMove: 'abyssal_cut', type: 'Mystic' },
             { id: 180, char: '🕷️', name: 'Fang', rarity: 'rare', element: 'dark', defaultMove: 'dusk_cut', type: 'Mystic' },
             { id: 181, char: '🔮', name: 'Oracle', rarity: 'divine', element: 'dark', defaultMove: 'nightfall_pact', type: 'Mystic' },
-            { id: 182, char: '👽', name: 'Zor', rarity: 'epic', element: 'dark', defaultMove: 'gloom_slash', type: 'Mystic' },
+            { id: 182, char: '👽', name: 'Zor', rarity: 'epic', element: 'dark', defaultMove: 'shadow_gale', type: 'Mystic' },
             { id: 183, char: '👾', name: 'Shadow', rarity: 'eternal', element: 'dark', defaultMove: 'endless_night', type: 'Mystic' },
             { id: 184, char: '🕰️', name: 'Dread', rarity: 'rare', element: 'dark', defaultMove: 'shadow_gale', type: 'Tank' },
             // MIXED/ETERNAL (Remaining)
@@ -580,8 +581,8 @@
             { id: 193, char: '🪨', name: 'Boulder', rarity: 'rare', element: 'nature', defaultMove: 'seed_bloom', type: 'Tank' },
             { id: 194, char: '🧯', name: 'Exting', rarity: 'rare', element: 'fire', defaultMove: 'ember_wave', type: 'Tank' },
             { id: 195, char: '🪓', name: 'Axe', rarity: 'rare', element: 'nature', defaultMove: 'vine_lash', type: 'Brawler' },
-            { id: 196, char: '🧲', name: 'Magnet', rarity: 'common', element: 'light', defaultMove: 'spark_jab', type: 'Mystic' },
-            { id: 197, char: '🧪', name: 'Elixir', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
+            { id: 196, char: '🧲', name: 'Magnet', rarity: 'common', element: 'light', defaultMove: 'halo_step', type: 'Mystic' },
+            { id: 197, char: '🧪', name: 'Elixir', rarity: 'rare', element: 'light', defaultMove: 'daybreak_lance', type: 'Speedster' },
             { id: 198, char: '🛡️', name: 'Bulwark', rarity: 'epic', element: 'light', defaultMove: 'luminous_recovery', type: 'Guardian' },
             { id: 199, char: '⚡', name: 'Bolt', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Mystic' },
             { id: 200, char: '🌊', name: 'Surge', rarity: 'epic', element: 'water', defaultMove: 'ocean_end', type: 'Brawler' },
@@ -591,14 +592,14 @@
             { id: 204, char: '🐋', name: 'Coloss', rarity: 'legendary', element: 'water', defaultMove: 'maelstrom', type: 'Guardian' },
             { id: 205, char: '🧜‍♂️', name: 'Merman', rarity: 'epic', element: 'water', defaultMove: 'soothing_rain', type: 'Speedster' },
             { id: 206, char: '🦭', name: 'Harbor', rarity: 'common', element: 'water', defaultMove: 'mist_jab', type: 'Guardian' },
-            { id: 207, char: '🦅', name: 'Talon', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Mystic' },
+            { id: 207, char: '🦅', name: 'Talon', rarity: 'rare', element: 'light', defaultMove: 'bright_pulse', type: 'Mystic' },
             { id: 208, char: '🦉', name: 'Owl', rarity: 'epic', element: 'dark', defaultMove: 'night_howl', type: 'Mystic' },
             { id: 209, char: '🐺', name: 'Howl', rarity: 'legendary', element: 'dark', defaultMove: 'void_requiem', type: 'Mystic' },
             { id: 210, char: '🦂', name: 'Scorch', rarity: 'rare', element: 'fire', defaultMove: 'firebrand', type: 'Brawler' },
             { id: 211, char: '🐝', name: 'Buzz', rarity: 'common', element: 'nature', defaultMove: 'moss_spike', type: 'Speedster' },
             { id: 212, char: '🧄', name: 'Garlic', rarity: 'common', element: 'nature', defaultMove: 'thorns_pulse', type: 'Brawler' },
             { id: 213, char: '🥕', name: 'Carrot', rarity: 'common', element: 'nature', defaultMove: 'briar_strike', type: 'Speedster' },
-            { id: 214, char: '🥔', name: 'Spud', rarity: 'common', element: 'nature', defaultMove: 'sap_strike', type: 'Guardian' },
+            { id: 214, char: '🥔', name: 'Spud', rarity: 'common', element: 'nature', defaultMove: 'rootbind', type: 'Tater' },
             { id: 215, char: '🥩', name: 'Steak', rarity: 'rare', element: 'fire', defaultMove: 'flame_rush', type: 'Brawler' },
             { id: 216, char: '🥨', name: 'Twist', rarity: 'common', element: 'fire', defaultMove: 'ash_swipe', type: 'Speedster' },
             { id: 217, char: '🥯', name: 'Bagel', rarity: 'common', element: 'fire', defaultMove: 'spark_flick', type: 'Guardian' },
@@ -615,21 +616,21 @@
             { id: 228, char: '🧻', name: 'Tissue', rarity: 'trash', element: 'light', defaultMove: 'lumen_guard', type: 'Trash' },
             { id: 229, char: '🥀', name: 'Wilt', rarity: 'trash', element: 'nature', defaultMove: 'thorns_pulse', type: 'Striker' },
             { id: 230, char: '🪣', name: 'Bucket', rarity: 'trash', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
-            { id: 231, char: '🕸️', name: 'Web', rarity: 'rare', element: 'dark', defaultMove: 'gloom_slash', type: 'Guardian' },
+            { id: 231, char: '🕸️', name: 'Web', rarity: 'rare', element: 'dark', defaultMove: 'malison', type: 'Guardian' },
             { id: 232, char: '🕯️', name: 'Candle', rarity: 'uncommon', element: 'light', defaultMove: 'prism_seal', type: 'Mystic' },
             { id: 233, char: '🌒', name: 'Crescent', rarity: 'uncommon', element: 'dark', defaultMove: 'hex', type: 'Speedster' },
             { id: 234, char: '🌌', name: 'Cosmos', rarity: 'epic', element: 'dark', defaultMove: 'shade_rush', type: 'Mystic' },
             { id: 235, char: '🐕', name: 'Tater', rarity: 'eternal', element: 'light', defaultMove: 'judgment_ray', type: 'Tater' },
             { id: 236, char: '🎲', name: 'Dice', rarity: 'rare', element: 'dark', defaultMove: 'moon_slash', type: 'Speedster' },
-            { id: 237, char: '📿', name: 'Beads', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Guardian' },
+            { id: 237, char: '📿', name: 'Beads', rarity: 'rare', element: 'light', defaultMove: 'aegis_pulse', type: 'Guardian' },
             { id: 238, char: '🪙', name: 'Coin', rarity: 'uncommon', element: 'light', defaultMove: 'shine_tag', type: 'Guardian' },
             { id: 239, char: '🧵', name: 'Thread', rarity: 'uncommon', element: 'dark', defaultMove: 'malison', type: 'Speedster' },
             { id: 240, char: '🪡', name: 'Needle', rarity: 'rare', element: 'dark', defaultMove: 'void_chill', type: 'Mystic' },
             { id: 241, char: '🧭', name: 'Compass', rarity: 'epic', element: 'light', defaultMove: 'blessing_wall', type: 'Mystic' },
             { id: 242, char: '🥶', name: 'Chill', rarity: 'epic', element: 'water', defaultMove: 'frost_bomb', type: 'Guardian' },
             { id: 243, char: '🗡️', name: 'Blade', rarity: 'legendary', element: 'fire', defaultMove: 'worldfire', type: 'Brawler' },
-            { id: 244, char: '🧋', name: 'Boba', rarity: 'common', element: 'water', defaultMove: 'current_jab', type: 'Speedster' },
-            { id: 245, char: '🐈', name: 'Nimby', rarity: 'eternal', element: 'dark', defaultMove: 'nightfall_pact', type: 'Tater' }
+            { id: 244, char: '🧋', name: 'Boba', rarity: 'common', element: 'water', defaultMove: 'abyssal_tide', type: 'Speedster' },
+            { id: 245, char: '🐈', name: 'Nimby', rarity: 'eternal', element: 'dark', defaultMove: 'eclipse_edge', type: 'Tater' }
         ];
 
         const RARITY_ORDER = ['trash', 'common', 'uncommon', 'rare', 'epic', 'legendary', 'false_divine', 'divine', 'eternal'];
@@ -637,7 +638,7 @@
             Striker: { hp: 1.0, atk: 1.5, spd: 0.9, def: 0.85, spAtk: 1.2, spDef: 0.85 },
             Tank: { hp: 1.3, atk: 0.6, spd: 0.6, def: 1.3, spAtk: 0.8, spDef: 1.0 },
             Speedster: { hp: 0.95, atk: 0.9, spd: 1.5, def: 0.8, spAtk: 1.0, spDef: 0.8 },
-            Mystic: { hp: 1.0, atk: 0.6, spd: 1.0, def: 0.8, spAtk: 1.6, spDef: 1.2 },
+            Mystic: { hp: 1.0, atk: 0.6, spd: 1.0, def: 0.8, spAtk: 1.6, spDef: 1.3 },
             Guardian: { hp: 1.4, atk: 0.8, spd: 0.4, def: 1.4, spAtk: 0.7, spDef: 1.0 },
             Brawler: { hp: 1.2, atk: 1.4, spd: 0.85, def: 1.1, spAtk: 0.7, spDef: 0.9 },
             Tater: { hp: 2.0, atk: 2.0, spd: 2.0, def: 2.0, spAtk: 2.0, spDef: 2.0 },
@@ -861,12 +862,12 @@
             { num: 71, id: 'daybreak_lance', name: 'Daybreak Lance', power: 60, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'light', damageType: 'physical', rarity: 'rare' },
             { num: 72, id: 'bright_pulse', name: 'Bright Pulse', power: 55, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'light', damageType: 'special', rarity: 'rare', effect: { selfStages: { spDef: 1 } } },
             { num: 73, id: 'blessing_wall', name: 'Blessing Wall', power: 0, cooldown: 5, kind: 'buff', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'epic', effect: { def: 1, spDef: 1 } },
-            { num: 74, id: 'holy_barrier', name: 'Holy Barrier', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'epic', effect: { def: 1, spDef: 1, spd: 1 } },
-            { num: 75, id: 'luminous_recovery', name: 'Luminous Recovery', power: 35, cooldown: 4, kind: 'heal', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'epic' },
-            { num: 76, id: 'aegis_pulse', name: 'Aegis Pulse', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'legendary', effect: { def: 1, spDef: 1, spd: 1 } },
+            { num: 74, id: 'holy_barrier', name: 'Holy Barrier', power: 0, cooldown: 6, kind: 'buff', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'epic', effect: { def: 1, spDef: 1, spd: 1 } },
+            { num: 75, id: 'luminous_recovery', name: 'Luminous Recovery', power: 25, cooldown: 4, kind: 'heal', target: 'ally-single', element: 'light', damageType: 'status', rarity: 'epic' },
+            { num: 76, id: 'aegis_pulse', name: 'Aegis Pulse', power: 0, cooldown: 4, kind: 'buff', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'legendary', effect: { spAtk: 2, spd: 1 } },
             { num: 77, id: 'judgment_ray', name: 'Judgment Ray', power: 80, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'light', damageType: 'special', rarity: 'legendary', statuses: [{ id: 'dazzle', chance: 0.35 }] },
             { num: 78, id: 'radiant_surge', name: 'Radiant Surge', power: 55, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'light', damageType: 'special', rarity: 'legendary', statuses: [{ id: 'dazzle', chance: 0.3 }] },
-            { num: 79, id: 'seraphic_wave', name: 'Seraphic Wave', power: 45, cooldown: 4, kind: 'heal', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'divine' },
+            { num: 79, id: 'seraphic_wave', name: 'Seraphic Wave', power: 35, cooldown: 4, kind: 'heal', target: 'ally-all', element: 'light', damageType: 'status', rarity: 'divine' },
             { num: 80, id: 'radiant_crown', name: 'Radiant Crown', power: 65, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'light', damageType: 'special', rarity: 'divine', effect: { selfStages: { spAtk: 1 } }, statuses: [{ id: 'dazzle', chance: 0.5 }] },
             { num: 81, id: 'dawn_eternum', name: 'Dawn Eternum', power: 95, cooldown: 5, kind: 'damage', target: 'enemy-all', element: 'light', damageType: 'special', rarity: 'eternal', effect: { selfStages: { spAtk: 1, spd: 1 } }, statuses: [{ id: 'dazzle', chance: 0.6 }] },
 
@@ -888,9 +889,9 @@
             { num: 96, id: 'shadow_slice', name: 'Shadow Slice', power: 82, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'legendary', effect: { selfStages: { spAtk: 1 }, recoilPct: 0.25 }, statuses: [{ id: 'curse', chance: 0.3 }] },
             { num: 97, id: 'abyssal_cut', name: 'Abyssal Cut', power: 88, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'legendary', effect: { selfStages: { atk: 1 }, recoilPct: 0.25 } },
             { num: 98, id: 'void_requiem', name: 'Void Requiem', power: 80, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'legendary', effect: { selfStages: { spAtk: 1 } }, statuses: [{ id: 'curse', chance: 0.35 }] },
-            { num: 99, id: 'eclipse_edge', name: 'Eclipse Edge', power: 92, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'divine', effect: { selfStages: { atk: 1, spd: 1 }, recoilPct: 0.3 } },
+            { num: 99, id: 'eclipse_edge', name: 'Eclipse Edge', power: 92, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'divine', effect: { selfStages: { atk: 1, spd: 1 }, recoilPct: 0.25 } },
             { num: 100, id: 'nightfall_pact', name: 'Nightfall Pact', power: 85, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'divine', effect: { selfStages: { spAtk: 1 }, recoilPct: 0.25 }, statuses: [{ id: 'curse', chance: 0.5 }] },
-            { num: 101, id: 'endless_night', name: 'Endless Night', power: 100, cooldown: 5, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'eternal', effect: { selfStages: { atk: 1, spAtk: 1 }, recoilPct: 0.35 }, statuses: [{ id: 'curse', chance: 0.6 }] }
+            { num: 101, id: 'endless_night', name: 'Endless Night', power: 100, cooldown: 5, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'eternal', effect: { selfStages: { atk: 1, spAtk: 1 }, recoilPct: 0.25 }, statuses: [{ id: 'curse', chance: 0.6 }] }
         ];
 
         const EMOJI_DESCS = {
@@ -1131,6 +1132,10 @@
                         const orig = EMOJIS.find(x => x.id == id) || EMOJIS[0];
                         state.inventory[id].baseRarity = orig.rarity;
                         state.inventory[id].currentRarity = orig.rarity;
+                    }
+                    if (!state.inventory[id].originalRarity) {
+                        const orig = EMOJIS.find(x => x.id == id) || EMOJIS[0];
+                        state.inventory[id].originalRarity = orig.rarity;
                     }
                     if (state.inventory[id].dupes === undefined) state.inventory[id].dupes = 0;
                     if (!state.inventory[id].learnedMoves) state.inventory[id].learnedMoves = [];
@@ -1522,7 +1527,7 @@
             if (!id) return;
             if (!state.inventory[id]) {
                 const emoji = EMOJIS.find(e => e.id === id);
-                state.inventory[id] = { lvl: 1, baseRarity: emoji.rarity, currentRarity: emoji.rarity, dupes: 0, learnedMoves: [] };
+                state.inventory[id] = { lvl: 1, baseRarity: emoji.rarity, originalRarity: emoji.rarity, currentRarity: emoji.rarity, dupes: 0, learnedMoves: [] };
             }
             if (!state.team.length) state.team = [id];
             state.tutorial.step = TUTORIAL_STEPS.PULL_ONE;
@@ -2629,6 +2634,16 @@
             return PROMOTE_COST_TABLE[inv.currentRarity] || 0;
         }
 
+        function getBaseAscendTarget(baseRarity) {
+            if (!baseRarity) return null;
+            if (baseRarity === 'legendary') return 'divine';
+            const currentIdx = RARITY_ORDER.indexOf(baseRarity);
+            if (currentIdx < 0) return null;
+            const nextRarity = RARITY_ORDER[currentIdx + 1];
+            if (nextRarity === 'false_divine') return RARITY_ORDER[currentIdx + 2] || null;
+            return nextRarity || null;
+        }
+
         function getAscendTarget(inv) {
             const currentIdx = RARITY_ORDER.indexOf(inv.currentRarity);
             const nextRarity = currentIdx > -1 ? RARITY_ORDER[currentIdx + 1] : null;
@@ -2694,7 +2709,7 @@
                 }
                 const isNew = !state.inventory[emoji.id];
                 results.push({ emoji, isNew });
-                if (isNew) state.inventory[emoji.id] = { lvl: 1, baseRarity: emoji.rarity, currentRarity: emoji.rarity, dupes: 0, learnedMoves: [] };
+                if (isNew) state.inventory[emoji.id] = { lvl: 1, baseRarity: emoji.rarity, originalRarity: emoji.rarity, currentRarity: emoji.rarity, dupes: 0, learnedMoves: [] };
                 else state.inventory[emoji.id].dupes = (state.inventory[emoji.id].dupes || 0) + 1;
                 if (isGuided && !state.team.includes(emoji.id)) {
                     if (state.team.length < 3) state.team.push(emoji.id);
@@ -3188,6 +3203,22 @@
                 promoteBtn.disabled = state.gold < promoteCost;
                 promoteBtn.innerText = `ASCEND (${promoteCost.toLocaleString()} GOLD)`;
             } else promoteBtn.classList.add('hidden');
+
+            const baseBtn = document.getElementById('btn-ascend-base');
+            if (baseBtn) {
+                const baseTarget = getBaseAscendTarget(inv.baseRarity);
+                const canBaseAscend = inv.lvl >= 10
+                    && ['false_divine', 'divine'].includes(inv.currentRarity)
+                    && baseTarget
+                    && (inv.dupes || 0) >= 3;
+                if (canBaseAscend) {
+                    baseBtn.classList.remove('hidden');
+                    baseBtn.disabled = false;
+                    baseBtn.innerText = `ASCEND BASE (${baseTarget.toUpperCase()}) • 3 DUPES`;
+                } else {
+                    baseBtn.classList.add('hidden');
+                }
+            }
             document.getElementById('btn-add-team').innerText = state.team.includes(id) ? "WITHDRAW" : "DEPLOY";
             renderTeam();
         }
@@ -3209,6 +3240,25 @@
                 state.gold -= cost; inv.currentRarity = targetRarity; inv.lvl = 1;
                 save(); inspect(selectedId); updateStatsUI(); toast("ASCENDED!");
             }
+        }
+
+        function ascendBaseSelected() {
+            if (!selectedId) return;
+            const inv = state.inventory[selectedId];
+            const baseTarget = getBaseAscendTarget(inv.baseRarity);
+            if (!baseTarget) return;
+            if (inv.lvl < 10) return;
+            if (!['false_divine', 'divine'].includes(inv.currentRarity)) return;
+            if ((inv.dupes || 0) < 3) return;
+            inv.originalRarity = inv.originalRarity || inv.baseRarity;
+            inv.dupes -= 3;
+            inv.baseRarity = baseTarget;
+            inv.currentRarity = baseTarget;
+            inv.lvl = 1;
+            save();
+            inspect(selectedId);
+            updateStatsUI();
+            toast("BASE ASCENDED!");
         }
 
         function toggleSelectedTeam() {
