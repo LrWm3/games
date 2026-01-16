@@ -888,7 +888,7 @@
             fire: { id: 'burn', element: 'fire', name: 'Burn', desc: 'Takes damage each turn and deals reduced physical damage. Fire units are immune.' },
             water: { id: 'soak', element: 'water', name: 'Soak', desc: 'Next damage taken is amplified, then clears. Water units are immune.' },
             nature: { id: 'rooted', element: 'nature', name: 'Rooted', desc: 'Reduces speed and drains a small amount each turn. Nature units are immune.' },
-            light: { id: 'dazzle', element: 'light', name: 'Dazzle', desc: 'Clears stat stages, cannot gain attack or special attack stages, and cooldowns recover slower.' },
+            light: { id: 'dazzle', element: 'light', name: 'Dazzle', desc: 'Clears stat stages, cannot gain stat stages, and cooldowns recover slower.' },
             dark: { id: 'curse', element: 'dark', name: 'Curse', desc: 'Cannot be healed while active.' }
         };
         const STATUS_BY_ID = Object.values(ELEMENT_STATUS_EFFECTS).reduce((acc, status) => {
