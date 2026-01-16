@@ -2266,6 +2266,15 @@
             return PROMOTE_COST_TABLE[inv.currentRarity] || 0;
         }
 
+        function getAscendTarget(inv) {
+            const currentIdx = RARITY_ORDER.indexOf(inv.currentRarity);
+            const nextRarity = currentIdx > -1 ? RARITY_ORDER[currentIdx + 1] : null;
+            if (!nextRarity) return null;
+            if (nextRarity === 'divine' && !['legendary', 'divine', 'eternal'].includes(inv.baseRarity)) return null;
+            if (nextRarity === 'eternal' && !['divine', 'eternal'].includes(inv.baseRarity)) return null;
+            return nextRarity;
+        }
+
         function rollRarity(probTable) {
             const rand = Math.random();
             if (rand < probTable.trash) return 'trash';
@@ -2749,7 +2758,8 @@
             const lvlBtn = document.getElementById('btn-lvl-up');
             lvlBtn.disabled = (state.gold < lvlCost || inv.lvl >= 10);
             lvlBtn.innerText = inv.lvl >= 10 ? "MAX LEVEL" : `UPGRADE (${lvlCost.toLocaleString()} GOLD)`;
-            const canPromote = inv.lvl >= 10 && inv.currentRarity !== 'eternal';
+            const targetRarity = getAscendTarget(inv);
+            const canPromote = inv.lvl >= 10 && !!targetRarity;
             const promoteBtn = document.getElementById('btn-promote');
             if (canPromote) {
                 const promoteCost = getPromoteCost(inv);
@@ -2772,12 +2782,7 @@
             if (!selectedId) return;
             const inv = state.inventory[selectedId];
             const cost = getPromoteCost(inv);
-            let targetRarity = null;
-            const currentIdx = RARITY_ORDER.indexOf(inv.currentRarity);
-            const nextRarity = currentIdx > -1 ? RARITY_ORDER[currentIdx + 1] : null;
-            if (inv.currentRarity === 'legendary') targetRarity = 'divine';
-            else if (inv.currentRarity === 'divine') targetRarity = 'eternal';
-            else if (inv.currentRarity !== 'eternal') targetRarity = nextRarity;
+            const targetRarity = getAscendTarget(inv);
             if (targetRarity) {
                 if (state.gold < cost) return;
                 state.gold -= cost; inv.currentRarity = targetRarity; inv.lvl = 1;
