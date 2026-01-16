@@ -633,10 +633,10 @@
         const RARITY_ORDER = ['trash', 'common', 'uncommon', 'rare', 'epic', 'legendary', 'false_divine', 'divine', 'eternal'];
         const TYPE_WEIGHTS = {
             Striker: { hp: 1.0, atk: 1.5, spd: 0.9, def: 0.85, spAtk: 1.2, spDef: 0.85 },
-            Tank: { hp: 1.3, atk: 0.6, spd: 0.6, def: 1.3, spAtk: 0.8, spDef: 1.3 },
+            Tank: { hp: 1.3, atk: 0.6, spd: 0.6, def: 1.3, spAtk: 0.8, spDef: 1.0 },
             Speedster: { hp: 0.95, atk: 0.9, spd: 1.5, def: 0.8, spAtk: 1.0, spDef: 0.8 },
-            Mystic: { hp: 0.85, atk: 0.7, spd: 1.0, def: 0.8, spAtk: 1.6, spDef: 1.2 },
-            Guardian: { hp: 1.4, atk: 0.8, spd: 0.4, def: 1.4, spAtk: 0.7, spDef: 1.6 },
+            Mystic: { hp: 1.0, atk: 0.6, spd: 1.0, def: 0.8, spAtk: 1.6, spDef: 1.2 },
+            Guardian: { hp: 1.4, atk: 0.8, spd: 0.4, def: 1.4, spAtk: 0.7, spDef: 1.0 },
             Brawler: { hp: 1.2, atk: 1.4, spd: 0.85, def: 1.1, spAtk: 0.7, spDef: 0.9 },
             Tater: { hp: 2.0, atk: 2.0, spd: 2.0, def: 2.0, spAtk: 2.0, spDef: 2.0 },
             Trash: { hp: 1.5, atk: 1.5, spd: 1.5, def: 1.5, spAtk: 1.5, spDef: 1.5 }
@@ -1812,7 +1812,8 @@
 
         function getMoveListForEmoji(emoji, inv = null) {
             const learned = inv?.learnedMoves || [];
-            const moveIds = ['basic_strike', getMoveIdForEmoji(emoji), ...learned];
+            const starterStrike = emoji.type === 'Mystic' ? 'mental_strike' : 'basic_strike';
+            const moveIds = [starterStrike, getMoveIdForEmoji(emoji), ...learned];
             return [...new Set(moveIds)].map(getMoveById).filter(Boolean);
         }
 
