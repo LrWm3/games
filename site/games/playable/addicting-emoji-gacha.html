@@ -2946,7 +2946,8 @@
                 const mentorMoveId = (EMOJIS.find(e => e.id === pair.mentorId) || {}).defaultMove;
                 const mentorMove = getMoveById(mentorMoveId);
                 if (!mentorMove) return;
-                if (rarityRank(poolRarity) < rarityRank(mentorMove.rarity)) return;
+                const effectiveMoveRarity = mentorMove.rarity === 'eternal' ? 'divine' : mentorMove.rarity;
+                if (rarityRank(poolRarity) < rarityRank(effectiveMoveRarity)) return;
                 const studentInv = state.inventory[pair.studentId];
                 if (!studentInv) return;
                 const studentBase = studentInv.baseRarity || (EMOJIS.find(e => e.id === pair.studentId)?.rarity);
