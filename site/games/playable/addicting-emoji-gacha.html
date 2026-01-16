@@ -1696,7 +1696,7 @@
             const stages = unit?.statStages || { atk: 0, def: 0, spAtk: 0, spDef: 0, spd: 0 };
             return Object.keys(stages)
                 .filter(key => stages[key] && STAT_METADATA[key])
-                .map(key => `<span class="px-2 py-1 rounded-full border border-white/5 ${stages[key] > 0 ? 'bg-emerald-500/20 text-emerald-200' : 'bg-rose-500/20 text-rose-200'}">${STAT_METADATA[key].emoji} ${stages[key] > 0 ? `+${stages[key]}` : stages[key]}</span>`)
+                .map(key => `<span class="px-2 py-1 rounded-full border border-white/5 ${stages[key] > 0 ? 'bg-emerald-500/20 text-emerald-200' : 'bg-rose-500/20 text-rose-200'}">${STAT_METADATA[key].name} ${stages[key] > 0 ? `+${stages[key]}` : stages[key]}</span>`)
                 .join('');
         }
 
@@ -2807,23 +2807,6 @@
             moveList.innerHTML = '';
             discoveredMoveList.forEach(move => {
                 const row = document.createElement('div');
-                const power = (move.kind === 'buff' || move.kind === 'status') ? '—' : move.power;
-                const element = move.element ? move.element.toLowerCase() : 'neutral';
-                const dmgType = move.damageType ? move.damageType.toLowerCase() : 'status';
-                const dmgEmoji = dmgType === 'physical' ? '💥' : dmgType === 'special' ? '✨' : '⚪';
-                const rarity = (move.rarity || 'common').toLowerCase();
-                const rarityEmoji = RARITY_METADATA[rarity]?.emoji || '⚪';
-                const targetLabels = {
-                    'enemy-single': 'Targets one',
-                    'enemy-all': 'Targets all',
-                    'ally-single': 'Targets ally',
-                    'ally-all': 'Targets allies',
-                    'self': 'Self'
-                };
-                const target = targetLabels[move.target] || move.target || '—';
-                const extras = formatMoveEffects(move);
-                const elementEmoji = ELEMENT_METADATA[move.element]?.emoji || '⬜';
-                row.className = `move-card ${element} ${rarity} ${dmgType}`;
                 row.innerHTML = renderMoveCardHTML(move);
                 moveList.appendChild(row);
             });
