@@ -1239,15 +1239,16 @@
             const breakpointsEl = document.getElementById('arena-breakpoints');
             if (!breakpointsEl) return;
             let minStage = 1;
-            breakpointsEl.innerHTML = ARENA_POOLS.map(pool => {
+            breakpointsEl.innerHTML = ARENA_POOLS.map((pool, index) => {
                 const rarityKey = pool.label.toLowerCase();
                 const emoji = RARITY_METADATA[rarityKey]?.emoji || '⚪';
                 const maxStage = pool.max === Infinity ? `${minStage}+` : `${minStage}-${pool.max}`;
+                const rate = ARENA_REWARD_BRACKETS[index]?.rate || 0;
                 minStage = pool.max + 1;
                 return `
                     <div class="flex items-center justify-between bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2">
                         <span>${emoji} ${pool.label}</span>
-                        <span class="text-slate-400">${maxStage}</span>
+                        <span class="text-slate-400">${maxStage} • +${rate}g</span>
                     </div>
                 `;
             }).join('');
@@ -2062,6 +2063,15 @@
             { max: 45, label: 'Legendary', weights: { legendary: 0.36, divine: 0.34, eternal: 0.3 } },
             { max: Infinity, label: 'Divine', weights: { divine: 0.55, eternal: 0.45 } }
         ];
+        const ARENA_REWARD_BRACKETS = [
+            { max: 3, rate: 80 },
+            { max: 7, rate: 160 },
+            { max: 15, rate: 300 },
+            { max: 24, rate: 600 },
+            { max: 39, rate: 2000 },
+            { max: 45, rate: 10000 },
+            { max: Infinity, rate: 30000 }
+        ];
 
         function getArenaPool(stage) {
             return ARENA_POOLS.find(p => stage <= p.max);
@@ -2139,18 +2149,9 @@
         }
 
         function getArenaReward(stage) {
-            const brackets = [
-                { max: 3, rate: 80 },
-                { max: 7, rate: 160 },
-                { max: 15, rate: 300 },
-                { max: 24, rate: 600 },
-                { max: 39, rate: 2000 },
-                { max: 45, rate: 10000 },
-                { max: Infinity, rate: 30000 }
-            ];
             let reward = 0;
             let prevMax = 0;
-            for (const bracket of brackets) {
+            for (const bracket of ARENA_REWARD_BRACKETS) {
                 if (stage <= prevMax) break;
                 const maxStage = bracket.max === Infinity ? stage : Math.min(stage, bracket.max);
                 const stagesInBracket = Math.max(0, maxStage - prevMax);
