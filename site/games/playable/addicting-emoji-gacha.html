@@ -2061,44 +2061,48 @@
             toast('TRAINING ENDED');
         }
 
-        async function runAdventureCombat(pUnits, eUnits) {
-            const log = document.getElementById('adventure-log');
-            log.innerHTML = `<div class="text-white border-b border-white/5 mb-1 pb-1">ADVENTURE</div>`;
-            let round = 1;
-            document.getElementById('adventure-round-num').innerText = round;
-            const updateUI = () => {
-                document.getElementById('adventure-player-team').innerHTML = pUnits.map(u => `
-                    <div class="${u.hp<=0?'opacity-20':''}">
-                        <div class="flex justify-between items-center font-black uppercase">
-                            <span class="flex items-center gap-2">
-                                <span class="text-3xl">${u.char}</span>
-                                <span class="text-sm text-slate-400">Lv ${u.lvl || 1}</span>
-                            </span>
-                            <span>${Math.max(0,Math.floor(u.hp))}</span>
-                        </div>
-                        <div class="h-1 bg-black overflow-hidden"><div class="h-full bg-green-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div>
-                        <div class="flex flex-wrap gap-2 mt-2">${renderCooldowns(u)}</div>
-                    </div>
-                `).join('');
-                document.getElementById('adventure-enemy-team').innerHTML = eUnits.map(u => `
-                    <div class="${u.hp<=0?'opacity-20':''}">
-                        <div class="flex justify-between items-center font-black uppercase">
+        function renderCombatTeam(units, hpColor, showLevel) {
+            return units.map(u => `
+                <div class="${u.hp<=0?'opacity-20':''}">
+                    <div class="flex justify-between items-center font-black uppercase">
+                        <span class="flex items-center gap-2">
                             <span class="text-3xl">${u.char}</span>
-                            <span>${Math.max(0,Math.floor(u.hp))}</span>
-                        </div>
-                        <div class="h-1 bg-black overflow-hidden"><div class="h-full bg-red-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div>
-                        <div class="flex flex-wrap gap-2 mt-2">${renderCooldowns(u)}</div>
+                            ${showLevel ? `<span class="text-sm text-slate-400">Lv ${u.lvl || 1}</span>` : ''}
+                        </span>
+                        <span>${Math.max(0,Math.floor(u.hp))}</span>
                     </div>
-                `).join('');
+                    <div class="h-1 bg-black overflow-hidden"><div class="h-full ${hpColor}" style="width:${(u.hp/u.maxHp)*100}%"></div></div>
+                    <div class="flex flex-wrap gap-2 mt-2">${renderCooldowns(u)}</div>
+                </div>
+            `).join('');
+        }
+
+        async function runCombat(pUnits, eUnits, options) {
+            const {
+                logEl,
+                roundEl,
+                playerEl,
+                enemyEl,
+                delay = 350,
+                isActiveFn = () => true,
+                showPlayerLevel = true
+            } = options;
+            let round = 1;
+            roundEl.innerText = round;
+            const updateUI = () => {
+                playerEl.innerHTML = renderCombatTeam(pUnits, 'bg-green-500', showPlayerLevel);
+                enemyEl.innerHTML = renderCombatTeam(eUnits, 'bg-red-500', false);
             };
             while (pUnits.some(u => u.hp > 0) && eUnits.some(u => u.hp > 0)) {
+                if (!isActiveFn()) return null;
                 updateUI();
-                appendLog(log, `<div class="text-slate-400">Round ${round}</div>`);
-                document.getElementById('adventure-round-num').innerText = round;
+                appendLog(logEl, `<div class="text-slate-400">Round ${round}</div>`);
+                roundEl.innerText = round;
                 let actors = [...pUnits, ...eUnits].filter(u=>u.hp>0).sort((a,b)=>getModifiedStat(b, 'spd') - getModifiedStat(a, 'spd'));
                 for (let u of actors) {
+                    if (!isActiveFn()) return null;
                     if (u.hp <= 0) continue;
-                    applyStatusTick(u, log);
+                    applyStatusTick(u, logEl);
                     if (u.hp <= 0) { updateUI(); continue; }
                     tickCooldowns(u);
                     let targets = u.isPlayer ? eUnits.filter(t=>t.hp>0) : pUnits.filter(t=>t.hp>0);
@@ -2107,19 +2111,33 @@
                     const enemies = u.isPlayer ? eUnits : pUnits;
                     const move = pickMove(u);
                     if (move) {
-                        const used = applyMove(u, move, allies, enemies, log);
+                        const used = applyMove(u, move, allies, enemies, logEl);
                         if (used) u.cooldowns[move.id] = move.cooldown;
                     } else {
                         const basic = getMoveById('basic_strike');
                         const dmg = calcDamage(u, targets[0], basic.power, basic);
                         targets[0].hp -= dmg;
-                        appendLog(log, `<div>${u.char} attacks ${targets[0].char} for ${Math.floor(dmg)}</div>`);
+                        appendLog(logEl, `<div>${u.char} attacks ${targets[0].char} for ${Math.floor(dmg)}</div>`);
                     }
-                    updateUI(); await new Promise(r=>setTimeout(r, 350));
+                    updateUI(); await new Promise(r=>setTimeout(r, delay));
                 }
                 round += 1;
             }
-            if (eUnits.every(u => u.hp <= 0)) handleAdventureWin();
+            return eUnits.every(u => u.hp <= 0);
+        }
+
+        async function runAdventureCombat(pUnits, eUnits) {
+            const log = document.getElementById('adventure-log');
+            log.innerHTML = `<div class="text-white border-b border-white/5 mb-1 pb-1">ADVENTURE</div>`;
+            const result = await runCombat(pUnits, eUnits, {
+                logEl: log,
+                roundEl: document.getElementById('adventure-round-num'),
+                playerEl: document.getElementById('adventure-player-team'),
+                enemyEl: document.getElementById('adventure-enemy-team'),
+                delay: 350
+            });
+            if (result === null) return;
+            if (result) handleAdventureWin();
             else handleAdventureLoss();
         }
 
@@ -2797,12 +2815,10 @@
             document.getElementById('arena-combat').classList.remove('hidden');
             document.getElementById('arena-info-bar').classList.remove('hidden');
             const log = document.getElementById('battle-log');
-            const flash = document.getElementById('combat-flash-layer');
             document.getElementById('combat-stage-num').innerText = state.stage;
             document.getElementById('arena-info-stage').innerText = state.stage;
             log.innerHTML = `<div class="text-white border-b border-white/5 mb-1 pb-1">STAGE ${state.stage}</div>`;
-            let round = 1;
-            document.getElementById('combat-round-num').innerText = round;
+            document.getElementById('combat-round-num').innerText = 1;
             
             let pUnits = state.team.map(id => {
                 const emoji = EMOJIS.find(x => x.id === id);
@@ -2817,63 +2833,16 @@
             document.getElementById('combat-enemy-title').innerText = `${pool.label.toUpperCase()} POOL • ${getEnemyTitle(eUnits)}`;
             pUnits.forEach(resetBaseStats);
             eUnits.forEach(resetBaseStats);
-
-            const updateUI = () => {
-                document.getElementById('battle-player-team').innerHTML = pUnits.map(u => `
-                    <div class="${u.hp<=0?'opacity-20':''}">
-                        <div class="flex justify-between items-center font-black uppercase">
-                            <span class="flex items-center gap-2">
-                                <span class="text-3xl">${u.char}</span>
-                                <span class="text-sm text-slate-400">Lv ${u.lvl || 1}</span>
-                            </span>
-                            <span>${Math.max(0,Math.floor(u.hp))}</span>
-                        </div>
-                        <div class="h-1 bg-black overflow-hidden"><div class="h-full bg-green-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div>
-                        <div class="flex flex-wrap gap-2 mt-2">${renderCooldowns(u)}</div>
-                    </div>
-                `).join('');
-                document.getElementById('battle-enemy-team').innerHTML = eUnits.map(u => `
-                    <div class="${u.hp<=0?'opacity-20':''}">
-                        <div class="flex justify-between items-center font-black uppercase">
-                            <span class="text-3xl">${u.char}</span>
-                            <span>${Math.max(0,Math.floor(u.hp))}</span>
-                        </div>
-                        <div class="h-1 bg-black overflow-hidden"><div class="h-full bg-red-500" style="width:${(u.hp/u.maxHp)*100}%"></div></div>
-                        <div class="flex flex-wrap gap-2 mt-2">${renderCooldowns(u)}</div>
-                    </div>
-                `).join('');
-            };
-
-            while (pUnits.some(u=>u.hp>0) && eUnits.some(u=>u.hp>0) && state.isAutoBattling) {
-                updateUI();
-                appendLog(log, `<div class="text-slate-400">Round ${round}</div>`);
-                document.getElementById('combat-round-num').innerText = round;
-                let actors = [...pUnits, ...eUnits].filter(u=>u.hp>0).sort((a,b)=>getModifiedStat(b, 'spd') - getModifiedStat(a, 'spd'));
-                for (let u of actors) {
-                    if (u.hp <= 0 || !state.isAutoBattling) continue;
-                    applyStatusTick(u, log);
-                    if (u.hp <= 0) { updateUI(); continue; }
-                    tickCooldowns(u);
-                    let targets = u.isPlayer ? eUnits.filter(t=>t.hp>0) : pUnits.filter(t=>t.hp>0);
-                    if (!targets.length) break;
-                    const allies = u.isPlayer ? pUnits : eUnits;
-                    const enemies = u.isPlayer ? eUnits : pUnits;
-                    const move = pickMove(u);
-                    if (move) {
-                        const used = applyMove(u, move, allies, enemies, log);
-                        if (used) u.cooldowns[move.id] = move.cooldown;
-                    } else {
-                        const basic = getMoveById('basic_strike');
-                        const dmg = calcDamage(u, targets[0], basic.power, basic);
-                        targets[0].hp -= dmg;
-                        appendLog(log, `<div>${u.char} attacks ${targets[0].char} for ${Math.floor(dmg)}</div>`);
-                    }
-                    updateUI(); await new Promise(r=>setTimeout(r, 450));
-                }
-                round += 1;
-            }
-            if (!state.isAutoBattling) return;
-            if (eUnits.every(u => u.hp <= 0)) {
+            const result = await runCombat(pUnits, eUnits, {
+                logEl: log,
+                roundEl: document.getElementById('combat-round-num'),
+                playerEl: document.getElementById('battle-player-team'),
+                enemyEl: document.getElementById('battle-enemy-team'),
+                delay: 450,
+                isActiveFn: () => state.isAutoBattling
+            });
+            if (result === null) return;
+            if (result) {
                 const pool = getArenaPool(state.stage);
                 state.gold += getArenaReward(state.stage);
                 processTutorWin(pool.label);
