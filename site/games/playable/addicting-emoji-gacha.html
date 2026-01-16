@@ -2506,7 +2506,7 @@
             if (!region) return;
             const isEpicPlus = rarityRank(region.rarity) >= rarityRank('epic');
             const rewardGold = (isBoss) => {
-                const table = { trash: 120, common: 180, uncommon: 240, rare: 320, epic: 480, legendary: 650 };
+                const table = { trash: 120, common: 180, uncommon: 240, rare: 320, epic: 600, legendary: 1000 };
                 const base = table[region.rarity] || 200;
                 const regionIndex = Math.max(0, state.adventure.regions.findIndex(r => r.id === region.id));
                 const regionBoost = 1 + (regionIndex * 0.18);
