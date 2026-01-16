@@ -189,7 +189,7 @@
                         <button id="btn-add-team" onclick="toggleSelectedTeam()" class="w-full bg-indigo-600 hover:bg-indigo-700 py-3.5 rounded-2xl font-black text-xs transition-all disabled:opacity-20">DEPLOY</button>
                         <button id="btn-lvl-up" onclick="levelUpSelected()" class="w-full bg-green-600 hover:bg-green-700 py-3.5 rounded-2xl font-black text-xs transition-all disabled:opacity-20">UPGRADE</button>
                         <button id="btn-promote" onclick="promoteSelected()" class="w-full bg-amber-500 hover:bg-amber-600 py-3.5 rounded-2xl font-black text-xs hidden transition-all">ASCEND</button>
-                        <button id="btn-ascend-base" onclick="ascendBaseSelected()" class="w-full bg-emerald-500 hover:bg-emerald-600 py-3.5 rounded-2xl font-black text-xs hidden transition-all">TRANSCEND</button>
+                        <button id="btn-ascend-base" onclick="ascendBaseSelected()" class="w-full bg-emerald-500 hover:bg-emerald-600 py-3.5 rounded-2xl font-black text-xs hidden transition-all">TRANSCENSION</button>
                     </div>
                     <div class="flex justify-between items-center border-b border-white/10 pb-2">
                         <h3 class="text-xs font-black uppercase tracking-widest">Collection</h3>
@@ -3207,17 +3207,15 @@
             const baseBtn = document.getElementById('btn-ascend-base');
             if (baseBtn) {
                 const baseTarget = getBaseAscendTarget(inv.baseRarity);
-                const canBaseAscend = inv.lvl >= 10
+                const isEligible = inv.lvl >= 10
                     && ['false_divine', 'divine'].includes(inv.currentRarity)
-                    && baseTarget
-                    && (inv.dupes || 0) >= 3;
-                if (canBaseAscend) {
+                    && baseTarget;
+                const dupes = inv.dupes || 0;
+                if (isEligible) {
                     baseBtn.classList.remove('hidden');
-                    baseBtn.disabled = false;
-                    baseBtn.innerText = `ASCEND BASE (${baseTarget.toUpperCase()}) • 3 DUPES`;
-                } else {
-                    baseBtn.classList.add('hidden');
-                }
+                    baseBtn.innerText = `TRANSCENSION • (${dupes}/3) DUPES`;
+                    baseBtn.disabled = dupes < 3;
+                } else baseBtn.classList.add('hidden');
             }
             document.getElementById('btn-add-team').innerText = state.team.includes(id) ? "WITHDRAW" : "DEPLOY";
             renderTeam();
