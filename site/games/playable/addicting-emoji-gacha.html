@@ -146,6 +146,7 @@
         <button onclick="switchTab('shop')" id="btn-tab-shop" class="flex-1 min-w-[120px] max-w-[160px] px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Market</button>
         <button onclick="switchTab('emojidex')" id="btn-tab-emojidex" class="flex-1 min-w-[120px] max-w-[160px] px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Emojidex</button>
         <button onclick="switchTab('tutor')" id="btn-tab-tutor" class="flex-1 min-w-[120px] max-w-[160px] px-4 py-2 rounded-xl text-[10px] font-bold uppercase bg-slate-800 text-slate-400">Move Tutor</button>
+        <button onclick="switchTab('help')" id="btn-tab-help" class="flex-1 min-w-[120px] max-w-[160px] px-4 py-2 rounded-xl text-sm font-bold uppercase bg-slate-800 text-slate-400">Help</button>
     </nav>
     <div id="arena-info-bar" class="hidden bg-slate-900/90 border-b border-white/5 text-center text-[9px] font-black uppercase tracking-[0.3em] text-red-300 py-2">
         Arena Live • Stage <span id="arena-info-stage" class="text-white">1</span>
@@ -424,6 +425,167 @@
             </div>
         </section>
 
+        <!-- Help -->
+        <section id="view-help" class="tab-content hidden py-6">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-black uppercase">Help</h2>
+                <p class="text-base text-slate-400 font-black uppercase tracking-[0.2em]">How To Play</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Getting Started</h3>
+                    <p class="text-sm text-slate-300">Choose your name and starter, then use tickets to summon new emojis.</p>
+                    <p class="text-sm text-slate-300">Tickets come in standard, rare, and legendary tiers, each with different odds of getting Emojis.</p>
+                </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Obtaining Tickets</h3>
+                    <p class="text-sm text-slate-300">Tickets can be earned by beating new challengers and bosses in Adventure mode or purchased at the Market using gold.</p>
+                    <p class="text-sm text-slate-300">Different regions and modes reward different ticket types and amounts.</p>
+                </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Squad</h3>
+                    <p class="text-sm text-slate-300">Build a 3‑emoji squad and level them up to 10 to improve their stats.</p>
+                    <p class="text-sm text-slate-300">Once at level 10, you can ascend them to the next rarity tier, which sets their level back to 1 but improves their stat growth.</p>
+                    <p class="text-sm text-slate-300">Lower rarity emojis are naturally weaker than higher rarity emojis, even with ascension.</p>
+                    <p class="text-sm text-slate-300">However, if you completely max out a lower rarity emoji, a way to overcome these limits may be found...</p>
+                </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Adventure</h3>
+                    <p class="text-sm text-slate-300">Clear regions by beating three challengers and a boss rush.</p>
+                    <p class="text-sm text-slate-300">When a region is cleared, you can send your squad to grind there and earn gold.</p>
+                </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Combat</h3>
+                    <p class="text-sm text-slate-300">Play in Auto or Manual. Manual lets you pick moves and targets each round.</p>
+                    <p class="text-sm text-slate-300">Element advantage boosts damage, and the fire/water/nature trio also has resistances.</p>
+                    <p class="text-sm text-slate-300">Improve your squad by leveling up and ascending emojis.</p>
+                </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Moves</h3>
+                    <p class="text-sm text-slate-300">Mystic emojis have a special basic attack, and the rest have a physical basic attack.</p>
+                    <p class="text-sm text-slate-300">Each emoji also has a special move.</p>
+                    <p class="text-sm text-slate-300">Special moves have cooldowns, damage types, and special effects.</p>
+                    <p class="text-sm text-slate-300">An emoji may have its own special move, plus three others learned through the Move Tutor.</p>
+                </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Status</h3>
+                    <p class="text-sm text-slate-300">Emoji special moves may apply status effects or cause stat changes.</p>
+                    <p class="text-sm text-slate-300">Status effects apply unique effects like burn, rooted, curse, soaked, or dazzled.</p>
+                    <p class="text-sm text-slate-300">An emoji may only have one status effect applied to it at a time.</p>
+                    <p class="text-sm text-slate-300"><b>See emojidex for details on all status effects.</b></p>
+                </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Stat Changes</h3>
+                    <p class="text-sm text-slate-300">Stat changes increase or decrease an emojis stats.</p>
+                    <p class="text-sm text-slate-300">Stats can be increased up to +3 stages, and decreased down to -3 stages.</p>
+                    <p class="text-sm text-slate-300">Below is a table showing stat change percentage at various levels.</p>
+                    <table class="w-full text-[9px] text-slate-300 border-collapse">
+                        <thead>
+                            <tr>
+                                <th class="border border-white/10 px-2 py-1">Stage</th>
+                                <th class="border border-white/10 px-2 py-1">Stat Multiplier</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="border border-white/10 px-2 py-1 text-center">+3</td>
+                                <td class="border border-white/10 px-2 py-1 text-center">+150%</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-white/10 px-2 py-1 text-center">+2</td>
+                                <td class="border border-white/10 px-2 py-1 text-center">+100%</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-white/10 px-2 py-1 text-center">+1</td>
+                                <td class="border border-white/10 px-2 py-1 text-center">+50%</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-white/10 px-2 py-1 text-center">0</td>
+                                <td class="border border-white/10 px-2 py-1 text-center">±0%</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-white/10 px-2 py-1 text-center">-1</td>
+                                <td class="border border-white/10 px-2 py-1 text-center">-33%</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-white/10 px-2 py-1 text-center">-2</td>
+                                <td class="border border-white/10 px-2 py-1 text-center">-50%</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-white/10 px-2 py-1 text-center">-3</td>
+                                <td class="border border-white/10 px-2 py-1 text-center">-66%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p class="text-sm text-slate-300">Status effects and stat changes last until the end of combat or the end of three rounds.</p>
+                    <p class="text-sm text-slate-300">The Dazzled status effect also clears all stat changes when applied.</p>
+                </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Elements</h3>
+                    <p class="text-sm text-slate-300">There are 5 elements (fire, water, nature, light, dark) with strengths and weaknesses.</p>
+                    <p class="text-sm text-slate-300">Elements take 50% more damage from weaknesses, and 33% less damage from resists.</p>
+                    <ul class="text-sm text-slate-300 list-disc list-inside">
+                        <li class="text-sm text-slate-300">🔥 Fire emojis resist 🌿 Nature moves, are weak to 💧 Water.</li>
+                        <li class="text-sm text-slate-300">💧 Water emojis resist 🔥 Fire moves, are weak to 🌿 Nature.</li>
+                        <li class="text-sm text-slate-300">🌿 Nature emojis resist 💧 Water moves, are weak to 🔥 Fire.</li>
+                        <li class="text-sm text-slate-300">✨ Light emojis are weak to 🌑 Dark.</li>
+                        <li class="text-sm text-slate-300">🌑 Dark emojis are weak to ✨ Light.</li>
+                    </ul>
+                    <p>Fire, Water and Nature emojis resist their own status conditions. Light and Dark do not.</p>
+                    <p class="text-sm text-slate-300">Each element also has its own identity.</p>
+                    <ul class="text-sm text-slate-300 list-disc list-inside">
+                        <li class="text-sm text-slate-300">🔥 Fire emojis have high attack, recoil, and offense‑oriented moves.</li>
+                        <li class="text-sm text-slate-300">💧 Water emojis have AoE, splashy and control‑oriented moves.</li>
+                        <li class="text-sm text-slate-300">🌿 Nature emojis have low damage, debuff, draining & utility moves.</li>
+                        <li class="text-sm text-slate-300">✨ Light emojis have a healing and support focus.</li>
+                        <li class="text-sm text-slate-300">🌑 Dark emojis are exclusively single target and borrow other elements' effects.</li>
+                    </ul>
+                </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Types</h3>
+                    <p class="text-sm text-slate-300">There are 6 well-known types that define stat growth.</p>
+                    <ul class="text-sm text-slate-300 list-disc list-inside">
+                        <li class="text-sm text-slate-300">⚔️ Strikers have high attack and speed.</li>
+                        <li class="text-sm text-slate-300">🛡️ Tanks have high HP and defense.</li>
+                        <li class="text-sm text-slate-300">💨 Speedsters have high speed and attack.</li>
+                        <li class="text-sm text-slate-300">🧠 Mystics have high special stats, and a special basic attack.</li>
+                        <li class="text-sm text-slate-300">🏰 Guardians mix high defense and decent attack with abysmal speed.</li>
+                        <li class="text-sm text-slate-300">🥊 Brawlers have high attack and HP, with close combat moves.</li>
+                    </ul>
+                    <p class="text-sm text-slate-300">There are two secret types that have unique growth characteristics... See if you can find the emojis with them!</p>
+                </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Arena</h3>
+                    <p class="text-sm text-slate-300">The Arena is post‑game content with endless stages with massive monetary rewards and tougher enemy pools.</p>
+                    <p class="text-sm text-slate-300">Each stage has a rarity level that determines the possible enemy emojis and rewards.</p>
+                    <p class="text-sm text-slate-300">Emoji parties in the Arena are all level 10, and have been ascended beyond their typical rarity.</p>
+                    <p class="text-sm text-slate-300">Your squad heals every 3 wins; check the lobby for reward brackets.</p>
+                    <p class="text-sm text-slate-300">If you are having trouble in the arena, don't forget you can grind in Adventure mode to get a team together that can go the distance.</p>
+                </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Move Tutor</h3>
+                    <p class="text-sm text-slate-300">A Mentor emoji can be assigned a student emoji to teach the student emoji the mentors' special move.</p>
+                    <p class="text-sm text-slate-300">To progress towards the student learning the move, a number of matches in an area matching the move's rarity must be won.</p>
+                    <p class="text-sm text-slate-300">For example, "Smouldering Aura" is an epic rarity move, so matches in the Arena or Adventure regions with epic or legendary pool rarity are required to teach it.</p>
+                    <p class="text-sm text-slate-300">Higher rarity emojis are more stubborn and take longer to learn moves.</p>
+                    <p class="text-sm text-slate-300">Emojis used do not need to be in the squad together for tutoring to work.</p>
+                    <p class="text-sm text-slate-300">Each emoji can learn up to 3 additional moves.</p>
+                    <p class="text-sm text-slate-300">Taught moves can be forgotten at any time through the Move Tutor.</p>
+                </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Emojidex & Data</h3>
+                    <p class="text-sm text-slate-300">Emojidex tracks discovered emojis, moves, and status rules.</p>
+                    <p class="text-sm text-slate-300">See if you can collect them all!</p>
+                    <p class="text-sm text-slate-300">Use the Data dialog to save, load, delete, or start over in any slot.</p>
+                </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Thats all :D</h3>
+                    <p class="text-sm text-slate-300">I hope you enjoy the game!</p>
+                    <p class="text-sm text-slate-300">Feedback? email me at: <a href="mailto:feedback@lexiclimb.com">feedback@lexiclimb.com</a></p>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <!-- Results Dialog -->
@@ -635,21 +797,21 @@
 
         const RARITY_ORDER = ['trash', 'common', 'uncommon', 'rare', 'epic', 'legendary', 'false_divine', 'divine', 'eternal'];
         const TYPE_WEIGHTS = {
-            Striker: { hp: 1.0, atk: 1.5, spd: 0.9, def: 0.85, spAtk: 1.2, spDef: 0.85 },
-            Tank: { hp: 1.3, atk: 0.6, spd: 0.6, def: 1.3, spAtk: 0.8, spDef: 1.0 },
-            Speedster: { hp: 0.95, atk: 0.9, spd: 1.5, def: 0.8, spAtk: 1.0, spDef: 0.8 },
-            Mystic: { hp: 1.0, atk: 0.6, spd: 1.0, def: 0.8, spAtk: 1.6, spDef: 1.3 },
-            Guardian: { hp: 1.4, atk: 0.8, spd: 0.4, def: 1.4, spAtk: 0.7, spDef: 1.0 },
+            Striker: { hp: 1.0, atk: 1.5, spd: 0.9, def: 0.85, spAtk: 0.9, spDef: 0.85 },
+            Tank: { hp: 1.2, atk: 0.6, spd: 0.6, def: 1.35, spAtk: 0.8, spDef: 1.1 },
+            Speedster: { hp: 0.95, atk: 1.4, spd: 1.5, def: 0.8, spAtk: 1.0, spDef: 0.8 },
+            Mystic: { hp: 0.9, atk: 0.6, spd: 1.0, def: 0.8, spAtk: 1.6, spDef: 1.3 },
+            Guardian: { hp: 1.3, atk: 0.9, spd: 0.3, def: 1.45, spAtk: 0.4, spDef: 0.75 },
             Brawler: { hp: 1.2, atk: 1.4, spd: 0.85, def: 1.1, spAtk: 0.7, spDef: 0.9 },
             Tater: { hp: 2.0, atk: 2.0, spd: 2.0, def: 2.0, spAtk: 2.0, spDef: 2.0 },
-            Trash: { hp: 1.5, atk: 1.5, spd: 1.5, def: 1.5, spAtk: 1.5, spDef: 1.5 }
+            Trash: { hp: 1.6, atk: 1.6, spd: 1.6, def: 1.6, spAtk: 1.6, spDef: 1.6 }
         };
         const ELEMENT_BONUSES = {
             fire: { hp: 1.0, atk: 1.2, spd: 1.0, def: 0.95, spAtk: 1.2, spDef: 0.95 },
             water: { hp: 1.2, atk: 1.0, spd: 1.0, def: 1.0, spAtk: 1.0, spDef: 1.15 },
             nature: { hp: 1.1, atk: 1.1, spd: 1.0, def: 1.1, spAtk: 1.0, spDef: 1.0 },
             light: { hp: 1.0, atk: 1.0, spd: 1.2, def: 1.0, spAtk: 1.05, spDef: 1.1 },
-            dark: { hp: 0.9, atk: 1.3, spd: 1.0, def: 0.95, spAtk: 1.15, spDef: 0.95 }
+            dark: { hp: 0.9, atk: 1.3, spd: 1.0, def: 0.95, spAtk: 1.2, spDef: 0.90 }
         };
         const RARITY_MULTIPLIERS = { trash: 0.4, common: 1.0, uncommon: 1.25, rare: 1.5, epic: 2.5, legendary: 4.5, false_divine: 8.0, divine: 8.5, eternal: 20.0 };
         const GROWTH_RATES = { trash: 0.12, common: 0.15, uncommon: 0.165, rare: 0.18, epic: 0.22, legendary: 0.28, false_divine: 0.36, divine: 0.38, eternal: 0.55 };
@@ -874,7 +1036,7 @@
             { num: 81, id: 'dawn_eternum', name: 'Dawn Eternum', power: 80, cooldown: 5, kind: 'damage', target: 'enemy-all', element: 'light', damageType: 'special', rarity: 'eternal', effect: { selfStages: { spAtk: 1, def: 1 } }, statuses: [{ id: 'dazzle', chance: 1 }] },
 
             /* Dark Moves */
-            { num: 82, id: 'gloom_slash', name: 'Gloom Slash', power: 50, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'common' },
+            { num: 82, id: 'gloom_slash', name: 'Gloom Slash', power: 35, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'common', effect: { drainPct: 0.15 } },
             { num: 83, id: 'shade_bolt', name: 'Shade Bolt', power: 50, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'common' },
             { num: 84, id: 'night_prick', name: 'Night Prick', power: 65, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'common', effect: { recoilPct: 0.20 } },
             { num: 85, id: 'umbra_shot', name: 'Umbra Shot', power: 40, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'common', effect: {statuses: [{ id: 'curse', chance: 0.30 }] } },
@@ -882,11 +1044,11 @@
             { num: 87, id: 'malison', name: 'Malison', power: 40, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'uncommon', effect: { targetStages: { atk: -1 } } },
             { num: 88, id: 'doom_seal', name: 'Doom Seal', power: 55, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'uncommon', statuses: [{ id: 'curse', chance: 0.35 }] },
             { num: 89, id: 'void_chill', name: 'Void Chill', power: 55, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'rare', effect: { selfStages: { spAtk: 1 } } },
-            { num: 90, id: 'dusk_cut', name: 'Dusk Cut', power: 70, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'rare', effect: { recoilPct: 0.2 } },
-            { num: 91, id: 'shadow_gale', name: 'Shadow Gale', power: 65, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'rare', effect: { selfStages: { spd: 1 }, recoilPct: 0.2 } },
+            { num: 90, id: 'dusk_cut', name: 'Dusk Cut', power: 70, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'rare', effect: { recoilPct: 0.2, statuses: [{ id: 'burn', chance: 0.30 }] } },
+            { num: 91, id: 'shadow_gale', name: 'Shadow Gale', power: 65, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'rare', effect: { selfStages: { spd: 1 }, recoilPct: 0.2, statuses: [{ id: 'soak', chance: 0.50 }] } },
             { num: 92, id: 'moon_slash', name: 'Moon Slash', power: 40, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'rare', effect: { selfStages: { atk: 1 } } },
             { num: 93, id: 'night_howl', name: 'Night Howl', power: 60, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'epic', effect: { selfStages: { atk: 1, spd: 1 }, recoilPct: 0.2 } },
-            { num: 94, id: 'grave_bite', name: 'Grave Bite', power: 65, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'epic', effect: { selfStages: { spAtk: 1 }, recoilPct: 0.2 } },
+            { num: 94, id: 'grave_bite', name: 'Grave Bite', power: 65, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'epic', effect: { selfStages: { spAtk: 1 }, recoilPct: 0.2, statuses: [{ id: 'rooted', chance: 0.50 }] } },
             { num: 95, id: 'shade_rush', name: 'Shade Rush', power: 80, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'epic', effect: { selfStages: { spd: 1 } } },
             { num: 96, id: 'shadow_slice', name: 'Shadow Slice', power: 80, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'special', rarity: 'legendary', effect: { selfStages: { spAtk: 1 }, recoilPct: 0.20 }, statuses: [{ id: 'curse', chance: 0.3 }] },
             { num: 97, id: 'abyssal_cut', name: 'Abyssal Cut', power: 80, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'dark', damageType: 'physical', rarity: 'legendary', effect: { selfStages: { atk: 1 }, recoilPct: 0.20 } },
