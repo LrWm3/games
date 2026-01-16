@@ -2080,8 +2080,9 @@
             else if (stage < 6) teamSize = 2;
             else teamSize = 3;
 
-            const baseLevel = Math.min(30, 1 + Math.floor(stage / 3));
-            const levelSpread = Math.min(6, Math.floor(stage / 6) + 1);
+            const isArena = !poolOverride;
+            const baseLevel = isArena ? 10 : Math.min(30, 1 + Math.floor(stage / 3));
+            const levelSpread = isArena ? 0 : Math.min(6, Math.floor(stage / 6) + 1);
             const usedIds = new Set();
             const team = [];
             const pool = poolOverride || getArenaPool(stage);
@@ -2097,9 +2098,14 @@
                 }
                 const emoji = choices[Math.floor(Math.random() * choices.length)];
                 usedIds.add(emoji.id);
-                const level = Math.max(1, baseLevel + Math.floor(Math.random() * levelSpread) - Math.floor(levelSpread / 2));
-                const stats = calcEnemyStats(emoji, level, rarity);
-                const unit = { ...emoji, ...stats, lvl: level, maxHp: stats.hp, isPlayer: false, currentRarity: rarity };
+                const level = isArena
+                    ? 10
+                    : Math.max(1, baseLevel + Math.floor(Math.random() * levelSpread) - Math.floor(levelSpread / 2));
+                const currentRarity = isArena
+                    ? (rarityRank(rarity) <= rarityRank('epic') ? 'false_divine' : (rarity === 'legendary' ? 'divine' : rarity))
+                    : rarity;
+                const stats = calcEnemyStats(emoji, level, currentRarity);
+                const unit = { ...emoji, ...stats, lvl: level, maxHp: stats.hp, isPlayer: false, currentRarity };
                 attachMoves(unit);
                 team.push(unit);
             }
