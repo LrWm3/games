@@ -1693,7 +1693,7 @@
             const stages = unit?.statStages || { atk: 0, def: 0, spAtk: 0, spDef: 0, spd: 0 };
             return Object.keys(stages)
                 .filter(key => stages[key] && STAT_METADATA[key])
-                .map(key => `<span class="px-2 py-1 rounded-full border border-white/5 ${stages[key] > 0 ? 'bg-emerald-500/20 text-emerald-200' : 'bg-rose-500/20 text-rose-200'}">${STAT_METADATA[key].emoji} ${stages[key] > 0 ? `+${stages[key]}` : stages[key]}</span>`)
+                .map(key => `<span class="px-2 py-1 rounded-full border border-white/5 ${stages[key] > 0 ? 'bg-emerald-500/20 text-emerald-200' : 'bg-rose-500/20 text-rose-200'}">${STAT_METADATA[key].name} ${stages[key] > 0 ? `+${stages[key]}` : stages[key]}</span>`)
                 .join('');
         }
 
