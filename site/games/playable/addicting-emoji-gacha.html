@@ -325,6 +325,7 @@
                                 <button data-combat-speed="2" onclick="setCombatSpeed(2)" class="px-3 py-1.5 rounded-full bg-slate-800 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">2x</button>
                             </div>
                         </div>
+                        <div id="adventure-combat-tutorial" class="hidden bg-slate-950/60 border border-white/10 rounded-2xl p-3 text-sm text-slate-300 mb-3"></div>
                         <div class="flex justify-between items-center mb-3">
                             <span class="text-[9px] text-slate-500 uppercase tracking-[0.2em]" id="adventure-mode-note"></span>
                             <button id="adventure-leave-training" onclick="leaveAdventureTraining()" class="hidden text-[9px] font-black text-slate-400 underline uppercase">Leave Training</button>
@@ -432,6 +433,16 @@
                 <p class="text-base text-slate-400 font-black uppercase tracking-[0.2em]">How To Play</p>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Stats</h3>
+                    <p class="text-sm text-slate-300">Core stats determine combat performance:</p>
+                    <p class="text-sm text-slate-300">❤️ HP: how much damage you can take.</p>
+                    <p class="text-sm text-slate-300">🗡️ ATK: boosts physical damage.</p>
+                    <p class="text-sm text-slate-300">🧱 DEF: reduces physical damage taken.</p>
+                    <p class="text-sm text-slate-300">✨ SP. ATK: boosts special damage.</p>
+                    <p class="text-sm text-slate-300">🛡️ SP. DEF: reduces special damage taken.</p>
+                    <p class="text-sm text-slate-300">⚡ SPD: determines turn order.</p>
+                </div>
                 <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
                     <h3 class="text-base font-black uppercase tracking-widest">Getting Started</h3>
                     <p class="text-sm text-slate-300">Choose your name and starter, then use tickets to summon new emojis.</p>
@@ -595,6 +606,18 @@
 
     </main>
 
+    <div id="move-detail-overlay" class="fixed inset-0 z-[120] bg-black/80 hidden">
+        <div class="min-h-full flex items-center justify-center p-4">
+            <div class="bg-slate-900 border border-white/10 rounded-3xl p-5 max-w-sm w-full">
+                <div class="flex justify-between items-center mb-3">
+                    <div class="text-sm font-black uppercase tracking-[0.2em] text-slate-300">Move Details</div>
+                    <button onclick="closeMoveDetails()" class="text-[9px] font-black text-slate-400 uppercase">Close</button>
+                </div>
+                <div id="move-detail-card"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Results Dialog -->
     <div id="summon-result-overlay" class="fixed inset-0 z-[100] bg-black/90 hidden">
         <div class="max-w-2xl mx-auto mt-10 bg-slate-900/95 border border-white/10 rounded-[2rem] p-6 shadow-2xl">
@@ -613,7 +636,7 @@
 
     <!-- Tutorial Overlay -->
     <div id="tutorial-overlay" class="fixed inset-0 z-[250] bg-black/95 hidden">
-        <div class="max-w-lg mx-auto mt-16 bg-slate-900/95 border border-white/10 rounded-[2rem] p-6 shadow-2xl">
+        <div id="tutorial-card" class="max-w-lg mx-auto mt-16 bg-slate-900/95 border border-white/10 rounded-[2rem] p-6 shadow-2xl">
             <div id="tutorial-content"></div>
         </div>
     </div>
@@ -1241,7 +1264,8 @@
                 starterId: null,
                 allowTeamBuild: false,
                 suspended: false,
-                completed: false
+                completed: false,
+                combatIntroShown: false
             },
             tutorPairs: [
                 { mentorId: null, studentId: null, progress: 0 },
@@ -1262,7 +1286,7 @@
                 trainingWins: 0
             },
             tutorUnlockedSlots: 1,
-            combatMode: 'auto',
+            combatMode: 'manual',
             combatSpeed: 2
         };
         let state = { ...DEFAULT_STATE };
@@ -1351,6 +1375,7 @@
             if (state.tutorial.allowTeamBuild === undefined) state.tutorial.allowTeamBuild = false;
             if (state.tutorial.suspended === undefined) state.tutorial.suspended = false;
             if (state.tutorial.completed === undefined) state.tutorial.completed = false;
+            if (state.tutorial.combatIntroShown === undefined) state.tutorial.combatIntroShown = false;
             if (hadSave && Object.keys(state.inventory).length && !state.tutorial.completed && !state.playerName) {
                 state.tutorial.completed = true;
                 state.tutorial.step = TUTORIAL_STEPS.DONE;
@@ -1865,7 +1890,7 @@
                 const cd = unit.cooldowns?.[id] ?? 0;
                 const status = cd > 0 ? `CD ${cd}` : 'Ready';
                 const style = cd > 0 ? 'bg-slate-900/60 text-slate-400' : 'bg-emerald-500/20 text-emerald-200';
-                return `<span class="px-2 py-1 rounded-full border border-white/5 ${style}">${move.name} • ${status}</span>`;
+                return `<button onclick="showMoveDetails('${id}')" class="px-2 py-1 rounded-full border border-white/5 ${style}">${move.name} • ${status}</button>`;
             }).join('');
         }
 
@@ -1907,7 +1932,7 @@
             if (targetTeam === 'enemy' && unit.isPlayer) return '';
             if (targetTeam === 'ally' && !unit.isPlayer) return '';
             if (unit.hp <= 0) return '';
-            return `<button onclick="selectManualTarget('${unit.uid}')" class="px-2 py-1 rounded-full border border-white/5 bg-emerald-500/30 text-emerald-100">Target</button>`;
+            return `<button onclick="selectManualTarget('${unit.uid}')" class="px-2 py-1 rounded-full border border-white/5 bg-blue-500/30 text-blue-100">Target</button>`;
         }
 
         function renderStatusBadge(unit) {
@@ -1995,6 +2020,22 @@
                 const move = getMoveById(moveId);
                 container.innerHTML = move ? renderMoveCardHTML(move) : `<div class="text-[9px] text-slate-400 uppercase tracking-[0.2em]">Move unavailable</div>`;
             });
+        }
+
+        function showMoveDetails(moveId) {
+            const move = getMoveById(moveId);
+            const overlay = document.getElementById('move-detail-overlay');
+            const card = document.getElementById('move-detail-card');
+            if (!move || !overlay || !card) return;
+            card.innerHTML = renderMoveCardHTML(move);
+            overlay.classList.remove('hidden');
+        }
+
+        function closeMoveDetails() {
+            const overlay = document.getElementById('move-detail-overlay');
+            const card = document.getElementById('move-detail-card');
+            if (card) card.innerHTML = '';
+            if (overlay) overlay.classList.add('hidden');
         }
 
         function getMoveListForEmoji(emoji, inv = null) {
@@ -2546,7 +2587,36 @@
                 resetBaseStats(clone);
                 return clone;
             });
+            renderAdventureCombatTutorial();
             runAdventureCombat(state.adventure.playerTeamState, eUnits);
+        }
+
+        function renderAdventureCombatTutorial() {
+            const tutorialEl = document.getElementById('adventure-combat-tutorial');
+            if (!tutorialEl) return;
+            const shouldShow = !state.tutorial.combatIntroShown && !state.adventure.training && state.adventure.inCombat;
+            if (!shouldShow) {
+                tutorialEl.classList.add('hidden');
+                tutorialEl.innerHTML = '';
+                return;
+            }
+            tutorialEl.classList.remove('hidden');
+            tutorialEl.innerHTML = `
+                <div class="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-300 mb-2">First Battle</div>
+                <div class="text-sm text-slate-200">To order your 🩹 to strike, click on the move 'Gloom Slash' underneath 🩹 and then click “Target” underneath the opposing emoji to target it.</div>
+                <div class="text-sm text-slate-200">You can see selected move details in the move card below the combat area.</div>
+                <div class="text-sm text-slate-200 mt-2">Repeat this process for each of your emojis.</div>
+                <div class="text-sm text-slate-200 mt-2">Once all moves have been selected for your emojis, a round of combat will play out.</div>
+                <div class="text-sm text-slate-200 mt-2">You can also select Auto to have emojis battle for you.</div>
+                <div class="text-sm text-slate-200 mt-2">This text will disappear after your first round of combat. Good luck!</div>
+            `;
+        }
+
+        function markCombatIntroComplete() {
+            if (state.tutorial.combatIntroShown) return;
+            state.tutorial.combatIntroShown = true;
+            save();
+            renderAdventureCombatTutorial();
         }
 
         function leaveAdventureTraining() {
@@ -2612,13 +2682,15 @@
                 baseDelay = 350,
                 isActiveFn = () => true,
                 showPlayerLevel = true,
-                getMode = getCombatMode
+                getMode = getCombatMode,
+                onFirstRound = null
             } = options;
             const battleId = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
             pUnits.forEach((u, i) => { if (!u.uid) u.uid = `p-${battleId}-${i}`; });
             eUnits.forEach((u, i) => { if (!u.uid) u.uid = `e-${battleId}-${i}`; });
             let round = 1;
             roundEl.innerText = round;
+            let firstRoundHandled = false;
             const updateUI = () => {
                 const mode = getMode();
                 playerEl.innerHTML = renderCombatTeam(pUnits, 'bg-green-500', showPlayerLevel, mode);
@@ -2638,6 +2710,13 @@
                 if (mode === 'manual') {
                     manualSelections = await getManualSelections(pUnits, eUnits, updateUI);
                     if (manualSelections === null) continue;
+                    if (!firstRoundHandled && round === 1) {
+                        firstRoundHandled = true;
+                        if (onFirstRound) onFirstRound();
+                    }
+                } else if (!firstRoundHandled && round === 1) {
+                    firstRoundHandled = true;
+                    if (onFirstRound) onFirstRound();
                 }
                 for (let u of actors) {
                     if (!isActiveFn()) return null;
@@ -2686,7 +2765,12 @@
                 playerEl: document.getElementById('adventure-player-team'),
                 enemyEl: document.getElementById('adventure-enemy-team'),
                 baseDelay: 350,
-                getMode: () => state.adventure.training ? 'auto' : getCombatMode()
+                getMode: () => state.adventure.training ? 'auto' : getCombatMode(),
+                onFirstRound: () => {
+                    if (!state.adventure.training && !state.tutorial.combatIntroShown) {
+                        markCombatIntroComplete();
+                    }
+                }
             });
             if (result === null) return;
             if (result) handleAdventureWin();
