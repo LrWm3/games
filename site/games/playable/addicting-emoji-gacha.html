@@ -644,7 +644,7 @@
             rare: { trash: 0.0, common: 0.0, uncommon: 0.5, rare: 0.82, epic: 0.99, legendary: 0.998, divine: 1.0, eternal: 1.0 },
             legendary: { trash: 0.0, common: 0.0, uncommon: 0.0, rare: 0.6, epic: 0.90, legendary: 0.985, divine: 0.995, eternal: 1.0 }
         };
-        const LEVEL_COST_TABLE = { trash: 80, common: 120, uncommon: 160, rare: 220, epic: 320, legendary: 450, divine: 650, eternal: 900 };
+        const LEVEL_COST_TABLE = { trash: 80, common: 150, uncommon: 200, rare: 300, epic: 500, legendary: 1000, divine: 2000, eternal: 4000 };
         const PROMOTE_COST_TABLE = { trash: 500, common: 800, uncommon: 1200, rare: 2500, epic: 4000, legendary: 10000, divine: 25000 };
         const ELEMENT_STATUS_EFFECTS = {
             fire: { id: 'burn', element: 'fire', name: 'Burn', desc: 'Takes damage each turn and deals reduced physical damage. Fire units are immune.' },
@@ -2229,7 +2229,9 @@
         }
 
         function getLevelUpCost(inv) {
-            return Math.floor(inv.lvl * (LEVEL_COST_TABLE[inv.currentRarity] || 0));
+            const base = LEVEL_COST_TABLE[inv.currentRarity] || 0;
+            const scale = 1 + ((inv.lvl - 1) * (2 / 9));
+            return Math.floor(base * scale);
         }
 
         function getPromoteCost(inv) {
