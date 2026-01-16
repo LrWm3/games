@@ -434,16 +434,6 @@
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
-                    <h3 class="text-base font-black uppercase tracking-widest">Stats</h3>
-                    <p class="text-sm text-slate-300">Core stats determine combat performance:</p>
-                    <p class="text-sm text-slate-300">❤️ HP: how much damage you can take.</p>
-                    <p class="text-sm text-slate-300">🗡️ ATK: boosts physical damage.</p>
-                    <p class="text-sm text-slate-300">🧱 DEF: reduces physical damage taken.</p>
-                    <p class="text-sm text-slate-300">✨ SP. ATK: boosts special damage.</p>
-                    <p class="text-sm text-slate-300">🛡️ SP. DEF: reduces special damage taken.</p>
-                    <p class="text-sm text-slate-300">⚡ SPD: determines turn order.</p>
-                </div>
-                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
                     <h3 class="text-base font-black uppercase tracking-widest">Getting Started</h3>
                     <p class="text-sm text-slate-300">Choose your name and starter, then use tickets to summon new emojis.</p>
                     <p class="text-sm text-slate-300">Tickets come in standard, rare, and legendary tiers, each with different odds of getting Emojis.</p>
@@ -478,9 +468,20 @@
                     <p class="text-sm text-slate-300">Special moves have cooldowns, damage types, and special effects.</p>
                     <p class="text-sm text-slate-300">An emoji may have its own special move, plus three others learned through the Move Tutor.</p>
                 </div>
+
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
+                    <h3 class="text-base font-black uppercase tracking-widest">Stats</h3>
+                    <p class="text-sm text-slate-300">Core stats determine combat performance:</p>
+                    <p class="text-sm text-slate-300">❤️ HP: Damage an emoji can take before being defeated.</p>
+                    <p class="text-sm text-slate-300">🗡️ ATK: boosts physical move damage.</p>
+                    <p class="text-sm text-slate-300">🧱 DEF: reduces physical move damage taken.</p>
+                    <p class="text-sm text-slate-300">✨ SP. ATK: boosts special move damage.</p>
+                    <p class="text-sm text-slate-300">🛡️ SP. DEF: reduces special move damage taken.</p>
+                    <p class="text-sm text-slate-300">⚡ SPD: determines emoji turn order.</p>
+                </div>
                 <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
                     <h3 class="text-base font-black uppercase tracking-widest">Status</h3>
-                    <p class="text-sm text-slate-300">Emoji special moves may apply status effects or cause stat changes.</p>
+                    <p class="text-sm text-slate-300">Some emoji special moves can apply status effects.</p>
                     <ul class="list-disc list-inside space-y-1">
                         <li class="text-sm text-slate-300"><b>🔥 Burn:</b> loses 10% max HP each turn and physical damage is reduced by 25%.</li>
                         <li class="text-sm text-slate-300"><b>💧 Soak:</b> next hit takes +35% damage and then clears.</li>
@@ -494,7 +495,8 @@
                 </div>
                 <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
                     <h3 class="text-base font-black uppercase tracking-widest">Stat Changes</h3>
-                    <p class="text-sm text-slate-300">Stat changes increase or decrease an emojis stats.</p>
+                    <p class="text-sm text-slate-300">Some emoji special moves can cause stat changes.</p>
+                    <p class="text-sm text-slate-300">Stat changes increase or decrease emoji stats.</p>
                     <p class="text-sm text-slate-300">Stats can be increased up to +3 stages, and decreased down to -3 stages.</p>
                     <p class="text-sm text-slate-300">Below is a table showing stat change percentage at various levels.</p>
                     <table class="w-full text-[9px] text-slate-300 border-collapse">
@@ -536,7 +538,7 @@
                         </tbody>
                     </table>
                     <p class="text-sm text-slate-300">Status effects and stat changes last until the end of combat or the end of three rounds.</p>
-                    <p class="text-sm text-slate-300">The Dazzled status effect also clears all stat changes when applied.</p>
+                    <p class="text-sm text-slate-300">The Dazzled status effect clears all stat changes when applied.</p>
                 </div>
                 <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
                     <h3 class="text-base font-black uppercase tracking-widest">Elements</h3>
@@ -570,11 +572,11 @@
                         <li class="text-sm text-slate-300">🏰 Guardians mix high defense and decent attack with abysmal speed.</li>
                         <li class="text-sm text-slate-300">🥊 Brawlers have high attack and HP, with close combat moves.</li>
                     </ul>
-                    <p class="text-sm text-slate-300">There are two secret types that have unique growth characteristics... See if you can find the emojis with them!</p>
+                    <p class="text-sm text-slate-300">There are two secret types that have enhanced growth characteristics... See if you can find emojis with them!</p>
                 </div>
                 <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-3">
                     <h3 class="text-base font-black uppercase tracking-widest">Arena</h3>
-                    <p class="text-sm text-slate-300">The Arena is post‑game content with endless stages with massive monetary rewards and tougher enemy pools.</p>
+                    <p class="text-sm text-slate-300">The Arena is post‑game content with endless stages, massive monetary rewards and tougher enemy pools.</p>
                     <p class="text-sm text-slate-300">Each stage has a rarity level that determines the possible enemy emojis and rewards.</p>
                     <p class="text-sm text-slate-300">Emoji parties in the Arena are all level 10, and have been ascended beyond their typical rarity.</p>
                     <p class="text-sm text-slate-300">Your squad heals every 3 wins; check the lobby for reward brackets.</p>
@@ -834,7 +836,7 @@
             Guardian: { hp: 1.3, atk: 0.9, spd: 0.3, def: 1.45, spAtk: 0.4, spDef: 0.75 },
             Brawler: { hp: 1.2, atk: 1.4, spd: 0.85, def: 1.1, spAtk: 0.7, spDef: 0.9 },
             Tater: { hp: 2.0, atk: 2.0, spd: 2.0, def: 2.0, spAtk: 2.0, spDef: 2.0 },
-            Trash: { hp: 1.6, atk: 1.6, spd: 1.6, def: 1.6, spAtk: 1.6, spDef: 1.6 }
+            Trash: { hp: 1.6, atk: 1.6, spd: 0.25, def: 1.6, spAtk: 1.6, spDef: 1.6 }
         };
         const ELEMENT_BONUSES = {
             fire: { hp: 1.0, atk: 1.2, spd: 1.0, def: 0.95, spAtk: 1.2, spDef: 0.95 },
