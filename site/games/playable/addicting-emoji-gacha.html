@@ -644,7 +644,7 @@
             rare: { trash: 0.0, common: 0.0, uncommon: 0.5, rare: 0.82, epic: 0.99, legendary: 0.998, divine: 1.0, eternal: 1.0 },
             legendary: { trash: 0.0, common: 0.0, uncommon: 0.0, rare: 0.6, epic: 0.90, legendary: 0.985, divine: 0.995, eternal: 1.0 }
         };
-        const RARITY_COST_MULTIPLIERS = { trash: 0.7, common: 1.0, uncommon: 1.3, rare: 1.7, epic: 2.6, legendary: 4.0, divine: 6.5, eternal: 9.0 };
+        const LEVEL_COST_TABLE = { trash: 80, common: 120, uncommon: 160, rare: 220, epic: 320, legendary: 450, divine: 650, eternal: 900 };
         const PROMOTE_COST_TABLE = { trash: 500, common: 800, uncommon: 1200, rare: 2500, epic: 4000, legendary: 10000, divine: 25000 };
         const ELEMENT_STATUS_EFFECTS = {
             fire: { id: 'burn', element: 'fire', name: 'Burn', desc: 'Takes damage each turn and deals reduced physical damage. Fire units are immune.' },
@@ -2095,10 +2095,13 @@
             const rewardGold = (isBoss) => {
                 const table = { trash: 120, common: 180, uncommon: 240, rare: 320, epic: 480, legendary: 650 };
                 const base = table[region.rarity] || 200;
-                return isBoss ? Math.floor(base * 3.2) : base;
+                const regionIndex = Math.max(0, state.adventure.regions.findIndex(r => r.id === region.id));
+                const regionBoost = 1 + (regionIndex * 0.18);
+                const scaled = Math.floor(base * regionBoost);
+                return isBoss ? Math.floor(scaled * 3.2) : scaled;
             };
             if (activeBattle.training) {
-                const trainingGold = Math.max(1, Math.floor(rewardGold(false) * 0.1));
+                const trainingGold = Math.max(1, Math.floor(rewardGold(false) * 0.2));
                 state.gold += trainingGold;
                 processTutorWin(region.rarity);
                 if (state.adventure.training && state.adventure.currentRegionId === region.id) {
@@ -2200,7 +2203,7 @@
         }
 
         function getLevelUpCost(inv) {
-            return Math.floor(inv.lvl * 200 * RARITY_COST_MULTIPLIERS[inv.currentRarity]);
+            return Math.floor(inv.lvl * (LEVEL_COST_TABLE[inv.currentRarity] || 0));
         }
 
         function getPromoteCost(inv) {
