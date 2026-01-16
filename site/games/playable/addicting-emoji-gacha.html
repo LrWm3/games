@@ -437,7 +437,7 @@
         // --- MASTER DATA (151 TOTAL) ---
         const EMOJIS = [
             // TRASH (8)
-            { id: 101, char: '🩹', name: 'Bandaid', rarity: 'trash', element: 'dark', defaultMove: 'gloom_slash', type: 'Tank' },
+            { id: 101, char: '🩹', name: 'Bandaid', rarity: 'trash', element: 'dark', defaultMove: 'gloom_slash', type: 'Trash' },
             { id: 102, char: '💩', name: 'Poo', rarity: 'trash', element: 'nature', defaultMove: 'thorns_pulse', type: 'Striker' },
             { id: 103, char: '🦴', name: 'Old Bone', rarity: 'trash', element: 'dark', defaultMove: 'shade_bolt', type: 'Striker' },
             { id: 104, char: '🏚️', name: 'Shack', rarity: 'trash', element: 'nature', defaultMove: 'briar_strike', type: 'Tank' },
@@ -580,14 +580,14 @@
             { id: 225, char: '🧛‍♂️', name: 'Lord', rarity: 'legendary', element: 'dark', defaultMove: 'shadow_slice', type: 'Striker' },
             { id: 226, char: '🐜', name: 'Ant', rarity: 'trash', element: 'nature', defaultMove: 'moss_spike', type: 'Speedster' },
             { id: 227, char: '🪳', name: 'Roach', rarity: 'trash', element: 'dark', defaultMove: 'night_prick', type: 'Speedster' },
-            { id: 228, char: '🧻', name: 'Tissue', rarity: 'trash', element: 'light', defaultMove: 'lumen_guard', type: 'Speedster' },
+            { id: 228, char: '🧻', name: 'Tissue', rarity: 'trash', element: 'light', defaultMove: 'lumen_guard', type: 'Trash' },
             { id: 229, char: '🥀', name: 'Wilt', rarity: 'trash', element: 'nature', defaultMove: 'thorns_pulse', type: 'Striker' },
             { id: 230, char: '🪣', name: 'Bucket', rarity: 'trash', element: 'water', defaultMove: 'ripple_cut', type: 'Tank' },
             { id: 231, char: '🕸️', name: 'Web', rarity: 'rare', element: 'dark', defaultMove: 'gloom_slash', type: 'Tank' },
             { id: 232, char: '🕯️', name: 'Candle', rarity: 'uncommon', element: 'light', defaultMove: 'prism_seal', type: 'Striker' },
             { id: 233, char: '🌒', name: 'Crescent', rarity: 'uncommon', element: 'dark', defaultMove: 'hex', type: 'Speedster' },
             { id: 234, char: '🌌', name: 'Cosmos', rarity: 'epic', element: 'dark', defaultMove: 'shade_rush', type: 'Striker' },
-            { id: 235, char: '🐕', name: 'Tater', rarity: 'eternal', element: 'light', defaultMove: 'judgment_ray', type: 'Striker' },
+            { id: 235, char: '🐕', name: 'Tater', rarity: 'eternal', element: 'light', defaultMove: 'judgment_ray', type: 'Tater' },
             { id: 236, char: '🎲', name: 'Dice', rarity: 'rare', element: 'dark', defaultMove: 'moon_slash', type: 'Speedster' },
             { id: 237, char: '📿', name: 'Beads', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Tank' },
             { id: 238, char: '🪙', name: 'Coin', rarity: 'uncommon', element: 'light', defaultMove: 'shine_tag', type: 'Tank' },
@@ -602,9 +602,14 @@
 
         const RARITY_ORDER = ['trash', 'common', 'uncommon', 'rare', 'epic', 'legendary', 'divine', 'eternal'];
         const TYPE_WEIGHTS = {
-            Striker: { hp: 0.7, atk: 1.5, spd: 0.9, def: 0.7, spAtk: 1.3, spDef: 0.7 },
-            Tank: { hp: 1.3, atk: 0.6, spd: 0.6, def: 1.6, spAtk: 0.6, spDef: 1.0 },
-            Speedster: { hp: 0.8, atk: 1.2, spd: 1.4, def: 1.0, spAtk: 1.1, spDef: 0.8 }
+            Striker: { hp: 0.7, atk: 1.5, spd: 0.9, def: 0.85, spAtk: 1.2, spDef: 0.85 },
+            Tank: { hp: 1.3, atk: 0.7, spd: 0.6, def: 1.3, spAtk: 0.7, spDef: 1.3 },
+            Speedster: { hp: 0.85, atk: 0.9, spd: 1.5, def: 0.8, spAtk: 1.0, spDef: 0.8 },
+            Mystic: { hp: 0.85, atk: 0.7, spd: 1.0, def: 0.8, spAtk: 1.6, spDef: 1.2 },
+            Guardian: { hp: 1.5, atk: 0.8, spd: 0.4, def: 1.4, spAtk: 0.7, spDef: 1.6 },
+            Brawler: { hp: 1.2, atk: 1.4, spd: 0.85, def: 1.1, spAtk: 0.7, spDef: 0.9 },
+            Tater: { hp: 2.0, atk: 2.0, spd: 2.0, def: 2.0, spAtk: 2.0, spDef: 2.0 },
+            Trash: { hp: 1.5, atk: 1.5, spd: 1.5, def: 1.5, spAtk: 1.5, spDef: 1.5 }
         };
         const ELEMENT_BONUSES = {
             fire: { hp: 1.0, atk: 1.2, spd: 1.0, def: 0.95, spAtk: 1.2, spDef: 0.95 },
@@ -637,7 +642,12 @@
         const TYPE_METADATA = {
             Striker: { emoji: '⚔️', name: 'Striker' },
             Tank: { emoji: '🛡️', name: 'Tank' },
-            Speedster: { emoji: '💨', name: 'Speedster' }
+            Speedster: { emoji: '💨', name: 'Speedster' },
+            Mystic: { emoji: '🧠', name: 'Mystic' },
+            Guardian: { emoji: '🏰', name: 'Guardian' },
+            Brawler: { emoji: '🥊', name: 'Brawler' },
+            Tater: { emoji: '🥔', name: 'Tater?' },
+            Trash: { emoji: '🗑️', name: 'Trash' }
         };
         const PROB_TABLES = {
             standard: { trash: 0.08, common: 0.6, uncommon: 0.85, rare: 0.98, epic: 0.999, legendary: 1.0, divine: 1.0, eternal: 1.0 },
