@@ -246,6 +246,11 @@
                 <div class="bg-slate-900 border border-indigo-500/30 p-6 rounded-[2rem] max-w-xs mx-auto mb-8 shadow-2xl">
                     <p class="text-[10px] text-indigo-400 font-black uppercase mb-1">Current Stage</p>
                     <p id="arena-stage-title" class="text-6xl font-black italic">1</p>
+                    <p class="text-[10px] text-slate-500 font-black uppercase mt-2">Max Stage <span id="arena-max-stage">1</span></p>
+                </div>
+                <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-4 max-w-md mx-auto mb-8">
+                    <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-3">Arena Rarity Levels</p>
+                    <div id="arena-breakpoints" class="grid grid-cols-2 gap-2 text-[10px] font-black uppercase text-slate-200"></div>
                 </div>
                 <button id="btn-arena-start" onclick="toggleAutoBattle()" class="bg-red-600 hover:bg-red-500 text-white px-16 py-5 rounded-3xl font-black text-xl shadow-2xl active:scale-95 transition-all">AUTO BATTLE</button>
             </div>
@@ -1050,6 +1055,7 @@
             inventory: {},
             team: [],
             stage: 1,
+            arenaMaxStage: 1,
             isAutoBattling: false,
             arenaWinStreak: 0,
             tutorial: {
@@ -1170,6 +1176,7 @@
             }
             if (state.tutorUnlockedSlots === undefined) state.tutorUnlockedSlots = 1;
             if (state.arenaWinStreak === undefined) state.arenaWinStreak = 0;
+            if (state.arenaMaxStage === undefined) state.arenaMaxStage = state.stage || 1;
             if (!state.combatMode) state.combatMode = 'auto';
             if (!state.combatSpeed) state.combatSpeed = 2;
             manualSelection = null;
@@ -1214,10 +1221,31 @@
             document.getElementById('header-legendary-tickets').classList.toggle('hidden', state.legendaryTickets <= 0);
             document.getElementById('rare-summon-block').classList.toggle('hidden', state.rareTickets <= 0);
             document.getElementById('legendary-summon-block').classList.toggle('hidden', state.legendaryTickets <= 0);
+            renderArenaLobby();
             const arenaBtn = document.getElementById('btn-tab-arena');
             if (arenaBtn) {
                 arenaBtn.classList.toggle('hidden', !isArenaUnlocked());
             }
+        }
+
+        function renderArenaLobby() {
+            const maxStageEl = document.getElementById('arena-max-stage');
+            if (maxStageEl) maxStageEl.innerText = state.arenaMaxStage || 1;
+            const breakpointsEl = document.getElementById('arena-breakpoints');
+            if (!breakpointsEl) return;
+            let minStage = 1;
+            breakpointsEl.innerHTML = ARENA_POOLS.map(pool => {
+                const rarityKey = pool.label.toLowerCase();
+                const emoji = RARITY_METADATA[rarityKey]?.emoji || '⚪';
+                const maxStage = pool.max === Infinity ? `${minStage}+` : `${minStage}-${pool.max}`;
+                minStage = pool.max + 1;
+                return `
+                    <div class="flex items-center justify-between bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2">
+                        <span>${emoji} ${pool.label}</span>
+                        <span class="text-slate-400">${maxStage}</span>
+                    </div>
+                `;
+            }).join('');
         }
 
         function getCombatMode() {
@@ -1309,6 +1337,7 @@
         }
 
         function isArenaUnlocked() {
+            // return true;
             return state.adventure?.regions?.length && state.adventure.regions.every(r => r.cleared);
         }
 
@@ -2006,17 +2035,18 @@
             return true;
         }
 
+        const ARENA_POOLS = [
+            { max: 3, label: 'Trash', weights: { trash: 0.45, common: 0.35, uncommon: 0.15, rare: 0.05 } },
+            { max: 7, label: 'Common', weights: { common: 0.38, uncommon: 0.26, rare: 0.22, epic: 0.1, legendary: 0.04 } },
+            { max: 14, label: 'Uncommon', weights: { uncommon: 0.3, rare: 0.28, epic: 0.22, legendary: 0.15, divine: 0.05 } },
+            { max: 24, label: 'Rare', weights: { rare: 0.35, epic: 0.27, legendary: 0.22, divine: 0.12, eternal: 0.04 } },
+            { max: 39, label: 'Epic', weights: { epic: 0.34, legendary: 0.3, divine: 0.22, eternal: 0.14 } },
+            { max: 45, label: 'Legendary', weights: { legendary: 0.36, divine: 0.34, eternal: 0.3 } },
+            { max: Infinity, label: 'Divine', weights: { divine: 0.55, eternal: 0.45 } }
+        ];
+
         function getArenaPool(stage) {
-            const pools = [
-                { max: 3, label: 'Trash', weights: { trash: 0.45, common: 0.35, uncommon: 0.15, rare: 0.05 } },
-                { max: 7, label: 'Common', weights: { common: 0.38, uncommon: 0.26, rare: 0.22, epic: 0.1, legendary: 0.04 } },
-                { max: 14, label: 'Uncommon', weights: { uncommon: 0.3, rare: 0.28, epic: 0.22, legendary: 0.15, divine: 0.05 } },
-                { max: 24, label: 'Rare', weights: { rare: 0.35, epic: 0.27, legendary: 0.22, divine: 0.12, eternal: 0.04 } },
-                { max: 39, label: 'Epic', weights: { epic: 0.34, legendary: 0.3, divine: 0.22, eternal: 0.14 } },
-                { max: 45, label: 'Legendary', weights: { legendary: 0.36, divine: 0.34, eternal: 0.3 } },
-                { max: Infinity, label: 'Divine', weights: { divine: 0.55, eternal: 0.45 } }
-            ];
-            return pools.find(p => stage <= p.max);
+            return ARENA_POOLS.find(p => stage <= p.max);
         }
 
         function pickWeightedRarity(stage) {
@@ -3153,6 +3183,7 @@
                 state.gold += getArenaReward(state.stage);
                 processTutorWin(pool.label);
                 state.stage++;
+                state.arenaMaxStage = Math.max(state.arenaMaxStage || 1, state.stage);
                 state.arenaWinStreak = (state.arenaWinStreak || 0) + 1;
                 if (state.arenaWinStreak >= 3) {
                     pUnits.forEach(unit => {
