@@ -706,8 +706,8 @@
         const STATUS_RULES = {
             burn: { tickDamagePct: 0.05, physAtkMult: 0.75 },
             soak: { damageAmp: 1.35, consumeOnHit: true },
-            rooted: { tickDrainPct: 0.04, spdMult: 0.7 },
-            dazzle: { blockAtkStages: true, blockSpAtkStages: true, cooldownSlow: true },
+            rooted: { tickDrainPct: 0.10, spdMult: 0.7 },
+            dazzle: { cooldownSlow: true },
             curse: { healMult: 0 }
         };
         const STATUS_APPLY_CHANCE = 0.2;
@@ -1983,11 +1983,12 @@
                 const applied = after - before;
                 if (applied) changes.push({ key, delta: applied });
             };
-            applyStage('atk', stages.atk, target.status?.id === 'dazzle');
-            applyStage('def', stages.def, false);
-            applyStage('spAtk', stages.spAtk, target.status?.id === 'dazzle');
-            applyStage('spDef', stages.spDef, false);
-            applyStage('spd', stages.spd, false);
+            const blockPositive = target.status?.id === 'dazzle';
+            applyStage('atk', stages.atk, blockPositive);
+            applyStage('def', stages.def, blockPositive);
+            applyStage('spAtk', stages.spAtk, blockPositive);
+            applyStage('spDef', stages.spDef, blockPositive);
+            applyStage('spd', stages.spd, blockPositive);
             return changes;
         }
 
@@ -2911,6 +2912,37 @@
             `;
         }
 
+        function getStatusDetailLines(status) {
+            const rules = STATUS_RULES[status.id] || {};
+            switch (status.id) {
+                case 'burn':
+                    return [
+                        `Loses ${Math.round((rules.tickDamagePct || 0) * 100)}% max HP each turn`,
+                        `Physical damage -${Math.round((1 - (rules.physAtkMult || 1)) * 100)}%`
+                    ];
+                case 'soak':
+                    return [
+                        `Next hit takes +${Math.round(((rules.damageAmp || 1) - 1) * 100)}% damage`,
+                        `Consumed on hit`
+                    ];
+                case 'rooted':
+                    return [
+                        `Speed -${Math.round((1 - (rules.spdMult || 1)) * 100)}%`,
+                        `Loses ${Math.round((rules.tickDrainPct || 0) * 100)}% max HP each turn`
+                    ];
+                case 'dazzle':
+                    return [
+                        'Clears stat stages on apply',
+                        'Cannot gain ATK or SP. ATK stages',
+                        'Cooldowns tick every other turn'
+                    ];
+                case 'curse':
+                    return ['Healing blocked'];
+                default:
+                    return [];
+            }
+        }
+
         function renderEmojidex() {
             const emojiGrid = document.getElementById('emojidex-emoji-grid');
             const moveList = document.getElementById('emojidex-move-list');
@@ -2952,13 +2984,15 @@
                 Object.values(ELEMENT_STATUS_EFFECTS).forEach(status => {
                     const card = document.createElement('div');
                     const elementMeta = ELEMENT_METADATA[status.element] || { emoji: '✨', name: status.element };
+                    const details = getStatusDetailLines(status);
                     card.className = 'bg-black/40 border border-white/10 rounded-2xl p-4';
                     card.innerHTML = `
                         <div class="flex items-center gap-2 mb-2">
                             <div class="text-base">${elementMeta.emoji}</div>
-                            <div class="text-[10px] font-black uppercase tracking-widest">${status.name}</div>
+                            <div class="text-sm font-black uppercase tracking-widest">${status.name}</div>
                         </div>
-                        <div class="text-[9px] text-slate-300 leading-relaxed">${status.desc}</div>
+                        <div class="text-sm text-slate-300 leading-relaxed">${status.desc}</div>
+                        ${details.length ? `<div class="text-sm text-slate-400 leading-relaxed mt-2">${details.map(line => `• ${line}`).join('<br>')}</div>` : ''}
                     `;
                     statusList.appendChild(card);
                 });
