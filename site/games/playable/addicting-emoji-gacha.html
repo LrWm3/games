@@ -247,6 +247,7 @@
                     <p class="text-[10px] text-indigo-400 font-black uppercase mb-1">Current Stage</p>
                     <p id="arena-stage-title" class="text-6xl font-black italic">1</p>
                     <p class="text-[10px] text-slate-500 font-black uppercase mt-2">Max Stage <span id="arena-max-stage">1</span></p>
+                    <p class="text-[10px] text-slate-400 font-black uppercase mt-2">Team heals every 3 wins</p>
                 </div>
                 <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-4 max-w-md mx-auto mb-8">
                     <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-3">Arena Rarity Levels</p>
@@ -1481,7 +1482,7 @@
         }
 
         function calcStarterPreviewStats(emoji) {
-            const baseObj = { hp: 100, atk: 20, spd: 10, def: 15, spAtk: 18, spDef: 15 };
+            const baseObj = { hp: 100, atk: 20, spd: 10, def: 15, spAtk: 22, spDef: 12 };
             const weights = TYPE_WEIGHTS[emoji.type];
             let hp = baseObj.hp * weights.hp;
             let atk = baseObj.atk * weights.atk;
@@ -1492,7 +1493,8 @@
             const aff = ELEMENT_BONUSES[emoji.element];
             hp *= aff.hp; atk *= aff.atk; spd *= aff.spd; def *= aff.def; spAtk *= aff.spAtk; spDef *= aff.spDef;
             const multCurrent = RARITY_MULTIPLIERS[emoji.rarity];
-            hp *= multCurrent; atk *= multCurrent; spd *= multCurrent; def *= multCurrent; spAtk *= multCurrent; spDef *= multCurrent;
+            hp *= dampenHpMultiplier(multCurrent);
+            atk *= multCurrent; spd *= multCurrent; def *= multCurrent; spAtk *= multCurrent; spDef *= multCurrent;
             return {
                 hp: Math.floor(hp),
                 atk: Math.floor(atk),
@@ -1595,6 +1597,10 @@
         }
 
         // --- CALC ---
+        function dampenHpMultiplier(multiplier) {
+            return Math.pow(multiplier, 0.92);
+        }
+
         function calcStats(id) {
             const e = EMOJIS.find(x => x.id === id) || EMOJIS[0];
             const inv = state.inventory[id];
@@ -1618,7 +1624,8 @@
             if (rarityGap > 2) {
                 rarityModifier *= Math.pow(0.8, rarityGap - 2);
             }
-            hp *= rarityModifier; atk *= rarityModifier; spd *= rarityModifier; def *= rarityModifier; spAtk *= rarityModifier; spDef *= rarityModifier;
+            hp *= dampenHpMultiplier(rarityModifier);
+            atk *= rarityModifier; spd *= rarityModifier; def *= rarityModifier; spAtk *= rarityModifier; spDef *= rarityModifier;
             const growth = 1 + ((inv.lvl - 1) * GROWTH_RATES[inv.currentRarity]);
             return {
                 hp: Math.floor(hp * growth),
@@ -1644,7 +1651,7 @@
             const rarityModifier = RARITY_MULTIPLIERS[rarity];
             const growth = 1 + ((level - 1) * GROWTH_RATES[rarity]);
             return {
-                hp: Math.floor(hp * rarityModifier * growth),
+                hp: Math.floor(hp * dampenHpMultiplier(rarityModifier) * growth),
                 atk: Math.floor(atk * rarityModifier * growth),
                 spd: Math.floor(spd * rarityModifier * growth),
                 def: Math.floor(def * rarityModifier * growth),
@@ -2102,7 +2109,7 @@
                     : Math.max(1, baseLevel + Math.floor(Math.random() * levelSpread) - Math.floor(levelSpread / 2));
                 const currentRarity = isArena
                     ? (rarityRank(rarity) <= rarityRank('rare')
-                        ? 'legendary'
+                        ? (RARITY_ORDER[rarityRank(rarity) + 2] || 'legendary')
                         : (rarity === 'epic' ? 'false_divine' : (rarity === 'legendary' ? 'divine' : rarity)))
                     : rarity;
                 const stats = calcEnemyStats(emoji, level, currentRarity);
