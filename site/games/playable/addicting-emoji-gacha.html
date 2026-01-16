@@ -2273,10 +2273,10 @@
             const nextRarity = currentIdx > -1 ? RARITY_ORDER[currentIdx + 1] : null;
             if (!nextRarity) return null;
             if (inv.currentRarity === 'false_divine') return null;
-            if (nextRarity === 'divine' && !['legendary', 'divine', 'eternal'].includes(inv.baseRarity)) {
+            if (nextRarity === 'divine' && !['legendary', 'divine', 'eternal', 'trash'].includes(inv.baseRarity)) {
                 return 'false_divine';
             }
-            if (nextRarity === 'eternal' && !['divine', 'eternal'].includes(inv.baseRarity)) return null;
+            if (nextRarity === 'eternal' && !['divine', 'eternal', 'trash'].includes(inv.baseRarity)) return null;
             return nextRarity;
         }
 
