@@ -1884,9 +1884,8 @@
                 atkStat *= STATUS_RULES.burn.physAtkMult;
             }
             const defStat = Math.max(1, getModifiedStat(defender, isSpecial ? 'spDef' : 'def'));
-            const base = atkStat * (effectivePower / 50) * variance;
-            const mitigation = 100 / (100 + defStat);
-            return Math.max(1, Math.floor(base * mitigation));
+            const base = (atkStat / Math.max(1, defStat / 4)) * (effectivePower / 50) * variance;
+            return base;
         }
 
         function calcHeal(user, power, move) {
