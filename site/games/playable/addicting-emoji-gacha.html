@@ -2930,7 +2930,7 @@
         }
 
         function getTutorRequirement(baseRarity) {
-            const table = { trash: 1, common: 2, uncommon: 3, rare: 4, epic: 5, legendary: 6, divine: 7, eternal: 8 };
+            const table = { trash: 1, common: 3, uncommon: 5, rare: 7, epic: 9, legendary: 11, divine: 13, eternal: 15 };
             return table[baseRarity] || 3;
         }
 
@@ -2990,7 +2990,7 @@
                 const emoji = EMOJIS.find(e => e.id === id);
                 return { id, label: `${emoji.char} ${emoji.name}` };
             });
-            const slotCosts = [0, 0, 25000, 100000];
+            const slotCosts = [0, 0, 2500, 10000];
             for (let i = 1; i <= 3; i++) {
                 const slot = document.getElementById(`tutor-slot-${i}`);
                 if (i > state.tutorUnlockedSlots) {
