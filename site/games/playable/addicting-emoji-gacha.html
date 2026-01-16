@@ -778,6 +778,7 @@
         const MOVES = [
             /* Basic move */
             { num: 1, id: 'basic_strike', name: 'Basic Strike', power: 40, cooldown: 0, kind: 'damage', target: 'enemy-single', element: 'neutral', damageType: 'physical', rarity: 'common' },
+            { num: 102, id: 'mental_strike', name: 'Mental Strike', power: 40, cooldown: 0, kind: 'damage', target: 'enemy-single', element: 'neutral', damageType: 'special', rarity: 'common' },
 
             /* Fire Moves */
             { num: 2, id: 'cinder_jab', name: 'Cinder Jab', power: 48, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'common' },
@@ -1890,6 +1891,7 @@
             if (!isSpecial && attacker.status?.id === 'burn') {
                 atkStat *= STATUS_RULES.burn.physAtkMult;
             }
+            atkStat = Math.pow(atkStat, 1.12);
             const defRaw = Math.max(1, getModifiedStat(defender, isSpecial ? 'spDef' : 'def'));
             const defScaled = Math.pow(defRaw, 0.85);
             const base = (atkStat / Math.max(1, defScaled / 8)) * (effectivePower / 40) * variance;
