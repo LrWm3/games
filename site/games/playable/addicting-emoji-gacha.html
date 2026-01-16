@@ -247,7 +247,7 @@
                     <p class="text-[10px] text-indigo-400 font-black uppercase mb-1">Current Stage</p>
                     <p id="arena-stage-title" class="text-6xl font-black italic">1</p>
                 </div>
-                <button onclick="toggleAutoBattle()" class="bg-red-600 hover:bg-red-500 text-white px-16 py-5 rounded-3xl font-black text-xl shadow-2xl active:scale-95 transition-all">AUTO BATTLE</button>
+                <button id="btn-arena-start" onclick="toggleAutoBattle()" class="bg-red-600 hover:bg-red-500 text-white px-16 py-5 rounded-3xl font-black text-xl shadow-2xl active:scale-95 transition-all">AUTO BATTLE</button>
             </div>
 
             <div id="arena-combat" class="hidden max-w-lg mx-auto bg-slate-900/50 p-6 rounded-[2.5rem] border border-white/5 relative">
@@ -256,6 +256,16 @@
                     <span class="text-xs font-black text-red-400 uppercase tracking-widest">Stage <span id="combat-stage-num">1</span></span>
                     <span class="text-xs font-black text-slate-300 uppercase tracking-widest">Round <span id="combat-round-num">1</span></span>
                     <button onclick="stopAutoBattle()" class="text-[9px] font-black text-slate-500 underline uppercase">Abort</button>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 mb-4">
+                    <div class="flex items-center gap-2">
+                        <button data-combat-mode="auto" onclick="setCombatMode('auto')" class="px-3 py-1.5 rounded-full bg-slate-800 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">Auto</button>
+                        <button data-combat-mode="manual" onclick="setCombatMode('manual')" class="px-3 py-1.5 rounded-full bg-slate-800 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">Manual</button>
+                    </div>
+                    <div class="flex items-center gap-2 combat-speed-group">
+                        <button data-combat-speed="1" onclick="setCombatSpeed(1)" class="px-3 py-1.5 rounded-full bg-slate-800 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">1x</button>
+                        <button data-combat-speed="2" onclick="setCombatSpeed(2)" class="px-3 py-1.5 rounded-full bg-slate-800 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">2x</button>
+                    </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div id="battle-player-team" class="space-y-3"></div>
@@ -292,6 +302,16 @@
                     <div id="adventure-combat" class="hidden">
                         <div class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-300 mb-3">
                             Stage <span id="adventure-stage-num">1</span> • <span id="adventure-stage-type">Skirmish</span> • Round <span id="adventure-round-num">1</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 mb-3">
+                            <div class="flex items-center gap-2">
+                                <button data-combat-mode="auto" onclick="setCombatMode('auto')" class="px-3 py-1.5 rounded-full bg-slate-800 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">Auto</button>
+                                <button data-combat-mode="manual" onclick="setCombatMode('manual')" class="px-3 py-1.5 rounded-full bg-slate-800 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">Manual</button>
+                            </div>
+                            <div class="flex items-center gap-2 combat-speed-group">
+                                <button data-combat-speed="1" onclick="setCombatSpeed(1)" class="px-3 py-1.5 rounded-full bg-slate-800 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">1x</button>
+                                <button data-combat-speed="2" onclick="setCombatSpeed(2)" class="px-3 py-1.5 rounded-full bg-slate-800 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">2x</button>
+                            </div>
                         </div>
                         <div class="flex justify-between items-center mb-3">
                             <span class="text-[9px] text-slate-500 uppercase tracking-[0.2em]" id="adventure-mode-note"></span>
@@ -677,6 +697,14 @@
             curse: { healMult: 0.6 }
         };
         const STATUS_APPLY_CHANCE = 0.2;
+        const STAT_METADATA = {
+            hp: { emoji: '❤️', name: 'HP', desc: 'How much damage you can take.' },
+            atk: { emoji: '🗡️', name: 'ATK', desc: 'Boosts physical damage.' },
+            def: { emoji: '🧱', name: 'DEF', desc: 'Reduces physical damage taken.' },
+            spAtk: { emoji: '✨', name: 'SP. ATK', desc: 'Boosts special damage.' },
+            spDef: { emoji: '🛡️', name: 'SP. DEF', desc: 'Reduces special damage taken.' },
+            spd: { emoji: '⚡', name: 'SPD', desc: 'Determines turn order.' }
+        };
         const ADVENTURE_REGION_POOLS = [
             { pool: 'trash', name: 'Cinder Wastes', emoji: '🧱', rarity: 'trash', element: 'fire', desc: 'Reneé\'s scrapyard frontier full of brittle fighters.' },
             { pool: 'common', name: 'Rusted Crossing', emoji: '🪵', rarity: 'common', element: 'nature', desc: 'Mairi\'s outdoor trails.' },
@@ -740,7 +768,7 @@
          */
         const MOVES = [
             /* Basic move */
-            { num: 1, id: 'basic_strike', name: 'Basic Strike', power: 40, cooldown: 1, kind: 'damage', target: 'enemy-single', element: 'neutral', damageType: 'physical', rarity: 'common' },
+            { num: 1, id: 'basic_strike', name: 'Basic Strike', power: 40, cooldown: 0, kind: 'damage', target: 'enemy-single', element: 'neutral', damageType: 'physical', rarity: 'common' },
 
             /* Fire Moves */
             { num: 2, id: 'cinder_jab', name: 'Cinder Jab', power: 48, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'common' },
@@ -1047,18 +1075,21 @@
                 training: false,
                 trainingWins: 0
             },
-            tutorUnlockedSlots: 1
+            tutorUnlockedSlots: 1,
+            combatMode: 'auto',
+            combatSpeed: 2
         };
         let state = { ...DEFAULT_STATE };
         let selectedId = null;
         let currentSlot = 1;
+        let manualSelection = null;
         const STARTER_OPTIONS = [4, 155, 15];
         const TUTORIAL_STEPS = { NAME: 0, STARTER: 1, PULL_ONE: 2, PULL_TWO: 3, TEAM: 4, DONE: 5 };
 
         EMOJIS.forEach(emoji => { emoji.desc = EMOJI_DESCS[emoji.id]; });
 
         // --- CORE ---
-        function init() { loadSlot(resolveInitialSlot()); updateStatsUI(); switchTab('summon'); renderTutorial(); }
+        function init() { loadSlot(resolveInitialSlot()); updateStatsUI(); updateCombatControls(); switchTab('summon'); renderTutorial(); }
         function getSaveKey(slot) { return `emojiSaga_vInfinite_slot${slot}`; }
         function resolveInitialSlot() {
             const stored = parseInt(localStorage.getItem('emojiSaga_vInfinite_slot'), 10);
@@ -1136,6 +1167,9 @@
             }
             if (state.tutorUnlockedSlots === undefined) state.tutorUnlockedSlots = 1;
             if (state.arenaWinStreak === undefined) state.arenaWinStreak = 0;
+            if (!state.combatMode) state.combatMode = 'auto';
+            if (!state.combatSpeed) state.combatSpeed = 2;
+            manualSelection = null;
             state.isAutoBattling = false;
             selectedId = null;
             updateSlotUI();
@@ -1183,6 +1217,56 @@
             }
         }
 
+        function getCombatMode() {
+            return state.combatMode || 'auto';
+        }
+
+        function getCombatSpeed() {
+            return state.combatSpeed || 2;
+        }
+
+        function cancelManualSelection() {
+            if (!manualSelection?.resolve) {
+                manualSelection = null;
+                return;
+            }
+            const resolve = manualSelection.resolve;
+            manualSelection = null;
+            resolve(null);
+        }
+
+        function setCombatMode(mode) {
+            state.combatMode = mode;
+            if (mode === 'auto') cancelManualSelection();
+            updateCombatControls();
+        }
+
+        function setCombatSpeed(speed) {
+            state.combatSpeed = speed;
+            updateCombatControls();
+        }
+
+        function updateCombatControls() {
+            const mode = getCombatMode();
+            document.querySelectorAll('[data-combat-mode]').forEach(btn => {
+                const isActive = btn.getAttribute('data-combat-mode') === mode;
+                btn.classList.toggle('bg-emerald-500/20', isActive);
+                btn.classList.toggle('text-emerald-200', isActive);
+            });
+            document.querySelectorAll('[data-combat-speed]').forEach(btn => {
+                const isActive = parseInt(btn.getAttribute('data-combat-speed'), 10) === getCombatSpeed();
+                btn.classList.toggle('bg-indigo-500/20', isActive);
+                btn.classList.toggle('text-indigo-200', isActive);
+            });
+            document.querySelectorAll('.combat-speed-group').forEach(group => {
+                group.classList.toggle('hidden', mode !== 'auto');
+            });
+            const arenaStart = document.getElementById('btn-arena-start');
+            if (arenaStart) {
+                arenaStart.innerText = mode === 'manual' ? 'START BATTLE' : 'AUTO BATTLE';
+            }
+        }
+
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
             document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active'));
@@ -1207,6 +1291,7 @@
                 state.tutorial.allowTeamBuild = false;
                 save();
             }
+            updateCombatControls();
             renderTutorial();
         }
 
@@ -1556,6 +1641,47 @@
             }).join('');
         }
 
+        function renderManualMoves(unit) {
+            if (!unit?.moves?.length) return '';
+            const selection = manualSelection?.selections?.[unit.uid];
+            const pending = manualSelection?.pending;
+            const readyMoves = unit.moves.filter(id => unit.cooldowns?.[id] === 0);
+            const canFallbackBasic = !readyMoves.length;
+            return unit.moves.map(id => {
+                const move = getMoveById(id);
+                if (!move) return '';
+                const cd = unit.cooldowns?.[id] ?? 0;
+                const canSelect = cd === 0 || (id === 'basic_strike' && canFallbackBasic);
+                const isSelected = selection?.moveId === id;
+                const isPending = pending?.unitUid === unit.uid && pending?.moveId === id;
+                const style = !canSelect ? 'bg-slate-900/60 text-slate-500' : isSelected || isPending ? 'bg-emerald-500/30 text-emerald-100' : 'bg-slate-800/60 text-slate-200';
+                const status = cd > 0 ? `CD ${cd}` : 'Ready';
+                return `<button onclick="selectManualMove('${unit.uid}','${id}')" class="px-2 py-1 rounded-full border border-white/5 ${style}" ${canSelect ? '' : 'disabled'}>${move.name} • ${status}</button>`;
+            }).join('');
+        }
+
+        function getManualTargetClass(unit, mode) {
+            if (mode !== 'manual') return '';
+            const pending = manualSelection?.pending;
+            if (!pending) return '';
+            const targetTeam = pending.targetTeam;
+            if (targetTeam === 'enemy' && unit.isPlayer) return '';
+            if (targetTeam === 'ally' && !unit.isPlayer) return '';
+            if (unit.hp <= 0) return '';
+            return 'cursor-pointer ring-2 ring-emerald-400/60';
+        }
+
+        function renderManualTargetButton(unit, mode) {
+            if (mode !== 'manual') return '';
+            const pending = manualSelection?.pending;
+            if (!pending) return '';
+            const targetTeam = pending.targetTeam;
+            if (targetTeam === 'enemy' && unit.isPlayer) return '';
+            if (targetTeam === 'ally' && !unit.isPlayer) return '';
+            if (unit.hp <= 0) return '';
+            return `<button onclick="selectManualTarget('${unit.uid}')" class="px-2 py-1 rounded-full border border-white/5 bg-emerald-500/30 text-emerald-100">Target</button>`;
+        }
+
         function renderStatusBadge(unit) {
             if (!unit?.status) return '';
             const status = STATUS_BY_ID[unit.status.id];
@@ -1564,12 +1690,63 @@
         }
 
         function renderStatStageBadges(unit) {
-            const labels = { atk: 'ATK', def: 'DEF', spAtk: 'SP. ATK', spDef: 'SP. DEF', spd: 'SPD' };
             const stages = unit?.statStages || { atk: 0, def: 0, spAtk: 0, spDef: 0, spd: 0 };
-            return Object.entries(labels)
-                .filter(([key]) => stages[key])
-                .map(([key, label]) => `<span class="px-2 py-1 rounded-full border border-white/5 ${stages[key] > 0 ? 'bg-emerald-500/20 text-emerald-200' : 'bg-rose-500/20 text-rose-200'}">${label} ${stages[key] > 0 ? `+${stages[key]}` : stages[key]}</span>`)
+            return Object.keys(stages)
+                .filter(key => stages[key] && STAT_METADATA[key])
+                .map(key => `<span class="px-2 py-1 rounded-full border border-white/5 ${stages[key] > 0 ? 'bg-emerald-500/20 text-emerald-200' : 'bg-rose-500/20 text-rose-200'}">${STAT_METADATA[key].emoji} ${stages[key] > 0 ? `+${stages[key]}` : stages[key]}</span>`)
                 .join('');
+        }
+
+        function selectManualMove(unitUid, moveId) {
+            const selection = manualSelection;
+            if (!selection) return;
+            const unit = selection.pUnits.find(u => u.uid === unitUid && u.hp > 0);
+            if (!unit) return;
+            const move = getMoveById(moveId);
+            if (!move) return;
+            const readyMoves = unit.moves.filter(id => unit.cooldowns?.[id] === 0);
+            const canFallbackBasic = !readyMoves.length;
+            const cd = unit.cooldowns?.[moveId] ?? 0;
+            const canSelect = cd === 0 || (moveId === 'basic_strike' && canFallbackBasic);
+            if (!canSelect) return;
+            if (move.target === 'enemy-single' || move.target === 'ally-single') {
+                selection.pending = {
+                    unitUid,
+                    moveId,
+                    targetTeam: move.target === 'enemy-single' ? 'enemy' : 'ally'
+                };
+                selection.selections[unitUid] = { moveId, targetUid: null };
+            } else {
+                selection.selections[unitUid] = { moveId, targetUid: null };
+                selection.pending = null;
+            }
+            selection.updateUI?.();
+            checkManualSelectionsComplete();
+        }
+
+        function selectManualTarget(targetUid) {
+            const selection = manualSelection;
+            if (!selection?.pending) return;
+            const pending = selection.pending;
+            const pool = pending.targetTeam === 'enemy' ? selection.eUnits : selection.pUnits;
+            const target = pool.find(u => u.uid === targetUid && u.hp > 0);
+            if (!target) return;
+            selection.selections[pending.unitUid] = { moveId: pending.moveId, targetUid };
+            selection.pending = null;
+            selection.updateUI?.();
+            checkManualSelectionsComplete();
+        }
+
+        function checkManualSelectionsComplete() {
+            const selection = manualSelection;
+            if (!selection) return;
+            const alive = selection.pUnits.filter(u => u.hp > 0);
+            const allSelected = alive.every(u => selection.selections[u.uid]);
+            if (!allSelected || selection.pending) return;
+            const resolve = selection.resolve;
+            const result = selection.selections;
+            manualSelection = null;
+            resolve(result);
         }
 
         function getMoveListForEmoji(emoji, inv = null) {
@@ -1740,25 +1917,27 @@
             appendLog(log, `<div>${user.char} drains ${heal} HP</div>`);
         }
 
-        function getTargets(move, user, allies, enemies) {
+        function getTargets(move, user, allies, enemies, manualTarget = null) {
             const aliveAllies = allies.filter(u => u.hp > 0);
             const aliveEnemies = enemies.filter(u => u.hp > 0);
             if (move.target === 'self') return [user];
             if (move.target === 'ally-single') {
                 if (!aliveAllies.length) return [];
+                if (manualTarget && manualTarget.hp > 0) return [manualTarget];
                 return [aliveAllies.sort((a, b) => a.hp - b.hp)[0]];
             }
             if (move.target === 'ally-all') return aliveAllies;
             if (move.target === 'enemy-all') return aliveEnemies;
             if (move.target === 'enemy-single') {
                 if (!aliveEnemies.length) return [];
+                if (manualTarget && manualTarget.hp > 0) return [manualTarget];
                 return [aliveEnemies.sort((a, b) => a.hp - b.hp)[0]];
             }
             return [];
         }
 
-        function applyMove(user, move, allies, enemies, log) {
-            const targets = getTargets(move, user, allies, enemies);
+        function applyMove(user, move, allies, enemies, log, manualTarget = null) {
+            const targets = getTargets(move, user, allies, enemies, manualTarget);
             if (!targets.length) return false;
             if (move.kind === 'status') {
                 targets.forEach(target => {
@@ -2085,9 +2264,9 @@
             toast('TRAINING ENDED');
         }
 
-        function renderCombatTeam(units, hpColor, showLevel) {
+        function renderCombatTeam(units, hpColor, showLevel, mode) {
             return units.map(u => `
-                <div class="${u.hp<=0?'opacity-20':''}">
+                <div class="${u.hp<=0?'opacity-20':''} ${getManualTargetClass(u, mode)}">
                     <div class="flex justify-between items-center font-black uppercase">
                         <span class="flex items-center gap-2">
                             <span class="text-3xl">${u.char}</span>
@@ -2095,11 +2274,33 @@
                         </span>
                         <span>${Math.max(0,Math.floor(u.hp))}</span>
                     </div>
-                    <div class="flex flex-wrap gap-2 mt-1">${renderStatusBadge(u)}${renderStatStageBadges(u)}</div>
+                    <div class="flex flex-wrap gap-2 mt-1">${renderStatusBadge(u)}${renderStatStageBadges(u)}${renderManualTargetButton(u, mode)}</div>
                     <div class="h-1 bg-black overflow-hidden"><div class="h-full ${hpColor}" style="width:${(u.hp/u.maxHp)*100}%"></div></div>
-                    <div class="flex flex-wrap gap-2 mt-2">${renderCooldowns(u)}</div>
+                    <div class="flex flex-wrap gap-2 mt-2">${mode === 'manual' && u.isPlayer ? renderManualMoves(u) : renderCooldowns(u)}</div>
                 </div>
             `).join('');
+        }
+
+        function getManualSelections(pUnits, eUnits, updateUI) {
+            return new Promise(resolve => {
+                manualSelection = {
+                    selections: {},
+                    pending: null,
+                    pUnits,
+                    eUnits,
+                    resolve,
+                    updateUI
+                };
+                pUnits.forEach(unit => {
+                    if (unit.hp <= 0) return;
+                    const readyMoves = unit.moves.filter(id => unit.cooldowns?.[id] === 0);
+                    if (!readyMoves.length) {
+                        manualSelection.selections[unit.uid] = { moveId: 'basic_strike', targetUid: null };
+                    }
+                });
+                updateUI();
+                checkManualSelectionsComplete();
+            });
         }
 
         async function runCombat(pUnits, eUnits, options) {
@@ -2108,22 +2309,35 @@
                 roundEl,
                 playerEl,
                 enemyEl,
-                delay = 350,
+                baseDelay = 350,
                 isActiveFn = () => true,
-                showPlayerLevel = true
+                showPlayerLevel = true,
+                getMode = getCombatMode
             } = options;
+            const battleId = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+            pUnits.forEach((u, i) => { if (!u.uid) u.uid = `p-${battleId}-${i}`; });
+            eUnits.forEach((u, i) => { if (!u.uid) u.uid = `e-${battleId}-${i}`; });
             let round = 1;
             roundEl.innerText = round;
             const updateUI = () => {
-                playerEl.innerHTML = renderCombatTeam(pUnits, 'bg-green-500', showPlayerLevel);
-                enemyEl.innerHTML = renderCombatTeam(eUnits, 'bg-red-500', false);
+                const mode = getMode();
+                playerEl.innerHTML = renderCombatTeam(pUnits, 'bg-green-500', showPlayerLevel, mode);
+                enemyEl.innerHTML = renderCombatTeam(eUnits, 'bg-red-500', false, mode);
             };
             while (pUnits.some(u => u.hp > 0) && eUnits.some(u => u.hp > 0)) {
                 if (!isActiveFn()) return null;
+                const mode = getMode();
+                const speed = getCombatSpeed();
+                const delay = mode === 'auto' && speed === 1 ? baseDelay * 2 : baseDelay;
                 updateUI();
                 appendLog(logEl, `<div class="text-slate-400">Round ${round}</div>`);
                 roundEl.innerText = round;
                 let actors = [...pUnits, ...eUnits].filter(u=>u.hp>0).sort((a,b)=>getModifiedStat(b, 'spd') - getModifiedStat(a, 'spd'));
+                let manualSelections = null;
+                if (mode === 'manual') {
+                    manualSelections = await getManualSelections(pUnits, eUnits, updateUI);
+                    if (manualSelections === null) continue;
+                }
                 for (let u of actors) {
                     if (!isActiveFn()) return null;
                     if (u.hp <= 0) continue;
@@ -2134,9 +2348,20 @@
                     if (!targets.length) break;
                     const allies = u.isPlayer ? pUnits : eUnits;
                     const enemies = u.isPlayer ? eUnits : pUnits;
-                    const move = pickMove(u);
+                    let move = null;
+                    let manualTarget = null;
+                    if (mode === 'manual' && u.isPlayer) {
+                        const selection = manualSelections?.[u.uid];
+                        move = selection ? getMoveById(selection.moveId) : null;
+                        if (selection?.targetUid) {
+                            const pool = move?.target === 'ally-single' ? allies : enemies;
+                            manualTarget = pool.find(t => t.uid === selection.targetUid) || null;
+                        }
+                    } else {
+                        move = pickMove(u);
+                    }
                     if (move) {
-                        const used = applyMove(u, move, allies, enemies, logEl);
+                        const used = applyMove(u, move, allies, enemies, logEl, manualTarget);
                         if (used) u.cooldowns[move.id] = move.cooldown;
                     } else {
                         const basic = getMoveById('basic_strike');
@@ -2159,7 +2384,8 @@
                 roundEl: document.getElementById('adventure-round-num'),
                 playerEl: document.getElementById('adventure-player-team'),
                 enemyEl: document.getElementById('adventure-enemy-team'),
-                delay: 350
+                baseDelay: 350,
+                getMode: () => state.adventure.training ? 'auto' : getCombatMode()
             });
             if (result === null) return;
             if (result) handleAdventureWin();
@@ -2876,7 +3102,7 @@
                 roundEl: document.getElementById('combat-round-num'),
                 playerEl: document.getElementById('battle-player-team'),
                 enemyEl: document.getElementById('battle-enemy-team'),
-                delay: 450,
+                baseDelay: 450,
                 isActiveFn: () => state.isAutoBattling
             });
             if (result === null) return;
