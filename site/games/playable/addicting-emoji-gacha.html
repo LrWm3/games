@@ -586,6 +586,8 @@
                     <h3 class="text-base font-black uppercase tracking-widest">Move Tutor</h3>
                     <p class="text-sm text-slate-300">A Mentor emoji can be assigned a student emoji to teach the student emoji the mentors' special move.</p>
                     <p class="text-sm text-slate-300">To progress towards the student learning the move, a number of matches in an area matching the move's rarity must be won.</p>
+                    <p class="text-sm text-slate-300">Common moves can be mentored in any region, including trash pools.</p>
+                    <p class="text-sm text-slate-300">Eternal moves can be mentored in divine pools.</p>
                     <p class="text-sm text-slate-300">For example, "Smouldering Aura" is an epic rarity move, so matches in the Arena or Adventure regions with epic or legendary pool rarity are required to teach it.</p>
                     <p class="text-sm text-slate-300">Higher rarity emojis are more stubborn and take longer to learn moves.</p>
                     <p class="text-sm text-slate-300">Emojis used do not need to be in the squad together for tutoring to work.</p>
@@ -3301,7 +3303,8 @@
                 const mentorMove = getMoveById(mentorMoveId);
                 if (!mentorMove) return;
                 const effectiveMoveRarity = mentorMove.rarity === 'eternal' ? 'divine' : mentorMove.rarity;
-                if (rarityRank(poolRarity) < rarityRank(effectiveMoveRarity)) return;
+                const effectivePoolRarity = poolRarity === 'trash' && effectiveMoveRarity === 'common' ? 'common' : poolRarity;
+                if (rarityRank(effectivePoolRarity) < rarityRank(effectiveMoveRarity)) return;
                 const studentInv = state.inventory[pair.studentId];
                 if (!studentInv) return;
                 const studentBase = studentInv.baseRarity || (EMOJIS.find(e => e.id === pair.studentId)?.rarity);
@@ -3388,7 +3391,12 @@
                 const studentInv = studentEmoji ? state.inventory[studentEmoji.id] : null;
                 const studentBase = studentInv?.baseRarity || studentEmoji?.rarity;
                 const requiredWins = studentBase ? getTutorRequirement(studentBase) : 0;
-                const poolNote = mentorMove ? `Need wins vs ${mentorMove.rarity.toUpperCase()}+ pools` : '';
+                const poolFloor = mentorMove?.rarity === 'common'
+                    ? 'TRASH'
+                    : mentorMove?.rarity === 'eternal'
+                        ? 'DIVINE'
+                        : mentorMove?.rarity?.toUpperCase();
+                const poolNote = mentorMove ? `Need wins vs ${poolFloor}+ pools` : '';
                 const learnedMoves = studentInv?.learnedMoves || [];
                 const learnedCount = learnedMoves.length;
                 const learnedList = learnedMoves.map(id => {
