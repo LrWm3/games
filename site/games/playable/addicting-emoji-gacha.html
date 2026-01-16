@@ -248,6 +248,7 @@
                     <p id="arena-stage-title" class="text-6xl font-black italic">1</p>
                     <p class="text-[10px] text-slate-500 font-black uppercase mt-2">Max Stage <span id="arena-max-stage">1</span></p>
                     <p class="text-[10px] text-slate-400 font-black uppercase mt-2">Team heals every 3 wins</p>
+                    <p class="text-[10px] text-slate-400 font-black uppercase mt-2">Stage Reward <span id="arena-stage-reward">0</span> Gold</p>
                 </div>
                 <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-4 max-w-md mx-auto mb-8">
                     <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-3">Arena Rarity Levels</p>
@@ -691,7 +692,7 @@
             fire: { id: 'burn', element: 'fire', name: 'Burn', desc: 'Takes damage each turn and deals reduced physical damage. Fire units are immune.' },
             water: { id: 'soak', element: 'water', name: 'Soak', desc: 'Next damage taken is amplified, then clears. Water units are immune.' },
             nature: { id: 'rooted', element: 'nature', name: 'Rooted', desc: 'Reduces speed and drains a small amount each turn. Nature units are immune.' },
-            light: { id: 'dazzle', element: 'light', name: 'Dazzle', desc: 'Cannot gain attack or special attack stages and cooldowns recover slower. Light units are immune.' },
+            light: { id: 'dazzle', element: 'light', name: 'Dazzle', desc: 'Clears stat stages, cannot gain attack or special attack stages, and cooldowns recover slower. Light units are immune.' },
             dark: { id: 'curse', element: 'dark', name: 'Curse', desc: 'Healing received is reduced while active. Dark units are immune.' }
         };
         const STATUS_BY_ID = Object.values(ELEMENT_STATUS_EFFECTS).reduce((acc, status) => {
@@ -1233,6 +1234,8 @@
         function renderArenaLobby() {
             const maxStageEl = document.getElementById('arena-max-stage');
             if (maxStageEl) maxStageEl.innerText = state.arenaMaxStage || 1;
+            const rewardEl = document.getElementById('arena-stage-reward');
+            if (rewardEl) rewardEl.innerText = getArenaReward(state.stage || 1).toLocaleString();
             const breakpointsEl = document.getElementById('arena-breakpoints');
             if (!breakpointsEl) return;
             let minStage = 1;
@@ -1921,7 +1924,12 @@
                 const chance = force ? 1 : (entry.chance ?? STATUS_APPLY_CHANCE);
                 if (!force && Math.random() > chance) continue;
                 target.status = { id: status.id, name: status.name, element: move.element };
-                if (status.id === 'dazzle') target.cooldownSlowToggle = false;
+                if (status.id === 'dazzle') {
+                    target.cooldownSlowToggle = false;
+                    const hadStages = Object.values(target.statStages || {}).some(value => value !== 0);
+                    target.statStages = { atk: 0, def: 0, spAtk: 0, spDef: 0, spd: 0 };
+                    if (hadStages) appendLog(log, `<div>${target.char}'s stat changes were cleared</div>`);
+                }
                 appendLog(log, `<div>${target.char} is afflicted with ${status.name}</div>`);
                 return;
             }
