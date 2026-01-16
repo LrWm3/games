@@ -252,7 +252,7 @@
                 </div>
                 <div class="bg-slate-900/60 border border-white/5 rounded-[2rem] p-4 max-w-md mx-auto mb-8">
                     <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-3">Arena Rarity Levels</p>
-                    <div id="arena-breakpoints" class="grid grid-cols-2 gap-2 text-[10px] font-black uppercase text-slate-200"></div>
+                    <div id="arena-breakpoints" class="space-y-2 text-[10px] font-black uppercase text-slate-200"></div>
                 </div>
                 <button id="btn-arena-start" onclick="toggleAutoBattle()" class="bg-red-600 hover:bg-red-500 text-white px-16 py-5 rounded-3xl font-black text-xl shadow-2xl active:scale-95 transition-all">AUTO BATTLE</button>
             </div>
@@ -1244,11 +1244,15 @@
                 const emoji = RARITY_METADATA[rarityKey]?.emoji || '⚪';
                 const maxStage = pool.max === Infinity ? `${minStage}+` : `${minStage}-${pool.max}`;
                 const rate = ARENA_REWARD_BRACKETS[index]?.rate || 0;
+                const rateText = rate.toLocaleString();
                 minStage = pool.max + 1;
                 return `
-                    <div class="flex items-center justify-between bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2">
-                        <span>${emoji} ${pool.label}</span>
-                        <span class="text-slate-400">${maxStage} • +${rate}g</span>
+                    <div class="bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-left">
+                        <div class="flex items-center justify-between">
+                            <span>${emoji} ${pool.label}</span>
+                            <span class="text-slate-500">Stages ${maxStage}</span>
+                        </div>
+                        <div class="text-slate-300 mt-1">+${rateText} Gold per stage</div>
                     </div>
                 `;
             }).join('');
