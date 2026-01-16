@@ -218,6 +218,7 @@
                                 <span class="font-bold text-sm" id="inspect-lvl">0</span>
                             </div>
                         </div>
+                        <button id="btn-favorite" onclick="toggleFavoriteSelected()" class="w-full mb-4 bg-slate-800 hover:bg-slate-700 py-3 rounded-2xl font-black text-sm uppercase transition-all disabled:opacity-30">Favorite</button>
                         <p id="inspect-desc" class="text-[10px] text-slate-300 leading-relaxed mb-4">A short description.</p>
                         <div id="inspect-dupe-count" class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-5">Duplicates: 0</div>
                         <div class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Moves</div>
@@ -481,7 +482,7 @@
             { id: 2, char: '🌋', name: 'Magma', rarity: 'epic', element: 'fire', defaultMove: 'overheat', type: 'Guardian' },
             { id: 3, char: '🐉', name: 'Drake', rarity: 'legendary', element: 'fire', defaultMove: 'magma_quake', type: 'Brawler' },
             { id: 4, char: '☄️', name: 'Comet', rarity: 'uncommon', element: 'fire', defaultMove: 'scorch_mark', type: 'Speedster' },
-            { id: 5, char: '🦁', name: 'Leonis', rarity: 'epic', element: 'fire', defaultMove: 'smoldering_guard', type: 'Brawler' },
+            { id: 5, char: '🦁', name: 'Leonis', rarity: 'epic', element: 'fire', defaultMove: 'smoldering_aura', type: 'Brawler' },
             { id: 61, char: '🌶️', name: 'Pepper', rarity: 'uncommon', element: 'fire', defaultMove: 'soak_mark', type: 'Speedster' },
             { id: 62, char: '🥓', name: 'Sizzle', rarity: 'common', element: 'fire', defaultMove: 'cinder_jab', type: 'Tank' },
             { id: 64, char: '👺', name: 'Oni', rarity: 'legendary', element: 'fire', defaultMove: 'phoenix_dive', type: 'Brawler' },
@@ -605,7 +606,7 @@
             { id: 219, char: '🍙', name: 'Onigiri', rarity: 'common', element: 'fire', defaultMove: 'flare_step', type: 'Guardian' },
             { id: 220, char: '🧁', name: 'Cupcake', rarity: 'rare', element: 'light', defaultMove: 'spark_jab', type: 'Speedster' },
             { id: 221, char: '🎇', name: 'Spark', rarity: 'epic', element: 'fire', defaultMove: 'volcanic_reign', type: 'Speedster' },
-            { id: 222, char: '🎆', name: 'Burst', rarity: 'epic', element: 'fire', defaultMove: 'smoldering_guard', type: 'Brawler' },
+            { id: 222, char: '🎆', name: 'Burst', rarity: 'epic', element: 'fire', defaultMove: 'smoldering_aura', type: 'Brawler' },
             { id: 223, char: '🪬', name: 'Charm', rarity: 'divine', element: 'light', defaultMove: 'radiant_crown', type: 'Mystic' },
             { id: 224, char: '🧟', name: 'Zombie', rarity: 'epic', element: 'dark', defaultMove: 'grave_bite', type: 'Guardian' },
             { id: 225, char: '🧛‍♂️', name: 'Lord', rarity: 'legendary', element: 'dark', defaultMove: 'shadow_slice', type: 'Mystic' },
@@ -782,26 +783,26 @@
             { num: 102, id: 'mental_strike', name: 'Mental Strike', power: 40, cooldown: 0, kind: 'damage', target: 'enemy-single', element: 'neutral', damageType: 'special', rarity: 'common' },
 
             /* Fire Moves */
-            { num: 2, id: 'cinder_jab', name: 'Cinder Jab', power: 48, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'common' },
-            { num: 3, id: 'ash_swipe', name: 'Ash Swipe', power: 44, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'common' },
-            { num: 4, id: 'spark_flick', name: 'Spark Flick', power: 42, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'common' },
-            { num: 5, id: 'flare_step', name: 'Flare Step', power: 0, cooldown: 3, kind: 'buff', target: 'self', element: 'fire', damageType: 'status', rarity: 'common', effect: { spd: 1 } },
+            { num: 2, id: 'cinder_jab', name: 'Cinder Jab', power: 50, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'common' },
+            { num: 3, id: 'ash_swipe', name: 'Ash Swipe', power: 50, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'common' },
+            { num: 4, id: 'spark_flick', name: 'Spark Flick', power: 50, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'common' },
+            { num: 5, id: 'flare_step', name: 'Flare Step', power: 0, cooldown: 3, kind: 'buff', target: 'self', element: 'fire', damageType: 'status', rarity: 'common', effect: { atk: 1 } },
             { num: 6, id: 'scorch_mark', name: 'Scorch Mark', power: 0, cooldown: 3, kind: 'status', target: 'enemy-single', element: 'fire', damageType: 'status', rarity: 'uncommon', statuses: [{ id: 'burn', chance: 1 }] },
-            { num: 7, id: 'brand_seal', name: 'Brand Seal', power: 36, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'uncommon', effect: { targetStages: { def: -1 } } },
-            { num: 8, id: 'blister_tag', name: 'Blister Tag', power: 40, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'uncommon', statuses: [{ id: 'burn', chance: 0.35 }] },
-            { num: 9, id: 'ember_wave', name: 'Ember Wave', power: 32, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'rare' },
-            { num: 10, id: 'firebrand', name: 'Firebrand', power: 58, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'rare', statuses: [{ id: 'burn', chance: 0.25 }] },
-            { num: 11, id: 'flame_rush', name: 'Flame Rush', power: 70, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'rare', effect: { recoilPct: 0.2 }, statuses: [{ id: 'burn', chance: 0.3 }] },
-            { num: 12, id: 'blaze_thrust', name: 'Blaze Thrust', power: 68, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'rare', effect: { recoilPct: 0.15 } },
+            { num: 7, id: 'brand_seal', name: 'Brand Seal', power: 35, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'uncommon', effect: { targetStages: { def: -1 } } },
+            { num: 8, id: 'blister_tag', name: 'Blister Tag', power: 55, cooldown: 3, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'uncommon', statuses: [{ id: 'burn', chance: 0.35 }] },
+            { num: 9, id: 'ember_wave', name: 'Ember Wave', power: 40, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'rare' },
+            { num: 10, id: 'firebrand', name: 'Firebrand', power: 65, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'rare', statuses: [{ id: 'burn', chance: 0.25 }] },
+            { num: 11, id: 'flame_rush', name: 'Flame Rush', power: 80, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'rare', effect: { recoilPct: 0.2 }, statuses: [{ id: 'burn', chance: 0.3 }] },
+            { num: 12, id: 'blaze_thrust', name: 'Blaze Thrust', power: 90, cooldown: 2, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'physical', rarity: 'rare', effect: { recoilPct: 0.15 } },
             { num: 13, id: 'heat_shield', name: 'Heat Shield', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'fire', damageType: 'status', rarity: 'epic', effect: { def: 2 } },
-            { num: 14, id: 'overheat', name: 'Overheat', power: 78, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'epic', effect: { recoilPct: 0.25 } },
-            { num: 15, id: 'smoldering_guard', name: 'Smoldering Guard', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'fire', damageType: 'status', rarity: 'epic', effect: { atk: 1, spAtk: 1 } },
-            { num: 16, id: 'magma_quake', name: 'Magma Quake', power: 72, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'legendary', effect: { recoilPct: 0.25 }, statuses: [{ id: 'burn', chance: 0.35 }] },
-            { num: 17, id: 'phoenix_dive', name: 'Phoenix Dive', power: 90, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'legendary', effect: { recoilPct: 0.3 }, statuses: [{ id: 'burn', chance: 0.4 }] },
-            { num: 18, id: 'volcanic_reign', name: 'Volcanic Reign', power: 65, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'legendary', statuses: [{ id: 'burn', chance: 0.3 }] },
-            { num: 19, id: 'solar_flare', name: 'Solar Flare', power: 75, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'divine', statuses: [{ id: 'burn', chance: 0.5 }] },
-            { num: 20, id: 'crimson_pact', name: 'Crimson Pact', power: 95, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'divine', effect: { recoilPct: 0.35, selfStages: { spAtk: 1 } } },
-            { num: 21, id: 'worldfire', name: 'Worldfire', power: 100, cooldown: 5, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'eternal', effect: { recoilPct: 0.4 }, statuses: [{ id: 'burn', chance: 0.6 }] },
+            { num: 14, id: 'overheat', name: 'Overheat', power: 110, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'epic', effect: { recoilPct: 0.25 } },
+            { num: 15, id: 'smoldering_aura', name: 'Smoldering Aura', power: 0, cooldown: 4, kind: 'buff', target: 'self', element: 'fire', damageType: 'status', rarity: 'epic', effect: { atk: 2, spd: 1 } },
+            { num: 16, id: 'magma_quake', name: 'Magma Quake', power: 110, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'legendary', effect: { recoilPct: 0.20 }, statuses: [{ id: 'burn', chance: 0.35 }] },
+            { num: 17, id: 'phoenix_dive', name: 'Phoenix Dive', power: 130, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'legendary', effect: { recoilPct: 0.25 }, statuses: [{ id: 'burn', chance: 0.4 }] },
+            { num: 18, id: 'volcanic_reign', name: 'Volcanic Reign', power: 95, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'special', rarity: 'legendary', statuses: [{ id: 'burn', chance: 0.3 }] },
+            { num: 19, id: 'solar_flare', name: 'Solar Flare', power: 120, cooldown: 4, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'physical', rarity: 'divine', statuses: [{ id: 'burn', chance: 0.5 }] },
+            { num: 20, id: 'crimson_pact', name: 'Crimson Pact', power: 95, cooldown: 4, kind: 'damage', target: 'enemy-single', element: 'fire', damageType: 'special', rarity: 'divine', effect: { recoilPct: 0.25, selfStages: { spAtk: 1, spDef: 1 } } },
+            { num: 21, id: 'worldfire', name: 'Worldfire', power: 130, cooldown: 5, kind: 'damage', target: 'enemy-all', element: 'fire', damageType: 'physical', rarity: 'eternal', effect: { recoilPct: 0.4 }, statuses: [{ id: 'burn', chance: 0.6 }] },
 
             /* Water Moves */
             { num: 22, id: 'ice_barbs', name: 'Ice Barbs', power: 24, cooldown: 3, kind: 'damage', target: 'enemy-all', element: 'water', damageType: 'special', rarity: 'common' },
@@ -1057,6 +1058,7 @@
             playerName: '',
             inventory: {},
             team: [],
+            favorites: [],
             stage: 1,
             arenaMaxStage: 1,
             isAutoBattling: false,
@@ -1180,6 +1182,7 @@
             if (state.tutorUnlockedSlots === undefined) state.tutorUnlockedSlots = 1;
             if (state.arenaWinStreak === undefined) state.arenaWinStreak = 0;
             if (state.arenaMaxStage === undefined) state.arenaMaxStage = state.stage || 1;
+            if (!state.favorites) state.favorites = [];
             if (!state.combatMode) state.combatMode = 'auto';
             if (!state.combatSpeed) state.combatSpeed = 2;
             manualSelection = null;
@@ -2740,6 +2743,7 @@
             const rosterGrid = document.getElementById('roster-grid');
             const teamSlots = document.getElementById('team-slots');
             const lvlBtn = document.getElementById('btn-lvl-up');
+            const favBtn = document.getElementById('btn-favorite');
             rosterGrid.innerHTML = ''; teamSlots.innerHTML = '';
             for (let i = 0; i < 3; i++) {
                 const id = state.team[i];
@@ -2757,19 +2761,35 @@
                 }
                 teamSlots.appendChild(slot);
             }
-            Object.keys(state.inventory).forEach(idStr => {
-                const id = parseInt(idStr);
+            const inventoryIds = Object.keys(state.inventory)
+                .map(idStr => parseInt(idStr, 10))
+                .sort((a, b) => {
+                    const favA = state.favorites?.includes(a) ? 1 : 0;
+                    const favB = state.favorites?.includes(b) ? 1 : 0;
+                    if (favA !== favB) return favB - favA;
+                    return a - b;
+                });
+            inventoryIds.forEach(id => {
                 const e = EMOJIS.find(x => x.id === id) || EMOJIS[0];
                 const inv = state.inventory[id];
+                const isFav = state.favorites?.includes(id);
                 const item = document.createElement('div');
-                item.className = `card-base aspect-square rounded-xl border-2 flex flex-col items-center justify-center cursor-pointer transition-transform hover:scale-105 rarity-card-${inv.currentRarity} ${state.team.includes(id) ? 'opacity-30' : ''} ${selectedId === id ? 'ring-2 ring-white' : ''}`;
-                item.innerHTML = `<div class="text-2xl">${e.char}</div><div class="text-[7px] font-black">LV.${inv.lvl}</div>`;
+                item.className = `card-base relative aspect-square rounded-xl border-2 flex flex-col items-center justify-center cursor-pointer transition-transform hover:scale-105 rarity-card-${inv.currentRarity} ${state.team.includes(id) ? 'opacity-30' : ''} ${selectedId === id ? 'ring-2 ring-white' : ''}`;
+                item.innerHTML = `
+                    ${isFav ? '<div class="absolute top-1 right-1 text-sm">⭐</div>' : ''}
+                    <div class="text-2xl">${e.char}</div>
+                    <div class="text-[7px] font-black">LV.${inv.lvl}</div>
+                `;
                 item.onclick = () => inspect(id);
                 rosterGrid.appendChild(item);
             });
             if (lvlBtn && !selectedId) {
                 lvlBtn.disabled = true;
                 lvlBtn.innerText = 'SELECT EMOJI';
+            }
+            if (favBtn) {
+                favBtn.disabled = !selectedId;
+                if (!selectedId) favBtn.innerText = '⭐ SELECT EMOJI';
             }
         }
 
@@ -3024,7 +3044,13 @@
                         <button onclick="forgetLearnedMove(${studentEmoji.id}, '${id}')" class="text-[8px] uppercase text-red-300">Forget</button>
                     </div>`;
                 }).join('');
-                const mentorOptions = ['<option value="">Mentor</option>'].concat(options.map(o => `<option value="${o.id}" ${o.id === pair.mentorId ? 'selected' : ''}>${o.label}</option>`)).join('');
+                const mentorOptions = ['<option value="">Mentor</option>'].concat(options.map(o => {
+                    const emoji = EMOJIS.find(e => e.id === o.id);
+                    const move = emoji ? getMoveById(emoji.defaultMove) : null;
+                    const rarityEmoji = RARITY_METADATA[move?.rarity]?.emoji || '⚪';
+                    const moveLabel = move ? `${rarityEmoji} ${move.name}` : 'No move';
+                    return `<option value="${o.id}" ${o.id === pair.mentorId ? 'selected' : ''}>${o.label} — ${moveLabel}</option>`;
+                })).join('');
                 const studentOptions = ['<option value="">Student</option>'].concat(options.map(o => `<option value="${o.id}" ${o.id === pair.studentId ? 'selected' : ''}>${o.label}</option>`)).join('');
                 slot.innerHTML = `
                     <div class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Pair ${i}</div>
@@ -3058,6 +3084,18 @@
             save();
             updateStatsUI();
             renderMoveTutor();
+        }
+
+        function toggleFavoriteSelected() {
+            if (!selectedId) return;
+            state.favorites = state.favorites || [];
+            if (state.favorites.includes(selectedId)) {
+                state.favorites = state.favorites.filter(id => id !== selectedId);
+            } else {
+                state.favorites.push(selectedId);
+            }
+            save();
+            inspect(selectedId);
         }
 
         function inspect(id) {
@@ -3095,6 +3133,12 @@
             rarityBadge.className = `inline-flex flex-wrap items-center gap-2 text-[7px] font-black uppercase mb-4 tracking-widest`;
             document.getElementById('inspect-desc').innerText = e.desc;
             document.getElementById('inspect-dupe-count').innerText = `DUPLICATES: ${inv.dupes || 0}`;
+            const favBtn = document.getElementById('btn-favorite');
+            if (favBtn) {
+                const isFav = state.favorites?.includes(id);
+                favBtn.innerText = isFav ? '⭐ Unfavorite' : '⭐ Favorite';
+                favBtn.disabled = false;
+            }
             const moveList = getMoveListForEmoji(e, inv);
             const moveTargetLabels = {
                 'enemy-single': 'Targets one',
