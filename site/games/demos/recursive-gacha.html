@@ -10,35 +10,15 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #020617; /* slate-950 */
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-        }
-
-        /* Animation for combat active */
-        @keyframes pulse-soft {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        .animate-pulse-soft {
-            animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #e2e8f0; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .animate-pulse-soft { animation: pulse-soft 2s infinite; }
     </style>
 </head>
-<body class="text-slate-200">
+<body class="selection:bg-blue-500/30">
 
     <div id="game-container" class="min-h-screen p-3 pb-24 max-w-4xl mx-auto">
         <!-- Header -->
@@ -57,64 +37,45 @@
                     </div>
                 </div>
             </div>
-            <div id="stat-tickets" class="flex gap-2 md:gap-4">
-                <!-- Dynamic Tickets -->
-            </div>
+            <div id="stat-tickets" class="flex gap-2"></div>
         </header>
 
-        <!-- Main Content Area -->
-        <main id="main-view">
-            <!-- Content injected here via JS -->
-        </main>
+        <main id="main-view"></main>
 
         <!-- Navigation -->
         <nav class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 border border-white/10 shadow-2xl rounded-2xl p-1.5 flex gap-1 z-50 backdrop-blur-md">
-            <button onclick="switchView('combat')" id="nav-combat" class="nav-btn p-3.5 rounded-xl transition-all text-slate-500 hover:bg-white/5">
-                <i data-lucide="sword" class="w-5 h-5"></i>
-            </button>
-            <button onclick="switchView('gacha')" id="nav-gacha" class="nav-btn p-3.5 rounded-xl transition-all text-slate-500 hover:bg-white/5">
-                <i data-lucide="refresh-cw" class="w-5 h-5"></i>
-            </button>
-            <button onclick="switchView('inventory')" id="nav-inventory" class="nav-btn p-3.5 rounded-xl transition-all text-slate-500 hover:bg-white/5">
-                <i data-lucide="box" class="w-5 h-5"></i>
-            </button>
-            <button onclick="switchView('machines')" id="nav-machines" class="nav-btn p-3.5 rounded-xl transition-all text-slate-500 hover:bg-white/5">
-                <i data-lucide="cpu" class="w-5 h-5"></i>
-            </button>
+            <button onclick="switchView('combat')" id="nav-combat" class="nav-btn p-3.5 rounded-xl transition-all text-slate-500"><i data-lucide="sword" class="w-5 h-5"></i></button>
+            <button onclick="switchView('gacha')" id="nav-gacha" class="nav-btn p-3.5 rounded-xl transition-all text-slate-500"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
+            <button onclick="switchView('inventory')" id="nav-inventory" class="nav-btn p-3.5 rounded-xl transition-all text-slate-500"><i data-lucide="box" class="w-5 h-5"></i></button>
+            <button onclick="switchView('machines')" id="nav-machines" class="nav-btn p-3.5 rounded-xl transition-all text-slate-500"><i data-lucide="cpu" class="w-5 h-5"></i></button>
         </nav>
 
         <!-- Modals -->
-        <div id="inspect-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
-            <!-- Modal Content injected via JS -->
-        </div>
-
-        <div id="pull-results-modal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-[200] hidden flex items-center justify-center p-6 text-center">
-            <!-- Results injected via JS -->
-        </div>
+        <div id="inspect-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4"></div>
+        <div id="pull-results-modal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-[200] hidden flex items-center justify-center p-6 text-center"></div>
     </div>
 
     <script>
-        // --- CONSTANTS ---
         const RARITIES = [
-            { id: 1, name: "Divine", color: "from-indigo-400 via-pink-400 to-yellow-400", bg: "bg-indigo-900", text: "text-white", multiplier: 1000 },
-            { id: 2, name: "Celestial", color: "from-yellow-200 to-white", bg: "bg-yellow-100", text: "text-yellow-800", multiplier: 500 },
-            { id: 3, name: "Transcendent", color: "from-purple-600 to-indigo-600", bg: "bg-purple-900", text: "text-white", multiplier: 250 },
-            { id: 4, name: "Mythic", color: "from-red-600 to-orange-600", bg: "bg-red-900", text: "text-white", multiplier: 125 },
-            { id: 5, name: "Ancient", color: "from-emerald-800 to-teal-900", bg: "bg-emerald-900", text: "text-white", multiplier: 75 },
-            { id: 6, name: "Eternal", color: "from-blue-700 to-cyan-800", bg: "bg-blue-900", text: "text-white", multiplier: 50 },
-            { id: 7, name: "Legendary", color: "from-orange-400 to-yellow-600", bg: "bg-orange-100", text: "text-orange-900", multiplier: 30 },
-            { id: 8, name: "Relic", color: "from-amber-700 to-yellow-900", bg: "bg-amber-900", text: "text-white", multiplier: 20 },
-            { id: 9, name: "Epic", color: "from-purple-400 to-purple-600", bg: "bg-purple-100", text: "text-purple-900", multiplier: 12 },
-            { id: 10, name: "Heroic", color: "from-blue-400 to-blue-600", bg: "bg-blue-100", text: "text-blue-900", multiplier: 8 },
-            { id: 11, name: "Rare", color: "from-emerald-400 to-emerald-600", bg: "bg-emerald-100", text: "text-emerald-900", multiplier: 5 },
-            { id: 12, name: "Superior", color: "from-green-200 to-green-400", bg: "bg-green-50", text: "text-green-900", multiplier: 3 },
-            { id: 13, name: "Common", color: "from-slate-200 to-slate-300", bg: "bg-white", text: "text-slate-900", multiplier: 1.5 },
-            { id: 14, name: "Simple", color: "from-slate-300 to-slate-400", bg: "bg-slate-100", text: "text-slate-800", multiplier: 1.0 },
-            { id: 15, name: "Basic", color: "from-stone-300 to-stone-400", bg: "bg-stone-100", text: "text-stone-800", multiplier: 0.8 },
-            { id: 16, name: "Crude", color: "from-orange-200 to-orange-300", bg: "bg-orange-50", text: "text-orange-900", multiplier: 0.6 },
-            { id: 17, name: "Flawed", color: "from-red-100 to-red-200", bg: "bg-red-50", text: "text-red-900", multiplier: 0.4 },
-            { id: 18, name: "Scrap", color: "from-zinc-400 to-zinc-500", bg: "bg-zinc-200", text: "text-zinc-900", multiplier: 0.2 },
-            { id: 19, name: "Trash", color: "from-zinc-700 to-zinc-800", bg: "bg-zinc-900", text: "text-white", multiplier: 0.1 },
+            { id: 1, name: "Divine", color: "from-indigo-400 via-pink-400 to-yellow-400", text: "text-white", multiplier: 1000 },
+            { id: 2, name: "Celestial", color: "from-yellow-200 to-white", text: "text-yellow-800", multiplier: 500 },
+            { id: 3, name: "Transcendent", color: "from-purple-600 to-indigo-600", text: "text-white", multiplier: 250 },
+            { id: 4, name: "Mythic", color: "from-red-600 to-orange-600", text: "text-white", multiplier: 125 },
+            { id: 5, name: "Ancient", color: "from-emerald-800 to-teal-900", text: "text-white", multiplier: 75 },
+            { id: 6, name: "Eternal", color: "from-blue-700 to-cyan-800", text: "text-white", multiplier: 50 },
+            { id: 7, name: "Legendary", color: "from-orange-400 to-yellow-600", text: "text-orange-900", multiplier: 30 },
+            { id: 8, name: "Relic", color: "from-amber-700 to-yellow-900", text: "text-white", multiplier: 20 },
+            { id: 9, name: "Epic", color: "from-purple-400 to-purple-600", text: "text-purple-900", multiplier: 12 },
+            { id: 10, name: "Heroic", color: "from-blue-400 to-blue-600", text: "text-blue-900", multiplier: 8 },
+            { id: 11, name: "Rare", color: "from-emerald-400 to-emerald-600", text: "text-emerald-900", multiplier: 5 },
+            { id: 12, name: "Superior", color: "from-green-200 to-green-400", text: "text-green-900", multiplier: 3 },
+            { id: 13, name: "Common", color: "from-slate-200 to-slate-300", text: "text-slate-900", multiplier: 1.5 },
+            { id: 14, name: "Simple", color: "from-slate-300 to-slate-400", text: "text-slate-800", multiplier: 1.0 },
+            { id: 15, name: "Basic", color: "from-stone-300 to-stone-400", text: "text-stone-800", multiplier: 0.8 },
+            { id: 16, name: "Crude", color: "from-orange-200 to-orange-300", text: "text-orange-900", multiplier: 0.6 },
+            { id: 17, name: "Flawed", color: "from-red-100 to-red-200", text: "text-red-900", multiplier: 0.4 },
+            { id: 18, name: "Scrap", color: "from-zinc-400 to-zinc-500", text: "text-zinc-900", multiplier: 0.2 },
+            { id: 19, name: "Trash", color: "from-zinc-700 to-zinc-800", text: "text-white", multiplier: 0.1 },
         ];
 
         const ELEMENT_DATA = {
@@ -126,334 +87,233 @@
             Dark: { icon: "moon", color: "text-purple-500", hp: 1.0, atk: 1.3, def: 0.8, spd: 1.1 },
             Arcane: { icon: "flask-conical", color: "text-pink-400", hp: 0.9, atk: 1.4, def: 0.7, spd: 1.0 },
             Metal: { icon: "gantt-chart", color: "text-slate-400", hp: 1.2, atk: 1.0, def: 1.4, spd: 0.6 },
-            Pure: { icon: "box", color: "text-slate-500", hp: 0.8, atk: 0.8, def: 0.8, spd: 0.8 }
+            Pure: { icon: "box", color: "text-slate-500", hp: 0.7, atk: 0.7, def: 0.7, spd: 0.7 }
         };
 
         const CLASS_DATA = {
-            Attacker: { hp: 0.9, atk: 1.3, def: 0.8, spd: 1.1 },
-            Defender: { hp: 1.3, atk: 0.8, def: 1.4, spd: 0.8 },
-            Speedster: { hp: 0.8, atk: 1.0, def: 0.8, spd: 1.5 },
-            Tactician: { hp: 1.1, atk: 1.1, def: 1.1, spd: 1.1 },
-            Mage: { hp: 0.8, atk: 1.5, def: 0.6, spd: 1.1 },
-            Bruiser: { hp: 1.5, atk: 1.1, def: 1.0, spd: 0.8 },
-            Naked: { hp: 0.5, atk: 0.5, def: 0.5, spd: 0.5 }
+            Attacker: { hp: 0.9, atk: 1.3, def: 0.8, spd: 1.1, elem: "Fire" },
+            Defender: { hp: 1.3, atk: 0.8, def: 1.4, spd: 0.8, elem: "Earth" },
+            Speedster: { hp: 0.8, atk: 1.0, def: 0.8, spd: 1.5, elem: "Air" },
+            Tactician: { hp: 1.1, atk: 1.1, def: 1.1, spd: 1.1, elem: "Light" },
+            Mage: { hp: 0.8, atk: 1.5, def: 0.6, spd: 1.1, elem: "Arcane" },
+            Bruiser: { hp: 1.5, atk: 1.1, def: 1.0, spd: 0.8, elem: "Dark" },
+            Naked: { hp: 0.5, atk: 0.5, def: 0.5, spd: 0.5, elem: "Pure" }
         };
 
         const NOUNS = ["Golem", "Spectre", "Warrior", "Construct", "Engine", "Avatar", "Warden", "Reaper", "Entity", "Core"];
         const ADJECTIVES = ["Flame", "Ice", "Void", "Star", "Iron", "Soul", "Light", "Dark", "Wind", "Terra"];
         const VERBS = ["Burst", "Strike", "Slash", "Pulse", "Warp", "Crush", "Heal", "Pierce", "Guard", "Drain"];
 
-        // --- STATE ---
         let state = {
-            gold: 100,
-            energy: 0,
-            tickets: { unit: 5, world: 1, meta: 1 },
+            gold: 600, energy: 0,
+            tickets: { unit: 0, world: 0, meta: 0 },
             units: [],
-            worlds: [
-                { id: 'w-start', name: "The Scrap Heap", rarity: 19, goldRate: 1.0, desc: "A wasteland of raw noise.", config: { unitRarity: 19, minis: [] } }
-            ],
+            worlds: [{ id: 'w-start', name: "The Scrap Heap", rarity: 19, goldRate: 0.05, desc: "A wasteland of raw noise.", config: { unitRarity: 19, minis: [] } }],
             machines: [
-                { id: 'm1', type: 'Unit', rarity: 19, level: 1 },
-                { id: 'm3', type: 'Meta', rarity: 19, level: 1 },
-                { id: 'm4', type: 'World', rarity: 19, level: 1 },
+                { id: 'm1', type: 'Unit', rarity: 19, level: 1 }, 
+                { id: 'm3', type: 'Meta', rarity: 19, level: 1 }, 
+                { id: 'm4', type: 'World', rarity: 19, level: 1 }
             ],
             selectedMachineIds: { Unit: 'm1', Meta: 'm3', World: 'm4', Element: null, Class: null, Move: null },
-            activeWorld: null,
-            squadMembers: [],
-            view: 'combat',
-            inspectStack: [],
-            logs: [],
-            pullLogs: []
+            activeWorld: null, squadMembers: [], view: 'combat', inspectStack: [], logs: [], pullLogs: []
         };
 
         let combatState = { playerTeam: [], enemyTeam: [], active: false };
 
-        // --- STORAGE ---
-        function saveGame() {
-            localStorage.setItem('fabricator_save', JSON.stringify(state));
-        }
-
+        function saveGame() { localStorage.setItem('fabricator_save', JSON.stringify(state)); }
         function loadGame() {
             const saved = localStorage.getItem('fabricator_save');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                state = { ...state, ...parsed };
-                // Handle cases where IDs might have changed or old data format
-                if (!state.logs) state.logs = [];
-                if (!state.pullLogs) state.pullLogs = [];
-            }
+            if (saved) state = { ...state, ...JSON.parse(saved) };
         }
 
-        // --- UTILS ---
         const getRarity = (id) => RARITIES.find(r => r.id === id) || RARITIES[18];
 
         function getPullDist(baseTier) {
             const pool = RARITIES.filter(r => r.id >= baseTier - 3);
-            const totalWeight = pool.reduce((acc, r) => acc + (1 / r.id), 0);
-            return pool.map(r => ({ ...r, pct: ((1 / r.id) / totalWeight) * 100 }));
+            const totalWeight = pool.reduce((acc, r) => acc + Math.pow(r.id, 5.5), 0);
+            return pool.map(r => ({ ...r, pct: (Math.pow(r.id, 5.5) / totalWeight) * 100 }));
         }
 
         function rollRarity(baseTier) {
-            const dist = getPullDist(baseTier);
+            const dist = getPullDist(baseTier).sort((a, b) => a.id - b.id);
             let roll = Math.random() * 100;
-            for (let r of dist) {
-                if (roll <= r.pct) return r;
-                roll -= r.pct;
-            }
+            for (let r of dist) { if (roll <= r.pct) return r; roll -= r.pct; }
             return dist[dist.length - 1];
         }
+
+        const getTraitBonus = (id) => Math.pow(getRarity(id).multiplier, 0.45);
 
         function generateMove(tier, element = "Pure") {
             const r = getRarity(tier);
             return {
                 id: Math.random().toString(36).substr(2, 9),
                 name: `${ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]} ${VERBS[Math.floor(Math.random() * VERBS.length)]}`,
-                rarity: tier,
-                element: element,
+                rarity: tier, element: element,
                 power: Math.floor(40 * r.multiplier),
-                maxCd: Math.max(1, 6 - Math.floor(tier / 4)),
-                currentCd: 0,
-                type: Math.random() > 0.5 ? "Physical" : "Special"
+                maxCd: Math.max(1, 6 - Math.floor(tier / 4)), currentCd: 0
             };
         }
 
         function generateUnit(machineRarity, minis = []) {
             const unitRarity = rollRarity(machineRarity);
-            const miniElement = minis.find(m => m.type === 'Element');
-            const miniClass = minis.find(m => m.type === 'Class');
-            const miniMove = minis.find(m => m.type === 'Move');
-
-            let nClassRarity = Math.min(19, unitRarity.id + Math.floor(Math.random() * 5));
-            let nElemRarity = Math.min(19, unitRarity.id + Math.floor(Math.random() * 5));
-            let nMoveRarity = Math.min(19, unitRarity.id + Math.floor(Math.random() * 5));
-
-            let uClass = Object.keys(CLASS_DATA).filter(k => k !== 'Naked')[Math.floor(Math.random() * 6)];
-            let uElem = Object.keys(ELEMENT_DATA).filter(k => k !== 'Pure')[Math.floor(Math.random() * 8)];
+            let cR = Math.min(19, unitRarity.id + Math.floor(Math.random() * 5));
+            let eR = Math.min(19, unitRarity.id + Math.floor(Math.random() * 5));
+            let mR = Math.min(19, unitRarity.id + Math.floor(Math.random() * 5));
             
-            let pullDetails = [];
-            let finalClassRarity = nClassRarity;
-            if (miniClass) {
-                const mRoll = rollRarity(miniClass.rarity);
-                if (mRoll.id < nClassRarity) { finalClassRarity = mRoll.id; pullDetails.push(`Class Recovered`); }
-            }
+            let fabricLog = [];
 
-            let finalElemRarity = nElemRarity;
-            if (miniElement) {
-                const mRoll = rollRarity(miniElement.rarity);
-                if (mRoll.id < nElemRarity) { finalElemRarity = mRoll.id; pullDetails.push(`Element Recovered`); }
-            }
+            minis.forEach(m => {
+                const roll = rollRarity(m.rarity);
+                if (m.type === 'Class' && roll.id < cR) { cR = roll.id; fabricLog.push(`Class Stabilized! (${getRarity(cR).name})`); }
+                if (m.type === 'Element' && roll.id < eR) { eR = roll.id; fabricLog.push(`Element Recovered! (${getRarity(eR).name})`); }
+                if (m.type === 'Move' && roll.id < mR) { mR = roll.id; fabricLog.push(`Move Resolved! (${getRarity(mR).name})`); }
+            });
 
-            let moveRarity = nMoveRarity;
-            if (miniMove) {
-                const mRoll = rollRarity(miniMove.rarity);
-                if (mRoll.id < nMoveRarity) { moveRarity = mRoll.id; pullDetails.push(`Move Stabilized`); }
-            }
-
-            const rarityMult = unitRarity.multiplier;
-            const cData = CLASS_DATA[uClass];
-            const eData = ELEMENT_DATA[uElem];
+            const uClassKey = Math.random() > 0.15 ? Object.keys(CLASS_DATA).filter(k => k !== 'Naked')[Math.floor(Math.random() * 6)] : 'Naked';
+            const uElemKey = Math.random() > 0.15 ? Object.keys(ELEMENT_DATA).filter(k => k !== 'Pure')[Math.floor(Math.random() * 8)] : 'Pure';
+            
+            const totalMult = unitRarity.multiplier * getTraitBonus(cR) * getTraitBonus(eR);
 
             const stats = {
-                hp: Math.floor(100 * rarityMult * cData.hp * eData.hp),
-                atk: Math.floor(15 * rarityMult * cData.atk * eData.atk),
-                def: Math.floor(10 * rarityMult * cData.def * eData.def),
-                spd: Math.floor(10 * (rarityMult ** 0.4) * cData.spd * eData.spd),
+                hp: Math.floor(100 * totalMult * CLASS_DATA[uClassKey].hp * ELEMENT_DATA[uElemKey].hp),
+                atk: Math.floor(15 * totalMult * CLASS_DATA[uClassKey].atk * ELEMENT_DATA[uElemKey].atk),
+                def: Math.floor(10 * totalMult * CLASS_DATA[uClassKey].def * ELEMENT_DATA[uElemKey].def),
+                spd: Math.floor(10 * Math.pow(totalMult, 0.2) * CLASS_DATA[uClassKey].spd * ELEMENT_DATA[uElemKey].spd),
             };
 
-            return {
-                unit: {
-                    id: Math.random().toString(36).substr(2, 9),
-                    name: NOUNS[Math.floor(Math.random() * NOUNS.length)],
-                    rarity: unitRarity.id,
-                    class: uClass,
-                    classRarity: finalClassRarity,
-                    element: uElem,
-                    elementRarity: finalElemRarity,
-                    stats: { ...stats, maxHp: stats.hp },
-                    currentHp: stats.hp,
-                    atb: 0,
-                    moves: [generateMove(moveRarity, uElem)]
-                },
-                logs: pullDetails.length ? pullDetails : ["Standard Fabrication"]
+            const unit = {
+                id: Math.random().toString(36).substr(2, 9), name: NOUNS[Math.floor(Math.random() * NOUNS.length)],
+                rarity: unitRarity.id, class: uClassKey, classRarity: cR, element: uElemKey, elementRarity: eR,
+                stats: { ...stats, maxHp: stats.hp }, currentHp: stats.hp, atb: 0,
+                moves: [generateMove(mR, uElemKey)]
             };
+
+            return { unit, fabricLog };
         }
 
         // --- UI HELPERS ---
         function renderRarityBadge(tierId, className = "") {
             const r = getRarity(tierId);
-            return `<span class="px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold uppercase tracking-wider bg-gradient-to-r ${r.color} ${r.text} shadow-sm border border-white/20 whitespace-nowrap ${className}">${r.name}</span>`;
+            return `<span class="px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold uppercase tracking-wider bg-gradient-to-r ${r.color} ${r.text} border border-white/20 whitespace-nowrap shadow-sm ${className}">${r.name}</span>`;
         }
 
         function renderElementBadge(name, className = "") {
             const data = ELEMENT_DATA[name || "Pure"];
-            return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-800 text-[8px] font-bold uppercase tracking-tight ${data?.color || 'text-slate-400'} ${className}"><i data-lucide="${data?.icon || 'box'}" class="w-2.5 h-2.5"></i> ${name || "Pure"}</span>`;
+            return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-800 text-[8px] font-black uppercase ${data?.color || 'text-slate-400'} ${className}"><i data-lucide="${data?.icon || 'box'}" class="w-2.5 h-2.5"></i> ${name || "Pure"}</span>`;
         }
 
         function renderProgressBar(progress, color = "bg-blue-500", size = "h-1") {
-            return `<div class="w-full bg-slate-200/10 rounded-full ${size} overflow-hidden shadow-inner"><div class="h-full transition-all duration-100 ease-linear ${color}" style="width: ${Math.min(100, progress)}%"></div></div>`;
+            return `<div class="w-full bg-slate-200/10 rounded-full ${size} overflow-hidden"><div class="h-full transition-all duration-100 ease-linear ${color}" style="width: ${Math.min(100, progress)}%"></div></div>`;
         }
 
-        function addLog(msg) {
-            state.logs = [msg, ...state.logs].slice(0, 10);
-            renderLogs();
+        function getPullCost(type, rarity) {
+            const tierOffset = 19 - rarity;
+            if (type === 'Unit') return Math.floor(200 * Math.pow(1.5, tierOffset));
+            if (type === 'World') return Math.floor(1000 * Math.pow(2, tierOffset));
+            if (type === 'Meta') return Math.floor(10000 * Math.pow(3, tierOffset));
+            return 0;
         }
 
-        function addPullLog(msg) {
-            state.pullLogs = [msg, ...state.pullLogs].slice(0, 30);
-        }
-
-        // --- CORE LOGIC ---
         function switchView(viewId) {
             state.view = viewId;
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.classList.remove('bg-white', 'text-slate-950', 'shadow-lg', 'scale-105');
-                btn.classList.add('text-slate-500');
-            });
-            const activeNav = document.getElementById('nav-' + viewId);
-            activeNav.classList.remove('text-slate-500');
-            activeNav.classList.add('bg-white', 'text-slate-950', 'shadow-lg', 'scale-105');
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('bg-white', 'text-slate-950', 'shadow-lg', 'scale-105'));
+            document.getElementById('nav-' + viewId).classList.add('bg-white', 'text-slate-950', 'shadow-lg', 'scale-105');
             render();
-            saveGame();
         }
 
-        function getActiveMachine(type) {
-            return state.machines.find(m => m.id === state.selectedMachineIds[type]) || state.machines.find(m => m.type === type);
-        }
+        function addLog(msg) { state.logs = [msg, ...state.logs].slice(0, 20); const area = document.getElementById('logs-area'); if (area) { area.innerHTML = state.logs.map(l => `<div class="border-b border-white/5 py-1.5">${l}</div>`).join(''); } }
+        function addPullLog(msg) { state.pullLogs = [msg, ...state.pullLogs].slice(0, 30); const area = document.getElementById('pull-logs'); if (area) { area.innerHTML = state.pullLogs.map(l => `<div class="pl-2 border-l-2 border-white/5 py-0.5">${l}</div>`).join(''); } }
 
-        // --- RENDER FUNCTIONS ---
         function render() {
             renderStats();
             const main = document.getElementById('main-view');
-            switch(state.view) {
-                case 'combat': renderCombat(main); break;
-                case 'gacha': renderGacha(main); break;
-                case 'inventory': renderInventory(main); break;
-                case 'machines': renderMachines(main); break;
-            }
+            if (state.view === 'combat') renderCombat(main);
+            else if (state.view === 'gacha') renderGacha(main);
+            else if (state.view === 'inventory') renderInventory(main);
+            else if (state.view === 'machines') renderMachines(main);
             lucide.createIcons();
         }
 
         function renderStats() {
             document.getElementById('stat-gold').innerHTML = `<i data-lucide="star" class="w-4 h-4 fill-current"></i> ${state.gold.toLocaleString()}`;
             document.getElementById('stat-energy').innerHTML = `<i data-lucide="flame-kindling" class="w-4 h-4"></i> ${state.energy.toLocaleString()}`;
-            
-            let ticketsHtml = '';
-            for (let t in state.tickets) {
-                ticketsHtml += `<div class="flex flex-col items-end"><span class="text-[9px] text-slate-500 font-black uppercase">${t}</span><span class="font-black text-sm text-slate-100">${state.tickets[t]}</span></div>`;
-            }
-            document.getElementById('stat-tickets').innerHTML = ticketsHtml;
+            document.getElementById('stat-tickets').innerHTML = Object.entries(state.tickets).map(([t, v]) => v > 0 ? `<div class="flex flex-col items-end"><span class="text-[9px] text-slate-500 font-black uppercase">${t}</span><span class="font-black text-sm text-slate-100">${v}</span></div>` : '').join('');
         }
 
         function renderCombat(container) {
             container.innerHTML = `
                 <div class="space-y-3">
-                    <div id="combat-display" class="bg-slate-900 border border-white/5 rounded-2xl p-5 min-h-[400px] shadow-2xl flex flex-col relative overflow-hidden">
-                        ${!state.activeWorld ? `
-                            <div class="flex-1 flex flex-col items-center justify-center opacity-20 text-slate-500">
-                                <i data-lucide="globe" class="w-10 h-10 mb-2"></i>
-                                <h3 class="text-xs font-black uppercase tracking-widest italic">Core Idle</h3>
-                            </div>
-                        ` : `
+                    <div id="combat-display" class="bg-slate-900 border border-white/5 rounded-2xl p-5 min-h-[400px] flex flex-col relative overflow-hidden shadow-2xl">
+                        ${!state.activeWorld ? `<div class="flex-1 flex flex-col items-center justify-center opacity-20 text-slate-500"><i data-lucide="globe" class="w-12 h-12 mb-3"></i><h3 class="text-xs font-black uppercase tracking-widest italic">Core Idle</h3></div>` : `
                             <div class="space-y-6 flex-1 flex flex-col">
                                 <div class="flex justify-between items-center border-b border-white/5 pb-3">
                                    <div class="flex items-center gap-3">
                                       <i data-lucide="globe" class="text-emerald-500 animate-pulse-soft w-4 h-4"></i>
                                       <div class="font-bold text-sm italic">${state.activeWorld.name} ${renderRarityBadge(state.activeWorld.rarity)}</div>
+                                      <div class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 text-[9px] font-black uppercase">Yield: ${Math.floor(state.activeWorld.goldRate * 100)}G</div>
                                    </div>
-                                   <button onclick="retractWorld()" class="px-3 py-1.5 text-slate-400 bg-white/5 rounded-lg text-[9px] font-black uppercase flex items-center gap-1.5"><i data-lucide="log-out" class="w-3 h-3"></i> Retract</button>
+                                   <button onclick="retractWorld()" class="px-3 py-1.5 text-slate-400 bg-white/5 rounded-lg text-[9px] font-black uppercase hover:bg-white/10 transition-all">Retract Bridge</button>
                                 </div>
                                 <div class="grid grid-cols-2 gap-4 flex-1">
-                                   <div id="player-team" class="space-y-2"></div>
-                                   <div id="enemy-team" class="space-y-2"></div>
+                                   <div id="player-team" class="space-y-2"></div><div id="enemy-team" class="space-y-2"></div>
                                 </div>
                             </div>
                         `}
                     </div>
-                    <div id="logs-area" class="bg-slate-900/50 rounded-xl p-3 h-24 overflow-y-auto text-[10px] font-mono text-slate-600 custom-scrollbar">
-                        ${state.logs.map(l => `<div>${l}</div>`).join('')}
+                    <div id="logs-area" class="bg-slate-900 border border-white/5 rounded-xl p-3 h-40 overflow-y-auto text-[10px] font-mono text-slate-400 custom-scrollbar shadow-inner">
+                        ${state.logs.length ? state.logs.map(l => `<div class="border-b border-white/5 py-1">${l}</div>`).join('') : '<div class="opacity-20">Awaiting combat protocols...</div>'}
                     </div>
-                </div>
-            `;
+                </div>`;
             if (state.activeWorld) updateCombatUI();
         }
 
         function updateCombatUI() {
             if (!state.activeWorld || state.view !== 'combat') return;
-            const pTeam = document.getElementById('player-team');
-            const eTeam = document.getElementById('enemy-team');
-            if (!pTeam || !eTeam) return;
-
-            pTeam.innerHTML = combatState.playerTeam.map(u => `
-                <div onclick="openInspect('Unit', '${u.id}')" class="p-2.5 rounded-lg bg-white/5 border border-white/5 ${u.currentHp <= 0 ? 'opacity-20 grayscale' : ''}">
-                   <div class="flex justify-between text-[10px] font-bold mb-1 leading-none"><span>${u.name}</span><span>${u.currentHp}</span></div>
-                   ${renderProgressBar((u.currentHp / u.stats.maxHp) * 100, "bg-emerald-500")}
-                   <div class="mt-1.5 flex gap-1">${u.moves.map(m => `<div class="px-1.5 py-0.5 rounded text-[7px] font-black border ${m.currentCd > 0 ? 'text-slate-600 border-white/5' : 'text-blue-400 border-blue-500/20'}">${m.currentCd > 0 ? m.currentCd : 'RDY'}</div>`).join('')}</div>
-                   <div class="mt-1">${renderProgressBar(u.atb, "bg-blue-500", "h-0.5")}</div>
-                </div>
-            `).join('');
-
-            eTeam.innerHTML = combatState.enemyTeam.map(u => `
-                <div class="p-2.5 rounded-lg bg-white/5 border border-white/5 ${u.currentHp <= 0 ? 'opacity-20 grayscale' : ''}">
-                   <div class="flex justify-between text-[10px] font-bold mb-1 leading-none flex-row-reverse"><span>${u.name}</span><span class="text-red-400">${u.currentHp}</span></div>
-                   ${renderProgressBar((u.currentHp / u.stats.maxHp) * 100, "bg-red-500")}
-                   <div class="mt-1">${renderProgressBar(u.atb, "bg-orange-500", "h-0.5")}</div>
-                </div>
-            `).join('');
-        }
-
-        function renderLogs() {
-            const area = document.getElementById('logs-area');
-            if (area) area.innerHTML = state.logs.map(l => `<div>${l}</div>`).join('');
+            const pT = document.getElementById('player-team');
+            const eT = document.getElementById('enemy-team');
+            if (!pT || !eT) return;
+            pT.innerHTML = combatState.playerTeam.map(u => `
+                <div onclick="openInspect('Unit', '${u.id}')" class="p-3 rounded-xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 transition-all">
+                    <div class="flex justify-between text-[10px] font-bold mb-1.5"><span>${u.name}</span><span class="text-blue-400">${u.currentHp}</span></div>
+                    ${renderProgressBar((u.currentHp/u.stats.maxHp)*100, "bg-emerald-500", "h-1.5")}
+                    <div class="mt-2 space-y-1">
+                        ${renderProgressBar(u.atb, "bg-blue-500", "h-0.5")}
+                        <div class="flex gap-1">
+                            ${u.moves.map(m => `<div class="text-[7px] font-black px-1 rounded border ${m.currentCd > 0 ? 'text-slate-600 border-white/5' : 'text-cyan-400 border-cyan-500/30'}">${m.currentCd > 0 ? m.currentCd : 'RDY'}</div>`).join('')}
+                        </div>
+                    </div>
+                </div>`).join('');
+            eT.innerHTML = combatState.enemyTeam.map(u => `
+                <div class="p-3 rounded-xl bg-white/5 border border-white/5">
+                    <div class="flex justify-between text-[10px] font-bold mb-1.5 flex-row-reverse"><span>${u.name}</span><span class="text-red-400">${u.currentHp}</span></div>
+                    ${renderProgressBar((u.currentHp/u.stats.maxHp)*100, "bg-red-500", "h-1.5")}
+                    <div class="mt-2">${renderProgressBar(u.atb, "bg-orange-500", "h-0.5")}</div>
+                </div>`).join('');
         }
 
         function renderGacha(container) {
-            const types = [
-                { type: 'Unit', icon: 'database' },
-                { type: 'World', icon: 'globe' },
-                { type: 'Meta', icon: 'cpu' }
-            ];
-
+            const types = [{ t: 'Unit', i: 'database' }, { t: 'World', i: 'globe' }, { t: 'Meta', i: 'cpu' }];
             container.innerHTML = `
-                <div class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        ${types.map(t => {
-                            const activeM = getActiveMachine(t.type);
-                            return `
-                                <div class="bg-slate-900 border border-white/5 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
-                                    <div class="flex justify-between items-start">
-                                        <div class="p-2.5 bg-white/5 rounded-lg text-slate-400"><i data-lucide="${t.icon}" class="w-5 h-5"></i></div>
-                                        <button onclick="openInspect('Machine', '${activeM.id}')" class="text-slate-600 hover:text-slate-400"><i data-lucide="info" class="w-4 h-4"></i></button>
-                                    </div>
-                                    <div class="text-sm font-black uppercase italic">${t.type} Machine ${renderRarityBadge(activeM.rarity, "ml-2")}</div>
-                                    <div class="flex gap-1.5">
-                                        <button onclick="pull('${t.type}', 1)" class="flex-1 py-2 bg-white text-slate-950 rounded-xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all">Pull 1</button>
-                                        <button onclick="pull('${t.type}', 10)" class="flex-1 py-2 bg-white/5 text-white rounded-xl font-black text-[9px] border border-white/10 uppercase tracking-widest active:scale-95 transition-all">Pull 10</button>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                    
-                    <div class="bg-slate-900 border border-white/5 rounded-2xl p-4">
-                        <div class="flex items-center gap-2 mb-3 border-b border-white/5 pb-2">
-                            <i data-lucide="terminal" class="w-3 h-3 text-emerald-500"></i>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-emerald-500">Fabrication Stream</span>
-                        </div>
-                        <div class="h-32 overflow-y-auto font-mono text-[9px] text-slate-500 space-y-1 custom-scrollbar">
-                            ${state.pullLogs.map(l => `<div class="pl-2 border-l-2 border-white/5">${l}</div>`).join('')}
-                        </div>
-                    </div>
-
-                    <div class="bg-slate-900 border border-white/5 rounded-2xl p-4 flex items-center justify-between">
-                        <span class="text-[10px] font-black uppercase italic text-slate-600 tracking-[0.2em] px-2">Data Stabilization</span>
-                        <div class="flex gap-2">
-                            <button onclick="buyTicket('unit')" class="px-4 py-2 bg-white/5 rounded-lg text-[9px] font-black uppercase border border-white/5">Buy Unit (50G)</button>
-                            <button onclick="buyTicket('world')" class="px-4 py-2 bg-white/5 rounded-lg text-[9px] font-black uppercase border border-white/5">Buy World (50G)</button>
-                            <button onclick="buyTicket('meta')" class="px-4 py-2 bg-white/5 rounded-lg text-[9px] font-black uppercase border border-white/5">Buy Meta (50G)</button>
-                        </div>
-                    </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    ${types.map(t => {
+                        const m = state.machines.find(mac => mac.id === state.selectedMachineIds[t.t]) || state.machines.find(mac => mac.type === t.t);
+                        const cost = getPullCost(t.t, m.rarity);
+                        return `<div class="bg-slate-900 border border-white/5 rounded-2xl p-5 flex flex-col gap-4 shadow-xl">
+                            <div class="flex justify-between"><div class="p-2.5 bg-white/5 rounded-lg text-slate-400"><i data-lucide="${t.i}"></i></div><button onclick="openInspect('Machine', '${m.id}')" class="text-slate-600 hover:text-white transition-all"><i data-lucide="info"></i></button></div>
+                            <div class="text-sm font-black uppercase italic">${t.t} Core ${renderRarityBadge(m.rarity, "ml-2")}</div>
+                            <div class="flex flex-col gap-1.5">
+                                <button onclick="pull('${t.t}', 1)" ${state.gold < cost ? 'disabled' : ''} class="w-full py-2.5 bg-white text-slate-950 rounded-xl font-black text-[10px] uppercase active:scale-95 disabled:opacity-20 transition-all flex justify-between px-4"><span>Pull 1</span><span>${cost}G</span></button>
+                                <button onclick="pull('${t.t}', 10)" ${state.gold < cost*10 ? 'disabled' : ''} class="w-full py-2.5 bg-white/5 rounded-xl font-black text-[10px] border border-white/10 uppercase active:scale-95 disabled:opacity-20 transition-all flex justify-between px-4"><span>Pull 10</span><span>${cost*10}G</span></button>
+                            </div>
+                        </div>`;
+                    }).join('')}
                 </div>
-            `;
+                <div class="bg-slate-900 border border-white/5 rounded-2xl p-4 mt-4 shadow-lg">
+                    <div class="flex items-center gap-2 mb-2 px-1"><i data-lucide="terminal" class="w-3 h-3 text-emerald-500"></i><span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Fabrication Stream</span></div>
+                    <div id="pull-logs" class="h-32 overflow-y-auto font-mono text-[9px] text-slate-500 space-y-1 custom-scrollbar px-1">
+                        ${state.pullLogs.map(l => `<div class="pl-2 border-l border-white/5">${l}</div>`).join('')}
+                    </div>
+                </div>`;
         }
 
         function renderInventory(container) {
@@ -461,454 +321,266 @@
                 <div class="space-y-6">
                     <div>
                         <div class="flex justify-between items-end mb-3 px-1">
-                            <h3 class="text-[8px] font-black text-slate-600 uppercase tracking-widest">Active Manifests (${state.units.length})</h3>
-                            <button onclick="burnAll('Unit')" class="text-[9px] font-black uppercase text-red-500 bg-red-500/5 px-3 py-1 rounded-lg border border-red-500/10 flex items-center gap-2"><i data-lucide="trash-2" class="w-3 h-3"></i> Decouple All</button>
+                            <h3 class="text-[9px] font-black text-slate-600 uppercase tracking-widest">Active Manifests (${state.units.length})</h3>
+                            <button onclick="burnAll('Unit')" class="text-[9px] font-black text-red-500 px-3 py-1 bg-red-500/5 rounded-lg border border-red-500/10 hover:bg-red-500/10">Purge Junk</button>
                         </div>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                             ${state.units.map(u => `
-                                <div onclick="openInspect('Unit', '${u.id}')" class="bg-slate-900 border border-white/5 rounded-xl p-3 cursor-pointer">
+                                <div onclick="openInspect('Unit', '${u.id}')" class="bg-slate-900 border border-white/5 rounded-2xl p-3.5 cursor-pointer group hover:border-white/20 transition-all">
                                     <div class="flex justify-between mb-2">${renderRarityBadge(u.rarity)} ${renderElementBadge(u.element)}</div>
-                                    <div class="font-bold truncate text-[11px] text-slate-100 uppercase tracking-tight">${u.name}</div>
-                                    <button onclick="toggleSquad('${u.id}', event)" class="mt-3 w-full py-1.5 rounded-lg text-[9px] font-black uppercase ${state.squadMembers.includes(u.id) ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-slate-800 text-slate-500'}">
-                                        ${state.squadMembers.includes(u.id) ? 'Retract' : 'Deploy'}
+                                    <div class="font-black truncate text-[11px] text-slate-100 uppercase italic">${u.name}</div>
+                                    <button onclick="toggleSquad('${u.id}', event)" class="mt-3 w-full py-1.5 rounded-lg text-[9px] font-black uppercase ${state.squadMembers.includes(u.id) ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-slate-800 text-slate-500'} transition-all">
+                                        ${state.squadMembers.includes(u.id) ? 'Retracted' : 'Deploy Core'}
                                     </button>
-                                </div>
-                            `).join('')}
+                                </div>`).join('')}
                         </div>
                     </div>
                     <div>
-                        <h3 class="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-3 px-1">Bridges (${state.worlds.length})</h3>
+                        <h3 class="text-[9px] font-black text-slate-600 uppercase mb-3 px-1 tracking-widest">Active Dimensions</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                             ${state.worlds.map(w => `
-                                <div onclick="openInspect('World', '${w.id}')" class="bg-slate-900 border rounded-2xl p-4 cursor-pointer transition-all ${state.activeWorld?.id === w.id ? 'border-emerald-500 shadow-xl shadow-emerald-500/10' : 'border-white/5'}">
-                                    <div class="flex justify-between mb-3">${renderRarityBadge(w.rarity)} ${state.activeWorld?.id === w.id ? '<i data-lucide="activity" class="w-3 h-3 text-emerald-500"></i>' : ''}</div>
+                                <div onclick="openInspect('World', '${w.id}')" class="bg-slate-900 border rounded-2xl p-4 cursor-pointer transition-all ${state.activeWorld?.id === w.id ? 'border-emerald-500 shadow-xl' : 'border-white/5 hover:border-white/20'}">
+                                    <div class="flex justify-between mb-3">${renderRarityBadge(w.rarity)} <span class="text-amber-500 text-[9px] font-black italic">Yield: ${Math.floor(w.goldRate*100)}G</span></div>
                                     <div class="text-sm font-black uppercase italic text-slate-100">${w.name}</div>
-                                    <button onclick="setWorld('${w.id}', event)" class="mt-4 w-full py-2 rounded-xl text-[10px] font-black uppercase ${state.activeWorld?.id === w.id ? 'bg-emerald-500 text-white' : 'bg-white text-slate-950'}">
-                                        ${state.activeWorld?.id === w.id ? 'Anchored' : 'Anchor'}
+                                    <button onclick="setWorld('${w.id}', event)" class="mt-4 w-full py-2 rounded-xl text-[10px] font-black uppercase ${state.activeWorld?.id === w.id ? 'bg-emerald-500 text-white shadow-lg' : 'bg-white text-slate-950 hover:bg-slate-200'} transition-all">
+                                        ${state.activeWorld?.id === w.id ? 'Anchored' : 'Anchor Bridge'}
                                     </button>
-                                </div>
-                            `).join('')}
+                                </div>`).join('')}
                         </div>
                     </div>
-                </div>
-            `;
+                </div>`;
         }
 
         function renderMachines(container) {
             container.innerHTML = `
-                <div class="space-y-6">
+                <div class="space-y-4">
                     <div class="flex justify-between items-center px-1">
-                        <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-400">Hierarchy Cores</h4>
-                        <button onclick="burnAll('Machine')" class="text-[9px] font-black uppercase text-red-500 bg-red-500/5 px-3 py-1 rounded-lg border border-red-500/10 flex items-center gap-2"><i data-lucide="trash-2" class="w-3 h-3"></i> Decouple All</button>
+                        <h3 class="text-[9px] font-black text-slate-600 uppercase tracking-widest">Global Hierarchy Cores</h3>
+                        <button onclick="burnAll('Machine')" class="text-[9px] font-black text-red-500 px-3 py-1 bg-red-500/5 rounded-lg border border-red-500/10">Purge Excess</button>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                         ${state.machines.map(m => `
-                            <div onclick="openInspect('Machine', '${m.id}')" class="bg-slate-900 border rounded-2xl p-4 cursor-pointer ${state.selectedMachineIds[m.type] === m.id ? 'border-emerald-500 shadow-lg shadow-emerald-500/10' : 'border-white/5 opacity-80 hover:opacity-100'}">
+                            <div onclick="openInspect('Machine', '${m.id}')" class="bg-slate-900 border rounded-2xl p-5 cursor-pointer group transition-all ${state.selectedMachineIds[m.type] === m.id ? 'border-emerald-500 shadow-xl' : 'border-white/5 hover:border-white/20'}">
                                 <div class="flex justify-between mb-4">
-                                    <div class="p-2 rounded-lg ${state.selectedMachineIds[m.type] === m.id ? 'bg-emerald-500/20 text-emerald-500' : 'text-slate-500 bg-white/5'}">
-                                        <i data-lucide="${m.type === 'Unit' ? 'database' : m.type === 'Meta' ? 'cpu' : 'globe'}" class="w-4 h-4"></i>
+                                    <div class="p-2.5 rounded-xl ${state.selectedMachineIds[m.type] === m.id ? 'bg-emerald-500/20 text-emerald-500' : 'text-slate-500 bg-white/5'}">
+                                        <i data-lucide="${m.type==='Unit'?'database':m.type==='Meta'?'cpu':'globe'}"></i>
                                     </div>
                                     ${renderRarityBadge(m.rarity)}
                                 </div>
-                                <h4 class="text-[8px] font-black text-slate-600 uppercase tracking-widest">${m.type} Processor</h4>
-                                <div class="text-xl font-black italic uppercase text-slate-100">Lv.${m.level}</div>
-                                ${state.selectedMachineIds[m.type] === m.id ? `<div class="mt-2 text-[8px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-1"><i data-lucide="check-circle-2" class="w-2.5 h-2.5"></i> Global Core</div>` : ''}
-                            </div>
-                        `).join('')}
+                                <h4 class="text-[8px] font-black text-slate-600 uppercase tracking-[0.2em] mb-1">${m.type} Fabricator</h4>
+                                <div class="text-xl font-black italic uppercase text-slate-100 tracking-tighter">Mk.${20-m.rarity}</div>
+                                ${state.selectedMachineIds[m.type] === m.id ? `<div class="mt-3 text-[9px] font-black text-emerald-500 uppercase flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3"></i> Global Active</div>` : ''}
+                            </div>`).join('')}
                     </div>
-                </div>
-            `;
+                </div>`;
         }
 
-        // --- ACTIONS ---
-        function retractWorld() {
-            state.activeWorld = null;
-            combatState.active = false;
-            render();
-            saveGame();
-        }
-
-        function setWorld(id, e) {
-            e.stopPropagation();
-            state.activeWorld = state.worlds.find(w => w.id === id);
-            combatState.active = false; // Reset loop
-            render();
-            saveGame();
-        }
-
-        function toggleSquad(id, e) {
-            e.stopPropagation();
-            if (state.squadMembers.includes(id)) {
-                state.squadMembers = state.squadMembers.filter(sid => sid !== id);
-            } else if (state.squadMembers.length < 3) {
-                state.squadMembers.push(id);
-            }
-            render();
-            saveGame();
-        }
-
-        function buyTicket(type) {
-            if (state.gold >= 50) {
-                state.gold -= 50;
-                state.tickets[type]++;
-                render();
-                saveGame();
-            }
-        }
-
-        function pull(type, count) {
-            if (state.tickets[type.toLowerCase()] < count) return;
-            state.tickets[type.toLowerCase()] -= count;
-            
-            let results = [];
-            const machine = getActiveMachine(type);
-            const activeMinis = state.machines.filter(m => ['Element', 'Class', 'Move'].includes(m.type) && state.selectedMachineIds[m.type] === m.id);
-
-            for(let i=0; i<count; i++) {
-                if (type === 'Unit') {
-                    const res = generateUnit(machine.rarity, activeMinis);
-                    state.units.push(res.unit);
-                    results.push(res.unit);
-                    addPullLog(`[UNIT] ${res.unit.name} (${getRarity(res.unit.rarity).name}) :: ${res.logs.join(' | ')}`);
-                } else if (type === 'World') {
-                    const r = rollRarity(machine.rarity);
-                    const inherited = ['Element', 'Class', 'Move'].map(t => state.machines.find(mac => mac.id === state.selectedMachineIds[t])).filter(Boolean);
-                    const world = {
-                        id: Math.random().toString(36).substr(2, 9),
-                        name: `${ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]} Sector`,
-                        rarity: r.id,
-                        goldRate: getRarity(r.id).multiplier * 1.5,
-                        desc: "Bridge stabilized.",
-                        config: { unitRarity: r.id, minis: inherited }
-                    };
-                    state.worlds.push(world);
-                    results.push(world);
-                    addPullLog(`[WORLD] ${world.name} (${r.name})`);
-                } else if (type === 'Meta') {
-                    const r = rollRarity(machine.rarity);
-                    const mType = ['Unit', 'World', 'Element', 'Class', 'Move'][Math.floor(Math.random() * 5)];
-                    const core = { id: Math.random().toString(36).substr(2, 9), type: mType, rarity: r.id, level: 1 };
-                    state.machines.push(core);
-                    results.push(core);
-                    addPullLog(`[CORE] ${core.type} (${getRarity(r.id).name})`);
+        function openInspect(type, id, readOnly = false) {
+            let data = null;
+            if (type === 'Unit') data = state.units.find(u => u.id === id);
+            else if (type === 'World') data = state.worlds.find(w => w.id === id);
+            else if (type === 'Machine') {
+                data = state.machines.find(m => m.id === id);
+                if (!data) {
+                    state.worlds.forEach(w => {
+                        if (w.config.unitRarity === id) data = { type: 'Unit', rarity: id, name: 'Core Processor' };
+                        w.config.minis.forEach(m => { if (m.id === id) data = m; });
+                    });
                 }
             }
-            showPullResults(type, results);
-            render();
-            saveGame();
-        }
-
-        function showPullResults(type, items) {
-            const modal = document.getElementById('pull-results-modal');
-            modal.innerHTML = `
-                <div class="w-full max-w-sm">
-                    <span class="text-[8px] font-black text-slate-500 uppercase tracking-[1em] mb-4 block italic">Process Result</span>
-                    <h2 class="text-3xl font-black text-white italic uppercase tracking-tighter mb-8">Data Resolved</h2>
-                    <div class="flex flex-wrap justify-center gap-3 mb-10 max-h-[40vh] overflow-y-auto custom-scrollbar">
-                        ${items.map((item, i) => `
-                            <div onclick="openInspect('${type === 'Machine' ? 'Machine' : type}', '${item.id}')" class="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col items-center hover:bg-white/10 group transition-all cursor-pointer">
-                                ${renderRarityBadge(item.rarity, "mb-2")}
-                                <div class="text-white text-sm font-black uppercase italic leading-tight">${item.name || item.type}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <button onclick="closePullModal()" class="w-full py-4 bg-white text-slate-950 font-black rounded-xl text-xs uppercase tracking-widest shadow-2xl active:scale-95 transition-all">Confirm Manifest</button>
-                </div>
-            `;
-            modal.classList.remove('hidden');
-            lucide.createIcons();
-        }
-
-        function closePullModal() {
-            document.getElementById('pull-results-modal').classList.add('hidden');
-        }
-
-        // --- INSPECT MODAL LOGIC ---
-        function openInspect(type, id) {
-            let data;
-            if (type === 'Unit') data = state.units.find(u => u.id === id) || combatState.playerTeam.find(u => u.id === id) || combatState.enemyTeam.find(u => u.id === id);
-            else if (type === 'World') data = state.worlds.find(w => w.id === id);
-            else if (type === 'Machine') data = state.machines.find(m => m.id === id);
+            else if (type === 'Trait') { const [t, n, r] = id.split(':'); data = { type: t, name: n, rarity: parseInt(r) }; }
+            else if (type === 'Move') { const [mId, uId] = id.split(':'); const u = state.units.find(un => un.id === uId); data = u ? u.moves.find(mv => mv.id === mId) : null; }
             
-            if (!data) return;
-
-            state.inspectStack.push({ type, data });
-            renderInspect();
+            if (data) { state.inspectStack.push({ type, data, readOnly }); renderInspect(); }
         }
 
-        function popInspect() {
-            state.inspectStack.pop();
-            if (state.inspectStack.length > 0) renderInspect();
-            else document.getElementById('inspect-modal').classList.add('hidden');
-        }
+        function popInspect() { state.inspectStack.pop(); if (state.inspectStack.length > 0) renderInspect(); else document.getElementById('inspect-modal').classList.add('hidden'); }
 
         function renderInspect() {
             const modal = document.getElementById('inspect-modal');
-            const { type, data } = state.inspectStack[state.inspectStack.length - 1];
+            const { type, data, readOnly } = state.inspectStack[state.inspectStack.length - 1];
             modal.classList.remove('hidden');
 
-            const isMax = data.rarity <= 1;
-            const cost = isMax ? 0 : Math.floor(getRarity(data.rarity).multiplier * (data.type === 'Meta' ? 1000 : 100));
+            const isGlobalItem = (type === 'Machine' && state.machines.some(m => m.id === data.id)) || (type === 'Unit' && state.units.some(u => u.id === data.id));
+            const canModify = !readOnly && isGlobalItem;
+            const upgradeCost = isGlobalItem && data.rarity > 1 ? Math.floor(getRarity(data.rarity).multiplier * (data.type === 'Meta' ? 1000 : 100)) : 0;
 
-            modal.innerHTML = `
-                <div class="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[85vh] shadow-2xl">
-                    <div class="p-5 bg-gradient-to-br ${getRarity(data.rarity || 19).color} text-white relative">
-                        <button onclick="popInspect()" class="absolute top-4 left-4 hover:bg-black/20 p-1.5 rounded-full">
-                            <i data-lucide="${state.inspectStack.length > 1 ? 'chevron-left-circle' : 'x'}" class="w-5 h-5"></i>
-                        </button>
-                        <div class="ml-8">
-                            ${renderRarityBadge(data.rarity || 19, "mb-1")}
-                            <h2 class="text-xl font-black uppercase italic leading-tight">${data.name || data.type}</h2>
-                            <p class="text-white/60 text-[10px] font-bold tracking-widest">${type}</p>
+            let contentHtml = '';
+            if (type === 'Unit') {
+                contentHtml = `
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <div onclick="openInspect('Trait', 'Class:${data.class}:${data.classRarity}', true)" class="p-3 bg-slate-800/50 rounded-xl cursor-pointer border border-white/5 active:bg-slate-700">
+                            <span class="text-[9px] font-bold text-slate-500 uppercase">Class Type</span><div class="font-bold text-xs mt-0.5 text-white italic">${data.class}</div>
+                            ${renderRarityBadge(data.classRarity, "mt-1 block w-fit")}
+                        </div>
+                        <div onclick="openInspect('Trait', 'Element:${data.element}:${data.elementRarity}', true)" class="p-3 bg-slate-800/50 rounded-xl cursor-pointer border border-white/5 active:bg-slate-700">
+                            <span class="text-[9px] font-bold text-slate-500 uppercase">Element Core</span><div class="mt-0.5">${renderElementBadge(data.element)}</div>
+                            ${renderRarityBadge(data.elementRarity, "mt-1 block w-fit")}
                         </div>
                     </div>
-
-                    <div class="p-4 overflow-y-auto space-y-4 text-slate-200 custom-scrollbar">
-                        ${type === 'Machine' ? `
-                            <div class="space-y-3">
-                                <div class="bg-slate-800/50 p-3 rounded-lg border border-white/5">
-                                    <h4 class="text-[9px] font-bold text-slate-400 uppercase mb-3 flex items-center gap-2 tracking-widest"><i data-lucide="target" class="w-3 h-3"></i> Yield Array</h4>
-                                    <div class="space-y-1.5">
-                                        ${getPullDist(data.rarity).map(r => `
-                                            <div class="flex items-center gap-2">
-                                                <span class="text-[9px] font-bold w-16 truncate">${r.name}</span>
-                                                <div class="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-                                                    <div class="h-full bg-slate-400" style="width: ${r.pct}%"></div>
-                                                </div>
-                                                <span class="text-[9px] font-mono text-slate-500 w-6">${r.pct.toFixed(0)}%</span>
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                                <button onclick="setMachineCore('${data.id}', '${data.type}')" class="w-full py-3 rounded-xl font-bold uppercase text-xs flex items-center justify-center gap-2 ${state.selectedMachineIds[data.type] === data.id ? 'bg-emerald-500 text-white' : 'bg-white text-slate-950'}">
-                                    <i data-lucide="${state.selectedMachineIds[data.type] === data.id ? 'check-circle-2' : 'layers'}" class="w-4 h-4"></i>
-                                    ${state.selectedMachineIds[data.type] === data.id ? 'Active Core' : 'Set as Core'}
-                                </button>
-                            </div>
-                        ` : ''}
-
-                        ${type === 'Unit' ? `
-                            <div class="space-y-4">
-                                <div class="grid grid-cols-2 gap-2">
-                                   <div class="p-3 bg-slate-800 border border-white/5 rounded-lg text-left">
-                                      <div class="text-[9px] font-bold text-slate-500 uppercase">Class</div>
-                                      <div class="font-bold text-xs mt-1">${data.class || "Naked"}</div>
-                                      ${renderRarityBadge(data.classRarity || 19, "mt-1 block w-fit")}
-                                   </div>
-                                   <div class="p-3 bg-slate-800 border border-white/5 rounded-lg text-left">
-                                      <div class="text-[9px] font-bold text-slate-500 uppercase">Element</div>
-                                      <div class="mt-1">${renderElementBadge(data.element)}</div>
-                                      ${renderRarityBadge(data.elementRarity || 19, "mt-1 block w-fit")}
-                                   </div>
-                                </div>
-                                <div class="bg-slate-950 p-4 rounded-xl grid grid-cols-2 gap-3 border border-white/5">
-                                   ${Object.entries(data.stats).filter(([k]) => k !== 'maxHp').map(([k, v]) => `
-                                     <div class="flex justify-between items-center border-b border-white/5 pb-1 text-[10px]">
-                                        <span class="font-bold text-slate-500 uppercase">${k}</span>
-                                        <span class="font-bold font-mono text-slate-100">${v}</span>
-                                     </div>
-                                   `).join('')}
-                                </div>
-                                <div class="space-y-1.5">
-                                  <h4 class="text-[9px] font-bold text-slate-500 uppercase px-1">Techniques</h4>
-                                  ${data.moves.map(m => `
-                                    <div class="w-full p-3 bg-slate-800 border border-white/5 rounded-lg flex justify-between items-center group transition-all">
-                                       <div class="text-left">
-                                          <div class="font-bold text-xs group-hover:text-blue-400">${m.name}</div>
-                                          <div class="flex items-center gap-1.5 mt-1">
-                                            ${renderRarityBadge(m.rarity)}
-                                            ${renderElementBadge(m.element)}
-                                          </div>
-                                       </div>
-                                       <div class="text-[9px] text-slate-500 font-bold">POW: ${m.power}</div>
-                                    </div>
-                                  `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        ${type === 'World' ? `
-                            <div class="space-y-4">
-                                <div class="bg-emerald-500/5 p-3 rounded-lg border border-emerald-500/10 text-xs text-slate-400 italic">"${data.desc}"</div>
-                                <div class="space-y-2">
-                                    <h4 class="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Active Core Components</h4>
-                                    <div class="w-full p-3 bg-slate-800 border border-white/5 rounded-lg flex justify-between items-center">
-                                       <div class="flex items-center gap-2 text-xs"><i data-lucide="database" class="w-3.5 h-3.5 text-blue-400"></i> Fabricator</div>
-                                       ${renderRarityBadge(data.config.unitRarity)}
-                                    </div>
-                                    ${data.config.minis.map(m => `
-                                      <div class="w-full p-3 bg-slate-800 border border-white/5 rounded-lg flex justify-between items-center">
-                                         <div class="flex items-center gap-2 text-xs"><i data-lucide="settings" class="w-3.5 h-3.5 text-slate-500"></i> Mini-${m.type}</div>
-                                         ${renderRarityBadge(m.rarity)}
-                                      </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
+                    <div class="bg-slate-950 p-4 rounded-xl grid grid-cols-2 gap-x-6 gap-y-2 border border-white/5 mb-3">
+                        ${Object.entries(data.stats).filter(([k]) => k !== 'maxHp').map(([k, v]) => `<div class="flex justify-between border-b border-white/5 pb-1 text-[10px]"><span class="font-bold text-slate-500 uppercase">${k}</span><span class="font-black text-slate-100">${v}</span></div>`).join('')}
                     </div>
-                    
-                    <div class="p-4 bg-slate-950 border-t border-white/5 flex flex-col gap-2">
-                        ${!isMax ? `
-                           <button onclick="upgradeItem('${type}', '${data.id}')" ${state.energy < cost ? 'disabled' : ''} class="w-full py-3 rounded-xl font-black uppercase text-xs flex items-center justify-center gap-2 ${state.energy >= cost ? 'bg-amber-500 text-slate-900' : 'bg-white/5 text-slate-600'}">
-                              <i data-lucide="arrow-up-circle" class="w-4 h-4"></i> Upgrade (${cost} E)
-                           </button>
-                        ` : ''}
-                        ${(type === 'Unit' || type === 'Machine') ? `
-                           <button onclick="burnItem('${type}', '${data.id}')" class="w-full py-2 rounded-xl font-bold uppercase text-[9px] text-red-500 bg-red-500/5 border border-red-500/20 flex items-center justify-center gap-2">
-                              <i data-lucide="trash-2" class="w-3 h-3"></i> Decouple (+${Math.floor(getRarity(data.rarity).multiplier * 10)} E)
-                           </button>
-                        ` : ''}
-                        <button onclick="popInspect()" class="w-full bg-slate-100 text-slate-900 font-bold py-2.5 rounded-lg uppercase tracking-widest text-[10px]">Close</button>
+                    <h4 class="text-[9px] font-black text-slate-500 uppercase mb-2 px-1 tracking-widest italic">Techniques</h4>
+                    ${data.moves.map(m => `<div onclick="openInspect('Move', '${m.id}:${data.id}', true)" class="w-full p-2.5 bg-slate-800/50 rounded-xl flex justify-between items-center cursor-pointer mb-2 border border-white/5 active:bg-slate-700"><div><div class="font-black text-xs text-white uppercase italic">${m.name}</div>${renderRarityBadge(m.rarity, "mt-1")}</div><i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i></div>`).join('')}
+                `;
+            } else if (type === 'Trait') {
+                const bonus = getTraitBonus(data.rarity);
+                const isClass = data.type === 'Class';
+                const stats = isClass ? CLASS_DATA[data.name] : ELEMENT_DATA[data.name];
+                contentHtml = `
+                    <div class="bg-slate-950 p-6 rounded-2xl text-center border border-white/5 shadow-2xl">
+                        <div class="text-[10px] font-black text-slate-500 uppercase mb-2 tracking-[0.2em]">Trait Influence</div>
+                        <div class="text-4xl font-black text-white italic tracking-tighter mb-2">x${bonus.toFixed(2)}</div>
+                        <div class="flex flex-wrap justify-center gap-2 mt-6">
+                            ${Object.entries(stats).filter(([k]) => ['hp','atk','def','spd'].includes(k)).map(([k, v]) => `<div class="bg-slate-800 px-3 py-1 rounded text-[10px] uppercase font-bold text-slate-400 border border-white/5">${k} <span class="${v >= 1 ? 'text-emerald-400' : 'text-red-400'}">${(v*100).toFixed(0)}%</span></div>`).join('')}
+                        </div>
+                    </div>`;
+            } else if (type === 'Machine') {
+                contentHtml = `
+                    <div class="bg-slate-800/50 p-4 rounded-xl border border-white/5 mb-3 shadow-inner">
+                        <h4 class="text-[9px] font-black text-slate-400 uppercase mb-4 flex items-center gap-2 tracking-[0.2em]"><i data-lucide="target" class="w-3 h-3"></i> Yield Probabilities</h4>
+                        <div class="space-y-2">${getPullDist(data.rarity).map(r => `
+                            <div class="flex items-center gap-2"><span class="text-[9px] font-bold w-16 truncate">${r.name}</span><div class="flex-1 h-1 bg-white/5 rounded-full overflow-hidden"><div class="h-full bg-slate-400" style="width: ${r.pct}%"></div></div><span class="text-[9px] font-mono text-slate-500 w-6">${r.pct.toFixed(2)}%</span></div>`).join('')}
+                        </div>
+                    </div>`;
+            } else if (type === 'World') {
+                contentHtml = `
+                    <div class="bg-emerald-500/5 p-4 rounded-xl border border-emerald-500/10 text-xs text-slate-400 italic mb-4 shadow-sm border-l-4 border-l-emerald-500">"${data.desc}"</div>
+                    <h4 class="text-[9px] font-black text-slate-500 uppercase mb-3 px-1 tracking-widest italic">Anchored Processors</h4>
+                    <div onclick="openInspect('Machine', ${data.config.unitRarity}, true)" class="w-full p-3.5 bg-slate-800/50 rounded-xl flex justify-between items-center mb-2 cursor-pointer border border-white/5 active:bg-slate-700 transition-all">
+                       <div class="flex items-center gap-3 text-xs font-bold uppercase italic"><i data-lucide="database" class="w-4 h-4 text-blue-400"></i> Generation Core</div>${renderRarityBadge(data.config.unitRarity)}
                     </div>
-                </div>
-            `;
+                    ${data.config.minis.map(m => `
+                      <div onclick="openInspect('Machine', '${m.id}', true)" class="w-full p-3.5 bg-slate-800/50 rounded-xl flex justify-between items-center mb-2 cursor-pointer border border-white/5 active:bg-slate-700 transition-all">
+                         <div class="flex items-center gap-3 text-xs font-bold uppercase italic"><i data-lucide="settings" class="w-4 h-4 text-slate-500"></i> ${m.type} Stabilizer</div>${renderRarityBadge(m.rarity)}
+                      </div>`).join('')}
+                `;
+            } else if (type === 'Move') {
+                contentHtml = `<div class="bg-slate-950 p-8 rounded-2xl text-center border border-white/5"><div class="text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Technique Impact</div><div class="text-5xl font-black text-white italic tracking-tighter mb-4">${data.power}</div>${renderElementBadge(data.element, "scale-110")}</div>`;
+            }
+
+            modal.innerHTML = `
+                <div class="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[85vh] shadow-2xl scale-in">
+                    <div class="p-6 bg-gradient-to-br ${getRarity(data.rarity || 19).color} text-white relative shadow-lg">
+                        <button onclick="popInspect()" class="absolute top-4 left-4 hover:bg-black/20 p-2 rounded-full transition-all"><i data-lucide="${state.inspectStack.length > 1 ? 'chevron-left' : 'x'}" class="w-5 h-5"></i></button>
+                        <div class="ml-8">${renderRarityBadge(data.rarity || 19, "mb-2")}<h2 class="text-2xl font-black uppercase italic leading-none tracking-tighter">${data.name || data.type}</h2><p class="text-white/60 text-[10px] font-black tracking-[0.3em] uppercase mt-2">${type}</p></div>
+                    </div>
+                    <div class="p-4 overflow-y-auto custom-scrollbar flex-1">${contentHtml}</div>
+                    <div class="p-4 bg-slate-950 border-t border-white/5 space-y-2">
+                        <div class="flex gap-2">
+                            ${type === 'Machine' && canModify ? `<button onclick="setMachineCore('${data.id}', '${data.type}')" class="flex-1 py-3 rounded-xl font-black uppercase text-[10px] flex flex-col items-center justify-center border transition-all ${state.selectedMachineIds[data.type] === data.id ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}"><i data-lucide="${state.selectedMachineIds[data.type] === data.id ? 'check' : 'layers'}" class="w-4 h-4 mb-1"></i>${state.selectedMachineIds[data.type] === data.id ? 'Active Core' : 'Set Core'}</button>` : ''}
+                            ${canModify && data.rarity > 1 ? `<button onclick="upgradeItem('${type}', '${data.id}')" ${state.energy < upgradeCost ? 'disabled' : ''} class="flex-1 py-3 rounded-xl font-black uppercase text-[10px] flex flex-col items-center justify-center border transition-all ${state.energy >= upgradeCost ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-white/5 border-white/10 text-slate-600 disabled:opacity-30'}"><i data-lucide="arrow-up-circle" class="w-4 h-4 mb-1"></i>Upgrade (${upgradeCost}E)</button>` : ''}
+                            ${canModify ? `<button onclick="burnItem('${type}', '${data.id}')" class="flex-1 py-3 rounded-xl font-black uppercase text-[10px] flex flex-col items-center justify-center bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-all"><i data-lucide="trash-2" class="w-4 h-4 mb-1"></i>Decouple</button>` : ''}
+                        </div>
+                        <button onclick="popInspect()" class="w-full bg-slate-200 text-slate-950 font-black py-3 rounded-xl uppercase tracking-widest text-[11px] shadow-lg active:scale-95 transition-all">Close Data</button>
+                    </div>
+                </div>`;
             lucide.createIcons();
         }
 
-        function setMachineCore(id, type) {
-            state.selectedMachineIds[type] = id;
-            popInspect();
-            render();
-            saveGame();
+        function pull(type, count) {
+            const machine = state.machines.find(m => m.id === state.selectedMachineIds[type]) || state.machines.find(m => m.type === type);
+            const cost = getPullCost(type, machine.rarity) * count;
+            if (state.gold < cost) return;
+            state.gold -= cost;
+
+            const resList = [];
+            const minis = state.machines.filter(m => ['Element', 'Class', 'Move'].includes(m.type) && state.selectedMachineIds[m.type] === m.id);
+            for(let i=0; i<count; i++) {
+                if (type === 'Unit') { 
+                    const res = generateUnit(machine.rarity, minis); 
+                    state.units.push(res.unit); resList.push(res.unit); 
+                    addPullLog(`[UNIT] ${res.unit.name} (${getRarity(res.unit.rarity).name})`);
+                    res.fabricLog.forEach(l => addPullLog(` - ${l}`));
+                } else if (type === 'World') {
+                    const r = rollRarity(machine.rarity);
+                    const world = { id: Math.random().toString(36).substr(2, 9), name: `${ADJECTIVES[Math.floor(Math.random()*ADJECTIVES.length)]} Sector`, rarity: r.id, goldRate: getRarity(r.id).multiplier * 0.08, desc: "Bridge Stabilized.", config: { unitRarity: r.id, minis: [...minis] } };
+                    state.worlds.push(world); resList.push(world); addPullLog(`[WORLD] ${world.name} (${r.name})`);
+                } else {
+                    const r = rollRarity(machine.rarity);
+                    const mType = ['Unit', 'World', 'Element', 'Class', 'Move'][Math.floor(Math.random()*5)];
+                    const core = { id: Math.random().toString(36).substr(2, 9), type: mType, rarity: r.id, level: 1 };
+                    state.machines.push(core); resList.push(core); addPullLog(`[CORE] ${core.type} (${getRarity(r.id).name})`);
+                }
+            }
+            showResults(type, resList); render(); saveGame();
         }
 
-        function upgradeItem(type, id) {
-            let item;
-            if (type === 'Machine') item = state.machines.find(m => m.id === id);
-            else if (type === 'Unit') item = state.units.find(u => u.id === id);
-            
-            if (!item) return;
-            const costMult = item.type === 'Meta' ? 1000 : 100;
-            const cost = Math.floor(getRarity(item.rarity).multiplier * costMult);
-            
-            if (state.energy >= cost && item.rarity > 1) {
-                state.energy -= cost;
-                item.rarity -= 1;
-                popInspect();
-                render();
-                saveGame();
-            }
+        function showResults(type, items) {
+            const m = document.getElementById('pull-results-modal');
+            m.innerHTML = `<div class="w-full max-w-sm scale-in"><h2 class="text-4xl font-black text-white italic mb-10 uppercase tracking-tighter">DATA RESOLVED</h2><div class="flex flex-wrap justify-center gap-3 mb-10 max-h-[40vh] overflow-y-auto custom-scrollbar">${items.map(i => `<div onclick="openInspect('${type==='Machine'?'Machine':type}', '${i.id}')" class="bg-white/5 border border-white/5 rounded-2xl p-4 cursor-pointer hover:bg-white/10 transition-all border-b-4 border-b-white/5 hover:border-b-blue-500">${renderRarityBadge(i.rarity, "mb-2")}<div class="text-white text-[10px] font-black uppercase truncate w-20 italic">${i.name || i.type}</div></div>`).join('')}</div><button onclick="document.getElementById('pull-results-modal').classList.add('hidden')" class="w-full py-5 bg-white text-slate-950 font-black rounded-2xl uppercase tracking-[0.2em] shadow-2xl active:scale-95 transition-all">MANIFEST COMPLETE</button></div>`;
+            m.classList.remove('hidden'); lucide.createIcons();
         }
 
         function burnItem(type, id) {
-            let item;
-            if (type === 'Machine') {
-                item = state.machines.find(m => m.id === id);
-                state.machines = state.machines.filter(m => m.id !== id);
-            } else if (type === 'Unit') {
-                item = state.units.find(u => u.id === id);
-                state.units = state.units.filter(u => u.id !== id);
+            const list = type === 'Machine' ? 'machines' : 'units';
+            const item = state[list].find(i => i.id === id);
+            if (item) { 
+                const gain = Math.floor(getRarity(item.rarity).multiplier * 10);
+                state.energy += gain; 
+                state[list] = state[list].filter(i => i.id !== id); 
+                addLog(`Decoupled ${item.name || item.type}. Received ${gain} Energy.`);
             }
-            if (item) {
-                const val = Math.floor(getRarity(item.rarity).multiplier * 10);
-                state.energy += val;
-                addLog(`Decoupled ${item.name || item.type}. +${val} E`);
-            }
-            popInspect();
-            render();
-            saveGame();
+            popInspect(); render(); saveGame();
         }
 
-        function burnAll(type) {
-            let count = 0;
-            let total = 0;
-            if (type === 'Unit') {
-                const toBurn = state.units.filter(u => !state.squadMembers.includes(u.id));
-                toBurn.forEach(u => {
-                    total += Math.floor(getRarity(u.rarity).multiplier * 10);
-                    count++;
-                });
-                state.units = state.units.filter(u => state.squadMembers.includes(u.id));
-            } else if (type === 'Machine') {
-                const sockets = Object.values(state.selectedMachineIds);
-                const toBurn = state.machines.filter(m => !sockets.includes(m.id));
-                toBurn.forEach(m => {
-                    total += Math.floor(getRarity(m.rarity).multiplier * 10);
-                    count++;
-                });
-                state.machines = state.machines.filter(m => sockets.includes(m.id));
-            }
-            state.energy += total;
-            addLog(`Mass Decouple: ${count} cores processed. +${total} Energy`);
-            render();
-            saveGame();
+        function upgradeItem(type, id) {
+            const item = (type === 'Machine' ? state.machines : state.units).find(i => i.id === id);
+            if (!item || item.rarity <= 1) return;
+            const cost = Math.floor(getRarity(item.rarity).multiplier * (item.type === 'Meta' ? 1000 : 100));
+            if (state.energy >= cost) { state.energy -= cost; item.rarity--; popInspect(); render(); saveGame(); }
         }
 
-        // --- COMBAT ENGINE LOOP ---
+        function toggleSquad(id, e) { e.stopPropagation(); if (state.squadMembers.includes(id)) state.squadMembers = state.squadMembers.filter(s => s !== id); else if (state.squadMembers.length < 3) state.squadMembers.push(id); render(); saveGame(); }
+        function retractWorld() { state.activeWorld = null; combatState.active = false; render(); saveGame(); }
+        function setWorld(id, e) { e.stopPropagation(); state.activeWorld = state.worlds.find(w => w.id === id); combatState.active = false; render(); saveGame(); }
+        function setMachineCore(id, type) { state.selectedMachineIds[type] = id; popInspect(); render(); saveGame(); }
+        function burnAll(type) { const l = type === 'Unit' ? 'units' : 'machines'; const prot = type === 'Unit' ? state.squadMembers : Object.values(state.selectedMachineIds); state[l].filter(i => !prot.includes(i.id)).forEach(i => state.energy += Math.floor(getRarity(i.rarity).multiplier * 10)); state[l] = state[l].filter(i => prot.includes(i.id)); render(); saveGame(); }
+
         setInterval(() => {
             if (!state.activeWorld || state.squadMembers.length === 0) return;
-
-            if (!combatState.active || combatState.playerTeam.length === 0 || combatState.enemyTeam.length === 0) {
-                combatState.playerTeam = state.squadMembers.map(id => {
-                    const u = state.units.find(u => u.id === id);
-                    return JSON.parse(JSON.stringify({ ...u, currentHp: u.stats.hp, atb: Math.random() * 20 }));
-                });
+            if (!combatState.active) {
+                combatState.playerTeam = state.squadMembers.map(id => { const u = state.units.find(u => u.id === id); return JSON.parse(JSON.stringify({ ...u, currentHp: u.stats.hp, atb: Math.random() * 20 })); });
                 combatState.enemyTeam = Array.from({ length: 3 }).map(() => generateUnit(state.activeWorld.config.unitRarity, state.activeWorld.config.minis).unit);
                 combatState.active = true;
-                updateCombatUI();
-                return;
+                addLog(`Bridge Anchored at ${state.activeWorld.name}. Initializing Scan...`);
             }
-
             const all = [...combatState.playerTeam, ...combatState.enemyTeam].filter(u => u.currentHp > 0);
             if (all.length === 0) return;
-
-            const minSpd = Math.min(...all.map(u => u.stats.spd));
-            const gain = 100 / 10;
-
-            const act = (actor, foes) => {
-                actor.atb = 0;
-                actor.moves = actor.moves.map(m => ({ ...m, currentCd: Math.max(0, m.currentCd - 1) }));
-                const target = foes.find(t => t.currentHp > 0);
-                if (target) {
-                    const move = actor.moves.find(m => m.currentCd === 0) || actor.moves[0];
+            const minS = Math.min(...all.map(u => u.stats.spd));
+            
+            const act = (a, f, isPlayer) => { 
+                a.atb = 0; 
+                const t = f.find(x => x.currentHp > 0); 
+                if (t) {
+                    const move = a.moves.find(m => m.currentCd === 0) || a.moves[0];
                     if (move.maxCd) move.currentCd = move.maxCd;
-                    const dmg = Math.max(1, Math.floor((actor.stats.atk * (move.power / 40)) - target.stats.def));
-                    target.currentHp -= dmg;
+                    const dmg = Math.max(1, Math.floor(a.stats.atk - t.stats.def));
+                    t.currentHp -= dmg; 
+                    if (isPlayer) addLog(`${a.name} uses ${move.name}: Manifests ${dmg} damage.`);
                 }
             };
 
-            combatState.playerTeam.forEach(u => {
+            [...combatState.playerTeam, ...combatState.enemyTeam].forEach(u => {
                 if (u.currentHp > 0) {
-                    u.atb += gain * (u.stats.spd / minSpd);
-                    if (u.atb >= 100) act(u, combatState.enemyTeam);
+                    u.atb += 10 * (u.stats.spd / minS);
+                    u.moves.forEach(m => { if(u.atb >= 10 && m.currentCd > 0) m.currentCd = Math.max(0, m.currentCd - 0.1); });
+                    if (u.atb >= 100) act(u, (combatState.playerTeam.includes(u) ? combatState.enemyTeam : combatState.playerTeam), combatState.playerTeam.includes(u));
                 }
             });
 
-            combatState.enemyTeam.forEach(u => {
-                if (u.currentHp > 0) {
-                    u.atb += gain * (u.stats.spd / minSpd);
-                    if (u.atb >= 100) act(u, combatState.playerTeam);
-                }
-            });
-
-            if (combatState.enemyTeam.every(e => e.currentHp <= 0)) {
+            if (combatState.enemyTeam.every(e => e.currentHp <= 0)) { 
                 const reward = Math.floor(state.activeWorld.goldRate * 100);
-                state.gold += reward;
-                addLog(`Victory! Earned ${reward}G`);
-                combatState.active = false;
-                combatState.playerTeam = [];
-                combatState.enemyTeam = [];
-                renderStats();
-                saveGame();
-            } else if (combatState.playerTeam.every(p => p.currentHp <= 0)) {
-                addLog(`Defeat. Bridge lost.`);
-                state.activeWorld = null;
-                combatState.active = false;
-                render();
-                saveGame();
+                state.gold += reward; addLog(`Sector Cleared. Captured ${reward} Gold.`); combatState.active = false; renderStats(); saveGame(); 
+            } else if (combatState.playerTeam.every(p => p.currentHp <= 0)) { 
+                addLog(`Squad Critical Failure. Bridge Terminated.`); state.activeWorld = null; combatState.active = false; render(); saveGame(); 
             }
-
             updateCombatUI();
         }, 100);
 
-        // --- INITIALIZATION ---
-        window.onload = () => {
-            loadGame();
-            switchView(state.view);
-            lucide.createIcons();
-        };
+        window.onload = () => { loadGame(); switchView(state.view); };
     </script>
 </body>
 </html>
-
 
