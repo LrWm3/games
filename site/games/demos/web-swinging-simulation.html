@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual-Web Infinite Slinger</title>
+    <meta name="game-description" content="Swing around a city with left and right webs">
+    <meta name="game-tags" content="demo, PC only, webgl, procedural">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #050515; }
+        #ui {
+            position: absolute; top: 20px; left: 20px; color: white;
+            background: rgba(0,0,0,0.85); padding: 15px; border-radius: 10px;
+            pointer-events: none; user-select: none; border: 1px solid #555;
+            min-width: 240px; z-index: 10;
+        }
+        .key { background: #333; padding: 2px 6px; border-radius: 4px; border: 1px solid #666; font-size: 0.8em; }
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 6px; height: 6px; border: 1px solid rgba(255,255,255,0.5); border-radius: 50%;
+            pointer-events: none;
+        }
+        .stat { margin-top: 8px; font-weight: bold; font-size: 0.9em; }
+        #speed { color: #00ffcc; }
+        #state { color: #ffcc00; }
+        #charge-container {
+            width: 100%; height: 8px; background: #222; margin-top: 10px; border-radius: 4px; overflow: hidden; display: none;
+        }
+        #charge-bar { width: 0%; height: 100%; background: #ff3300; }
+        #calibration-msg {
+            position: absolute; bottom: 20px; width: 100%; text-align: center; color: #aaa; font-size: 0.8em;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div><b>Controls:</b></div>
+        <div><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> - Move / Climb</div>
+        <div><span class="key">Space</span> - Charge Jump</div>
+        <div><span class="key">L-Click</span> - Left Web</div>
+        <div><span class="key">R-Click</span> - Right Web</div>
+        <div><span class="key">Shift</span> - Boost Swing</div>
+        <div class="stat" id="speed">Speed: 0 km/h</div>
+        <div class="stat" id="state">State: Grounded</div>
+        <div id="charge-container">
+            <div id="charge-bar"></div>
+        </div>
+    </div>
+    <div id="crosshair"></div>
+    <div id="calibration-msg">Move mouse to calibrate...</div>
+
+    <script>
+        // --- CONFIG ---
+        const BLOCK_SIZE = 60;
+        const RENDER_DISTANCE = 12; 
+        const GRAVITY = -80.0; // Slightly higher gravity for better feel
+        const WALK_SPEED = 25.0;
+        const RUN_SPEED = 45.0;
+        const CLIMB_SPEED = 30.0;
+        const JUMP_FORCE = 25.0;
+        const AIR_CONTROL = 2.0;
+        const MAX_JUMP_CHARGE_TIME = 2.5;
+        const MOUSE_SENSITIVITY = 0.0025;
+
+        // --- CORE ---
+        let scene, camera, renderer, clock;
+        let player, playerVelocity = new THREE.Vector3();
+        let isGrounded = false, isClimbing = false;
+        let jumpChargeTime = 0, isChargingJump = false;
+        
+        let pitch = 0; 
+        let mouseBiasX = 0, mouseBiasY = 0, calibrationSamples = 0, isCalibrated = false;
+
+        // Dual Web System
+        const webL = { active: false, anchor: new THREE.Vector3(), length: 0, line: null };
+        const webR = { active: false, anchor: new THREE.Vector3(), length: 0, line: null };
+        let webReticle;
+
+        const keys = {};
+        const chunks = new Map(); 
+        let windowTexture;
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a20);
+            scene.fog = new THREE.FogExp2(0x0a0a20, 0.0008);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 20000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            clock = new THREE.Clock();
+            windowTexture = createProceduralWindowTexture();
+
+            // --- BOOSTED LIGHTING ---
+            scene.add(new THREE.AmbientLight(0xffffff, 2.5)); 
+            
+            const sun = new THREE.DirectionalLight(0xffffff, 3.0);
+            sun.position.set(1000, 2000, 500);
+            sun.castShadow = true;
+            scene.add(sun);
+
+            const skyFill = new THREE.DirectionalLight(0x88aaff, 1.5); 
+            skyFill.position.set(-1000, 800, -1000);
+            scene.add(skyFill);
+
+            createGround();
+            createPlayer();
+            webL.line = createWebLine(0xffffff);
+            webR.line = createWebLine(0xffffff);
+            createReticle();
+
+            // Safe Spawn: Intersection of roads (0,0) is skipped in updateCity for building generation
+            player.position.set(0, 5, 0); 
+            updateCity();
+
+            window.addEventListener('contextmenu', e => e.preventDefault());
+
+            window.addEventListener('keydown', e => {
+                keys[e.code] = true;
+                if (e.code === 'Space' && (isGrounded || isClimbing)) {
+                    isChargingJump = true;
+                    document.getElementById('charge-container').style.display = 'block';
+                }
+            });
+
+            window.addEventListener('keyup', e => {
+                keys[e.code] = false;
+                if (e.code === 'Space' && isChargingJump) performJump();
+            });
+
+            window.addEventListener('mousedown', e => {
+                if (e.button === 0) tryAttachWeb(webL);
+                if (e.button === 2) tryAttachWeb(webR);
+            });
+
+            window.addEventListener('mouseup', e => {
+                if (e.button === 0) { webL.active = false; webL.line.visible = false; }
+                if (e.button === 2) { webR.active = false; webR.line.visible = false; }
+            });
+
+            window.addEventListener('resize', onWindowResize);
+
+            document.addEventListener('click', () => {
+                if(document.pointerLockElement !== document.body) document.body.requestPointerLock();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (document.pointerLockElement === document.body) {
+                    if (!isCalibrated) {
+                        mouseBiasX += e.movementX; mouseBiasY += e.movementY;
+                        if (++calibrationSamples >= 15) {
+                            mouseBiasX /= 15; mouseBiasY /= 15; isCalibrated = true;
+                            document.getElementById('calibration-msg').style.display = 'none';
+                        }
+                        return;
+                    }
+                    player.rotation.y -= (e.movementX - mouseBiasX) * MOUSE_SENSITIVITY;
+                    pitch += (e.movementY - mouseBiasY) * MOUSE_SENSITIVITY;
+                    pitch = Math.max(-1.48, Math.min(1.48, pitch));
+                }
+            });
+
+            animate();
+        }
+
+        function createProceduralWindowTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#0a0a12';
+            ctx.fillRect(0,0,512,512);
+            for(let y=20; y<490; y+=60) {
+                for(let x=20; x<490; x+=40) {
+                    if (Math.random() > 0.4) {
+                        ctx.fillStyle = Math.random() > 0.85 ? '#ffffff' : '#ffd700';
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = ctx.fillStyle;
+                        ctx.fillRect(x, y, 28, 38);
+                    }
+                }
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        function createGround() {
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(30000, 30000), new THREE.MeshStandardMaterial({ color: 0x050510, roughness: 1 }));
+            ground.rotation.x = -Math.PI / 2;
+            scene.add(ground);
+        }
+
+        function createBuilding(gx, gz) {
+            const seed = Math.abs((gx * 739) ^ (gz * 911));
+            const rand = (s) => (Math.sin(s) * 10000) % 1;
+            const r = Math.abs(rand(seed));
+            
+            let h = 50 + Math.abs(rand(seed + 1)) * 120;
+            let isMega = false;
+            if (r < 0.18) { 
+                isMega = true;
+                h *= (3.5 + Math.abs(rand(seed + 2)) * 6.5);
+            }
+
+            const w = 30 + Math.abs(rand(seed + 3)) * 10;
+            const d = 30 + Math.abs(rand(seed + 4)) * 10;
+            const hue = 0.58 + (Math.abs(rand(seed + 5)) * 0.08);
+            const baseColor = new THREE.Color().setHSL(hue, 0.4, isMega ? 0.6 : 0.4);
+
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: baseColor,
+                map: windowTexture,
+                emissive: baseColor,
+                emissiveIntensity: 0.8,
+                roughness: 0.2,
+                metalness: 0.4
+            });
+            
+            const group = new THREE.Group();
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+            mesh.position.y = h / 2;
+            mesh.material.map.repeat.set(w / 12, h / 20);
+            group.add(mesh);
+
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(w * 1.05, 8, d * 1.05), new THREE.MeshStandardMaterial({ color: 0x1a1a1a }));
+            roof.position.y = h;
+            group.add(roof);
+
+            if (isMega) {
+                const light = new THREE.Mesh(new THREE.SphereGeometry(2.5), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+                light.position.set(0, h + 15, 0);
+                light.userData.isBlinker = true;
+                group.add(light);
+            }
+
+            group.position.set(gx * BLOCK_SIZE, 0, gz * BLOCK_SIZE);
+            scene.add(group);
+
+            // Mathematical Box3 is more reliable than setFromObject on uninitialized objects
+            const box = new THREE.Box3(
+                new THREE.Vector3(gx * BLOCK_SIZE - w/2, 0, gz * BLOCK_SIZE - d/2),
+                new THREE.Vector3(gx * BLOCK_SIZE + w/2, h, gz * BLOCK_SIZE + d/2)
+            );
+
+            return { group, bounds: box, mesh };
+        }
+
+        function updateCity() {
+            const px = Math.round(player.position.x / BLOCK_SIZE);
+            const pz = Math.round(player.position.z / BLOCK_SIZE);
+
+            for (let x = px - RENDER_DISTANCE; x <= px + RENDER_DISTANCE; x++) {
+                for (let z = pz - RENDER_DISTANCE; z <= pz + RENDER_DISTANCE; z++) {
+                    const key = `${x},${z}`;
+                    // Skip roads on 3x3 grid
+                    if ((x % 3 !== 0 && z % 3 !== 0) && !chunks.has(key)) {
+                        chunks.set(key, createBuilding(x, z));
+                    }
+                }
+            }
+
+            for (let [key, data] of chunks) {
+                const [cx, cz] = key.split(',').map(Number);
+                if (Math.abs(cx - px) > RENDER_DISTANCE + 2 || Math.abs(cz - pz) > RENDER_DISTANCE + 2) {
+                    scene.remove(data.group);
+                    chunks.delete(key);
+                }
+            }
+
+            const time = clock.getElapsedTime();
+            chunks.forEach(data => {
+                data.group.traverse(obj => { if (obj.userData.isBlinker) obj.visible = Math.sin(time * 10) > 0; });
+            });
+        }
+
+        function createPlayer() {
+            player = new THREE.Group();
+            const mat = new THREE.MeshPhongMaterial({ color: 0xd32f2f });
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.2, 12), mat);
+            body.position.y = 1.1; player.add(body);
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 12), mat);
+            head.position.y = 1.8; player.add(head);
+            const eyes = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.25), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            eyes.position.set(0, 1.9, 0.4); player.add(eyes);
+            scene.add(player);
+        }
+
+        function createWebLine(color) {
+            const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: color, linewidth: 8 }));
+            line.frustumCulled = false; line.visible = false;
+            scene.add(line);
+            return line;
+        }
+
+        function createReticle() {
+            webReticle = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.5, 32), new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthTest: false }));
+            webReticle.visible = false; scene.add(webReticle);
+        }
+
+        function performJump() {
+            const charge = Math.min(jumpChargeTime / MAX_JUMP_CHARGE_TIME, 1);
+            playerVelocity.y = JUMP_FORCE * (1 + charge * 4.0);
+            if (isClimbing) {
+                const backDir = new THREE.Vector3(0, 0, -25).applyQuaternion(player.quaternion);
+                playerVelocity.add(backDir);
+            }
+            isGrounded = isClimbing = isChargingJump = false; jumpChargeTime = 0;
+            document.getElementById('charge-container').style.display = 'none';
+        }
+
+        function tryAttachWeb(webObj) {
+            const raycaster = new THREE.Raycaster();
+            const dir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(1, 0, 0), pitch).applyQuaternion(player.quaternion).normalize();
+            raycaster.set(player.position.clone().add(new THREE.Vector3(0, 1.5, 0)), dir);
+            
+            const targets = [];
+            chunks.forEach(d => targets.push(d.mesh));
+
+            const intersects = raycaster.intersectObjects(targets);
+            if (intersects.length > 0) {
+                const hit = intersects[0];
+                webObj.anchor.copy(hit.point);
+                webObj.length = player.position.distanceTo(hit.point);
+                if (webObj.length > 5) {
+                    webObj.active = true;
+                    webObj.line.visible = true;
+                    isClimbing = false;
+                    playerVelocity.add(dir.multiplyScalar(35));
+                    playerVelocity.y += 15;
+                }
+            }
+        }
+
+        function checkCollisions() {
+            const r = 1.2; // Player collision radius
+            const pos = player.position;
+            let onWall = false;
+
+            if (playerVelocity.y < 0) isGrounded = false;
+
+            chunks.forEach(data => {
+                const box = data.bounds;
+                
+                // ROOF DETECTION: Check if X/Z are inside building footprint
+                if (pos.x > box.min.x && pos.x < box.max.x && pos.z > box.min.z && pos.z < box.max.z) {
+                    // Check if player's Y is near roof height while descending
+                    if (pos.y >= box.max.y - 4.0 && pos.y <= box.max.y + 1.5 && playerVelocity.y <= 0) {
+                        pos.y = box.max.y; 
+                        playerVelocity.y = 0; 
+                        isGrounded = true; 
+                        isClimbing = false;
+                        return;
+                    }
+                }
+
+                // WALL COLLISION: Check if player is between building top and bottom
+                if (pos.y < box.max.y && pos.y >= box.min.y) {
+                    // Check if player footprint overlaps building footprint (with radius)
+                    if (pos.x + r > box.min.x && pos.x - r < box.max.x && pos.z + r > box.min.z && pos.z - r < box.max.z) {
+                        onWall = true;
+                        
+                        // Push player out of building
+                        const dx1 = Math.abs(pos.x + r - box.min.x), dx2 = Math.abs(pos.x - r - box.max.x);
+                        const dz1 = Math.abs(pos.z + r - box.min.z), dz2 = Math.abs(pos.z - r - box.max.z);
+                        const min = Math.min(dx1, dx2, dz1, dz2);
+                        
+                        if (min === dx1) pos.x = box.min.x - r; 
+                        else if (min === dx2) pos.x = box.max.x + r;
+                        else if (min === dz1) pos.z = box.min.z - r; 
+                        else if (min === dz2) pos.z = box.max.z + r;
+                        
+                        // Climbing Trigger: Hold W against a wall
+                        if (!(webL.active || webR.active) && keys['KeyW']) {
+                            isClimbing = true;
+                        }
+                        
+                        // Cancel horizontal velocity on impact
+                        if (min === dx1 || min === dx2) playerVelocity.x = 0;
+                        if (min === dz1 || min === dz2) playerVelocity.z = 0;
+                    }
+                }
+            });
+
+            if (!onWall) isClimbing = false;
+        }
+
+        function handleMovement(dt) {
+            if (isChargingJump) jumpChargeTime += dt;
+            document.getElementById('charge-bar').style.width = Math.min((jumpChargeTime / MAX_JUMP_CHARGE_TIME) * 100, 100) + '%';
+
+            const input = new THREE.Vector3();
+            if (keys['KeyW']) input.z += 1; if (keys['KeyS']) input.z -= 1;
+            if (keys['KeyA']) input.x += 1; if (keys['KeyD']) input.x -= 1;
+            input.normalize();
+            const moveDir = input.clone().applyQuaternion(player.quaternion);
+
+            if (isClimbing) {
+                playerVelocity.y = keys['KeyW'] ? CLIMB_SPEED : (keys['KeyS'] ? -CLIMB_SPEED : 0);
+                playerVelocity.x = playerVelocity.z = 0;
+            } else if (webL.active || webR.active) {
+                // SWINGING PHYSICS
+                playerVelocity.y += GRAVITY * dt;
+                
+                let nextPos = player.position.clone().add(playerVelocity.clone().multiplyScalar(dt));
+
+                const applyConstraint = (web) => {
+                    if (!web.active) return;
+                    const dist = nextPos.distanceTo(web.anchor);
+                    if (dist > web.length) {
+                        const toAnchor = new THREE.Vector3().subVectors(web.anchor, nextPos).normalize();
+                        nextPos.add(toAnchor.multiplyScalar(dist - web.length));
+                        
+                        const radial = new THREE.Vector3().subVectors(player.position, web.anchor).normalize();
+                        const vDotR = playerVelocity.dot(radial);
+                        if (vDotR > 0) playerVelocity.sub(radial.multiplyScalar(vDotR));
+
+                        // Pumping energy while swinging
+                        if (keys['ShiftLeft'] || keys['Space']) {
+                            playerVelocity.add(playerVelocity.clone().normalize().multiplyScalar(90 * dt));
+                        }
+                    }
+                };
+
+                applyConstraint(webL);
+                applyConstraint(webR);
+
+                const updateLine = (web) => {
+                    if (!web.active) return;
+                    const p = web.line.geometry.attributes.position.array;
+                    p[0] = player.position.x; p[1] = player.position.y + 1.2; p[2] = player.position.z;
+                    p[3] = web.anchor.x; p[4] = web.anchor.y; p[5] = web.anchor.z;
+                    web.line.geometry.attributes.position.needsUpdate = true;
+                };
+                updateLine(webL);
+                updateLine(webR);
+            } else {
+                // GROUND / AIR PHYSICS
+                const speed = keys['ShiftLeft'] ? RUN_SPEED : WALK_SPEED;
+                const acc = isGrounded ? 35 : AIR_CONTROL;
+                if (input.length() > 0) {
+                    playerVelocity.x = THREE.MathUtils.lerp(playerVelocity.x, moveDir.x * speed, acc * dt);
+                    playerVelocity.z = THREE.MathUtils.lerp(playerVelocity.z, moveDir.z * speed, acc * dt);
+                } else if (isGrounded) {
+                    playerVelocity.x = THREE.MathUtils.lerp(playerVelocity.x, 0, 20 * dt);
+                    playerVelocity.z = THREE.MathUtils.lerp(playerVelocity.z, 0, 20 * dt);
+                }
+                playerVelocity.y += GRAVITY * dt;
+            }
+
+            player.position.add(playerVelocity.clone().multiplyScalar(dt));
+            checkCollisions();
+
+            if (player.position.y < 0) {
+                player.position.y = 0; playerVelocity.y = 0; isGrounded = true; isClimbing = false;
+                webL.active = webR.active = false;
+                webL.line.visible = webR.line.visible = false;
+            }
+
+            document.getElementById('speed').innerText = `Speed: ${Math.round(playerVelocity.length())} km/h`;
+            let stateText = (webL.active && webR.active) ? "Dual Swung" : (webL.active || webR.active ? "Swinging" : (isClimbing ? "Climbing" : (isGrounded ? "Grounded" : "Airborne")));
+            document.getElementById('state').innerText = `State: ${stateText}`;
+        }
+
+        function updateReticle() {
+            const raycaster = new THREE.Raycaster();
+            const dir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(1, 0, 0), pitch).applyQuaternion(player.quaternion).normalize();
+            raycaster.set(player.position.clone().add(new THREE.Vector3(0, 1.5, 0)), dir);
+            const targets = [];
+            chunks.forEach(d => targets.push(d.mesh));
+            const intersects = raycaster.intersectObjects(targets);
+            if (intersects.length > 0) {
+                const hit = intersects[0];
+                webReticle.position.copy(hit.point).add(hit.face.normal.clone().multiplyScalar(0.5));
+                webReticle.lookAt(hit.point.clone().add(hit.face.normal));
+                webReticle.material.color.set(player.position.distanceTo(hit.point) > 5 ? 0x00ffff : 0xff3300);
+                webReticle.visible = true;
+            } else webReticle.visible = false;
+        }
+
+        function updateCamera() {
+            const camOffset = new THREE.Vector3(0, 8, -25).applyAxisAngle(new THREE.Vector3(1, 0, 0), pitch).applyQuaternion(player.quaternion);
+            camera.position.lerp(player.position.clone().add(camOffset), 0.2);
+            camera.lookAt(player.position.clone().add(new THREE.Vector3(0, 4, 8).applyQuaternion(player.quaternion)));
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.04);
+            updateCity();
+            handleMovement(dt);
+            updateReticle();
+            updateCamera();
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+</body>
+</html>
