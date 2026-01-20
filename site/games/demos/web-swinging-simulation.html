@@ -64,10 +64,11 @@
         const AIR_CONTROL = 2.0;
         const MAX_JUMP_CHARGE_TIME = 2.5;
         const MOUSE_SENSITIVITY = 0.0025;
+        const MAX_AIM_DISTANCE = 300;
 
         // --- CORE ---
         let scene, camera, renderer, clock;
-        let player, playerVelocity = new THREE.Vector3();
+        let player, playerModel, playerVelocity = new THREE.Vector3();
         let isGrounded = false, isClimbing = false;
         let jumpChargeTime = 0, isChargingJump = false;
         
@@ -77,7 +78,7 @@
         // Dual Web System
         const webL = { active: false, anchor: new THREE.Vector3(), length: 0, line: null };
         const webR = { active: false, anchor: new THREE.Vector3(), length: 0, line: null };
-        let webReticle;
+        let webReticle, laserBeam, laserDot;
 
         const keys = {};
         const chunks = new Map(); 
@@ -294,13 +295,15 @@
 
         function createPlayer() {
             player = new THREE.Group();
+            playerModel = new THREE.Group();
+            player.add(playerModel);
             const mat = new THREE.MeshPhongMaterial({ color: 0xd32f2f });
             const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.2, 12), mat);
-            body.position.y = 1.1; player.add(body);
+            body.position.y = 1.1; playerModel.add(body);
             const head = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 12), mat);
-            head.position.y = 1.8; player.add(head);
+            head.position.y = 1.8; playerModel.add(head);
             const eyes = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.25), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-            eyes.position.set(0, 1.9, 0.4); player.add(eyes);
+            eyes.position.set(0, 1.9, 0.4); playerModel.add(eyes);
             scene.add(player);
         }
 
@@ -314,6 +317,12 @@
         function createReticle() {
             webReticle = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.5, 32), new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthTest: false }));
             webReticle.visible = false; scene.add(webReticle);
+
+            laserBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1, 10), new THREE.MeshBasicMaterial({ color: 0xff4fa3, transparent: true, opacity: 0.45, depthTest: false }));
+            scene.add(laserBeam);
+
+            laserDot = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 10), new THREE.MeshBasicMaterial({ color: 0xff4fa3, transparent: true, opacity: 0.7, depthTest: false }));
+            scene.add(laserDot);
         }
 
         function performJump() {
@@ -424,10 +433,15 @@
 
                 const applyConstraint = (web) => {
                     if (!web.active) return;
-                    const dist = nextPos.distanceTo(web.anchor);
-                    if (dist > web.length) {
+                    const currentDist = player.position.distanceTo(web.anchor);
+                    if (currentDist < web.length) {
+                        web.length = currentDist;
+                    }
+
+                    const distAfterMove = nextPos.distanceTo(web.anchor);
+                    if (distAfterMove > web.length) {
                         const toAnchor = new THREE.Vector3().subVectors(web.anchor, nextPos).normalize();
-                        nextPos.add(toAnchor.multiplyScalar(dist - web.length));
+                        nextPos.add(toAnchor.multiplyScalar(distAfterMove - web.length));
                         
                         const radial = new THREE.Vector3().subVectors(player.position, web.anchor).normalize();
                         const vDotR = playerVelocity.dot(radial);
@@ -468,6 +482,14 @@
 
             player.position.add(playerVelocity.clone().multiplyScalar(dt));
             checkCollisions();
+            const horizontalSpeed = Math.hypot(playerVelocity.x, playerVelocity.z);
+            const isWebbed = webL.active || webR.active;
+            if (!isGrounded && !isWebbed && horizontalSpeed >= 50) {
+                const spinSpeed = THREE.MathUtils.clamp((horizontalSpeed - 50) * 0.02, 0, 6);
+                playerModel.rotation.x += spinSpeed * dt;
+            } else {
+                playerModel.rotation.x = THREE.MathUtils.lerp(playerModel.rotation.x, 0, 6 * dt);
+            }
 
             if (player.position.y < 0) {
                 player.position.y = 0; playerVelocity.y = 0; isGrounded = true; isClimbing = false;
@@ -486,7 +508,8 @@
         function updateReticle() {
             const raycaster = new THREE.Raycaster();
             const dir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(1, 0, 0), pitch).applyQuaternion(player.quaternion).normalize();
-            raycaster.set(player.position.clone().add(new THREE.Vector3(0, 1.5, 0)), dir);
+            const origin = player.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+            raycaster.set(origin, dir);
             
             const targets = [];
             chunks.forEach(d => targets.push(d.mesh));
@@ -506,9 +529,23 @@
 
                 webReticle.material.color.set(dist > 5 ? 0x00ffff : 0xff3300);
                 webReticle.visible = true;
+                const beamDir = hit.point.clone().sub(origin).normalize();
+                const beamLen = origin.distanceTo(hit.point);
+                laserBeam.position.copy(origin).add(beamDir.clone().multiplyScalar(beamLen * 0.5));
+                laserBeam.scale.set(1, beamLen, 1);
+                laserBeam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), beamDir);
+                laserDot.position.copy(hit.point);
             } else {
                 webReticle.visible = false;
+                const end = origin.clone().add(dir.clone().multiplyScalar(MAX_AIM_DISTANCE));
+                laserBeam.position.copy(origin).add(dir.clone().multiplyScalar(MAX_AIM_DISTANCE * 0.5));
+                laserBeam.scale.set(1, MAX_AIM_DISTANCE, 1);
+                laserBeam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+                laserDot.position.copy(end);
             }
+
+            laserBeam.visible = true;
+            laserDot.visible = true;
         }
 
         function updateCamera() {
