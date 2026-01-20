@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -24,6 +24,7 @@
         .stat { margin-top: 8px; font-weight: bold; font-size: 0.9em; }
         #speed { color: #00ffcc; }
         #state { color: #ffcc00; }
+        #height { color: #a066ff; } /* A nice purple/violet color */
         #charge-container {
             width: 100%; height: 8px; background: #222; margin-top: 10px; border-radius: 4px; overflow: hidden; display: none;
         }
@@ -42,6 +43,7 @@
         <div><span class="key">R-Click</span> - Right Web</div>
         <div><span class="key">Shift</span> - Boost Swing</div>
         <div class="stat" id="speed">Speed: 0 km/h</div>
+        <div class="stat" id="height">Height: 0 m</div>
         <div class="stat" id="state">State: Grounded</div>
         <div id="charge-container">
             <div id="charge-bar"></div>
@@ -153,8 +155,8 @@
                 if (document.pointerLockElement === document.body) {
                     if (!isCalibrated) {
                         mouseBiasX += e.movementX; mouseBiasY += e.movementY;
-                        if (++calibrationSamples >= 15) {
-                            mouseBiasX /= 15; mouseBiasY /= 15; isCalibrated = true;
+                        if (++calibrationSamples >= 3) {
+                            mouseBiasX /= 3; mouseBiasY /= 3; isCalibrated = true;
                             document.getElementById('calibration-msg').style.display = 'none';
                         }
                         return;
@@ -195,16 +197,27 @@
             scene.add(ground);
         }
 
-        function createBuilding(gx, gz) {
+        function createBuilding(gx, gz, py) {
             const seed = Math.abs((gx * 739) ^ (gz * 911));
             const rand = (s) => (Math.sin(s) * 10000) % 1;
             const r = Math.abs(rand(seed));
-            
-            let h = 50 + Math.abs(rand(seed + 1)) * 120;
+
+            // 1. Calculate the "typical" random height components
+            const variance = Math.abs(rand(seed + 1)) * 120;
+            const baseHeight = 50 + variance;
+    
+            let h = baseHeight;
             let isMega = false;
             if (r < 0.18) { 
-                isMega = true;
-                h *= (3.5 + Math.abs(rand(seed + 2)) * 6.5);
+              isMega = true;
+        
+              // 2. The "Typical Mega" calculation (from your original code)
+              const megaMultiplier = (3.5 + Math.abs(rand(seed + 2)) * 6.5);
+              const typicalMegaHeight = baseHeight * megaMultiplier;
+
+              // 3. Set height to Player Y + typical generation, 
+              // but keep it at least as tall as a standard mega building
+              h = Math.max(py + typicalMegaHeight, typicalMegaHeight);
             }
 
             const w = 30 + Math.abs(rand(seed + 3)) * 10;
@@ -253,13 +266,14 @@
         function updateCity() {
             const px = Math.round(player.position.x / BLOCK_SIZE);
             const pz = Math.round(player.position.z / BLOCK_SIZE);
+            const py = Math.round(player.position.y);
 
             for (let x = px - RENDER_DISTANCE; x <= px + RENDER_DISTANCE; x++) {
                 for (let z = pz - RENDER_DISTANCE; z <= pz + RENDER_DISTANCE; z++) {
                     const key = `${x},${z}`;
                     // Skip roads on 3x3 grid
                     if ((x % 3 !== 0 && z % 3 !== 0) && !chunks.has(key)) {
-                        chunks.set(key, createBuilding(x, z));
+                        chunks.set(key, createBuilding(x, z, py));
                     }
                 }
             }
@@ -462,6 +476,9 @@
             }
 
             document.getElementById('speed').innerText = `Speed: ${Math.round(playerVelocity.length())} km/h`;
+            const currentHeight = Math.max(0, Math.round(player.position.y));
+            const heightStr = currentHeight.toString().padStart(5, '0');
+            document.getElementById('height').innerText = `ALT: ${heightStr} m`;
             let stateText = (webL.active && webR.active) ? "Dual Swung" : (webL.active || webR.active ? "Swinging" : (isClimbing ? "Climbing" : (isGrounded ? "Grounded" : "Airborne")));
             document.getElementById('state').innerText = `State: ${stateText}`;
         }
@@ -470,16 +487,28 @@
             const raycaster = new THREE.Raycaster();
             const dir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(1, 0, 0), pitch).applyQuaternion(player.quaternion).normalize();
             raycaster.set(player.position.clone().add(new THREE.Vector3(0, 1.5, 0)), dir);
+            
             const targets = [];
             chunks.forEach(d => targets.push(d.mesh));
             const intersects = raycaster.intersectObjects(targets);
+
             if (intersects.length > 0) {
                 const hit = intersects[0];
+                const dist = player.position.distanceTo(hit.point);
+
                 webReticle.position.copy(hit.point).add(hit.face.normal.clone().multiplyScalar(0.5));
                 webReticle.lookAt(hit.point.clone().add(hit.face.normal));
-                webReticle.material.color.set(player.position.distanceTo(hit.point) > 5 ? 0x00ffff : 0xff3300);
+
+                // --- NEW SCALING LOGIC ---
+                // Keeps the reticle visually consistent regardless of distance
+                const scaleFactor = dist * 0.0125; 
+                webReticle.scale.set(scaleFactor, scaleFactor, 1);
+
+                webReticle.material.color.set(dist > 5 ? 0x00ffff : 0xff3300);
                 webReticle.visible = true;
-            } else webReticle.visible = false;
+            } else {
+                webReticle.visible = false;
+            }
         }
 
         function updateCamera() {
@@ -507,4 +536,4 @@
         init();
     </script>
 </body>
-</html>
+</html>>>
