@@ -38,7 +38,7 @@
     <div id="ui">
         <div><b>Controls:</b></div>
         <div><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> - Move / Climb</div>
-        <div><span class="key">Space</span> - Charge Jump</div>
+        <div><span class="key">Space</span> - Jump (on ground) / Bounce (web & air)</div>
         <div><span class="key">L-Click</span> - Left Web</div>
         <div><span class="key">R-Click</span> - Right Web</div>
         <div><span class="key">Shift</span> - Boost Swing</div>
@@ -82,7 +82,7 @@
 
         const keys = {};
         const chunks = new Map(); 
-        let windowTexture;
+        let windowTextureSmall, windowTextureMega;
 
         function init() {
             scene = new THREE.Scene();
@@ -97,7 +97,10 @@
             document.body.appendChild(renderer.domElement);
 
             clock = new THREE.Clock();
-            windowTexture = createProceduralWindowTexture();
+            windowTextureSmall = createProceduralWindowTexture();
+            windowTextureMega = createProceduralWindowTexture();
+            windowTextureSmall.repeat.set(3, 6);
+            windowTextureMega.repeat.set(5, 16);
 
             // --- BOOSTED LIGHTING ---
             scene.add(new THREE.AmbientLight(0xffffff, 2.5)); 
@@ -228,7 +231,7 @@
 
             const mat = new THREE.MeshStandardMaterial({ 
                 color: baseColor,
-                map: windowTexture,
+                map: isMega ? windowTextureMega : windowTextureSmall,
                 emissive: baseColor,
                 emissiveIntensity: 0.8,
                 roughness: 0.2,
@@ -238,7 +241,6 @@
             const group = new THREE.Group();
             const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
             mesh.position.y = h / 2;
-            mesh.material.map.repeat.set(w / 12, h / 20);
             group.add(mesh);
 
             const roof = new THREE.Mesh(new THREE.BoxGeometry(w * 1.05, 8, d * 1.05), new THREE.MeshStandardMaterial({ color: 0x1a1a1a }));
@@ -402,9 +404,13 @@
                             isClimbing = true;
                         }
                         
-                        // Cancel horizontal velocity on impact
-                        if (min === dx1 || min === dx2) playerVelocity.x = 0;
-                        if (min === dz1 || min === dz2) playerVelocity.z = 0;
+                        // Cancel or bounce horizontal velocity on impact
+                        if (min === dx1 || min === dx2) {
+                            playerVelocity.x = keys['Space'] ? -playerVelocity.x : 0;
+                        }
+                        if (min === dz1 || min === dz2) {
+                            playerVelocity.z = keys['Space'] ? -playerVelocity.z : 0;
+                        }
                     }
                 }
             });
@@ -485,7 +491,7 @@
             const horizontalSpeed = Math.hypot(playerVelocity.x, playerVelocity.z);
             const isWebbed = webL.active || webR.active;
             if (!isGrounded && !isWebbed && horizontalSpeed >= 50) {
-                const spinSpeed = THREE.MathUtils.clamp((horizontalSpeed - 50) * 0.02, 0, 6);
+                const spinSpeed = THREE.MathUtils.clamp((horizontalSpeed - 50) * 0.06, 0, 72);
                 playerModel.rotation.x += spinSpeed * dt;
             } else {
                 playerModel.rotation.x = THREE.MathUtils.lerp(playerModel.rotation.x, 0, 6 * dt);
