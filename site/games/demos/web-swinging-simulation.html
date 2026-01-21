@@ -32,6 +32,11 @@
         #calibration-msg {
             position: absolute; bottom: 20px; width: 100%; text-align: center; color: #aaa; font-size: 0.8em;
         }
+        #chunk-coords {
+            position: absolute; top: 20px; right: 20px; color: #c9f0ff;
+            background: rgba(0,0,0,0.7); padding: 8px 10px; border-radius: 8px;
+            border: 1px solid #3a4c5a; font-size: 0.85em; pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -59,6 +64,7 @@
         </div>
     </div>
     <div id="crosshair"></div>
+    <div id="chunk-coords">Chunk: 0, 0</div>
     <div id="calibration-msg">Move mouse to calibrate...</div>
 
     <script>
@@ -77,6 +83,8 @@
         const SWING_CONTROL = 12.0;
         const REEL_UNLOCK_HEIGHT = 2000;
         const BOUNCE_UNLOCK_HEIGHT = 10000;
+        const WORLD_SEED = 1337;
+        const INITIAL_CHUNK_HEIGHTS = {};
 
         // --- CORE ---
         let scene, camera, renderer, clock;
@@ -98,6 +106,7 @@
 
         const keys = {};
         const chunks = new Map(); 
+        const chunkHeights = new Map();
         let windowTextureSmall, windowTextureMega;
 
         function init() {
@@ -113,8 +122,8 @@
             document.body.appendChild(renderer.domElement);
 
             clock = new THREE.Clock();
-            windowTextureSmall = createProceduralWindowTexture();
-            windowTextureMega = createProceduralWindowTexture();
+            windowTextureSmall = createProceduralWindowTexture(WORLD_SEED ^ 0x9e3779b9);
+            windowTextureMega = createProceduralWindowTexture(WORLD_SEED ^ 0x85ebca6b);
             windowTextureSmall.repeat.set(3, 6);
             windowTextureMega.repeat.set(5, 16);
 
@@ -135,6 +144,9 @@
             webL.line = createWebLine(0xffffff);
             webR.line = createWebLine(0xffffff);
             createReticle();
+            Object.entries(INITIAL_CHUNK_HEIGHTS).forEach(([key, height]) => {
+                chunkHeights.set(key, height);
+            });
 
             // Safe Spawn: Intersection of roads (0,0) is skipped in updateCity for building generation
             player.position.set(0, 5, 0); 
@@ -198,16 +210,27 @@
             animate();
         }
 
-        function createProceduralWindowTexture() {
+        function mulberry32(seed) {
+            let t = seed >>> 0;
+            return () => {
+                t += 0x6D2B79F5;
+                let r = Math.imul(t ^ (t >>> 15), 1 | t);
+                r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+                return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+            };
+        }
+
+        function createProceduralWindowTexture(seed) {
             const canvas = document.createElement('canvas');
             canvas.width = 512; canvas.height = 512;
             const ctx = canvas.getContext('2d');
+            const rand = mulberry32(seed);
             ctx.fillStyle = '#0a0a12';
             ctx.fillRect(0,0,512,512);
             for(let y=20; y<490; y+=60) {
                 for(let x=20; x<490; x+=40) {
-                    if (Math.random() > 0.4) {
-                        ctx.fillStyle = Math.random() > 0.85 ? '#ffffff' : '#ffd700';
+                    if (rand() > 0.4) {
+                        ctx.fillStyle = rand() > 0.85 ? '#ffffff' : '#ffd700';
                         ctx.shadowBlur = 10;
                         ctx.shadowColor = ctx.fillStyle;
                         ctx.fillRect(x, y, 28, 38);
@@ -226,7 +249,7 @@
         }
 
         function createBuilding(gx, gz, py) {
-            const seed = Math.abs((gx * 739) ^ (gz * 911));
+            const seed = Math.abs((gx * 73856093) ^ (gz * 19349663) ^ WORLD_SEED);
             const rand = (s) => (Math.sin(s) * 10000) % 1;
             const r = Math.abs(rand(seed));
 
@@ -294,13 +317,15 @@
             const px = Math.round(player.position.x / BLOCK_SIZE);
             const pz = Math.round(player.position.z / BLOCK_SIZE);
             const py = Math.round(player.position.y);
+            document.getElementById('chunk-coords').innerText = `Chunk: ${px}, ${pz}`;
 
             for (let x = px - RENDER_DISTANCE; x <= px + RENDER_DISTANCE; x++) {
                 for (let z = pz - RENDER_DISTANCE; z <= pz + RENDER_DISTANCE; z++) {
                     const key = `${x},${z}`;
                     // Skip roads on 3x3 grid
                     if ((x % 3 !== 0 && z % 3 !== 0) && !chunks.has(key)) {
-                        chunks.set(key, createBuilding(x, z, py));
+                        if (!chunkHeights.has(key)) chunkHeights.set(key, py);
+                        chunks.set(key, createBuilding(x, z, chunkHeights.get(key)));
                     }
                 }
             }
