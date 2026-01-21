@@ -1,4 +1,4 @@
-<<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -38,10 +38,19 @@
     <div id="ui">
         <div><b>Controls:</b></div>
         <div><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> - Move / Climb</div>
-        <div><span class="key">Space (hold)</span> - Charge Jump (on ground) / Bounce (web & air)</div>
+        <div><span class="key">Space (hold)</span> - Charge Jump (on ground)</div>
         <div><span class="key">L-Click</span> - Left Web</div>
         <div><span class="key">R-Click</span> - Right Web</div>
-        <div><span class="key">Shift</span> - Boost Swing</div>
+        <div><span class="key">Shift</span> - Boost on Downswing</div>
+        <div id="control-reel-left" style="display: none;"><span class="key">Q</span>- Reel Left Web</div>
+        <div id="control-reel-right" style="display: none;"><span class="key">E</span>- Reel Right Web</div>
+        <div id="control-bounce" style="display: none;"><span class="key">Space (hold)</span> - Bounce off walls (in air)</div>
+        <div class="stat" id="unlocks">
+            Unlocks:<br>
+            Reel (Locked @ 2000m)<br>
+            Bounce (Locked @ 10000m)
+        </div>
+        <div class="stat" id="win-msg" style="display: none;"></div>
         <div class="stat" id="speed">Speed: 0 km/h</div>
         <div class="stat" id="height">Height: 0 m</div>
         <div class="stat" id="state">State: Grounded</div>
@@ -65,6 +74,9 @@
         const MAX_JUMP_CHARGE_TIME = 2.5;
         const MOUSE_SENSITIVITY = 0.0025;
         const MAX_AIM_DISTANCE = 300;
+        const SWING_CONTROL = 12.0;
+        const REEL_UNLOCK_HEIGHT = 2000;
+        const BOUNCE_UNLOCK_HEIGHT = 10000;
 
         // --- CORE ---
         let scene, camera, renderer, clock;
@@ -74,10 +86,13 @@
         
         let pitch = 0; 
         let lastPointerLog = 0;
+        let unlockReel = false, unlockBounce = false;
+        let winShown = false, winShownAt = 0;
+        let climbStartTime = performance.now();
 
         // Dual Web System
-        const webL = { active: false, anchor: new THREE.Vector3(), length: 0, line: null };
-        const webR = { active: false, anchor: new THREE.Vector3(), length: 0, line: null };
+        const webL = { name: 'left', active: false, anchor: new THREE.Vector3(), length: 0, line: null };
+        const webR = { name: 'right', active: false, anchor: new THREE.Vector3(), length: 0, line: null };
         let webReticle, laserBeam, laserDot;
 
         const keys = {};
@@ -157,11 +172,11 @@
 
             document.addEventListener('pointermove', (e) => {
                 if (document.pointerLockElement === document.body) {
+                    // After shooting a web, there is a large mouse move -- ignore it
                     if (Math.abs(e.movementX) > 40 || Math.abs(e.movementY) > 40) return;
                     const now = performance.now();
                     if (now - lastPointerLog > 200) {
                         lastPointerLog = now;
-                        console.log('pointermove', { movementX: e.movementX, movementY: e.movementY, pointerType: e.pointerType, isPrimary: e.isPrimary });
                     }
                     player.rotation.y -= e.movementX * MOUSE_SENSITIVITY;
                     pitch += e.movementY * MOUSE_SENSITIVITY;
@@ -206,7 +221,7 @@
 
             // 1. Calculate the "typical" random height components
             const variance = Math.abs(rand(seed + 1)) * 120;
-            const baseHeight = 50 + variance;
+            const baseHeight = 150 + variance;
     
             let h = baseHeight;
             let isMega = false;
@@ -214,7 +229,7 @@
               isMega = true;
         
               // 2. The "Typical Mega" calculation (from your original code)
-              const megaMultiplier = (3.5 + Math.abs(rand(seed + 2)) * 6.5);
+              const megaMultiplier = (1.5 + Math.abs(rand(seed + 2)) * 2.5);
               const typicalMegaHeight = baseHeight * megaMultiplier;
 
               // 3. Set height to Player Y + typical generation, 
@@ -353,8 +368,11 @@
                     webObj.active = true;
                     webObj.line.visible = true;
                     isClimbing = false;
-                    playerVelocity.add(dir.multiplyScalar(35));
-                    playerVelocity.y += 15;
+                    // previously allows web "flying", only provide boost on ground now
+                    if (isGrounded) {
+                        playerVelocity.add(dir.multiplyScalar(35));
+                        playerVelocity.y += 15;
+                    }
                 }
             }
         }
@@ -404,10 +422,10 @@
                         
                         // Cancel or bounce horizontal velocity on impact
                         if (min === dx1 || min === dx2) {
-                            playerVelocity.x = keys['Space'] ? -playerVelocity.x : 0;
+                            playerVelocity.x = (unlockBounce && keys['Space']) ? -playerVelocity.x : 0;
                         }
                         if (min === dz1 || min === dz2) {
-                            playerVelocity.z = keys['Space'] ? -playerVelocity.z : 0;
+                            playerVelocity.z = (unlockBounce && keys['Space']) ? -playerVelocity.z : 0;
                         }
                     }
                 }
@@ -426,12 +444,14 @@
             input.normalize();
             const moveDir = input.clone().applyQuaternion(player.quaternion);
 
+            let usedNextPos = false;
             if (isClimbing) {
                 playerVelocity.y = keys['KeyW'] ? CLIMB_SPEED : (keys['KeyS'] ? -CLIMB_SPEED : 0);
                 playerVelocity.x = playerVelocity.z = 0;
             } else if (webL.active || webR.active) {
                 // SWINGING PHYSICS
                 playerVelocity.y += GRAVITY * dt;
+                playerVelocity.add(moveDir.clone().multiplyScalar(SWING_CONTROL * dt));
                 
                 let nextPos = player.position.clone().add(playerVelocity.clone().multiplyScalar(dt));
 
@@ -441,7 +461,15 @@
                     if (currentDist < web.length) {
                         web.length = currentDist;
                     }
-
+                    if (unlockReel && ((web.name === 'left' && keys['KeyQ']) || (web.name === 'right' && keys['KeyE']))) {
+                        web.length -= 30 * dt;
+                        if (webL.active && webR.active) {
+                            const minDualLength = 5 + webL.anchor.distanceTo(webR.anchor);
+                            if (web.length < minDualLength) web.length = minDualLength;
+                        } else if (web.length < 2) {
+                            web.length = 2;
+                        }
+                    }
                     const distAfterMove = nextPos.distanceTo(web.anchor);
                     if (distAfterMove > web.length) {
                         const toAnchor = new THREE.Vector3().subVectors(web.anchor, nextPos).normalize();
@@ -452,7 +480,7 @@
                         if (vDotR > 0) playerVelocity.sub(radial.multiplyScalar(vDotR));
 
                         // Pumping energy while swinging
-                        if (keys['ShiftLeft'] || keys['Space']) {
+                        if ((keys['ShiftLeft'] || keys['Space']) && playerVelocity.y < 0) {
                             playerVelocity.add(playerVelocity.clone().normalize().multiplyScalar(90 * dt));
                         }
                     }
@@ -470,21 +498,30 @@
                 };
                 updateLine(webL);
                 updateLine(webR);
+                player.position.copy(nextPos);
+                usedNextPos = true;
             } else {
                 // GROUND / AIR PHYSICS
                 const speed = keys['ShiftLeft'] ? RUN_SPEED : WALK_SPEED;
-                const acc = isGrounded ? 35 : AIR_CONTROL;
-                if (input.length() > 0) {
-                    playerVelocity.x = THREE.MathUtils.lerp(playerVelocity.x, moveDir.x * speed, acc * dt);
-                    playerVelocity.z = THREE.MathUtils.lerp(playerVelocity.z, moveDir.z * speed, acc * dt);
-                } else if (isGrounded) {
-                    playerVelocity.x = THREE.MathUtils.lerp(playerVelocity.x, 0, 20 * dt);
-                    playerVelocity.z = THREE.MathUtils.lerp(playerVelocity.z, 0, 20 * dt);
+                if (isGrounded) {
+                    const acc = 35;
+                    if (input.length() > 0) {
+                        playerVelocity.x = THREE.MathUtils.lerp(playerVelocity.x, moveDir.x * speed, acc * dt);
+                        playerVelocity.z = THREE.MathUtils.lerp(playerVelocity.z, moveDir.z * speed, acc * dt);
+                    } else {
+                        playerVelocity.x = THREE.MathUtils.lerp(playerVelocity.x, 0, 20 * dt);
+                        playerVelocity.z = THREE.MathUtils.lerp(playerVelocity.z, 0, 20 * dt);
+                    }
+                } else if (input.length() > 0) {
+                    playerVelocity.x += moveDir.x * (AIR_CONTROL * 20) * dt;
+                    playerVelocity.z += moveDir.z * (AIR_CONTROL * 20) * dt;
                 }
                 playerVelocity.y += GRAVITY * dt;
             }
 
-            player.position.add(playerVelocity.clone().multiplyScalar(dt));
+            if (!usedNextPos) {
+                player.position.add(playerVelocity.clone().multiplyScalar(dt));
+            }
             checkCollisions();
             const horizontalSpeed = Math.hypot(playerVelocity.x, playerVelocity.z);
             const isWebbed = webL.active || webR.active;
@@ -505,6 +542,26 @@
             const currentHeight = Math.max(0, Math.round(player.position.y));
             const heightStr = currentHeight.toString().padStart(5, '0');
             document.getElementById('height').innerText = `ALT: ${heightStr} m`;
+            if (!unlockReel && currentHeight >= REEL_UNLOCK_HEIGHT) {
+                unlockReel = true;
+                document.getElementById('control-reel-left').style.display = 'block';
+                document.getElementById('control-reel-right').style.display = 'block';
+            }
+            if (!unlockBounce && currentHeight >= BOUNCE_UNLOCK_HEIGHT) {
+                unlockBounce = true;
+                document.getElementById('control-bounce').style.display = 'block';
+            }
+            document.getElementById('unlocks').innerHTML = `Unlocks:<br>Reel (${unlockReel ? 'Unlocked' : `Locked @ ${REEL_UNLOCK_HEIGHT}m`})<br>Bounce (${unlockBounce ? 'Unlocked' : `Locked @ ${BOUNCE_UNLOCK_HEIGHT}m`})`;
+            if (!winShown && currentHeight >= BOUNCE_UNLOCK_HEIGHT) {
+                winShown = true;
+                winShownAt = performance.now();
+                const elapsedSec = Math.round((winShownAt - climbStartTime) / 1000);
+                document.getElementById('win-msg').innerText = `You win! You climbed ${BOUNCE_UNLOCK_HEIGHT}m in ${elapsedSec}s. Enjoy swinging around for fun.`;
+                document.getElementById('win-msg').style.display = 'block';
+            }
+            if (winShown && performance.now() - winShownAt > 20000) {
+                document.getElementById('win-msg').style.display = 'none';
+            }
             let stateText = (webL.active && webR.active) ? "Dual Swung" : (webL.active || webR.active ? "Swinging" : (isClimbing ? "Climbing" : (isGrounded ? "Grounded" : "Airborne")));
             document.getElementById('state').innerText = `State: ${stateText}`;
         }
