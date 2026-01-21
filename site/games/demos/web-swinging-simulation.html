@@ -475,7 +475,7 @@
                         web.length = currentDist;
                     }
                     if (unlockReel && ((web.name === 'left' && keys['KeyQ']) || (web.name === 'right' && keys['KeyE']))) {
-                        web.length -= 30 * dt;
+                        web.length -= 60 * dt;
                         if (webL.active && webR.active) {
                             const minDualLength = 5 + webL.anchor.distanceTo(webR.anchor);
                             if (web.length < minDualLength) web.length = minDualLength;
