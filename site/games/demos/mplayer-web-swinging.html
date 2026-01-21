@@ -126,6 +126,7 @@
         const CLIMB_SPEED = 30.0;
         const JUMP_FORCE = 25.0;
         const AIR_CONTROL = 2.0;
+        const PLAYER_RADIUS = 1.2;
         const MAX_JUMP_CHARGE_TIME = 2.5;
         const MOUSE_SENSITIVITY = 0.0025;
         const MAX_AIM_DISTANCE = 300;
@@ -134,6 +135,7 @@
         const BOUNCE_UNLOCK_HEIGHT = 10000;
         const WORLD_SEED = 1337;
         const INITIAL_CHUNK_HEIGHTS = {};
+        const REMOTE_ORB_RADIUS = PLAYER_RADIUS * 6;
 
         // --- CORE ---
         let scene, camera, renderer, clock;
@@ -558,6 +560,16 @@
             group.userData.isGrounded = false;
             group.userData.lastSnapshotAt = performance.now();
             group.userData.snapshotPos = new THREE.Vector3();
+            const orbMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35 });
+            const orb = new THREE.Mesh(new THREE.SphereGeometry(REMOTE_ORB_RADIUS, 18, 18), orbMat);
+            orb.renderOrder = 2;
+            group.userData.orb = orb;
+            group.add(orb);
+            const beamMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35 });
+            const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 1, 10), beamMat);
+            beam.renderOrder = 1;
+            group.userData.beam = beam;
+            group.add(beam);
             group.userData.webL = { line: createWebLine(0xffffff), active: false, anchor: new THREE.Vector3(), length: 0 };
             group.userData.webR = { line: createWebLine(0xffffff), active: false, anchor: new THREE.Vector3(), length: 0 };
             scene.add(group);
@@ -904,6 +916,25 @@
                 const targetPos = remote.userData.snapshotPos;
                 const driftAlpha = 1 - Math.exp(-6 * dt);
                 remote.position.lerp(targetPos, driftAlpha);
+                if (remote.userData.orb) {
+                    remote.userData.orb.position.set(0, 0, 0);
+                }
+                if (remote.userData.beam) {
+                    const localChunkX = Math.round(player.position.x / BLOCK_SIZE);
+                    const localChunkZ = Math.round(player.position.z / BLOCK_SIZE);
+                    const remoteChunkX = Math.round(remote.position.x / BLOCK_SIZE);
+                    const remoteChunkZ = Math.round(remote.position.z / BLOCK_SIZE);
+                    const chunkDist = Math.hypot(localChunkX - remoteChunkX, localChunkZ - remoteChunkZ);
+                    if (chunkDist <= 1) {
+                        remote.userData.beam.visible = false;
+                    } else {
+                        const beamHeight = 20000;
+                        const widthScale = 0.6 + chunkDist * 0.25;
+                        remote.userData.beam.visible = true;
+                        remote.userData.beam.scale.set(widthScale, beamHeight, widthScale);
+                        remote.userData.beam.position.set(0, beamHeight * 0.5, 0);
+                    }
+                }
                 updateRemoteWebLine(remote, remote.userData.webL);
                 updateRemoteWebLine(remote, remote.userData.webR);
                 const horizontalSpeed = Math.hypot(vel.x, vel.z);
