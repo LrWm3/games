@@ -167,6 +167,7 @@
         let audioContext = null;
         let voiceEnabled = false;
         const PROXIMITY_RANGE = 300;
+        const incomingTethers = new Map();
         const ICE_SERVERS = [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
@@ -175,8 +176,8 @@
         ];
 
         // Dual Web System
-        const webL = { name: 'left', active: false, anchor: new THREE.Vector3(), length: 0, line: null };
-        const webR = { name: 'right', active: false, anchor: new THREE.Vector3(), length: 0, line: null };
+        const webL = { name: 'left', active: false, anchor: new THREE.Vector3(), length: 0, line: null, targetPeerId: null };
+        const webR = { name: 'right', active: false, anchor: new THREE.Vector3(), length: 0, line: null, targetPeerId: null };
         let webReticle, laserBeam, laserDot;
 
         const keys = {};
@@ -269,8 +270,8 @@
             });
 
             window.addEventListener('mouseup', e => {
-                if (e.button === 0) { webL.active = false; webL.line.visible = false; }
-                if (e.button === 2) { webR.active = false; webR.line.visible = false; }
+                if (e.button === 0) { webL.active = false; webL.line.visible = false; webL.targetPeerId = null; }
+                if (e.button === 2) { webR.active = false; webR.line.visible = false; webR.targetPeerId = null; }
             });
 
             window.addEventListener('resize', onWindowResize);
@@ -378,6 +379,8 @@
                         remotePlayers.delete(pid);
                     }
                     playerSlots.delete(pid);
+                    incomingTethers.delete(`${pid}:left`);
+                    incomingTethers.delete(`${pid}:right`);
                     const pc = peerConnections.get(pid);
                     if (pc) {
                         pc.close();
@@ -661,7 +664,39 @@
         function tryAttachWeb(webObj) {
             const raycaster = new THREE.Raycaster();
             const dir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(1, 0, 0), pitch).applyQuaternion(player.quaternion).normalize();
-            raycaster.set(player.position.clone().add(new THREE.Vector3(0, 1.5, 0)), dir);
+            const origin = player.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+            raycaster.set(origin, dir);
+
+            let closestPeerId = null;
+            let closestDist = Infinity;
+            remotePlayers.forEach((remote, pid) => {
+                const sphere = new THREE.Sphere(remote.position, REMOTE_ORB_RADIUS);
+                const hitPoint = raycaster.ray.intersectSphere(sphere, new THREE.Vector3());
+                if (hitPoint) {
+                    const dist = origin.distanceTo(hitPoint);
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closestPeerId = pid;
+                    }
+                }
+            });
+            if (closestPeerId) {
+                const target = remotePlayers.get(closestPeerId);
+                webObj.anchor.copy(target.position).add(new THREE.Vector3(0, 1.2, 0));
+                webObj.length = player.position.distanceTo(webObj.anchor);
+                if (webObj.length > 5) {
+                    webObj.active = true;
+                    webObj.line.visible = true;
+                    webObj.targetPeerId = closestPeerId;
+                    isClimbing = false;
+                    if (isGrounded) {
+                        playerVelocity.add(dir.multiplyScalar(35));
+                        playerVelocity.y += 15;
+                        isGrounded = false;
+                    }
+                }
+                return;
+            }
             
             const targets = [];
             chunks.forEach(d => targets.push(d.mesh));
@@ -674,6 +709,7 @@
                 if (webObj.length > 5) {
                     webObj.active = true;
                     webObj.line.visible = true;
+                    webObj.targetPeerId = null;
                     isClimbing = false;
                     // previously allows web "flying", only provide boost on ground now
                     if (isGrounded) {
@@ -757,7 +793,7 @@
             if (isClimbing) {
                 playerVelocity.y = keys['KeyW'] ? CLIMB_SPEED : (keys['KeyS'] ? -CLIMB_SPEED : 0);
                 playerVelocity.x = playerVelocity.z = 0;
-            } else if (webL.active || webR.active) {
+            } else if (webL.active || webR.active || incomingTethers.size > 0) {
                 // SWINGING PHYSICS
                 playerVelocity.y += GRAVITY * dt;
                 playerVelocity.add(moveDir.clone().multiplyScalar(SWING_CONTROL * dt));
@@ -766,6 +802,17 @@
 
                 const applyConstraint = (web) => {
                     if (!web.active) return;
+                    if (web.targetPeerId) {
+                        const target = remotePlayers.get(web.targetPeerId);
+                        if (target) {
+                            web.anchor.copy(target.position).add(new THREE.Vector3(0, 1.2, 0));
+                        } else {
+                            web.active = false;
+                            web.line.visible = false;
+                            web.targetPeerId = null;
+                            return;
+                        }
+                    }
                     const currentDist = player.position.distanceTo(web.anchor);
                     if (currentDist < web.length) {
                         web.length = currentDist;
@@ -797,6 +844,19 @@
 
                 applyConstraint(webL);
                 applyConstraint(webR);
+                incomingTethers.forEach((tether) => {
+                    const anchorPlayer = remotePlayers.get(tether.peerId);
+                    if (!anchorPlayer) return;
+                    const anchorPos = anchorPlayer.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+                    const distAfterMove = nextPos.distanceTo(anchorPos);
+                    if (distAfterMove > tether.length) {
+                        const toAnchor = new THREE.Vector3().subVectors(anchorPos, nextPos).normalize();
+                        nextPos.add(toAnchor.multiplyScalar(distAfterMove - tether.length));
+                        const radial = new THREE.Vector3().subVectors(player.position, anchorPos).normalize();
+                        const vDotR = playerVelocity.dot(radial);
+                        if (vDotR > 0) playerVelocity.sub(radial.multiplyScalar(vDotR));
+                    }
+                });
 
                 const updateLine = (web) => {
                     if (!web.active) return;
@@ -894,11 +954,13 @@
                     active: webL.active,
                     anchor: { x: webL.anchor.x, y: webL.anchor.y, z: webL.anchor.z },
                     length: webL.length,
+                    targetPeerId: webL.targetPeerId,
                 },
                 webR: {
                     active: webR.active,
                     anchor: { x: webR.anchor.x, y: webR.anchor.y, z: webR.anchor.z },
                     length: webR.length,
+                    targetPeerId: webR.targetPeerId,
                 },
             };
             socket.send(JSON.stringify({ type: 'snapshot', seq: snapshotSeq++, t: performance.now(), state }));
@@ -930,16 +992,30 @@
                 web.active = !!state.webL.active;
                 web.anchor.set(state.webL.anchor?.x || 0, state.webL.anchor?.y || 0, state.webL.anchor?.z || 0);
                 web.length = state.webL.length || 0;
+                web.targetPeerId = state.webL.targetPeerId || null;
                 web.line.visible = web.active;
                 if (web.active) updateRemoteWebLine(remote, web);
+                const key = `${fromPeerId}:left`;
+                if (peerId && web.active && web.targetPeerId === peerId) {
+                    incomingTethers.set(key, { peerId: fromPeerId, length: web.length });
+                } else {
+                    incomingTethers.delete(key);
+                }
             }
             if (state.webR) {
                 const web = remote.userData.webR;
                 web.active = !!state.webR.active;
                 web.anchor.set(state.webR.anchor?.x || 0, state.webR.anchor?.y || 0, state.webR.anchor?.z || 0);
                 web.length = state.webR.length || 0;
+                web.targetPeerId = state.webR.targetPeerId || null;
                 web.line.visible = web.active;
                 if (web.active) updateRemoteWebLine(remote, web);
+                const key = `${fromPeerId}:right`;
+                if (peerId && web.active && web.targetPeerId === peerId) {
+                    incomingTethers.set(key, { peerId: fromPeerId, length: web.length });
+                } else {
+                    incomingTethers.delete(key);
+                }
             }
         }
 
@@ -975,6 +1051,14 @@
                     const dist = remote.position.distanceTo(player.position);
                     const gain = Math.max(0, 1 - dist / PROXIMITY_RANGE);
                     remote.userData.audioGain.gain.value = gain * gain;
+                }
+                if (remote.userData.webL.active && remote.userData.webL.targetPeerId) {
+                    const target = remote.userData.webL.targetPeerId === peerId ? player : remotePlayers.get(remote.userData.webL.targetPeerId);
+                    if (target) remote.userData.webL.anchor.copy(target.position).add(new THREE.Vector3(0, 1.2, 0));
+                }
+                if (remote.userData.webR.active && remote.userData.webR.targetPeerId) {
+                    const target = remote.userData.webR.targetPeerId === peerId ? player : remotePlayers.get(remote.userData.webR.targetPeerId);
+                    if (target) remote.userData.webR.anchor.copy(target.position).add(new THREE.Vector3(0, 1.2, 0));
                 }
                 updateRemoteWebLine(remote, remote.userData.webL);
                 updateRemoteWebLine(remote, remote.userData.webR);
