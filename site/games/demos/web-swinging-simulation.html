@@ -38,7 +38,7 @@
     <div id="ui">
         <div><b>Controls:</b></div>
         <div><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> - Move / Climb</div>
-        <div><span class="key">Space</span> - Jump (on ground) / Bounce (web & air)</div>
+        <div><span class="key">Space (hold)</span> - Charge Jump (on ground) / Bounce (web & air)</div>
         <div><span class="key">L-Click</span> - Left Web</div>
         <div><span class="key">R-Click</span> - Right Web</div>
         <div><span class="key">Shift</span> - Boost Swing</div>
@@ -73,7 +73,7 @@
         let jumpChargeTime = 0, isChargingJump = false;
         
         let pitch = 0; 
-        let mouseBiasX = 0, mouseBiasY = 0, calibrationSamples = 0, isCalibrated = false;
+        let lastPointerLog = 0;
 
         // Dual Web System
         const webL = { active: false, anchor: new THREE.Vector3(), length: 0, line: null };
@@ -155,18 +155,15 @@
                 if(document.pointerLockElement !== document.body) document.body.requestPointerLock();
             });
 
-            document.addEventListener('mousemove', (e) => {
+            document.addEventListener('pointermove', (e) => {
                 if (document.pointerLockElement === document.body) {
-                    if (!isCalibrated) {
-                        mouseBiasX += e.movementX; mouseBiasY += e.movementY;
-                        if (++calibrationSamples >= 3) {
-                            mouseBiasX /= 3; mouseBiasY /= 3; isCalibrated = true;
-                            document.getElementById('calibration-msg').style.display = 'none';
-                        }
-                        return;
+                    const now = performance.now();
+                    if (now - lastPointerLog > 200) {
+                        lastPointerLog = now;
+                        console.log('pointermove', { movementX: e.movementX, movementY: e.movementY, pointerType: e.pointerType, isPrimary: e.isPrimary });
                     }
-                    player.rotation.y -= (e.movementX - mouseBiasX) * MOUSE_SENSITIVITY;
-                    pitch += (e.movementY - mouseBiasY) * MOUSE_SENSITIVITY;
+                    player.rotation.y -= e.movementX * MOUSE_SENSITIVITY;
+                    pitch += e.movementY * MOUSE_SENSITIVITY;
                     pitch = Math.max(-1.48, Math.min(1.48, pitch));
                 }
             });
