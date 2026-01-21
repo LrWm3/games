@@ -37,9 +37,58 @@
             background: rgba(0,0,0,0.7); padding: 8px 10px; border-radius: 8px;
             border: 1px solid #3a4c5a; font-size: 0.85em; pointer-events: none;
         }
+        #lobby {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: radial-gradient(circle at top, rgba(15,20,40,0.95), rgba(5,5,20,0.98));
+            color: #e7f4ff; z-index: 20;
+        }
+        #lobby-card {
+            width: min(720px, 92vw); background: rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 24px 28px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+        }
+        #lobby-card h1 { margin: 0 0 10px; font-size: 1.6rem; letter-spacing: 0.04em; }
+        #lobby-card p { margin: 0 0 18px; color: #b9c9dd; font-size: 0.95rem; }
+        .lobby-row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+        .lobby-input {
+            flex: 1 1 220px; padding: 10px 12px; border-radius: 8px; border: 1px solid #334155;
+            background: rgba(10, 15, 30, 0.9); color: #e2f0ff;
+        }
+        .lobby-button {
+            padding: 10px 14px; border-radius: 8px; border: 1px solid #4f46e5;
+            background: linear-gradient(135deg, #4f46e5, #2563eb); color: white; cursor: pointer;
+            font-weight: 600;
+        }
+        .lobby-button.secondary {
+            border-color: #334155; background: rgba(30, 41, 59, 0.7);
+        }
+        #room-list { margin-top: 12px; display: grid; gap: 8px; }
+        .room-item {
+            display: flex; justify-content: space-between; align-items: center; padding: 8px 10px;
+            border-radius: 8px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148,163,184,0.2);
+        }
+        .room-item span { color: #d5e6ff; }
+        #lobby-status { margin-top: 10px; color: #fcd34d; min-height: 1.2em; }
+        @media (max-width: 720px) {
+            #lobby-card { padding: 18px; }
+        }
     </style>
 </head>
 <body>
+    <div id="lobby">
+        <div id="lobby-card">
+            <h1>Multiplayer Lobby</h1>
+            <p>Create a new room or join an existing one before launching into the city.</p>
+            <div class="lobby-row">
+                <input id="room-input" class="lobby-input" placeholder="Room name (letters, numbers, - or _)" />
+                <button id="create-room" class="lobby-button">Create</button>
+                <button id="join-room" class="lobby-button secondary">Join</button>
+                <button id="refresh-rooms" class="lobby-button secondary">Refresh</button>
+            </div>
+            <div id="room-list"></div>
+            <div id="lobby-status"></div>
+        </div>
+    </div>
     <div id="ui">
         <div><b>Controls:</b></div>
         <div><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> - Move / Climb</div>
@@ -98,6 +147,16 @@
         let winShown = false, winShownAt = 0, winElapsedStr = '';
         let freePlay = false;
         let climbStartTime = performance.now();
+        let inLobby = true;
+        let gameStarted = false;
+        let socket = null;
+        let peerId = null;
+        let joinedRoomId = null;
+        let snapshotSeq = 0;
+        let snapshotAccumulator = 0;
+        const remotePlayers = new Map();
+        const playerSlots = new Map();
+        const playerColors = [0xff3b30, 0x0a84ff, 0x34c759, 0xaf52de];
 
         // Dual Web System
         const webL = { name: 'left', active: false, anchor: new THREE.Vector3(), length: 0, line: null };
@@ -108,6 +167,15 @@
         const chunks = new Map(); 
         const chunkHeights = new Map();
         let windowTextureSmall, windowTextureMega;
+
+        const lobbyEl = document.getElementById('lobby');
+        const lobbyStatusEl = document.getElementById('lobby-status');
+        const roomInputEl = document.getElementById('room-input');
+        const roomListEl = document.getElementById('room-list');
+        const uiEl = document.getElementById('ui');
+        const crosshairEl = document.getElementById('crosshair');
+        const chunkCoordsEl = document.getElementById('chunk-coords');
+        const calibrationEl = document.getElementById('calibration-msg');
 
         function init() {
             scene = new THREE.Scene();
@@ -139,8 +207,9 @@
             skyFill.position.set(-1000, 800, -1000);
             scene.add(skyFill);
 
+            const localSlot = allocateSlot(peerId ?? 'local');
             createGround();
-            createPlayer();
+            createPlayer(getSlotColor(localSlot));
             webL.line = createWebLine(0xffffff);
             webR.line = createWebLine(0xffffff);
             createReticle();
@@ -190,13 +259,13 @@
             window.addEventListener('resize', onWindowResize);
 
             document.addEventListener('click', () => {
-                if(document.pointerLockElement !== document.body) document.body.requestPointerLock();
+                if (!inLobby && document.pointerLockElement !== document.body) document.body.requestPointerLock();
             });
 
             document.addEventListener('pointermove', (e) => {
                 if (document.pointerLockElement === document.body) {
                     // After shooting a web, there is a large mouse move -- ignore it
-                    if (Math.abs(e.movementX) > 40 || Math.abs(e.movementY) > 40) return;
+                    if (Math.abs(e.movementX) > 80 || Math.abs(e.movementY) > 80) return;
                     const now = performance.now();
                     if (now - lastPointerLog > 200) {
                         lastPointerLog = now;
@@ -208,6 +277,120 @@
             });
 
             animate();
+        }
+
+        function setGameVisible(isVisible) {
+            uiEl.style.display = isVisible ? 'block' : 'none';
+            crosshairEl.style.display = isVisible ? 'block' : 'none';
+            chunkCoordsEl.style.display = isVisible ? 'block' : 'none';
+            calibrationEl.style.display = isVisible ? 'block' : 'none';
+            lobbyEl.style.display = isVisible ? 'none' : 'flex';
+            inLobby = !isVisible;
+        }
+
+        function getWsUrl() {
+            const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+            return `${proto}://${location.host}/ws`;
+        }
+
+        function joinRoom(roomId) {
+            const trimmed = roomId.trim();
+            if (!/^[a-zA-Z0-9_-]{1,64}$/.test(trimmed)) {
+                lobbyStatusEl.innerText = 'Room name must be 1-64 chars: letters, numbers, _ or -.';
+                return;
+            }
+            lobbyStatusEl.innerText = 'Connecting...';
+            if (socket && socket.readyState === WebSocket.OPEN) socket.close();
+            socket = new WebSocket(getWsUrl());
+            socket.onopen = () => {
+                socket.send(JSON.stringify({ type: 'join', roomId: trimmed }));
+            };
+            socket.onmessage = (ev) => {
+                let msg;
+                try {
+                    msg = JSON.parse(ev.data);
+                } catch {
+                    return;
+                }
+                if (msg.type === 'welcome') {
+                    peerId = msg.peerId;
+                    joinedRoomId = msg.roomId;
+                    lobbyStatusEl.innerText = `Joined ${joinedRoomId}. Waiting for launch...`;
+                    setGameVisible(true);
+                    if (Array.isArray(msg.peers)) {
+                        msg.peers.forEach((pid, idx) => {
+                            playerSlots.set(pid, idx);
+                        });
+                        const localSlot = msg.peers.length;
+                        playerSlots.set(peerId, localSlot);
+                    }
+                    if (!gameStarted) {
+                        init();
+                        gameStarted = true;
+                    }
+                    if (Array.isArray(msg.peers)) {
+                        msg.peers.forEach((pid) => {
+                            if (!remotePlayers.has(pid)) {
+                                const slot = allocateSlot(pid);
+                                remotePlayers.set(pid, createRemotePlayer(pid, getSlotColor(slot)));
+                            }
+                        });
+                    }
+                } else if (msg.type === 'error') {
+                    lobbyStatusEl.innerText = msg.message || 'Failed to join room.';
+                    if (socket) socket.close();
+                } else if (msg.type === 'peer-joined') {
+                    const pid = msg.peerId;
+                    if (pid && !remotePlayers.has(pid)) {
+                        const slot = allocateSlot(pid);
+                        remotePlayers.set(pid, createRemotePlayer(pid, getSlotColor(slot)));
+                    }
+                } else if (msg.type === 'peer-left') {
+                    const pid = msg.peerId;
+                    const remote = remotePlayers.get(pid);
+                    if (remote) {
+                        scene.remove(remote);
+                        remotePlayers.delete(pid);
+                    }
+                    playerSlots.delete(pid);
+                } else if (msg.type === 'snapshot') {
+                    applyRemoteSnapshot(msg.fromPeerId, msg.state);
+                }
+            };
+            socket.onerror = () => {
+                lobbyStatusEl.innerText = 'Connection failed. Is the server running?';
+            };
+        }
+
+        function listRooms() {
+            fetch('/rooms')
+                .then((res) => res.json())
+                .then((data) => {
+                    roomListEl.innerHTML = '';
+                    if (!Array.isArray(data) || data.length === 0) {
+                        roomListEl.innerHTML = '<div class="room-item"><span>No rooms yet.</span></div>';
+                        return;
+                    }
+                    data.forEach((room) => {
+                        const item = document.createElement('div');
+                        item.className = 'room-item';
+                        const name = document.createElement('span');
+                        name.innerText = `${room.roomId} (${room.players}/4)`;
+                        const btn = document.createElement('button');
+                        btn.className = 'lobby-button secondary';
+                        btn.innerText = 'Join';
+                        btn.addEventListener('click', () => {
+                            roomInputEl.value = room.roomId;
+                            joinRoom(room.roomId);
+                        });
+                        item.appendChild(name);
+                        item.appendChild(btn);
+                        roomListEl.appendChild(item);
+                    });
+                })
+                .catch(() => {
+                    roomListEl.innerHTML = '<div class="room-item"><span>Failed to load rooms.</span></div>';
+                });
         }
 
         function mulberry32(seed) {
@@ -344,11 +527,11 @@
             });
         }
 
-        function createPlayer() {
+        function createPlayer(color) {
             player = new THREE.Group();
             playerModel = new THREE.Group();
             player.add(playerModel);
-            const mat = new THREE.MeshPhongMaterial({ color: 0xd32f2f });
+            const mat = new THREE.MeshPhongMaterial({ color: color ?? 0xd32f2f });
             const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.2, 12), mat);
             body.position.y = 1.1; playerModel.add(body);
             const head = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 12), mat);
@@ -356,6 +539,46 @@
             const eyes = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.25), new THREE.MeshBasicMaterial({ color: 0xffffff }));
             eyes.position.set(0, 1.9, 0.4); playerModel.add(eyes);
             scene.add(player);
+        }
+
+        function createRemotePlayer(peer, color) {
+            const group = new THREE.Group();
+            const model = new THREE.Group();
+            group.add(model);
+            const mat = new THREE.MeshPhongMaterial({ color });
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.2, 12), mat);
+            body.position.y = 1.1; model.add(body);
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 12), mat);
+            head.position.y = 1.8; model.add(head);
+            const eyes = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.25), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            eyes.position.set(0, 1.9, 0.4); model.add(eyes);
+            group.userData.peerId = peer;
+            group.userData.model = model;
+            group.userData.velocity = new THREE.Vector3();
+            group.userData.isGrounded = false;
+            group.userData.lastSnapshotAt = performance.now();
+            group.userData.snapshotPos = new THREE.Vector3();
+            group.userData.webL = { line: createWebLine(0xffffff), active: false, anchor: new THREE.Vector3(), length: 0 };
+            group.userData.webR = { line: createWebLine(0xffffff), active: false, anchor: new THREE.Vector3(), length: 0 };
+            scene.add(group);
+            return group;
+        }
+
+        function getSlotColor(slot) {
+            return playerColors[slot % playerColors.length];
+        }
+
+        function allocateSlot(peer) {
+            if (playerSlots.has(peer)) return playerSlots.get(peer);
+            for (let i = 0; i < playerColors.length; i++) {
+                if (![...playerSlots.values()].includes(i)) {
+                    playerSlots.set(peer, i);
+                    return i;
+                }
+            }
+            const fallback = playerSlots.size % playerColors.length;
+            playerSlots.set(peer, fallback);
+            return fallback;
         }
 
         function createWebLine(color) {
@@ -609,6 +832,99 @@
             document.getElementById('state').innerText = `State: ${stateText}`;
         }
 
+        function sendSnapshot(dt) {
+            if (!socket || socket.readyState !== WebSocket.OPEN || !peerId) return;
+            snapshotAccumulator += dt;
+            if (snapshotAccumulator < (1 / 15)) return;
+            snapshotAccumulator -= (1 / 15);
+            const state = {
+                pos: { x: player.position.x, y: player.position.y, z: player.position.z },
+                quat: { x: player.quaternion.x, y: player.quaternion.y, z: player.quaternion.z, w: player.quaternion.w },
+                vel: { x: playerVelocity.x, y: playerVelocity.y, z: playerVelocity.z },
+                grounded: isGrounded,
+                webL: {
+                    active: webL.active,
+                    anchor: { x: webL.anchor.x, y: webL.anchor.y, z: webL.anchor.z },
+                    length: webL.length,
+                },
+                webR: {
+                    active: webR.active,
+                    anchor: { x: webR.anchor.x, y: webR.anchor.y, z: webR.anchor.z },
+                    length: webR.length,
+                },
+            };
+            socket.send(JSON.stringify({ type: 'snapshot', seq: snapshotSeq++, t: performance.now(), state }));
+        }
+
+        function applyRemoteSnapshot(fromPeerId, state) {
+            if (!state || typeof state !== 'object') return;
+            if (fromPeerId === peerId) return;
+            let remote = remotePlayers.get(fromPeerId);
+            if (!remote) {
+                const slot = allocateSlot(fromPeerId);
+                remote = createRemotePlayer(fromPeerId, getSlotColor(slot));
+                remotePlayers.set(fromPeerId, remote);
+            }
+            if (state.pos) {
+                remote.position.set(state.pos.x || 0, state.pos.y || 0, state.pos.z || 0);
+                remote.userData.snapshotPos.set(state.pos.x || 0, state.pos.y || 0, state.pos.z || 0);
+            }
+            if (state.quat) {
+                remote.quaternion.set(state.quat.x || 0, state.quat.y || 0, state.quat.z || 0, state.quat.w || 1);
+            }
+            if (state.vel) {
+                remote.userData.velocity.set(state.vel.x || 0, state.vel.y || 0, state.vel.z || 0);
+            }
+            remote.userData.isGrounded = !!state.grounded;
+            remote.userData.lastSnapshotAt = performance.now();
+            if (state.webL) {
+                const web = remote.userData.webL;
+                web.active = !!state.webL.active;
+                web.anchor.set(state.webL.anchor?.x || 0, state.webL.anchor?.y || 0, state.webL.anchor?.z || 0);
+                web.length = state.webL.length || 0;
+                web.line.visible = web.active;
+                if (web.active) updateRemoteWebLine(remote, web);
+            }
+            if (state.webR) {
+                const web = remote.userData.webR;
+                web.active = !!state.webR.active;
+                web.anchor.set(state.webR.anchor?.x || 0, state.webR.anchor?.y || 0, state.webR.anchor?.z || 0);
+                web.length = state.webR.length || 0;
+                web.line.visible = web.active;
+                if (web.active) updateRemoteWebLine(remote, web);
+            }
+        }
+
+        function updateRemotePlayers(dt) {
+            remotePlayers.forEach((remote) => {
+                const vel = remote.userData.velocity;
+                if (vel) {
+                    remote.position.addScaledVector(vel, dt);
+                }
+                const targetPos = remote.userData.snapshotPos;
+                const driftAlpha = 1 - Math.exp(-6 * dt);
+                remote.position.lerp(targetPos, driftAlpha);
+                updateRemoteWebLine(remote, remote.userData.webL);
+                updateRemoteWebLine(remote, remote.userData.webR);
+                const horizontalSpeed = Math.hypot(vel.x, vel.z);
+                const isWebbed = remote.userData.webL.active || remote.userData.webR.active;
+                if (!remote.userData.isGrounded && !isWebbed && horizontalSpeed >= 50) {
+                    const spinSpeed = THREE.MathUtils.clamp((horizontalSpeed - 50) * 0.06, 0, 72);
+                    remote.userData.model.rotation.x += spinSpeed * dt;
+                } else {
+                    remote.userData.model.rotation.x = THREE.MathUtils.lerp(remote.userData.model.rotation.x, 0, 6 * dt);
+                }
+            });
+        }
+
+        function updateRemoteWebLine(remote, web) {
+            if (!web.active) return;
+            const p = web.line.geometry.attributes.position.array;
+            p[0] = remote.position.x; p[1] = remote.position.y + 1.2; p[2] = remote.position.z;
+            p[3] = web.anchor.x; p[4] = web.anchor.y; p[5] = web.anchor.z;
+            web.line.geometry.attributes.position.needsUpdate = true;
+        }
+
         function updateReticle() {
             const raycaster = new THREE.Raycaster();
             const dir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(1, 0, 0), pitch).applyQuaternion(player.quaternion).normalize();
@@ -683,10 +999,28 @@
             handleMovement(dt);
             updateReticle();
             updateCamera(dt);
+            updateRemotePlayers(dt);
+            sendSnapshot(dt);
             renderer.render(scene, camera);
         }
 
-        init();
+        document.getElementById('create-room').addEventListener('click', () => {
+            const value = roomInputEl.value.trim();
+            const roomId = value.length > 0 ? value : `room-${Math.random().toString(36).slice(2, 8)}`;
+            roomInputEl.value = roomId;
+            joinRoom(roomId);
+        });
+        document.getElementById('join-room').addEventListener('click', () => {
+            joinRoom(roomInputEl.value);
+        });
+        document.getElementById('refresh-rooms').addEventListener('click', listRooms);
+        roomInputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') joinRoom(roomInputEl.value);
+        });
+
+        setGameVisible(false);
+        listRooms();
+        setInterval(listRooms, 5000);
     </script>
 </body>
 </html>>>
