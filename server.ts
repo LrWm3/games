@@ -29,6 +29,7 @@ type ClientInfo = {
   ws: WebSocket;
   lastTickWindowStartMs: number;
   snapshotsThisWindow: number;
+  name?: string;
 };
 
 const rooms = new Map<RoomId, Map<PeerId, ClientInfo>>();
@@ -165,17 +166,28 @@ async function handler(req: Request): Promise<Response> {
           ws: socket,
           lastTickWindowStartMs: Date.now(),
           snapshotsThisWindow: 0,
+          name: typeof msg.name === "string" ? msg.name.trim().slice(0, 24) : undefined,
         };
 
         room.set(peerId, clientInfo);
 
         const peers = [...room.keys()].filter((id) => id !== peerId);
+        const names = Object.fromEntries(
+          [...room.values()]
+            .filter((client) => client.peerId !== peerId)
+            .map((client) => [client.peerId, client.name ?? ""]),
+        );
 
         // Tell the joiner who they are + who else is present
-        safeSend(socket, { type: "welcome", peerId, roomId, peers });
+        safeSend(socket, { type: "welcome", peerId, roomId, peers, names });
+        if (typeof msg.name === "string" && msg.name.trim().length > 0) {
+          broadcastRoom(roomId, { type: "peer-name", peerId, name: msg.name.trim().slice(0, 24) }, peerId);
+          const clientRecord = room.get(peerId);
+          if (clientRecord) clientRecord.name = msg.name.trim().slice(0, 24);
+        }
 
         // Tell the room about the new peer
-        broadcastRoom(roomId, { type: "peer-joined", peerId }, peerId);
+        broadcastRoom(roomId, { type: "peer-joined", peerId, name: clientInfo.name ?? "" }, peerId);
 
         return;
       }

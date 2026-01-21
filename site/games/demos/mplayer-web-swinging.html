@@ -37,6 +37,44 @@
             background: rgba(0,0,0,0.7); padding: 8px 10px; border-radius: 8px;
             border: 1px solid #3a4c5a; font-size: 0.85em; pointer-events: none;
         }
+        #compass {
+            position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+            width: min(520px, 84vw); height: 28px; border-radius: 999px;
+            background: rgba(6, 10, 24, 0.8); border: 1px solid rgba(120,140,170,0.35);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+            pointer-events: none; z-index: 10; overflow: hidden;
+        }
+        #compass::before {
+            content: ''; position: absolute; inset: 6px;
+            border-top: 1px dashed rgba(160,180,220,0.3);
+        }
+        .compass-marker {
+            position: absolute; top: 4px; width: 8px; height: 20px; border-radius: 6px;
+            background: #fff; transform: translateX(-50%);
+            box-shadow: 0 0 10px rgba(255,255,255,0.4);
+        }
+        #chat-overlay {
+            position: absolute; left: 20px; bottom: 60px; width: min(420px, 80vw);
+            background: rgba(6, 10, 24, 0.85); border: 1px solid rgba(120,140,170,0.35);
+            border-radius: 12px; padding: 10px 12px; display: none; z-index: 12;
+        }
+        #chat-log {
+            max-height: 220px; overflow-y: auto; font-size: 0.9em; color: #e2e8f0;
+            margin-bottom: 8px; display: grid; gap: 6px;
+        }
+        #chat-input {
+            width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #334155;
+            background: rgba(10, 15, 30, 0.9); color: #e2e8f0;
+        }
+        #chat-feed {
+            position: absolute; left: 20px; bottom: 20px; width: min(420px, 80vw);
+            display: grid; gap: 6px; font-size: 0.9em; color: #e2e8f0;
+            pointer-events: none; z-index: 11;
+        }
+        .chat-line {
+            background: rgba(6, 10, 24, 0.6); border: 1px solid rgba(120,140,170,0.25);
+            border-radius: 8px; padding: 6px 8px;
+        }
         #lobby {
             position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
             background: radial-gradient(circle at top, rgba(15,20,40,0.95), rgba(5,5,20,0.98));
@@ -82,6 +120,7 @@
             <p>Create a new room or join an existing one before launching into the city.</p>
             <div class="lobby-row">
                 <input id="room-input" class="lobby-input" placeholder="Room name (letters, numbers, - or _)" />
+                <input id="name-input" class="lobby-input" placeholder="Name (optional)" />
                 <button id="create-room" class="lobby-button">Create</button>
                 <button id="join-room" class="lobby-button secondary">Join</button>
                 <button id="refresh-rooms" class="lobby-button secondary">Refresh</button>
@@ -117,6 +156,12 @@
     </div>
     <div id="crosshair"></div>
     <div id="chunk-coords">Chunk: 0, 0</div>
+    <div id="compass"></div>
+    <div id="chat-overlay">
+        <div id="chat-log"></div>
+        <input id="chat-input" placeholder="Type message and press Enter..." />
+    </div>
+    <div id="chat-feed"></div>
     <div id="calibration-msg">Move mouse to calibrate...</div>
 
     <script>
@@ -134,6 +179,7 @@
         const MOUSE_SENSITIVITY = 0.0025;
         const MAX_AIM_DISTANCE = 300;
         const SWING_CONTROL = 12.0;
+        const REEL_PULL_IMPULSE = 30.0;
         const REEL_UNLOCK_HEIGHT = 2000;
         const BOUNCE_UNLOCK_HEIGHT = 10000;
         const WORLD_SEED = 1337;
@@ -159,9 +205,12 @@
         let joinedRoomId = null;
         let snapshotSeq = 0;
         let snapshotAccumulator = 0;
+        let pendingTetherImpulse = null;
         const remotePlayers = new Map();
         const playerSlots = new Map();
         const playerColors = [0xff3b30, 0x0a84ff, 0x34c759, 0xaf52de];
+        const chatMessages = [];
+        let chatOpen = false;
         const peerConnections = new Map();
         let localStream = null;
         let audioContext = null;
@@ -189,11 +238,17 @@
         const lobbyStatusEl = document.getElementById('lobby-status');
         const voiceStatusEl = document.getElementById('voice-status');
         const roomInputEl = document.getElementById('room-input');
+        const nameInputEl = document.getElementById('name-input');
         const roomListEl = document.getElementById('room-list');
         const uiEl = document.getElementById('ui');
         const crosshairEl = document.getElementById('crosshair');
         const chunkCoordsEl = document.getElementById('chunk-coords');
         const calibrationEl = document.getElementById('calibration-msg');
+        const compassEl = document.getElementById('compass');
+        const chatOverlayEl = document.getElementById('chat-overlay');
+        const chatLogEl = document.getElementById('chat-log');
+        const chatInputEl = document.getElementById('chat-input');
+        const chatFeedEl = document.getElementById('chat-feed');
 
         function init() {
             scene = new THREE.Scene();
@@ -257,6 +312,14 @@
                     document.getElementById('win-msg').innerText = 'Free play mode';
                     document.getElementById('win-msg').style.display = 'block';
                 }
+                if (e.code === 'Enter' && !inLobby && !chatOpen && document.activeElement !== chatInputEl) {
+                    e.preventDefault();
+                    chatOpen = true;
+                    chatOverlayEl.style.display = 'block';
+                    chatFeedEl.style.display = 'none';
+                    chatInputEl.focus();
+                    if (document.pointerLockElement === document.body) document.exitPointerLock();
+                }
             });
 
             window.addEventListener('keyup', e => {
@@ -302,6 +365,9 @@
             crosshairEl.style.display = isVisible ? 'block' : 'none';
             chunkCoordsEl.style.display = isVisible ? 'block' : 'none';
             calibrationEl.style.display = isVisible ? 'block' : 'none';
+            compassEl.style.display = isVisible ? 'block' : 'none';
+            chatOverlayEl.style.display = isVisible && chatOpen ? 'block' : 'none';
+            chatFeedEl.style.display = isVisible && !chatOpen ? 'grid' : 'none';
             lobbyEl.style.display = isVisible ? 'none' : 'flex';
             inLobby = !isVisible;
         }
@@ -321,7 +387,8 @@
             if (socket && socket.readyState === WebSocket.OPEN) socket.close();
             socket = new WebSocket(getWsUrl());
             socket.onopen = () => {
-                socket.send(JSON.stringify({ type: 'join', roomId: trimmed }));
+                const name = nameInputEl.value.trim().slice(0, 24);
+                socket.send(JSON.stringify({ type: 'join', roomId: trimmed, name }));
             };
             socket.onmessage = (ev) => {
                 let msg;
@@ -342,6 +409,14 @@
                         const localSlot = msg.peers.length;
                         playerSlots.set(peerId, localSlot);
                     }
+                    if (msg.names && typeof msg.names === 'object') {
+                        Object.entries(msg.names).forEach(([pid, name]) => {
+                            const remote = remotePlayers.get(pid);
+                            if (remote && typeof name === 'string' && name.trim().length > 0) {
+                                remote.userData.name = name;
+                            }
+                        });
+                    }
                     if (!gameStarted) {
                         init();
                         gameStarted = true;
@@ -351,6 +426,10 @@
                             if (!remotePlayers.has(pid)) {
                                 const slot = allocateSlot(pid);
                                 remotePlayers.set(pid, createRemotePlayer(pid, getSlotColor(slot)));
+                            }
+                            const remote = remotePlayers.get(pid);
+                            if (remote && msg.names && typeof msg.names[pid] === 'string') {
+                                remote.userData.name = msg.names[pid].trim();
                             }
                             if (voiceEnabled) {
                                 const shouldOffer = peerId < pid;
@@ -367,6 +446,9 @@
                         const slot = allocateSlot(pid);
                         remotePlayers.set(pid, createRemotePlayer(pid, getSlotColor(slot)));
                     }
+                    if (typeof msg.name === 'string' && msg.name.trim().length > 0) {
+                        remotePlayers.get(pid).userData.name = msg.name.trim();
+                    }
                     if (voiceEnabled && peerId && pid) {
                         const shouldOffer = peerId < pid;
                         if (shouldOffer) maybeStartOffer(pid);
@@ -375,6 +457,9 @@
                     const pid = msg.peerId;
                     const remote = remotePlayers.get(pid);
                     if (remote) {
+                        if (remote.userData.compassEl) {
+                            remote.userData.compassEl.remove();
+                        }
                         scene.remove(remote);
                         remotePlayers.delete(pid);
                     }
@@ -394,6 +479,14 @@
                     handleWebrtcAnswer(msg);
                 } else if (msg.type === 'webrtc-ice') {
                     handleWebrtcIce(msg);
+                } else if (msg.type === 'chat') {
+                    const sender = msg.fromPeerId ? displayNameForPeer(msg.fromPeerId) : 'Peer';
+                    if (typeof msg.text === 'string') addChatMessage(sender, msg.text);
+                } else if (msg.type === 'peer-name') {
+                    if (typeof msg.peerId === 'string' && typeof msg.name === 'string') {
+                        const remote = remotePlayers.get(msg.peerId);
+                        if (remote) remote.userData.name = msg.name;
+                    }
                 }
             };
             socket.onerror = () => {
@@ -539,7 +632,6 @@
             const px = Math.round(player.position.x / BLOCK_SIZE);
             const pz = Math.round(player.position.z / BLOCK_SIZE);
             const py = Math.round(player.position.y);
-            document.getElementById('chunk-coords').innerText = `Chunk: ${px}, ${pz}`;
 
             for (let x = px - RENDER_DISTANCE; x <= px + RENDER_DISTANCE; x++) {
                 for (let z = pz - RENDER_DISTANCE; z <= pz + RENDER_DISTANCE; z++) {
@@ -611,6 +703,11 @@
             group.userData.webR = { line: createWebLine(0xffffff), active: false, anchor: new THREE.Vector3(), length: 0 };
             group.userData.audioGain = null;
             group.userData.audioStream = null;
+            const marker = document.createElement('div');
+            marker.className = 'compass-marker';
+            marker.style.background = `#${color.toString(16).padStart(6, '0')}`;
+            compassEl.appendChild(marker);
+            group.userData.compassEl = marker;
             scene.add(group);
             return group;
         }
@@ -790,6 +887,7 @@
             const moveDir = input.clone().applyQuaternion(player.quaternion);
 
             let usedNextPos = false;
+            pendingTetherImpulse = null;
             if (isClimbing) {
                 playerVelocity.y = keys['KeyW'] ? CLIMB_SPEED : (keys['KeyS'] ? -CLIMB_SPEED : 0);
                 playerVelocity.x = playerVelocity.z = 0;
@@ -802,10 +900,12 @@
 
                 const applyConstraint = (web) => {
                     if (!web.active) return;
+                    let anchorVelocity = null;
                     if (web.targetPeerId) {
                         const target = remotePlayers.get(web.targetPeerId);
                         if (target) {
                             web.anchor.copy(target.position).add(new THREE.Vector3(0, 1.2, 0));
+                            anchorVelocity = target.userData?.velocity || null;
                         } else {
                             web.active = false;
                             web.line.visible = false;
@@ -813,13 +913,28 @@
                             return;
                         }
                     }
-                    const currentDist = player.position.distanceTo(web.anchor);
-                    if (currentDist < web.length) {
-                        web.length = currentDist;
+                    if (!web.targetPeerId) {
+                        const currentDist = player.position.distanceTo(web.anchor);
+                        if (currentDist < web.length) {
+                            web.length = currentDist;
+                        }
                     }
                     if (unlockReel && ((web.name === 'left' && keys['KeyQ']) || (web.name === 'right' && keys['KeyE']))) {
                         web.length -= 60 * dt;
-                        if (webL.active && webR.active) {
+                        if (!web.targetPeerId) {
+                            const otherWeb = web.name === 'left' ? webR : webL;
+                            if (otherWeb.active && otherWeb.targetPeerId) {
+                                const target = remotePlayers.get(otherWeb.targetPeerId);
+                                if (target) {
+                                    const dir = new THREE.Vector3().subVectors(player.position, target.position).normalize();
+                                    pendingTetherImpulse = {
+                                        targetPeerId: otherWeb.targetPeerId,
+                                        impulse: { x: dir.x * REEL_PULL_IMPULSE * dt, y: dir.y * REEL_PULL_IMPULSE * dt, z: dir.z * REEL_PULL_IMPULSE * dt },
+                                    };
+                                }
+                            }
+                        }
+                        if (webL.active && webR.active && !webL.targetPeerId && !webR.targetPeerId) {
                             const minDualLength = 5 + webL.anchor.distanceTo(webR.anchor);
                             if (web.length < minDualLength) web.length = minDualLength;
                         } else if (web.length < 2) {
@@ -832,7 +947,8 @@
                         nextPos.add(toAnchor.multiplyScalar(distAfterMove - web.length));
                         
                         const radial = new THREE.Vector3().subVectors(player.position, web.anchor).normalize();
-                        const vDotR = playerVelocity.dot(radial);
+                        const relVel = anchorVelocity ? playerVelocity.clone().sub(anchorVelocity) : playerVelocity;
+                        const vDotR = relVel.dot(radial);
                         if (vDotR > 0) playerVelocity.sub(radial.multiplyScalar(vDotR));
 
                         // Pumping energy while swinging
@@ -848,12 +964,14 @@
                     const anchorPlayer = remotePlayers.get(tether.peerId);
                     if (!anchorPlayer) return;
                     const anchorPos = anchorPlayer.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+                    const anchorVel = anchorPlayer.userData?.velocity || null;
                     const distAfterMove = nextPos.distanceTo(anchorPos);
                     if (distAfterMove > tether.length) {
                         const toAnchor = new THREE.Vector3().subVectors(anchorPos, nextPos).normalize();
                         nextPos.add(toAnchor.multiplyScalar(distAfterMove - tether.length));
                         const radial = new THREE.Vector3().subVectors(player.position, anchorPos).normalize();
-                        const vDotR = playerVelocity.dot(radial);
+                        const relVel = anchorVel ? playerVelocity.clone().sub(anchorVel) : playerVelocity;
+                        const vDotR = relVel.dot(radial);
                         if (vDotR > 0) playerVelocity.sub(radial.multiplyScalar(vDotR));
                     }
                 });
@@ -950,6 +1068,7 @@
                 quat: { x: player.quaternion.x, y: player.quaternion.y, z: player.quaternion.z, w: player.quaternion.w },
                 vel: { x: playerVelocity.x, y: playerVelocity.y, z: playerVelocity.z },
                 grounded: isGrounded,
+                tetherImpulse: pendingTetherImpulse,
                 webL: {
                     active: webL.active,
                     anchor: { x: webL.anchor.x, y: webL.anchor.y, z: webL.anchor.z },
@@ -987,6 +1106,12 @@
             }
             remote.userData.isGrounded = !!state.grounded;
             remote.userData.lastSnapshotAt = performance.now();
+            if (state.tetherImpulse && state.tetherImpulse.targetPeerId === peerId) {
+                const impulse = state.tetherImpulse.impulse;
+                if (impulse) {
+                    playerVelocity.add(new THREE.Vector3(impulse.x || 0, impulse.y || 0, impulse.z || 0));
+                }
+            }
             if (state.webL) {
                 const web = remote.userData.webL;
                 web.active = !!state.webL.active;
@@ -1070,6 +1195,55 @@
                 } else {
                     remote.userData.model.rotation.x = THREE.MathUtils.lerp(remote.userData.model.rotation.x, 0, 6 * dt);
                 }
+            });
+        }
+
+        function displayNameForPeer(pid) {
+            if (pid === peerId) {
+                const localName = nameInputEl.value.trim().slice(0, 24);
+                return localName || `P${(playerSlots.get(pid) ?? 0) + 1}`;
+            }
+            const remote = remotePlayers.get(pid);
+            if (remote && remote.userData.name) return remote.userData.name;
+            return `P${(playerSlots.get(pid) ?? 0) + 1}`;
+        }
+
+        function updateChunkCoordsDisplay() {
+            const localChunkX = Math.round(player.position.x / BLOCK_SIZE);
+            const localChunkZ = Math.round(player.position.z / BLOCK_SIZE);
+            const localChunkY = Math.round(player.position.y / BLOCK_SIZE);
+            let lines = [`${displayNameForPeer(peerId)}: ${localChunkX}, ${localChunkY}, ${localChunkZ}`];
+            const entries = [...remotePlayers.entries()].sort((a, b) => {
+                const slotA = playerSlots.get(a[0]) ?? 999;
+                const slotB = playerSlots.get(b[0]) ?? 999;
+                return slotA - slotB;
+            });
+            entries.forEach(([pid, remote]) => {
+                const cx = Math.round(remote.position.x / BLOCK_SIZE);
+                const cy = Math.round(remote.position.y / BLOCK_SIZE);
+                const cz = Math.round(remote.position.z / BLOCK_SIZE);
+                lines.push(`${displayNameForPeer(pid)}: ${cx}, ${cy}, ${cz}`);
+            });
+            document.getElementById('chunk-coords').innerHTML = lines.join('<br>');
+        }
+
+        function updateCompass() {
+            const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(player.quaternion);
+            const forwardAngle = Math.atan2(forward.x, forward.z);
+            remotePlayers.forEach((remote) => {
+                const marker = remote.userData.compassEl;
+                if (!marker) return;
+                const toRemote = new THREE.Vector3().subVectors(remote.position, player.position);
+                if (toRemote.lengthSq() < 1) {
+                    marker.style.display = 'none';
+                    return;
+                }
+                const angle = Math.atan2(toRemote.x, toRemote.z);
+                let delta = angle - forwardAngle;
+                delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+                const percent = ((-delta) / Math.PI + 1) * 0.5;
+                marker.style.display = 'block';
+                marker.style.left = `${(percent * 100).toFixed(2)}%`;
             });
         }
 
@@ -1184,6 +1358,25 @@
             }
         }
 
+        function addChatMessage(label, text) {
+            const line = `${label}: ${text}`;
+            chatMessages.push(line);
+            if (chatMessages.length > 50) chatMessages.shift();
+            const node = document.createElement('div');
+            node.className = 'chat-line';
+            node.textContent = line;
+            chatLogEl.appendChild(node);
+            chatLogEl.scrollTop = chatLogEl.scrollHeight;
+            const recent = chatMessages.slice(-4);
+            chatFeedEl.innerHTML = '';
+            recent.forEach((msg) => {
+                const item = document.createElement('div');
+                item.className = 'chat-line';
+                item.textContent = msg;
+                chatFeedEl.appendChild(item);
+            });
+        }
+
         function updateReticle() {
             const raycaster = new THREE.Raycaster();
             const dir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(1, 0, 0), pitch).applyQuaternion(player.quaternion).normalize();
@@ -1259,6 +1452,8 @@
             updateReticle();
             updateCamera(dt);
             updateRemotePlayers(dt);
+            updateChunkCoordsDisplay();
+            updateCompass();
             sendSnapshot(dt);
             renderer.render(scene, camera);
         }
@@ -1278,6 +1473,24 @@
         document.getElementById('refresh-rooms').addEventListener('click', listRooms);
         roomInputEl.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') joinRoom(roomInputEl.value);
+        });
+        chatInputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const text = chatInputEl.value.trim();
+                if (text.length > 0) {
+                    const localLabel = nameInputEl.value.trim().slice(0, 24);
+                    const label = localLabel || (peerId ? `P${(playerSlots.get(peerId) ?? 0) + 1}` : 'You');
+                    addChatMessage(label, text);
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({ type: 'chat', text }));
+                    }
+                    chatInputEl.value = '';
+                }
+                chatOpen = false;
+                chatOverlayEl.style.display = 'none';
+                chatFeedEl.style.display = 'grid';
+                if (!inLobby) document.body.requestPointerLock();
+            }
         });
 
         setGameVisible(false);
