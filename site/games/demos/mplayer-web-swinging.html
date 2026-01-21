@@ -69,6 +69,7 @@
         }
         .room-item span { color: #d5e6ff; }
         #lobby-status { margin-top: 10px; color: #fcd34d; min-height: 1.2em; }
+        #voice-status { margin-top: 6px; color: #93c5fd; min-height: 1.2em; font-size: 0.9em; }
         @media (max-width: 720px) {
             #lobby-card { padding: 18px; }
         }
@@ -84,9 +85,11 @@
                 <button id="create-room" class="lobby-button">Create</button>
                 <button id="join-room" class="lobby-button secondary">Join</button>
                 <button id="refresh-rooms" class="lobby-button secondary">Refresh</button>
+                <button id="enable-voice" class="lobby-button secondary">Enable Mic</button>
             </div>
             <div id="room-list"></div>
             <div id="lobby-status"></div>
+            <div id="voice-status">Voice: Off</div>
         </div>
     </div>
     <div id="ui">
@@ -159,6 +162,17 @@
         const remotePlayers = new Map();
         const playerSlots = new Map();
         const playerColors = [0xff3b30, 0x0a84ff, 0x34c759, 0xaf52de];
+        const peerConnections = new Map();
+        let localStream = null;
+        let audioContext = null;
+        let voiceEnabled = false;
+        const PROXIMITY_RANGE = 300;
+        const ICE_SERVERS = [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478' }
+        ];
 
         // Dual Web System
         const webL = { name: 'left', active: false, anchor: new THREE.Vector3(), length: 0, line: null };
@@ -172,6 +186,7 @@
 
         const lobbyEl = document.getElementById('lobby');
         const lobbyStatusEl = document.getElementById('lobby-status');
+        const voiceStatusEl = document.getElementById('voice-status');
         const roomInputEl = document.getElementById('room-input');
         const roomListEl = document.getElementById('room-list');
         const uiEl = document.getElementById('ui');
@@ -336,6 +351,10 @@
                                 const slot = allocateSlot(pid);
                                 remotePlayers.set(pid, createRemotePlayer(pid, getSlotColor(slot)));
                             }
+                            if (voiceEnabled) {
+                                const shouldOffer = peerId < pid;
+                                if (shouldOffer) maybeStartOffer(pid);
+                            }
                         });
                     }
                 } else if (msg.type === 'error') {
@@ -347,6 +366,10 @@
                         const slot = allocateSlot(pid);
                         remotePlayers.set(pid, createRemotePlayer(pid, getSlotColor(slot)));
                     }
+                    if (voiceEnabled && peerId && pid) {
+                        const shouldOffer = peerId < pid;
+                        if (shouldOffer) maybeStartOffer(pid);
+                    }
                 } else if (msg.type === 'peer-left') {
                     const pid = msg.peerId;
                     const remote = remotePlayers.get(pid);
@@ -355,8 +378,19 @@
                         remotePlayers.delete(pid);
                     }
                     playerSlots.delete(pid);
+                    const pc = peerConnections.get(pid);
+                    if (pc) {
+                        pc.close();
+                        peerConnections.delete(pid);
+                    }
                 } else if (msg.type === 'snapshot') {
                     applyRemoteSnapshot(msg.fromPeerId, msg.state);
+                } else if (msg.type === 'webrtc-offer') {
+                    handleWebrtcOffer(msg);
+                } else if (msg.type === 'webrtc-answer') {
+                    handleWebrtcAnswer(msg);
+                } else if (msg.type === 'webrtc-ice') {
+                    handleWebrtcIce(msg);
                 }
             };
             socket.onerror = () => {
@@ -572,6 +606,8 @@
             group.add(beam);
             group.userData.webL = { line: createWebLine(0xffffff), active: false, anchor: new THREE.Vector3(), length: 0 };
             group.userData.webR = { line: createWebLine(0xffffff), active: false, anchor: new THREE.Vector3(), length: 0 };
+            group.userData.audioGain = null;
+            group.userData.audioStream = null;
             scene.add(group);
             return group;
         }
@@ -935,6 +971,11 @@
                         remote.userData.beam.position.set(0, beamHeight * 0.5, 0);
                     }
                 }
+                if (remote.userData.audioGain) {
+                    const dist = remote.position.distanceTo(player.position);
+                    const gain = Math.max(0, 1 - dist / PROXIMITY_RANGE);
+                    remote.userData.audioGain.gain.value = gain * gain;
+                }
                 updateRemoteWebLine(remote, remote.userData.webL);
                 updateRemoteWebLine(remote, remote.userData.webR);
                 const horizontalSpeed = Math.hypot(vel.x, vel.z);
@@ -954,6 +995,109 @@
             p[0] = remote.position.x; p[1] = remote.position.y + 1.2; p[2] = remote.position.z;
             p[3] = web.anchor.x; p[4] = web.anchor.y; p[5] = web.anchor.z;
             web.line.geometry.attributes.position.needsUpdate = true;
+        }
+
+        async function initVoice() {
+            if (voiceEnabled) return;
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+                voiceEnabled = true;
+                voiceStatusEl.innerText = 'Voice: On';
+                peerConnections.forEach((pc) => {
+                    localStream.getTracks().forEach((track) => {
+                        const hasTrack = pc.getSenders().some((sender) => sender.track && sender.track.id === track.id);
+                        if (!hasTrack) pc.addTrack(track, localStream);
+                    });
+                });
+                remotePlayers.forEach((remote) => {
+                    if (remote.userData.audioStream) {
+                        attachRemoteAudio(remote, remote.userData.audioStream);
+                    }
+                });
+                remotePlayers.forEach((_, pid) => {
+                    if (peerId && pid) {
+                        const shouldOffer = peerId < pid;
+                        if (shouldOffer) maybeStartOffer(pid);
+                    }
+                });
+            } catch (err) {
+                voiceStatusEl.innerText = 'Voice: Blocked (mic permission needed)';
+            }
+        }
+
+        function attachRemoteAudio(remote, stream) {
+            if (!audioContext) return;
+            if (remote.userData.audioGain) return;
+            const source = audioContext.createMediaStreamSource(stream);
+            const gainNode = audioContext.createGain();
+            gainNode.gain.value = 0;
+            source.connect(gainNode).connect(audioContext.destination);
+            remote.userData.audioGain = gainNode;
+        }
+
+        function getOrCreatePeerConnection(peerId) {
+            if (peerConnections.has(peerId)) return peerConnections.get(peerId);
+            const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+            if (localStream) {
+                localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+            }
+            pc.onicecandidate = (event) => {
+                if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type: 'webrtc-ice', toPeerId: peerId, candidate: event.candidate }));
+                }
+            };
+            pc.ontrack = (event) => {
+                let remote = remotePlayers.get(peerId);
+                if (!remote) {
+                    const slot = allocateSlot(peerId);
+                    remote = createRemotePlayer(peerId, getSlotColor(slot));
+                    remotePlayers.set(peerId, remote);
+                }
+                remote.userData.audioStream = event.streams[0];
+                attachRemoteAudio(remote, event.streams[0]);
+            };
+            peerConnections.set(peerId, pc);
+            return pc;
+        }
+
+        async function maybeStartOffer(peerId) {
+            const pc = getOrCreatePeerConnection(peerId);
+            if (pc.signalingState !== 'stable') return;
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            socket.send(JSON.stringify({ type: 'webrtc-offer', toPeerId: peerId, sdp: pc.localDescription }));
+        }
+
+        async function handleWebrtcOffer(msg) {
+            const fromPeerId = msg.fromPeerId;
+            const pc = getOrCreatePeerConnection(fromPeerId);
+            await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.send(JSON.stringify({ type: 'webrtc-answer', toPeerId: fromPeerId, sdp: pc.localDescription }));
+        }
+
+        async function handleWebrtcAnswer(msg) {
+            const fromPeerId = msg.fromPeerId;
+            const pc = getOrCreatePeerConnection(fromPeerId);
+            if (pc.signalingState !== 'have-local-offer') return;
+            await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+        }
+
+        async function handleWebrtcIce(msg) {
+            const fromPeerId = msg.fromPeerId;
+            const pc = getOrCreatePeerConnection(fromPeerId);
+            if (msg.candidate) {
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+                } catch {
+                    // ignore
+                }
+            }
         }
 
         function updateReticle() {
@@ -1040,6 +1184,9 @@
             const roomId = value.length > 0 ? value : `room-${Math.random().toString(36).slice(2, 8)}`;
             roomInputEl.value = roomId;
             joinRoom(roomId);
+        });
+        document.getElementById('enable-voice').addEventListener('click', () => {
+            initVoice();
         });
         document.getElementById('join-room').addEventListener('click', () => {
             joinRoom(roomInputEl.value);
