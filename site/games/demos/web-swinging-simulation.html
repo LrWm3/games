@@ -505,7 +505,7 @@
                 const updateLine = (web) => {
                     if (!web.active) return;
                     const p = web.line.geometry.attributes.position.array;
-                    p[0] = player.position.x; p[1] = player.position.y + 1.2; p[2] = player.position.z;
+                    p[0] = nextPos.x; p[1] = nextPos.y + 1.2; p[2] = nextPos.z;
                     p[3] = web.anchor.x; p[4] = web.anchor.y; p[5] = web.anchor.z;
                     web.line.geometry.attributes.position.needsUpdate = true;
                 };
