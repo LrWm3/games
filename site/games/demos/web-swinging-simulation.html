@@ -50,7 +50,7 @@
             Reel (Locked @ 2000m)<br>
             Bounce (Locked @ 10000m)
         </div>
-        <div class="stat" id="win-msg" style="display: none;"></div>
+        <div class="stat" id="win-msg">Win at 10000m</div>
         <div class="stat" id="speed">Speed: 0 km/h</div>
         <div class="stat" id="height">Height: 0 m</div>
         <div class="stat" id="state">State: Grounded</div>
@@ -87,7 +87,8 @@
         let pitch = 0; 
         let lastPointerLog = 0;
         let unlockReel = false, unlockBounce = false;
-        let winShown = false, winShownAt = 0;
+        let winShown = false, winShownAt = 0, winElapsedStr = '';
+        let freePlay = false;
         let climbStartTime = performance.now();
 
         // Dual Web System
@@ -146,6 +147,16 @@
                 if (e.code === 'Space' && (isGrounded || isClimbing)) {
                     isChargingJump = true;
                     document.getElementById('charge-container').style.display = 'block';
+                }
+                if (e.code === 'KeyP' && !freePlay) {
+                    freePlay = true;
+                    unlockReel = true;
+                    unlockBounce = true;
+                    document.getElementById('control-reel-left').style.display = 'block';
+                    document.getElementById('control-reel-right').style.display = 'block';
+                    document.getElementById('control-bounce').style.display = 'block';
+                    document.getElementById('win-msg').innerText = 'Free play mode';
+                    document.getElementById('win-msg').style.display = 'block';
                 }
             });
 
@@ -372,6 +383,7 @@
                     if (isGrounded) {
                         playerVelocity.add(dir.multiplyScalar(35));
                         playerVelocity.y += 15;
+                        isGrounded = false;
                     }
                 }
             }
@@ -381,6 +393,7 @@
             const r = 1.2; // Player collision radius
             const pos = player.position;
             let onWall = false;
+            const wallEps = 0.01;
 
             if (playerVelocity.y < 0) isGrounded = false;
 
@@ -402,7 +415,7 @@
                 // WALL COLLISION: Check if player is between building top and bottom
                 if (pos.y < box.max.y && pos.y >= box.min.y) {
                     // Check if player footprint overlaps building footprint (with radius)
-                    if (pos.x + r > box.min.x && pos.x - r < box.max.x && pos.z + r > box.min.z && pos.z - r < box.max.z) {
+                    if (pos.x + r >= box.min.x - wallEps && pos.x - r <= box.max.x + wallEps && pos.z + r >= box.min.z - wallEps && pos.z - r <= box.max.z + wallEps) {
                         onWall = true;
                         
                         // Push player out of building
@@ -552,15 +565,20 @@
                 document.getElementById('control-bounce').style.display = 'block';
             }
             document.getElementById('unlocks').innerHTML = `Unlocks:<br>Reel (${unlockReel ? 'Unlocked' : `Locked @ ${REEL_UNLOCK_HEIGHT}m`})<br>Bounce (${unlockBounce ? 'Unlocked' : `Locked @ ${BOUNCE_UNLOCK_HEIGHT}m`})`;
-            if (!winShown && currentHeight >= BOUNCE_UNLOCK_HEIGHT) {
+            if (!freePlay && !winShown && currentHeight >= BOUNCE_UNLOCK_HEIGHT) {
                 winShown = true;
                 winShownAt = performance.now();
                 const elapsedSec = Math.round((winShownAt - climbStartTime) / 1000);
-                document.getElementById('win-msg').innerText = `You win! You climbed ${BOUNCE_UNLOCK_HEIGHT}m in ${elapsedSec}s. Enjoy swinging around for fun.`;
+                winElapsedStr = formatDuration(elapsedSec);
+                document.getElementById('win-msg').innerHTML = `You win! You climbed ${BOUNCE_UNLOCK_HEIGHT}m in ${winElapsedStr}. Enjoy swinging around for fun.<br>Press P on new game to unlock everything.`;
                 document.getElementById('win-msg').style.display = 'block';
             }
-            if (winShown && performance.now() - winShownAt > 20000) {
-                document.getElementById('win-msg').style.display = 'none';
+            if (!freePlay && winShown && performance.now() - winShownAt > 20000) {
+                document.getElementById('win-msg').innerText = `Won in ${winElapsedStr}`;
+                document.getElementById('win-msg').style.display = 'block';
+            } else if (!freePlay && !winShown) {
+                document.getElementById('win-msg').innerText = `Win at ${BOUNCE_UNLOCK_HEIGHT}m`;
+                document.getElementById('win-msg').style.display = 'block';
             }
             let stateText = (webL.active && webR.active) ? "Dual Swung" : (webL.active || webR.active ? "Swinging" : (isClimbing ? "Climbing" : (isGrounded ? "Grounded" : "Airborne")));
             document.getElementById('state').innerText = `State: ${stateText}`;
@@ -607,6 +625,17 @@
 
             laserBeam.visible = true;
             laserDot.visible = true;
+        }
+
+        function formatDuration(totalSeconds) {
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            const parts = [];
+            if (hours > 0) parts.push(`${hours}h`);
+            if (minutes > 0) parts.push(`${minutes}m`);
+            if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
+            return parts.join(' ');
         }
 
         function updateCamera() {
