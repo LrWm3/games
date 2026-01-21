@@ -638,9 +638,10 @@
             return parts.join(' ');
         }
 
-        function updateCamera() {
+        function updateCamera(dt) {
             const camOffset = new THREE.Vector3(0, 8, -25).applyAxisAngle(new THREE.Vector3(1, 0, 0), pitch).applyQuaternion(player.quaternion);
-            camera.position.lerp(player.position.clone().add(camOffset), 0.2);
+            const followAlpha = 1 - Math.exp(-10 * dt);
+            camera.position.lerp(player.position.clone().add(camOffset), followAlpha);
             camera.lookAt(player.position.clone().add(new THREE.Vector3(0, 4, 8).applyQuaternion(player.quaternion)));
         }
 
@@ -656,7 +657,7 @@
             updateCity();
             handleMovement(dt);
             updateReticle();
-            updateCamera();
+            updateCamera(dt);
             renderer.render(scene, camera);
         }
 
