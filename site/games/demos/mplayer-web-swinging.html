@@ -185,6 +185,7 @@
         const WORLD_SEED = 1337;
         const INITIAL_CHUNK_HEIGHTS = {};
         const REMOTE_ORB_RADIUS = PLAYER_RADIUS * 6;
+        const GAME_ID = 'mplayer-web-swinging';
 
         // --- CORE ---
         let scene, camera, renderer, clock;
@@ -388,7 +389,7 @@
             socket = new WebSocket(getWsUrl());
             socket.onopen = () => {
                 const name = nameInputEl.value.trim().slice(0, 24);
-                socket.send(JSON.stringify({ type: 'join', roomId: trimmed, name }));
+                socket.send(JSON.stringify({ type: 'join', roomId: trimmed, name, gameId: GAME_ID }));
             };
             socket.onmessage = (ev) => {
                 let msg;
@@ -495,7 +496,7 @@
         }
 
         function listRooms() {
-            fetch('/rooms')
+            fetch(`/rooms?gameId=${encodeURIComponent(GAME_ID)}`)
                 .then((res) => res.json())
                 .then((data) => {
                     roomListEl.innerHTML = '';
@@ -1473,6 +1474,21 @@
         document.getElementById('refresh-rooms').addEventListener('click', listRooms);
         roomInputEl.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') joinRoom(roomInputEl.value);
+        });
+        nameInputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    const name = nameInputEl.value.trim().slice(0, 24);
+                    socket.send(JSON.stringify({ type: 'name', name }));
+                }
+                nameInputEl.blur();
+            }
+        });
+        nameInputEl.addEventListener('blur', () => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                const name = nameInputEl.value.trim().slice(0, 24);
+                socket.send(JSON.stringify({ type: 'name', name }));
+            }
         });
         chatInputEl.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {

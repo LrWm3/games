@@ -18,6 +18,7 @@ type RoomId = string;
 
 const PORT = Number(Deno.env.get("PORT") ?? 8080);
 const MAX_ROOM_SIZE = 4;
+const DEFAULT_GAME_ID = "default";
 
 // Basic safety limits (tune as desired)
 const MAX_MESSAGE_BYTES = 64 * 1024; // 64KB
@@ -26,13 +27,14 @@ const MAX_SNAPSHOTS_PER_SEC = 30;
 type ClientInfo = {
   peerId: PeerId;
   roomId: RoomId;
+  gameId: string;
   ws: WebSocket;
   lastTickWindowStartMs: number;
   snapshotsThisWindow: number;
   name?: string;
 };
 
-const rooms = new Map<RoomId, Map<PeerId, ClientInfo>>();
+const rooms = new Map<string, Map<RoomId, Map<PeerId, ClientInfo>>>();
 
 function makePeerId(): PeerId {
   // Simple random id; enough for friends
@@ -44,8 +46,9 @@ function safeSend(ws: WebSocket, obj: unknown) {
   ws.send(JSON.stringify(obj));
 }
 
-function broadcastRoom(roomId: RoomId, msg: unknown, exceptPeerId?: PeerId) {
-  const room = rooms.get(roomId);
+function broadcastRoom(gameId: string, roomId: RoomId, msg: unknown, exceptPeerId?: PeerId) {
+  const gameRooms = rooms.get(gameId);
+  const room = gameRooms?.get(roomId);
   if (!room) return;
   for (const [pid, client] of room.entries()) {
     if (exceptPeerId && pid === exceptPeerId) continue;
@@ -53,16 +56,18 @@ function broadcastRoom(roomId: RoomId, msg: unknown, exceptPeerId?: PeerId) {
   }
 }
 
-function removeClient(roomId: RoomId, peerId: PeerId) {
-  const room = rooms.get(roomId);
+function removeClient(gameId: string, roomId: RoomId, peerId: PeerId) {
+  const gameRooms = rooms.get(gameId);
+  const room = gameRooms?.get(roomId);
   if (!room) return;
 
   const existed = room.delete(peerId);
   if (existed) {
-    broadcastRoom(roomId, { type: "peer-left", peerId });
+    broadcastRoom(gameId, roomId, { type: "peer-left", peerId });
   }
 
-  if (room.size === 0) rooms.delete(roomId);
+  if (room.size === 0) gameRooms?.delete(roomId);
+  if (gameRooms && gameRooms.size === 0) rooms.delete(gameId);
 }
 
 function isProbablyJsonText(data: unknown): data is string {
@@ -86,6 +91,12 @@ function isValidRoomId(roomId: unknown): roomId is string {
   return r.length >= 1 && r.length <= 64 && /^[a-zA-Z0-9_\-]+$/.test(r);
 }
 
+function isValidGameId(gameId: unknown): gameId is string {
+  if (typeof gameId !== "string") return false;
+  const g = gameId.trim();
+  return g.length >= 1 && g.length <= 64 && /^[a-zA-Z0-9_\-]+$/.test(g);
+}
+
 async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
 
@@ -101,17 +112,18 @@ async function handler(req: Request): Promise<Response> {
     let joined = false;
     let roomId: RoomId | null = null;
     let peerId: PeerId | null = null;
+    let gameId: string = DEFAULT_GAME_ID;
 
     socket.onopen = () => {
       // no-op; wait for join
     };
 
     socket.onclose = () => {
-      if (joined && roomId && peerId) removeClient(roomId, peerId);
+      if (joined && roomId && peerId) removeClient(gameId, roomId, peerId);
     };
 
     socket.onerror = () => {
-      if (joined && roomId && peerId) removeClient(roomId, peerId);
+      if (joined && roomId && peerId) removeClient(gameId, roomId, peerId);
     };
 
     socket.onmessage = (ev) => {
@@ -144,11 +156,22 @@ async function handler(req: Request): Promise<Response> {
           return;
         }
 
+        if (msg.gameId !== undefined && !isValidGameId(msg.gameId)) {
+          safeSend(socket, { type: "error", code: "bad_game", message: "Invalid gameId" });
+          return;
+        }
+
+        gameId = isValidGameId(msg.gameId) ? msg.gameId.trim() : DEFAULT_GAME_ID;
         const rid = msg.roomId.trim() as RoomId;
-        let room = rooms.get(rid);
+        let gameRooms = rooms.get(gameId);
+        if (!gameRooms) {
+          gameRooms = new Map();
+          rooms.set(gameId, gameRooms);
+        }
+        let room = gameRooms.get(rid);
         if (!room) {
           room = new Map();
-          rooms.set(rid, room);
+          gameRooms.set(rid, room);
         }
 
         if (room.size >= MAX_ROOM_SIZE) {
@@ -163,6 +186,7 @@ async function handler(req: Request): Promise<Response> {
         const clientInfo: ClientInfo = {
           peerId,
           roomId,
+          gameId,
           ws: socket,
           lastTickWindowStartMs: Date.now(),
           snapshotsThisWindow: 0,
@@ -181,13 +205,13 @@ async function handler(req: Request): Promise<Response> {
         // Tell the joiner who they are + who else is present
         safeSend(socket, { type: "welcome", peerId, roomId, peers, names });
         if (typeof msg.name === "string" && msg.name.trim().length > 0) {
-          broadcastRoom(roomId, { type: "peer-name", peerId, name: msg.name.trim().slice(0, 24) }, peerId);
+          broadcastRoom(gameId, roomId, { type: "peer-name", peerId, name: msg.name.trim().slice(0, 24) }, peerId);
           const clientRecord = room.get(peerId);
           if (clientRecord) clientRecord.name = msg.name.trim().slice(0, 24);
         }
 
         // Tell the room about the new peer
-        broadcastRoom(roomId, { type: "peer-joined", peerId, name: clientInfo.name ?? "" }, peerId);
+        broadcastRoom(gameId, roomId, { type: "peer-joined", peerId, name: clientInfo.name ?? "" }, peerId);
 
         return;
       }
@@ -199,7 +223,8 @@ async function handler(req: Request): Promise<Response> {
       }
 
       // Fetch current client record
-      const room = rooms.get(roomId);
+      const gameRooms = rooms.get(gameId);
+      const room = gameRooms?.get(roomId);
       const client = room?.get(peerId);
       if (!room || !client) return;
 
@@ -233,13 +258,20 @@ async function handler(req: Request): Promise<Response> {
         const t = typeof msg.t === "number" ? msg.t : undefined;
         const state = msg.state; // arbitrary JSON object
 
-        broadcastRoom(roomId, { type: "snapshot", fromPeerId: peerId, seq, t, state }, peerId);
+        broadcastRoom(gameId, roomId, { type: "snapshot", fromPeerId: peerId, seq, t, state }, peerId);
         return;
       }
 
       // Optional: chat/pings/etc. (room broadcast)
+      if (msg.type === "name" && typeof msg.name === "string") {
+        const name = msg.name.trim().slice(0, 24);
+        client.name = name.length > 0 ? name : undefined;
+        broadcastRoom(gameId, roomId, { type: "peer-name", peerId, name }, peerId);
+        return;
+      }
+
       if (msg.type === "chat" && typeof msg.text === "string") {
-        broadcastRoom(roomId, { type: "chat", fromPeerId: peerId, text: msg.text.slice(0, 500) }, peerId);
+        broadcastRoom(gameId, roomId, { type: "chat", fromPeerId: peerId, text: msg.text.slice(0, 500) }, peerId);
         return;
       }
 
@@ -251,7 +283,11 @@ async function handler(req: Request): Promise<Response> {
 
   // ---- Static file serving ----
   if (url.pathname === "/rooms") {
-    const payload = [...rooms.entries()].map(([roomId, room]) => ({
+    const gameId = isValidGameId(url.searchParams.get("gameId"))
+      ? url.searchParams.get("gameId")!.trim()
+      : DEFAULT_GAME_ID;
+    const gameRooms = rooms.get(gameId) ?? new Map();
+    const payload = [...gameRooms.entries()].map(([roomId, room]) => ({
       roomId,
       players: room.size,
     }));
