@@ -238,6 +238,17 @@ async function handler(req: Request): Promise<Response> {
   }
 
   // ---- Static file serving ----
+  if (url.pathname === "/rooms") {
+    const payload = [...rooms.entries()].map(([roomId, room]) => ({
+      roomId,
+      players: room.size,
+    }));
+    return new Response(JSON.stringify(payload), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
   // Serve index.html at /
   if (url.pathname === "/") {
     return serveFile(req, "./site/index.html");
