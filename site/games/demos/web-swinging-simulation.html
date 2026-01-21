@@ -157,6 +157,7 @@
 
             document.addEventListener('pointermove', (e) => {
                 if (document.pointerLockElement === document.body) {
+                    if (Math.abs(e.movementX) > 40 || Math.abs(e.movementY) > 40) return;
                     const now = performance.now();
                     if (now - lastPointerLog > 200) {
                         lastPointerLog = now;
