@@ -222,12 +222,12 @@
         const SWING_MIN_DURATION_MS = 300;
         const REEL_PULL_IMPULSE = 30.0;
         const REEL_UNLOCK_HEIGHT = 2000;
-        const BOUNCE_UNLOCK_HEIGHT = 10000;
+        const BOUNCE_UNLOCK_HEIGHT = 12000;
         const WIN_HEIGHT = 12000;
         const WORLD_SEED = 1337;
         const INITIAL_CHUNK_HEIGHTS = {};
         const REMOTE_ORB_RADIUS = PLAYER_RADIUS * 6;
-        const HONEY_STUCK_TIME_MS = 10000;
+        const HONEY_STUCK_TIME_MS = 6500;
         const HONEY_UNSTICK_FORCE = 0.1;
         const HONEY_RELEASE_PUSH = 18;
         const HONEY_STICK_MIN_FORCE = 22;
@@ -239,7 +239,7 @@
         const SAVE_CHECK_INTERVAL_MS = 500;
         const SHOCK_PULSE_PERIOD = 6.0;
         const SHOCK_PULSE_DURATION = 0.2;
-        const SHOCK_STUN_DURATION_MS = 10000;
+        const SHOCK_STUN_DURATION_MS = 6500;
         const SHOCK_BASE_COLOR = new THREE.Color(0x0b1b3a);
         const SHOCK_CHARGE_COLOR = new THREE.Color(0x1c4f76);
         const SHOCK_PULSE_COLOR = new THREE.Color(0x32ffd8);
@@ -295,6 +295,12 @@
         const playerSlots = new Map();
         const playerColors = [0xff3b30, 0x0a84ff, 0x34c759, 0xaf52de];
         const pointerLines = [];
+        const corridorWalls = {
+            left: null,
+            right: null,
+            back: null,
+        };
+        const corridorWallMat = new THREE.MeshBasicMaterial({ color: 0xff6b6b, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
         const pointerByPlayer = new Map();
         const chatMessages = [];
         let chatOpen = false;
@@ -328,6 +334,7 @@
         let trickySingleSwings = 0;
         let trickySingleLocked = false;
         let lastSinglePlayerMode = null;
+        let initialFacing = null;
 
         const lobbyEl = document.getElementById('lobby');
         const lobbyStatusEl = document.getElementById('lobby-status');
@@ -423,6 +430,13 @@
             // Safe Spawn: Intersection of roads (0,0) is skipped in updateCity for building generation
             player.position.set(0, 5, 0);
             game.spawnPos = { x: player.position.x, y: player.position.y, z: player.position.z };
+            const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(player.quaternion).normalize();
+            initialFacing = {
+                axis: Math.abs(forward.x) > Math.abs(forward.z) ? 'x' : 'z',
+                sign: (Math.abs(forward.x) > Math.abs(forward.z) ? forward.x : forward.z) >= 0 ? 1 : -1,
+                originX: Math.round(player.position.x / BLOCK_SIZE),
+                originZ: Math.round(player.position.z / BLOCK_SIZE),
+            };
             updateCity();
 
             window.addEventListener('contextmenu', e => e.preventDefault());
@@ -822,6 +836,17 @@
             return tex;
         }
 
+        function isChunkAllowed(x, z) {
+            if (game.freePlay || !initialFacing) return true;
+            const dx = x - initialFacing.originX;
+            const dz = z - initialFacing.originZ;
+            const forward = initialFacing.axis === 'x' ? dx * initialFacing.sign : dz * initialFacing.sign;
+            const lateral = initialFacing.axis === 'x' ? dz : dx;
+            if (Math.abs(lateral) > RENDER_DISTANCE) return false;
+            if (forward < -RENDER_DISTANCE) return false;
+            return true;
+        }
+
         function createGround() {
             const ground = new THREE.Mesh(new THREE.PlaneGeometry(30000, 30000), new THREE.MeshStandardMaterial({ color: 0x050510, roughness: 1 }));
             ground.rotation.x = -Math.PI / 2;
@@ -984,6 +1009,7 @@
                 isClimbing = false;
                 stuckNormal.copy(result.wallNormal);
                 stuckPosition.copy(player.position);
+                addChatMessage('System', `${displayNameForPeer(peerId)} is stuck in honey!`);
                 if (isSinglePlayerMode()) {
                     stuckUntilMs = performance.now() + HONEY_STUCK_TIME_MS;
                 }
@@ -1014,6 +1040,7 @@
             for (let x = px - RENDER_DISTANCE; x <= px + RENDER_DISTANCE; x++) {
                 for (let z = pz - RENDER_DISTANCE; z <= pz + RENDER_DISTANCE; z++) {
                     const key = `${x},${z}`;
+                    if (!isChunkAllowed(x, z)) continue;
                     // Skip roads on 3x3 grid
                     if ((x % 3 !== 0 && z % 3 !== 0) && !chunks.has(key)) {
                         if (!chunkHeights.has(key)) chunkHeights.set(key, py);
@@ -1037,7 +1064,7 @@
 
             for (let [key, data] of chunks) {
                 const [cx, cz] = key.split(',').map(Number);
-                if (Math.abs(cx - px) > RENDER_DISTANCE + 2 || Math.abs(cz - pz) > RENDER_DISTANCE + 2) {
+                if (!isChunkAllowed(cx, cz) || Math.abs(cx - px) > RENDER_DISTANCE + 2 || Math.abs(cz - pz) > RENDER_DISTANCE + 2) {
                     scene.remove(data.group);
                     chunks.delete(key);
                 }
@@ -1823,6 +1850,67 @@
             return baseColor.multiplyScalar(dim);
         }
 
+        function updateCorridorWalls() {
+            if (game.freePlay || !initialFacing) {
+                ['left', 'right', 'back'].forEach((key) => {
+                    if (corridorWalls[key]) corridorWalls[key].visible = false;
+                });
+                return;
+            }
+            const px = player.position.x;
+            const pz = player.position.z;
+            const wallHeight = 30000;
+            const wallThickness = 2;
+            const span = (RENDER_DISTANCE * 2 + 2) * BLOCK_SIZE;
+            const far = (RENDER_DISTANCE + 1) * BLOCK_SIZE;
+            let leftPos, rightPos, backPos, leftSize, rightSize, backSize;
+            if (initialFacing.axis === 'x') {
+                leftPos = new THREE.Vector3(px, wallHeight * 0.5, pz - far);
+                rightPos = new THREE.Vector3(px, wallHeight * 0.5, pz + far);
+                leftSize = new THREE.Vector3(span, wallHeight, wallThickness);
+                rightSize = new THREE.Vector3(span, wallHeight, wallThickness);
+                backPos = new THREE.Vector3(px - far * initialFacing.sign, wallHeight * 0.5, pz);
+                backSize = new THREE.Vector3(wallThickness, wallHeight, span);
+            } else {
+                leftPos = new THREE.Vector3(px - far, wallHeight * 0.5, pz);
+                rightPos = new THREE.Vector3(px + far, wallHeight * 0.5, pz);
+                leftSize = new THREE.Vector3(wallThickness, wallHeight, span);
+                rightSize = new THREE.Vector3(wallThickness, wallHeight, span);
+                backPos = new THREE.Vector3(px, wallHeight * 0.5, pz - far * initialFacing.sign);
+                backSize = new THREE.Vector3(span, wallHeight, wallThickness);
+            }
+            const defs = [
+                { key: 'left', pos: leftPos, size: leftSize },
+                { key: 'right', pos: rightPos, size: rightSize },
+                { key: 'back', pos: backPos, size: backSize },
+            ];
+            defs.forEach((def) => {
+                if (!corridorWalls[def.key]) {
+                    const geo = new THREE.BoxGeometry(def.size.x, def.size.y, def.size.z);
+                    const mesh = new THREE.Mesh(geo, corridorWallMat);
+                    mesh.position.copy(def.pos);
+                    mesh.renderOrder = 3;
+                    scene.add(mesh);
+                    corridorWalls[def.key] = mesh;
+                } else {
+                    const mesh = corridorWalls[def.key];
+                    mesh.visible = true;
+                    mesh.position.copy(def.pos);
+                    mesh.geometry.dispose();
+                    mesh.geometry = new THREE.BoxGeometry(def.size.x, def.size.y, def.size.z);
+                }
+            });
+        }
+
+        function enforceCorridor() {
+            if (game.freePlay || !initialFacing) return;
+            const cx = Math.round(player.position.x / BLOCK_SIZE);
+            const cz = Math.round(player.position.z / BLOCK_SIZE);
+            if (isChunkAllowed(cx, cz)) return;
+            resetPlayerToSpawn();
+            addChatMessage('System', `${displayNameForPeer(peerId)} left the valid area.`);
+        }
+
         function applyTrickyColors() {
             const color = new THREE.Color(getTrickyColor());
             chunks.forEach((data) => {
@@ -2151,6 +2239,7 @@
             isClimbing = false;
             isChargingJump = false;
             document.getElementById('charge-container').style.display = 'none';
+            addChatMessage('System', `${displayNameForPeer(peerId)} was zapped and is frozen!`);
         }
 
         function clearStun() {
@@ -2681,6 +2770,8 @@
             updateRemotePlayers(dt);
             updateAltitudeDisplay();
             updateCompass();
+            updateCorridorWalls();
+            enforceCorridor();
             const now = performance.now();
             if (now - lastSaveCheckAt >= SAVE_CHECK_INTERVAL_MS) {
                 lastSaveCheckAt = now;
