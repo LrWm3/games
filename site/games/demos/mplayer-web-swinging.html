@@ -204,6 +204,7 @@
             winShown: false,
             winShownAt: 0,
             climbStartTime: performance.now(),
+            chunkHeights: new Map(),
         };
         let inLobby = true;
         let gameStarted = false;
@@ -215,6 +216,7 @@
         const heightEvents = [3000, 6000, 9000, WIN_HEIGHT];
         const triggeredHeightEvents = new Set();
         let localJoinedAt = 0;
+        const chunkMeta = new Map();
         const remotePlayers = new Map();
         const playerSlots = new Map();
         const playerColors = [0xff3b30, 0x0a84ff, 0x34c759, 0xaf52de];
@@ -240,7 +242,7 @@
 
         const keys = {};
         const chunks = new Map(); 
-        const chunkHeights = new Map();
+        const chunkHeights = game.chunkHeights;
         let windowTextureSmall, windowTextureMega;
 
         const lobbyEl = document.getElementById('lobby');
@@ -431,6 +433,10 @@
                         const remote = remotePlayers.get(msg.peerId);
                         if (remote) remote.userData.name = msg.name;
                     }
+                } else if (msg.type === 'game') {
+                    if (msg.payload?.kind === gameMessageTypes.CHUNK_SYNC) {
+                        handleChunkSync(msg.payload);
+                    }
                 } else if (msg.type === 'event') {
                     if (typeof msg.event === 'string') {
                         eventBus.emit(msg.event, msg.payload, { source: 'ws', fromPeerId: msg.fromPeerId });
@@ -494,6 +500,8 @@
                 if (remote) remote.userData.joinedAtMs = msg.joinedAtMs || performance.now();
                 if (isHost()) {
                     eventBus.emit('game.state', getGameStatePayload(), { source: 'game' });
+                    const payloads = [...chunkMeta.entries()].map(([key, meta]) => formatChunkSyncPayload(key, meta));
+                    sendChunkSync(payloads);
                 }
             }
             if (voiceEnabled && peerId && pid) {
@@ -591,6 +599,16 @@
             scene.add(ground);
         }
 
+        function hashChunkSpec(spec) {
+            let hash = 2166136261;
+            const str = JSON.stringify(spec);
+            for (let i = 0; i < str.length; i++) {
+                hash ^= str.charCodeAt(i);
+                hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+            }
+            return (hash >>> 0).toString(16);
+        }
+
         function createBuilding(gx, gz, py) {
             const seed = Math.abs((gx * 73856093) ^ (gz * 19349663) ^ WORLD_SEED);
             const rand = (s) => (Math.sin(s) * 10000) % 1;
@@ -618,6 +636,7 @@
             const d = 30 + Math.abs(rand(seed + 4)) * 10;
             const hue = 0.58 + (Math.abs(rand(seed + 5)) * 0.08);
             const baseColor = new THREE.Color().setHSL(hue, 0.4, isMega ? 0.6 : 0.4);
+            const hash = hashChunkSpec({ seed, h, w, d, hue, isMega });
 
             const mat = new THREE.MeshStandardMaterial({ 
                 color: baseColor,
@@ -653,7 +672,7 @@
                 new THREE.Vector3(gx * BLOCK_SIZE + w/2, h, gz * BLOCK_SIZE + d/2)
             );
 
-            return { group, bounds: box, mesh, type: isMega ? 'mega' : 'standard' };
+            return { group, bounds: box, mesh, type: isMega ? 'mega' : 'standard', hash, height: h };
         }
 
         function handleBuildingCollision(data) {
@@ -729,7 +748,20 @@
                     // Skip roads on 3x3 grid
                     if ((x % 3 !== 0 && z % 3 !== 0) && !chunks.has(key)) {
                         if (!chunkHeights.has(key)) chunkHeights.set(key, py);
-                        chunks.set(key, createBuilding(x, z, chunkHeights.get(key)));
+                        const building = createBuilding(x, z, chunkHeights.get(key));
+                        chunks.set(key, building);
+                        if (!chunkMeta.has(key)) {
+                            const meta = {
+                                height: building.height,
+                                hash: building.hash,
+                                generatedAtMs: performance.now(),
+                                joinedAtMs: localJoinedAt,
+                                x,
+                                z,
+                            };
+                            chunkMeta.set(key, meta);
+                            sendChunkSync([formatChunkSyncPayload(key, meta)]);
+                        }
                     }
                 }
             }
@@ -1257,6 +1289,86 @@
                 lines.push(`${displayNameForPeer(pid)}: ${alt} m`);
             });
             document.getElementById('player-altitudes').innerHTML = lines.join('<br>');
+        }
+
+        function formatChunkSyncPayload(key, meta) {
+            return {
+                key,
+                x: meta.x,
+                z: meta.z,
+                height: meta.height,
+                hash: meta.hash,
+                generatedAtMs: meta.generatedAtMs,
+                joinedAtMs: meta.joinedAtMs,
+            };
+        }
+
+        const gameMessageTypes = {
+            CHUNK_SYNC: 'chunk-sync',
+        };
+
+        function sendGameMessage(payload) {
+            if (!socket || socket.readyState !== WebSocket.OPEN) return;
+            socket.send(JSON.stringify({ type: 'game', payload }));
+        }
+
+        function sendChunkSync(chunks) {
+            if (!chunks.length) return;
+            for (let i = 0; i < chunks.length; i += 256) {
+                const batch = chunks.slice(i, i + 256);
+                sendGameMessage({ kind: gameMessageTypes.CHUNK_SYNC, chunks: batch });
+            }
+        }
+
+        function applyChunkMeta(key, meta) {
+            chunkMeta.set(key, meta);
+            chunkHeights.set(key, meta.height);
+            if (chunks.has(key)) {
+                const data = chunks.get(key);
+                scene.remove(data.group);
+                const [cx, cz] = key.split(',').map(Number);
+                const rebuilt = createBuilding(cx, cz, meta.height);
+                chunks.set(key, rebuilt);
+            }
+        }
+
+        function handleChunkSync(message) {
+            if (!message || !Array.isArray(message.chunks)) return;
+            message.chunks.forEach((incoming) => {
+                if (!incoming || typeof incoming.key !== 'string') return;
+                const key = incoming.key;
+                const local = chunkMeta.get(key);
+                if (local && local.hash === incoming.hash) return;
+
+                const incomingMeta = {
+                    height: incoming.height,
+                    hash: incoming.hash,
+                    generatedAtMs: incoming.generatedAtMs,
+                    joinedAtMs: incoming.joinedAtMs ?? Infinity,
+                    x: incoming.x,
+                    z: incoming.z,
+                };
+
+                if (!local) {
+                    applyChunkMeta(key, incomingMeta);
+                    return;
+                }
+
+                let takeIncoming = false;
+                const localJoinedAt = local.joinedAtMs ?? Infinity;
+                const incomingJoinedAt = incomingMeta.joinedAtMs ?? Infinity;
+                if (incoming.generatedAtMs < local.generatedAtMs) {
+                    takeIncoming = true;
+                } else if (incoming.generatedAtMs === local.generatedAtMs) {
+                    takeIncoming = incomingJoinedAt < localJoinedAt;
+                }
+
+                if (takeIncoming) {
+                    applyChunkMeta(key, incomingMeta);
+                } else {
+                    sendChunkSync([formatChunkSyncPayload(key, local)]);
+                }
+            });
         }
 
         function updateUnlocksFromGame() {
