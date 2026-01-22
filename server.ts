@@ -270,6 +270,12 @@ async function handler(req: Request): Promise<Response> {
         return;
       }
 
+      if (msg.type === "event" && typeof msg.event === "string") {
+        const payload = msg.payload ?? null;
+        broadcastRoom(gameId, roomId, { type: "event", fromPeerId: peerId, event: msg.event, payload }, peerId);
+        return;
+      }
+
       if (msg.type === "chat" && typeof msg.text === "string") {
         broadcastRoom(gameId, roomId, { type: "chat", fromPeerId: peerId, text: msg.text.slice(0, 500) }, peerId);
         return;
