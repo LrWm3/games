@@ -186,12 +186,20 @@
         const WORLD_SEED = 1337;
         const INITIAL_CHUNK_HEIGHTS = {};
         const REMOTE_ORB_RADIUS = PLAYER_RADIUS * 6;
+        const HONEY_STUCK_TIME_MS = 10000;
+        const HONEY_UNSTICK_FORCE = 18;
+        const HONEY_RELEASE_PUSH = 18;
+        const HONEY_STICK_MIN_FORCE = 22;
         const GAME_ID = 'mplayer-web-swinging';
 
         // --- CORE ---
         let scene, camera, renderer, clock;
         let player, playerModel, playerVelocity = new THREE.Vector3();
         let isGrounded = false, isClimbing = false;
+        let isStuck = false;
+        let stuckUntilMs = 0;
+        let stuckNormal = new THREE.Vector3();
+        let stuckPosition = new THREE.Vector3();
         let jumpChargeTime = 0, isChargingJump = false;
         
         let pitch = 0; 
@@ -199,7 +207,7 @@
         const unlocks = new Set();
         const freeplayRequests = new Set();
         let winElapsedStr = '';
-        const game = {
+        let game = {
             freePlay: false,
             winShown: false,
             winShownAt: 0,
@@ -243,7 +251,7 @@
         const keys = {};
         const chunks = new Map(); 
         const chunkHeights = game.chunkHeights;
-        let windowTextureSmall, windowTextureMega;
+        let windowTextureSmall, windowTextureMega, windowTextureHoney;
 
         const lobbyEl = document.getElementById('lobby');
         const lobbyStatusEl = document.getElementById('lobby-status');
@@ -282,8 +290,10 @@
             clock = new THREE.Clock();
             windowTextureSmall = createProceduralWindowTexture(WORLD_SEED ^ 0x9e3779b9);
             windowTextureMega = createProceduralWindowTexture(WORLD_SEED ^ 0x85ebca6b);
+            windowTextureHoney = createHoneyTexture(WORLD_SEED ^ 0xc2b2ae35);
             windowTextureSmall.repeat.set(3, 6);
             windowTextureMega.repeat.set(5, 16);
+            windowTextureHoney.repeat.set(4, 10);
 
             // --- BOOSTED LIGHTING ---
             scene.add(new THREE.AmbientLight(0xffffff, 2.5)); 
@@ -599,6 +609,39 @@
             return tex;
         }
 
+        function createHoneyTexture(seed) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            const rand = mulberry32(seed);
+            ctx.fillStyle = '#2a1c02';
+            ctx.fillRect(0, 0, 512, 512);
+            const columnCount = 8;
+            const columnWidth = 512 / columnCount;
+            for (let i = 0; i < columnCount; i++) {
+                const x = i * columnWidth;
+                const hue = 40 + rand() * 15;
+                ctx.fillStyle = `hsl(${hue}, 80%, 55%)`;
+                ctx.fillRect(x + 6, 0, columnWidth - 12, 512);
+                ctx.fillStyle = 'rgba(255, 220, 120, 0.35)';
+                ctx.fillRect(x + columnWidth * 0.6, 0, columnWidth * 0.2, 512);
+                ctx.fillStyle = 'rgba(120, 60, 10, 0.35)';
+                ctx.fillRect(x + 2, 0, columnWidth * 0.12, 512);
+                const dripCount = 6;
+                for (let d = 0; d < dripCount; d++) {
+                    const dripX = x + 10 + rand() * (columnWidth - 20);
+                    const dripH = 40 + rand() * 120;
+                    ctx.fillStyle = 'rgba(255, 200, 80, 0.6)';
+                    ctx.beginPath();
+                    ctx.ellipse(dripX, dripH, 6, 12, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
         function createGround() {
             const ground = new THREE.Mesh(new THREE.PlaneGeometry(30000, 30000), new THREE.MeshStandardMaterial({ color: 0x050510, roughness: 1 }));
             ground.rotation.x = -Math.PI / 2;
@@ -642,11 +685,12 @@
             const d = 30 + Math.abs(rand(seed + 4)) * 10;
             const hue = 0.58 + (Math.abs(rand(seed + 5)) * 0.08);
             const baseColor = new THREE.Color().setHSL(hue, 0.4, isMega ? 0.6 : 0.4);
-            const hash = hashChunkSpec({ seed, h, w, d, hue, isMega });
+            const isHoney = isMega && h < 2500;
+            const hash = hashChunkSpec({ seed, h, w, d, hue, isMega, isHoney });
 
             const mat = new THREE.MeshStandardMaterial({ 
                 color: baseColor,
-                map: isMega ? windowTextureMega : windowTextureSmall,
+                map: isMega ? (isHoney ? windowTextureHoney : windowTextureMega) : windowTextureSmall,
                 emissive: baseColor,
                 emissiveIntensity: 0.8,
                 roughness: 0.2,
@@ -678,7 +722,8 @@
                 new THREE.Vector3(gx * BLOCK_SIZE + w/2, h, gz * BLOCK_SIZE + d/2)
             );
 
-            return { group, bounds: box, mesh, type: isMega ? 'mega' : 'standard', hash, height: h };
+            const type = isMega ? (isHoney ? 'mega_honey' : 'mega') : 'standard';
+            return { group, bounds: box, mesh, type, hash, height: h };
         }
 
         function handleBuildingCollision(data) {
@@ -687,6 +732,7 @@
             const box = data.bounds;
             let onWall = false;
             let wantsClimb = false;
+            let wallNormal = null;
 
             // ROOF DETECTION: Check if X/Z are inside building footprint
             if (pos.x > box.min.x && pos.x < box.max.x && pos.z > box.min.z && pos.z < box.max.z) {
@@ -711,10 +757,10 @@
                     const dz1 = Math.abs(pos.z + r - box.min.z), dz2 = Math.abs(pos.z - r - box.max.z);
                     const min = Math.min(dx1, dx2, dz1, dz2);
 
-                    if (min === dx1) pos.x = box.min.x - r;
-                    else if (min === dx2) pos.x = box.max.x + r;
-                    else if (min === dz1) pos.z = box.min.z - r;
-                    else if (min === dz2) pos.z = box.max.z + r;
+                    if (min === dx1) { pos.x = box.min.x - r; wallNormal = new THREE.Vector3(-1, 0, 0); }
+                    else if (min === dx2) { pos.x = box.max.x + r; wallNormal = new THREE.Vector3(1, 0, 0); }
+                    else if (min === dz1) { pos.z = box.min.z - r; wallNormal = new THREE.Vector3(0, 0, -1); }
+                    else if (min === dz2) { pos.z = box.max.z + r; wallNormal = new THREE.Vector3(0, 0, 1); }
 
                     // Climbing Trigger: Hold W against a wall
                     if (!(webL.active || webR.active) && keys['KeyW']) {
@@ -728,19 +774,40 @@
                     if (min === dz1 || min === dz2) {
                         playerVelocity.z = unlocks.has('bounce') && keys['Space'] ? -playerVelocity.z : 0;
                     }
-                    return { onWall, wantsClimb, collided: true };
+                    return { onWall, wantsClimb, collided: true, wallNormal };
                 }
             }
-            return { onWall, wantsClimb, collided: false };
+            return { onWall, wantsClimb, collided: false, wallNormal };
+        }
+
+        function handleHoneyCollision(data) {
+            const prevPlayerVelocity = playerVelocity.clone();
+            const result = handleBuildingCollision(data);
+            if (result.collided && result.onWall && result.wallNormal) {
+                const normalForce = Math.abs(prevPlayerVelocity.dot(result.wallNormal));
+                if (normalForce < HONEY_STICK_MIN_FORCE) {
+                    return result;
+                }
+                isStuck = true;
+                isClimbing = false;
+                stuckNormal.copy(result.wallNormal);
+                stuckPosition.copy(player.position);
+                if (isSinglePlayerMode()) {
+                    stuckUntilMs = performance.now() + HONEY_STUCK_TIME_MS;
+                }
+            }
+            return result;
         }
 
         const collisionHandlers = {
             standard: handleBuildingCollision,
             mega: handleBuildingCollision,
+            mega_honey: handleHoneyCollision,
         };
         const climbHandlers = {
             standard: () => true,
             mega: () => true,
+            mega_honey: () => false,
         };
 
         function updateCity() {
@@ -982,6 +1049,18 @@
             if (isChargingJump) jumpChargeTime += dt;
             document.getElementById('charge-bar').style.width = Math.min((jumpChargeTime / MAX_JUMP_CHARGE_TIME) * 100, 100) + '%';
             if (isClimbing && !unlocks.has('climb')) isClimbing = false;
+            if (isStuck) {
+                if (isSinglePlayerMode() && performance.now() >= stuckUntilMs) {
+                    isStuck = false;
+                    playerVelocity.copy(stuckNormal).multiplyScalar(HONEY_RELEASE_PUSH);
+                } else {
+                    playerVelocity.set(0, 0, 0);
+                    player.position.copy(stuckPosition);
+                    updateWebLineForPosition(webL, player.position);
+                    updateWebLineForPosition(webR, player.position);
+                    return;
+                }
+            }
 
             const input = new THREE.Vector3();
             if (keys['KeyW']) input.z += 1; if (keys['KeyS']) input.z -= 1;
@@ -1078,15 +1157,8 @@
                     }
                 });
 
-                const updateLine = (web) => {
-                    if (!web.active) return;
-                    const p = web.line.geometry.attributes.position.array;
-                    p[0] = nextPos.x; p[1] = nextPos.y + 1.2; p[2] = nextPos.z;
-                    p[3] = web.anchor.x; p[4] = web.anchor.y; p[5] = web.anchor.z;
-                    web.line.geometry.attributes.position.needsUpdate = true;
-                };
-                updateLine(webL);
-                updateLine(webR);
+                updateWebLineForPosition(webL, nextPos);
+                updateWebLineForPosition(webR, nextPos);
                 player.position.copy(nextPos);
                 usedNextPos = true;
 
@@ -1151,7 +1223,7 @@
             const currentHeight = Math.max(0, Math.round(player.position.y));
             const heightStr = currentHeight.toString().padStart(5, '0');
             document.getElementById('height').innerText = `ALT: ${heightStr} m`;
-            let stateText = (webL.active && webR.active) ? "Dual Swung" : (webL.active || webR.active ? "Swinging" : (isClimbing ? "Climbing" : (isGrounded ? "Grounded" : "Airborne")));
+            let stateText = isStuck ? "Stuck" : (webL.active && webR.active) ? "Dual Swung" : (webL.active || webR.active ? "Swinging" : (isClimbing ? "Climbing" : (isGrounded ? "Grounded" : "Airborne")));
             document.getElementById('state').innerText = `State: ${stateText}`;
         }
 
@@ -1377,6 +1449,14 @@
             });
         }
 
+        function updateWebLineForPosition(web, pos) {
+            if (!web.active) return;
+            const p = web.line.geometry.attributes.position.array;
+            p[0] = pos.x; p[1] = pos.y + 1.2; p[2] = pos.z;
+            p[3] = web.anchor.x; p[4] = web.anchor.y; p[5] = web.anchor.z;
+            web.line.geometry.attributes.position.needsUpdate = true;
+        }
+
         function updateUnlocksFromGame() {
             unlocks.clear();
             if (game.freePlay) {
@@ -1586,7 +1666,16 @@
             if (!payload || payload.targetPeerId !== peerId) return;
             const impulse = payload.impulse;
             if (impulse) {
-                playerVelocity.add(new THREE.Vector3(impulse.x || 0, impulse.y || 0, impulse.z || 0));
+                const impulseVec = new THREE.Vector3(impulse.x || 0, impulse.y || 0, impulse.z || 0);
+                if (isStuck && !isSinglePlayerMode()) {
+                    const normalComponent = impulseVec.dot(stuckNormal);
+                    if (Math.abs(normalComponent) >= HONEY_UNSTICK_FORCE) {
+                        isStuck = false;
+                        playerVelocity.add(stuckNormal.clone().multiplyScalar(HONEY_RELEASE_PUSH));
+                    }
+                } else {
+                    playerVelocity.add(impulseVec);
+                }
             }
         });
 
