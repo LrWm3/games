@@ -301,6 +301,8 @@
             back: null,
         };
         const corridorWallMat = new THREE.MeshBasicMaterial({ color: 0xff6b6b, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
+        const corridorPlanes = new Map();
+        const corridorPlaneMat = new THREE.MeshBasicMaterial({ color: 0x4aa3ff, transparent: true, opacity: 0.22, side: THREE.DoubleSide });
         const pointerByPlayer = new Map();
         const chatMessages = [];
         let chatOpen = false;
@@ -1855,28 +1857,33 @@
                 ['left', 'right', 'back'].forEach((key) => {
                     if (corridorWalls[key]) corridorWalls[key].visible = false;
                 });
+                corridorPlanes.forEach((plane) => {
+                    plane.visible = false;
+                });
                 return;
             }
             const px = player.position.x;
             const pz = player.position.z;
+            const baseX = initialFacing.originX * BLOCK_SIZE;
+            const baseZ = initialFacing.originZ * BLOCK_SIZE;
             const wallHeight = 30000;
             const wallThickness = 2;
             const span = (RENDER_DISTANCE * 2 + 2) * BLOCK_SIZE;
             const far = (RENDER_DISTANCE + 1) * BLOCK_SIZE;
             let leftPos, rightPos, backPos, leftSize, rightSize, backSize;
             if (initialFacing.axis === 'x') {
-                leftPos = new THREE.Vector3(px, wallHeight * 0.5, pz - far);
-                rightPos = new THREE.Vector3(px, wallHeight * 0.5, pz + far);
+                leftPos = new THREE.Vector3(px, wallHeight * 0.5, baseZ - far);
+                rightPos = new THREE.Vector3(px, wallHeight * 0.5, baseZ + far);
                 leftSize = new THREE.Vector3(span, wallHeight, wallThickness);
                 rightSize = new THREE.Vector3(span, wallHeight, wallThickness);
-                backPos = new THREE.Vector3(px - far * initialFacing.sign, wallHeight * 0.5, pz);
+                backPos = new THREE.Vector3(baseX - far * initialFacing.sign, wallHeight * 0.5, baseZ);
                 backSize = new THREE.Vector3(wallThickness, wallHeight, span);
             } else {
-                leftPos = new THREE.Vector3(px - far, wallHeight * 0.5, pz);
-                rightPos = new THREE.Vector3(px + far, wallHeight * 0.5, pz);
+                leftPos = new THREE.Vector3(baseX - far, wallHeight * 0.5, pz);
+                rightPos = new THREE.Vector3(baseX + far, wallHeight * 0.5, pz);
                 leftSize = new THREE.Vector3(wallThickness, wallHeight, span);
                 rightSize = new THREE.Vector3(wallThickness, wallHeight, span);
-                backPos = new THREE.Vector3(px, wallHeight * 0.5, pz - far * initialFacing.sign);
+                backPos = new THREE.Vector3(baseX, wallHeight * 0.5, baseZ - far * initialFacing.sign);
                 backSize = new THREE.Vector3(span, wallHeight, wallThickness);
             }
             const defs = [
@@ -1898,6 +1905,25 @@
                     mesh.position.copy(def.pos);
                     mesh.geometry.dispose();
                     mesh.geometry = new THREE.BoxGeometry(def.size.x, def.size.y, def.size.z);
+                }
+            });
+
+            const planeHeights = [3000, 6000, 9000, 12000];
+            planeHeights.forEach((height) => {
+                let plane = corridorPlanes.get(height);
+                if (!plane) {
+                    const geo = new THREE.PlaneGeometry(span, span);
+                    plane = new THREE.Mesh(geo, corridorPlaneMat);
+                    plane.rotation.x = -Math.PI / 2;
+                    plane.renderOrder = 2;
+                    scene.add(plane);
+                    corridorPlanes.set(height, plane);
+                }
+                plane.visible = true;
+                if (initialFacing.axis === 'x') {
+                    plane.position.set(px, height, baseZ);
+                } else {
+                    plane.position.set(baseX, height, pz);
                 }
             });
         }
