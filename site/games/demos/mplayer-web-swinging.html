@@ -133,7 +133,7 @@
     </div>
     <div id="ui">
         <div><b>Controls:</b></div>
-        <div><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> - Move / Climb</div>
+        <div><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> - Move</div>
         <div><span class="key">Space (hold)</span> - Charge Jump (on ground)</div>
         <div><span class="key">L-Click</span> - Left Web</div>
         <div><span class="key">R-Click</span> - Right Web</div>
@@ -141,11 +141,11 @@
         <div id="control-reel-left" style="display: none;"><span class="key">Q</span>- Reel Left Web</div>
         <div id="control-reel-right" style="display: none;"><span class="key">E</span>- Reel Right Web</div>
         <div id="control-bounce" style="display: none;"><span class="key">Space (hold)</span> - Bounce off walls (in air)</div>
-        <!-- <div class="stat" id="unlocks">
+        <div class="stat" style="display: none" id="unlocks">
             Unlocks:<br>
             Reel (Locked @ 2000m)<br>
             Bounce (Locked @ 10000m)
-        </div> -->
+        </div>
         <div class="stat" id="win-msg">Win at 12000m</div>
         <div class="stat" id="speed">Speed: 0 km/h</div>
         <div class="stat" id="height">Height: 0 m</div>
@@ -196,7 +196,7 @@
         
         let pitch = 0; 
         let lastPointerLog = 0;
-        let unlockReel = true, unlockBounce = true;
+        const unlocks = new Set(['reel', 'bounce']);
         let winShown = false, winShownAt = 0, winElapsedStr = '';
         let freePlay = false;
         let climbStartTime = performance.now();
@@ -292,12 +292,7 @@
             Object.entries(INITIAL_CHUNK_HEIGHTS).forEach(([key, height]) => {
                 chunkHeights.set(key, height);
             });
-            unlockReel = true;
-            unlockBounce = true;
-            document.getElementById('control-reel-left').style.display = 'block';
-            document.getElementById('control-reel-right').style.display = 'block';
-            document.getElementById('control-bounce').style.display = 'block';
-            document.getElementById('unlocks').innerHTML = 'Unlocks:<br>Reel (Unlocked)<br>Bounce (Unlocked)';
+            updateUnlocksUI();
 
             // Safe Spawn: Intersection of roads (0,0) is skipped in updateCity for building generation
             player.position.set(0, 5, 0); 
@@ -313,11 +308,11 @@
                 }
                 if (e.code === 'KeyP' && !freePlay) {
                     freePlay = true;
-                    unlockReel = true;
-                    unlockBounce = true;
+                    unlocks.add('climb');
                     document.getElementById('control-reel-left').style.display = 'block';
                     document.getElementById('control-reel-right').style.display = 'block';
                     document.getElementById('control-bounce').style.display = 'block';
+                    updateUnlocksUI();
                     document.getElementById('win-msg').innerText = 'Free play mode';
                     document.getElementById('win-msg').style.display = 'block';
                 }
@@ -622,8 +617,8 @@
             mesh.position.y = h / 2;
             group.add(mesh);
 
-            const roof = new THREE.Mesh(new THREE.BoxGeometry(w * 1.05, 8, d * 1.05), new THREE.MeshStandardMaterial({ color: 0x1a1a1a }));
-            roof.position.y = h;
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(w * 1.05, 8, d * 1.01), new THREE.MeshStandardMaterial({ color: 0x1a1a1a }));
+            roof.position.y = h - 3.5;
             group.add(roof);
 
             if (isMega) {
@@ -687,10 +682,10 @@
 
                     // Cancel or bounce horizontal velocity on impact
                     if (min === dx1 || min === dx2) {
-                        playerVelocity.x = keys['Space'] ? -playerVelocity.x : 0;
+                        playerVelocity.x = unlocks.has('bounce') && keys['Space'] ? -playerVelocity.x : 0;
                     }
                     if (min === dz1 || min === dz2) {
-                        playerVelocity.z = keys['Space'] ? -playerVelocity.z : 0;
+                        playerVelocity.z = unlocks.has('bounce') && keys['Space'] ? -playerVelocity.z : 0;
                     }
                     return { onWall, wantsClimb, collided: true };
                 }
@@ -918,7 +913,7 @@
                 if (result.onWall) onWall = true;
                 if (result.wantsClimb) {
                     const climbHandler = climbHandlers[data.type] || (() => true);
-                    if (climbHandler(data)) canClimb = true;
+                    if (unlocks.has('climb') && climbHandler(data)) canClimb = true;
                 }
             });
 
@@ -932,6 +927,7 @@
         function handleMovement(dt) {
             if (isChargingJump) jumpChargeTime += dt;
             document.getElementById('charge-bar').style.width = Math.min((jumpChargeTime / MAX_JUMP_CHARGE_TIME) * 100, 100) + '%';
+            if (isClimbing && !unlocks.has('climb')) isClimbing = false;
 
             const input = new THREE.Vector3();
             if (keys['KeyW']) input.z += 1; if (keys['KeyS']) input.z -= 1;
@@ -971,7 +967,7 @@
                             web.length = currentDist;
                         }
                     }
-                    if ((web.name === 'left' && keys['KeyQ']) || (web.name === 'right' && keys['KeyE'])) {
+                    if (unlocks.has('reel') && ((web.name === 'left' && keys['KeyQ']) || (web.name === 'right' && keys['KeyE']))) {
                         web.length -= 60 * dt;
                         if (!web.targetPeerId) {
                             const otherWeb = web.name === 'left' ? webR : webL;
@@ -1247,6 +1243,13 @@
             document.getElementById('player-altitudes').innerHTML = lines.join('<br>');
         }
 
+        function updateUnlocksUI() {
+            const reel = unlocks.has('reel') ? 'Unlocked' : 'Locked';
+            const bounce = unlocks.has('bounce') ? 'Unlocked' : 'Locked';
+            const climb = unlocks.has('climb') ? 'Unlocked' : 'Locked';
+            document.getElementById('unlocks').innerHTML = `Unlocks:<br>Reel (${reel})<br>Bounce (${bounce})<br>Climb (${climb})`;
+        }
+
         function updateCompass() {
             const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(player.quaternion);
             const forwardAngle = Math.atan2(forward.x, forward.z);
@@ -1302,6 +1305,7 @@
 
         eventBus.onAny((event, payload, meta) => {
             console.log('[event]', event, payload, meta);
+            addChatMessage('[Event]', `${event}`);
             if (meta.source === 'ws') return;
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: 'event', event, payload }));
