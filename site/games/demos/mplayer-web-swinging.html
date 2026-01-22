@@ -196,12 +196,21 @@
         const PLAYER_MASS = 1.0;
         const GAME_ID = 'mplayer-web-swinging';
         const SAVE_CHECK_INTERVAL_MS = 500;
+        const SHOCK_PULSE_PERIOD = 6.0;
+        const SHOCK_PULSE_DURATION = 0.2;
+        const SHOCK_STUN_DURATION_MS = 10000;
+        const SHOCK_BASE_COLOR = new THREE.Color(0x0b1b3a);
+        const SHOCK_CHARGE_COLOR = new THREE.Color(0x1c4f76);
+        const SHOCK_PULSE_COLOR = new THREE.Color(0x32ffd8);
+        const TIME_SYNC_INTERVAL_MS = 5000;
 
         // --- CORE ---
         let scene, camera, renderer, clock;
         let player, playerModel, playerVelocity = new THREE.Vector3();
         let isGrounded = false, isClimbing = false;
         let isStuck = false;
+        let isStunned = false;
+        let stunnedUntilMs = 0;
         let stuckUntilMs = 0;
         let stuckNormal = new THREE.Vector3();
         let stuckPosition = new THREE.Vector3();
@@ -222,6 +231,7 @@
             spawnPos: null,
             saveTokens: [{ minHeight: 0 }],
             saveKey: null,
+            timeOffsetMs: 0,
             chunkHeights: new Map(),
         };
         let inLobby = true;
@@ -255,16 +265,19 @@
         ];
 
         // Dual Web System
-        const webL = { name: 'left', active: false, anchor: new THREE.Vector3(), length: 0, line: null, targetPeerId: null };
-        const webR = { name: 'right', active: false, anchor: new THREE.Vector3(), length: 0, line: null, targetPeerId: null };
+        const webL = { name: 'left', active: false, anchor: new THREE.Vector3(), length: 0, line: null, targetPeerId: null, targetType: null, targetKey: null };
+        const webR = { name: 'right', active: false, anchor: new THREE.Vector3(), length: 0, line: null, targetPeerId: null, targetType: null, targetKey: null };
         let webReticle, laserBeam, laserDot;
 
         const keys = {};
         const chunks = new Map(); 
         const chunkHeights = game.chunkHeights;
-        let windowTextureSmall, windowTextureMega, windowTextureHoney;
+        let windowTextureSmall, windowTextureMega, windowTextureHoney, windowTextureShock;
         let currentSaveKey = null;
         let lastSaveCheckAt = 0;
+        let lastShockPulseIndex = -1;
+        let lastTimeSyncAt = 0;
+        let timeSyncSeq = 0;
 
         const lobbyEl = document.getElementById('lobby');
         const lobbyStatusEl = document.getElementById('lobby-status');
@@ -310,9 +323,11 @@
             windowTextureSmall = createProceduralWindowTexture(WORLD_SEED ^ 0x9e3779b9);
             windowTextureMega = createProceduralWindowTexture(WORLD_SEED ^ 0x85ebca6b);
             windowTextureHoney = createHoneyTexture(WORLD_SEED ^ 0xc2b2ae35);
+            windowTextureShock = createShockTexture(WORLD_SEED ^ 0x7f4a7c15);
             windowTextureSmall.repeat.set(3, 6);
             windowTextureMega.repeat.set(5, 16);
             windowTextureHoney.repeat.set(4, 10);
+            windowTextureShock.repeat.set(5, 16);
 
             // --- BOOSTED LIGHTING ---
             scene.add(new THREE.AmbientLight(0xffffff, 2.5)); 
@@ -377,8 +392,8 @@
             });
 
             window.addEventListener('mouseup', e => {
-                if (e.button === 0) { webL.active = false; webL.line.visible = false; webL.targetPeerId = null; }
-                if (e.button === 2) { webR.active = false; webR.line.visible = false; webR.targetPeerId = null; }
+                if (e.button === 0) { webL.active = false; webL.line.visible = false; webL.targetPeerId = null; webL.targetType = null; webL.targetKey = null; }
+                if (e.button === 2) { webR.active = false; webR.line.visible = false; webR.targetPeerId = null; webR.targetType = null; webR.targetKey = null; }
             });
 
             window.addEventListener('resize', onWindowResize);
@@ -475,6 +490,8 @@
                 } else if (msg.type === 'game') {
                     if (msg.payload?.kind === gameMessageTypes.CHUNK_SYNC) {
                         handleChunkSync(msg.payload);
+                    } else if (msg.payload?.kind === gameMessageTypes.TIME_SYNC) {
+                        handleTimeSync(msg.payload);
                     }
                 } else if (msg.type === 'event') {
                     if (typeof msg.event === 'string') {
@@ -665,6 +682,28 @@
             return tex;
         }
 
+        function createShockTexture(seed) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            const rand = mulberry32(seed);
+            ctx.fillStyle = '#0a1326';
+            ctx.fillRect(0, 0, 512, 512);
+            for (let y = 20; y < 490; y += 60) {
+                for (let x = 20; x < 490; x += 40) {
+                    if (rand() > 0.45) {
+                        ctx.fillStyle = rand() > 0.82 ? '#32ffd8' : '#1c6b8f';
+                        ctx.shadowBlur = 12;
+                        ctx.shadowColor = ctx.fillStyle;
+                        ctx.fillRect(x, y, 26, 36);
+                    }
+                }
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
         function createGround() {
             const ground = new THREE.Mesh(new THREE.PlaneGeometry(30000, 30000), new THREE.MeshStandardMaterial({ color: 0x050510, roughness: 1 }));
             ground.rotation.x = -Math.PI / 2;
@@ -707,15 +746,19 @@
             const w = 30 + Math.abs(rand(seed + 3)) * 10;
             const d = 30 + Math.abs(rand(seed + 4)) * 10;
             const hue = 0.58 + (Math.abs(rand(seed + 5)) * 0.08);
-            const baseColor = new THREE.Color().setHSL(hue, 0.4, isMega ? 0.6 : 0.4);
-            const isHoney = isMega && h < 2500;
-            const hash = hashChunkSpec({ seed, h, w, d, hue, isMega, isHoney });
+            const isShock = isMega && h < 3000;
+            const isHoney = isMega && h >= 6000;
+            const isMegaStandard = isMega && !isShock && !isHoney;
+            const baseColor = isShock
+                ? new THREE.Color(0x0b1b3a)
+                : new THREE.Color().setHSL(hue, 0.4, isMega ? 0.6 : 0.4);
+            const hash = hashChunkSpec({ seed, h, w, d, hue, isMega, isHoney, isShock });
 
             const mat = new THREE.MeshStandardMaterial({ 
                 color: baseColor,
-                map: isMega ? (isHoney ? windowTextureHoney : windowTextureMega) : windowTextureSmall,
+                map: isMega ? (isHoney ? windowTextureHoney : (isShock ? windowTextureShock : windowTextureMega)) : windowTextureSmall,
                 emissive: baseColor,
-                emissiveIntensity: 0.8,
+                emissiveIntensity: isShock ? 0.6 : 0.8,
                 roughness: 0.2,
                 metalness: 0.4
             });
@@ -745,9 +788,9 @@
                 new THREE.Vector3(gx * BLOCK_SIZE + w/2, h, gz * BLOCK_SIZE + d/2)
             );
 
-            const type = isMega ? (isHoney ? 'mega_honey' : 'mega') : 'standard';
+            const type = isMega ? (isHoney ? 'mega_honey' : (isShock ? 'mega_shock' : 'mega')) : 'standard';
             const key = `${gx},${gz}`;
-            const data = { group, bounds: box, mesh, type, hash, height: h, key };
+            const data = { group, bounds: box, mesh, type, hash, height: h, key, material: mat };
             if (game.saveKey && game.saveKey === key) {
                 applySaveMarker(data, true);
             }
@@ -831,11 +874,13 @@
             standard: handleBuildingCollision,
             mega: handleBuildingCollision,
             mega_honey: handleHoneyCollision,
+            mega_shock: handleBuildingCollision,
         };
         const climbHandlers = {
             standard: () => true,
             mega: () => true,
             mega_honey: () => false,
+            mega_shock: () => false,
         };
 
         function updateCity() {
@@ -876,8 +921,23 @@
             }
 
             const time = clock.getElapsedTime();
+            const shockTimeSeconds = getShockTimeSeconds();
+            const shockPhase = shockTimeSeconds === null ? 0 : (shockTimeSeconds % SHOCK_PULSE_PERIOD);
+            const shockPulseActive = shockPhase >= (SHOCK_PULSE_PERIOD - SHOCK_PULSE_DURATION);
+            const shockCharge = shockPulseActive ? 1 : shockPhase / (SHOCK_PULSE_PERIOD - SHOCK_PULSE_DURATION);
             chunks.forEach(data => {
                 data.group.traverse(obj => { if (obj.userData.isBlinker) obj.visible = Math.sin(time * 10) > 0; });
+                if (data.type === 'mega_shock' && data.material) {
+                    if (shockPulseActive) {
+                        data.material.color.copy(SHOCK_PULSE_COLOR);
+                        data.material.emissive.copy(SHOCK_PULSE_COLOR);
+                        data.material.emissiveIntensity = 1.6;
+                    } else {
+                        data.material.color.copy(SHOCK_BASE_COLOR).lerp(SHOCK_CHARGE_COLOR, shockCharge * 0.7);
+                        data.material.emissive.copy(data.material.color);
+                        data.material.emissiveIntensity = 0.4 + shockCharge * 0.8;
+                    }
+                }
             });
         }
 
@@ -981,13 +1041,15 @@
             document.getElementById('charge-container').style.display = 'none';
         }
 
-        function attachToTarget(webObj, dir, anchor, targetPeerId = null) {
+        function attachToTarget(webObj, dir, anchor, targetPeerId = null, targetType = null, targetKey = null) {
             webObj.anchor.copy(anchor);
             webObj.length = player.position.distanceTo(webObj.anchor);
             if (webObj.length > 5) {
                 webObj.active = true;
                 webObj.line.visible = true;
                 webObj.targetPeerId = targetPeerId;
+                webObj.targetType = targetType;
+                webObj.targetKey = targetKey;
                 isClimbing = false;
                 if (isGrounded) {
                     playerVelocity.add(dir.multiplyScalar(35));
@@ -1002,10 +1064,12 @@
         const webTargetHandlers = {
             player: (webObj, dir, target) => {
                 const anchor = target.position.clone().add(new THREE.Vector3(0, 1.2, 0));
-                return attachToTarget(webObj, dir, anchor, target.userData.peerId);
+                return attachToTarget(webObj, dir, anchor, target.userData.peerId, 'player', null);
             },
-            standard: (webObj, dir, hit) => attachToTarget(webObj, dir, hit.point, null),
-            mega: (webObj, dir, hit) => attachToTarget(webObj, dir, hit.point, null),
+            standard: (webObj, dir, hit, data) => attachToTarget(webObj, dir, hit.point, null, data?.type || 'standard', data?.key || null),
+            mega: (webObj, dir, hit, data) => attachToTarget(webObj, dir, hit.point, null, data?.type || 'mega', data?.key || null),
+            mega_honey: (webObj, dir, hit, data) => attachToTarget(webObj, dir, hit.point, null, data?.type || 'mega_honey', data?.key || null),
+            mega_shock: (webObj, dir, hit, data) => attachToTarget(webObj, dir, hit.point, null, data?.type || 'mega_shock', data?.key || null),
         };
 
         function tryAttachWeb(webObj) {
@@ -1046,7 +1110,7 @@
                 const data = targetMeshes.get(hit.object);
                 const type = data?.type || 'standard';
                 const handler = webTargetHandlers[type] || webTargetHandlers.standard;
-                if (handler) handler(webObj, dir, hit);
+                if (handler) handler(webObj, dir, hit, data);
             }
         }
 
@@ -1087,6 +1151,19 @@
                     refreshWebAnchorsForTargets();
                     updateWebLineForPosition(webL, player.position);
                     updateWebLineForPosition(webR, player.position);
+                    updateStatusUI();
+                    return;
+                }
+            }
+            if (isStunned) {
+                if (isSinglePlayerMode() && performance.now() >= stunnedUntilMs) {
+                    clearStun();
+                } else {
+                    playerVelocity.set(0, 0, 0);
+                    refreshWebAnchorsForTargets();
+                    updateWebLineForPosition(webL, player.position);
+                    updateWebLineForPosition(webR, player.position);
+                    updateStatusUI();
                     return;
                 }
             }
@@ -1120,6 +1197,8 @@
                             web.active = false;
                             web.line.visible = false;
                             web.targetPeerId = null;
+                            web.targetType = null;
+                            web.targetKey = null;
                             return;
                         }
                     }
@@ -1212,17 +1291,21 @@
                     swingState.wasDownswing = true;
                     swingState.startState = getPlayerState();
                     swingState.swungOff = getSwingTargets();
+                    swingState.startedAtMs = performance.now();
                 }
                 if (swingState.wasDownswing && up) {
-                    eventBus.emit('player.swing', {
-                        playerId: peerId,
-                        swungOff: swingState.swungOff,
-                        startState: swingState.startState,
-                        endState: getPlayerState(),
-                    });
+                    if (performance.now() - swingState.startedAtMs >= 300) {
+                        eventBus.emit('player.swing', {
+                            playerId: peerId,
+                            swungOff: swingState.swungOff,
+                            startState: swingState.startState,
+                            endState: getPlayerState(),
+                        });
+                    }
                     swingState.wasDownswing = false;
                     swingState.startState = null;
                     swingState.swungOff = [];
+                    swingState.startedAtMs = 0;
                 }
             } else {
                 // GROUND / AIR PHYSICS
@@ -1262,11 +1345,15 @@
                 webL.line.visible = webR.line.visible = false;
             }
 
+            updateStatusUI();
+        }
+
+        function updateStatusUI() {
             document.getElementById('speed').innerText = `Speed: ${Math.round(playerVelocity.length())} km/h`;
             const currentHeight = Math.max(0, Math.round(player.position.y));
             const heightStr = currentHeight.toString().padStart(5, '0');
             document.getElementById('height').innerText = `ALT: ${heightStr} m`;
-            let stateText = isStuck ? "Stuck" : (webL.active && webR.active) ? "Dual Swung" : (webL.active || webR.active ? "Swinging" : (isClimbing ? "Climbing" : (isGrounded ? "Grounded" : "Airborne")));
+            let stateText = isStuck ? "Stuck" : (isStunned ? "Stunned" : (webL.active && webR.active) ? "Dual Swung" : (webL.active || webR.active ? "Swinging" : (isClimbing ? "Climbing" : (isGrounded ? "Grounded" : "Airborne"))));
             document.getElementById('state').innerText = `State: ${stateText}`;
         }
 
@@ -1426,6 +1513,7 @@
 
         const gameMessageTypes = {
             CHUNK_SYNC: 'chunk-sync',
+            TIME_SYNC: 'time-sync',
         };
 
         function sendGameMessage(payload) {
@@ -1438,6 +1526,28 @@
             for (let i = 0; i < chunks.length; i += 256) {
                 const batch = chunks.slice(i, i + 256);
                 sendGameMessage({ kind: gameMessageTypes.CHUNK_SYNC, chunks: batch });
+            }
+        }
+
+        function sendTimeSync() {
+            if (!isHost()) return;
+            const payload = {
+                kind: gameMessageTypes.TIME_SYNC,
+                sentAt: performance.now(),
+                climbStartTime: game.climbStartTime,
+                seq: timeSyncSeq++,
+            };
+            sendGameMessage(payload);
+        }
+
+        function handleTimeSync(payload) {
+            if (!payload || typeof payload.sentAt !== 'number') return;
+            const offset = performance.now() - payload.sentAt;
+            if (!Number.isNaN(offset)) {
+                game.timeOffsetMs = offset;
+            }
+            if (typeof payload.climbStartTime === 'number') {
+                game.climbStartTime = payload.climbStartTime;
             }
         }
 
@@ -1691,11 +1801,11 @@
         }
 
         function isDownswing(velocity) {
-            return velocity.y < 0;
+            return velocity.y < -24;
         }
 
         function isUpswing(velocity) {
-            return velocity.y > 0;
+            return velocity.y > 24;
         }
 
         const eventBus = {
@@ -1749,6 +1859,7 @@
                 winShown: game.winShown,
                 winShownAt: game.winShownAt,
                 climbStartTime: game.climbStartTime,
+                stateSentAt: performance.now(),
             };
             if (includeSpawn && game.spawnPos) payload.spawnPos = game.spawnPos;
             if (Array.isArray(game.saveTokens)) payload.saveTokens = game.saveTokens;
@@ -1764,6 +1875,8 @@
             isGrounded = false;
             isClimbing = false;
             isChargingJump = false;
+            isStunned = false;
+            stunnedUntilMs = 0;
             jumpChargeTime = 0;
             document.getElementById('charge-container').style.display = 'none';
             isStuck = false;
@@ -1780,6 +1893,44 @@
             swingState.wasDownswing = false;
             swingState.startState = null;
             swingState.swungOff = [];
+            swingState.startedAtMs = 0;
+        }
+
+        function isTetheredToShockBuilding() {
+            return [webL, webR].some((web) => web.active && !web.targetPeerId && web.targetType === 'mega_shock');
+        }
+
+        function applyStun() {
+            if (isStunned) return;
+            isStunned = true;
+            stunnedUntilMs = isSinglePlayerMode() ? performance.now() + SHOCK_STUN_DURATION_MS : 0;
+            playerVelocity.set(0, 0, 0);
+            isClimbing = false;
+            isChargingJump = false;
+            document.getElementById('charge-container').style.display = 'none';
+        }
+
+        function clearStun() {
+            isStunned = false;
+            stunnedUntilMs = 0;
+        }
+
+        function getShockTimeSeconds() {
+            if (!game.climbStartTime) return null;
+            const hostNow = performance.now() - (game.timeOffsetMs || 0);
+            return Math.max(0, (hostNow - game.climbStartTime) / 1000);
+        }
+
+        function checkShockPulse(timeSeconds) {
+            if (timeSeconds === null) return;
+            const pulseIndex = Math.floor(timeSeconds / SHOCK_PULSE_PERIOD);
+            const phase = timeSeconds % SHOCK_PULSE_PERIOD;
+            const pulseActive = phase >= (SHOCK_PULSE_PERIOD - SHOCK_PULSE_DURATION);
+            if (!pulseActive || isStunned || !isTetheredToShockBuilding()) return;
+            if (pulseIndex !== lastShockPulseIndex) {
+                lastShockPulseIndex = pulseIndex;
+                applyStun();
+            }
         }
 
         function getPlayerState() {
@@ -1888,6 +2039,9 @@
             console.log('[game.state] received (precheck)', payload);
             if (!payload) return;
             console.log('[game.state] received', payload);
+            if (typeof payload.stateSentAt === 'number' && !Number.isNaN(payload.stateSentAt)) {
+                game.timeOffsetMs = performance.now() - payload.stateSentAt;
+            }
             if (payload.spawnPos) {
                 game.spawnPos = payload.spawnPos;
                 if (!isHost() && !spawnSynced) {
@@ -1933,6 +2087,23 @@
             }
         });
 
+        eventBus.on('player.swing', (payload, meta) => {
+            if (!isStunned || !payload || payload.playerId === peerId) return;
+            const swungOff = Array.isArray(payload.swungOff) ? payload.swungOff : [];
+            const freedBySwing = swungOff.some((target) => target.type === 'player' && target.peerId === peerId);
+            if (freedBySwing) {
+                clearStun();
+                return;
+            }
+            const startState = payload.startState || {};
+            const endState = payload.endState || {};
+            const tetheredAtStart = [startState.webL, startState.webR].some((web) => web?.targetPeerId === peerId);
+            const tetheredAtEnd = [endState.webL, endState.webR].some((web) => web?.targetPeerId === peerId);
+            if (tetheredAtStart || tetheredAtEnd) {
+                clearStun();
+            }
+        });
+
         function getSwingTargets() {
             const targets = [];
             [webL, webR].forEach((web) => {
@@ -1953,6 +2124,7 @@
             wasDownswing: false,
             startState: null,
             swungOff: [],
+            startedAtMs: 0,
         };
 
         async function initVoice() {
@@ -2147,6 +2319,7 @@
             requestAnimationFrame(animate);
             const dt = Math.min(clock.getDelta(), 0.04);
             updateCity();
+            checkShockPulse(getShockTimeSeconds());
             handleMovement(dt);
             checkHeightEvents(player.position.y, peerId);
             updateReticle();
@@ -2158,6 +2331,10 @@
             if (now - lastSaveCheckAt >= SAVE_CHECK_INTERVAL_MS) {
                 lastSaveCheckAt = now;
                 checkSaveTokens();
+            }
+            if (now - lastTimeSyncAt >= TIME_SYNC_INTERVAL_MS) {
+                lastTimeSyncAt = now;
+                sendTimeSync();
             }
             sendSnapshot(dt);
             renderer.render(scene, camera);
