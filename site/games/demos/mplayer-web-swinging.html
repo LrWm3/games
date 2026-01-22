@@ -32,7 +32,7 @@
         #calibration-msg {
             position: absolute; bottom: 20px; width: 100%; text-align: center; color: #aaa; font-size: 0.8em;
         }
-        #chunk-coords {
+        #player-altitudes {
             position: absolute; top: 20px; right: 20px; color: #c9f0ff;
             background: rgba(0,0,0,0.7); padding: 8px 10px; border-radius: 8px;
             border: 1px solid #3a4c5a; font-size: 0.85em; pointer-events: none;
@@ -141,11 +141,11 @@
         <div id="control-reel-left" style="display: none;"><span class="key">Q</span>- Reel Left Web</div>
         <div id="control-reel-right" style="display: none;"><span class="key">E</span>- Reel Right Web</div>
         <div id="control-bounce" style="display: none;"><span class="key">Space (hold)</span> - Bounce off walls (in air)</div>
-        <div class="stat" id="unlocks">
+        <!-- <div class="stat" id="unlocks">
             Unlocks:<br>
             Reel (Locked @ 2000m)<br>
             Bounce (Locked @ 10000m)
-        </div>
+        </div> -->
         <div class="stat" id="win-msg">Win at 12000m</div>
         <div class="stat" id="speed">Speed: 0 km/h</div>
         <div class="stat" id="height">Height: 0 m</div>
@@ -155,7 +155,7 @@
         </div>
     </div>
     <div id="crosshair"></div>
-    <div id="chunk-coords">Chunk: 0, 0</div>
+    <div id="player-altitudes">P1: 0m</div>
     <div id="compass"></div>
     <div id="chat-overlay">
         <div id="chat-log"></div>
@@ -207,8 +207,7 @@
         let joinedRoomId = null;
         let snapshotSeq = 0;
         let snapshotAccumulator = 0;
-        let pendingTetherImpulse = null;
-        const heightEvents = [3000, 6000, 9000, 12000];
+        const heightEvents = [3000, 6000, 9000, WIN_HEIGHT];
         const triggeredHeightEvents = new Set();
         const remotePlayers = new Map();
         const playerSlots = new Map();
@@ -246,7 +245,7 @@
         const roomListEl = document.getElementById('room-list');
         const uiEl = document.getElementById('ui');
         const crosshairEl = document.getElementById('crosshair');
-        const chunkCoordsEl = document.getElementById('chunk-coords');
+        const chunkCoordsEl = document.getElementById('player-altitudes');
         const calibrationEl = document.getElementById('calibration-msg');
         const compassEl = document.getElementById('compass');
         const chatOverlayEl = document.getElementById('chat-overlay');
@@ -408,79 +407,14 @@
                     return;
                 }
                 if (msg.type === 'welcome') {
-                    peerId = msg.peerId;
-                    joinedRoomId = msg.roomId;
-                    lobbyStatusEl.innerText = `Joined ${joinedRoomId}. Waiting for launch...`;
-                    setGameVisible(true);
-                    if (Array.isArray(msg.peers)) {
-                        msg.peers.forEach((pid, idx) => {
-                            playerSlots.set(pid, idx);
-                        });
-                        const localSlot = msg.peers.length;
-                        playerSlots.set(peerId, localSlot);
-                    }
-                    if (msg.names && typeof msg.names === 'object') {
-                        Object.entries(msg.names).forEach(([pid, name]) => {
-                            const remote = remotePlayers.get(pid);
-                            if (remote && typeof name === 'string' && name.trim().length > 0) {
-                                remote.userData.name = name;
-                            }
-                        });
-                    }
-                    if (!gameStarted) {
-                        init();
-                        gameStarted = true;
-                    }
-                    if (Array.isArray(msg.peers)) {
-                        msg.peers.forEach((pid) => {
-                            if (!remotePlayers.has(pid)) {
-                                const slot = allocateSlot(pid);
-                                remotePlayers.set(pid, createRemotePlayer(pid, getSlotColor(slot)));
-                            }
-                            const remote = remotePlayers.get(pid);
-                            if (remote && msg.names && typeof msg.names[pid] === 'string') {
-                                remote.userData.name = msg.names[pid].trim();
-                            }
-                            if (voiceEnabled) {
-                                const shouldOffer = peerId < pid;
-                                if (shouldOffer) maybeStartOffer(pid);
-                            }
-                        });
-                    }
+                    handleWelcome(msg);
                 } else if (msg.type === 'error') {
                     lobbyStatusEl.innerText = msg.message || 'Failed to join room.';
                     if (socket) socket.close();
                 } else if (msg.type === 'peer-joined') {
-                    const pid = msg.peerId;
-                    if (pid && !remotePlayers.has(pid)) {
-                        const slot = allocateSlot(pid);
-                        remotePlayers.set(pid, createRemotePlayer(pid, getSlotColor(slot)));
-                    }
-                    if (typeof msg.name === 'string' && msg.name.trim().length > 0) {
-                        remotePlayers.get(pid).userData.name = msg.name.trim();
-                    }
-                    if (voiceEnabled && peerId && pid) {
-                        const shouldOffer = peerId < pid;
-                        if (shouldOffer) maybeStartOffer(pid);
-                    }
+                    handlePeerJoined(msg);
                 } else if (msg.type === 'peer-left') {
-                    const pid = msg.peerId;
-                    const remote = remotePlayers.get(pid);
-                    if (remote) {
-                        if (remote.userData.compassEl) {
-                            remote.userData.compassEl.remove();
-                        }
-                        scene.remove(remote);
-                        remotePlayers.delete(pid);
-                    }
-                    playerSlots.delete(pid);
-                    incomingTethers.delete(`${pid}:left`);
-                    incomingTethers.delete(`${pid}:right`);
-                    const pc = peerConnections.get(pid);
-                    if (pc) {
-                        pc.close();
-                        peerConnections.delete(pid);
-                    }
+                    handlePeerLeft(msg);
                 } else if (msg.type === 'snapshot') {
                     applyRemoteSnapshot(msg.fromPeerId, msg.state);
                 } else if (msg.type === 'webrtc-offer') {
@@ -506,6 +440,75 @@
             socket.onerror = () => {
                 lobbyStatusEl.innerText = 'Connection failed. Is the server running?';
             };
+        }
+
+        function handleWelcome(msg) {
+            peerId = msg.peerId;
+            joinedRoomId = msg.roomId;
+            lobbyStatusEl.innerText = `Joined ${joinedRoomId}. Waiting for launch...`;
+            setGameVisible(true);
+            if (Array.isArray(msg.peers)) {
+                msg.peers.forEach((pid, idx) => {
+                    playerSlots.set(pid, idx);
+                });
+                const localSlot = msg.peers.length;
+                playerSlots.set(peerId, localSlot);
+            }
+            if (!gameStarted) {
+                init();
+                gameStarted = true;
+            }
+            if (Array.isArray(msg.peers)) {
+                msg.peers.forEach((pid) => {
+                    if (!remotePlayers.has(pid)) {
+                        const slot = allocateSlot(pid);
+                        remotePlayers.set(pid, createRemotePlayer(pid, getSlotColor(slot)));
+                    }
+                    const remote = remotePlayers.get(pid);
+                    if (remote && msg.names && typeof msg.names[pid] === 'string') {
+                        remote.userData.name = msg.names[pid].trim();
+                    }
+                    if (voiceEnabled) {
+                        const shouldOffer = peerId < pid;
+                        if (shouldOffer) maybeStartOffer(pid);
+                    }
+                });
+            }
+        }
+
+        function handlePeerJoined(msg) {
+            const pid = msg.peerId;
+            if (pid && !remotePlayers.has(pid)) {
+                const slot = allocateSlot(pid);
+                remotePlayers.set(pid, createRemotePlayer(pid, getSlotColor(slot)));
+            }
+            if (typeof msg.name === 'string' && msg.name.trim().length > 0) {
+                remotePlayers.get(pid).userData.name = msg.name.trim();
+            }
+            if (voiceEnabled && peerId && pid) {
+                const shouldOffer = peerId < pid;
+                if (shouldOffer) maybeStartOffer(pid);
+            }
+        }
+
+        function handlePeerLeft(msg) {
+            const pid = msg.peerId;
+            const remote = remotePlayers.get(pid);
+            if (remote) {
+                if (remote.userData.compassEl) {
+                    remote.userData.compassEl.remove();
+                }
+                scene.remove(remote);
+                remotePlayers.delete(pid);
+            }
+            playerSlots.delete(pid);
+            incomingTethers.delete(`${pid}:left`);
+            incomingTethers.delete(`${pid}:right`);
+            const pc = peerConnections.get(pid);
+            if (pc) {
+                pc.close();
+                peerConnections.delete(pid);
+            }
         }
 
         function listRooms() {
@@ -937,7 +940,6 @@
             const moveDir = input.clone().applyQuaternion(player.quaternion);
 
             let usedNextPos = false;
-            pendingTetherImpulse = null;
             if (isClimbing) {
                 playerVelocity.y = keys['KeyW'] ? CLIMB_SPEED : (keys['KeyS'] ? -CLIMB_SPEED : 0);
                 playerVelocity.x = playerVelocity.z = 0;
@@ -977,10 +979,10 @@
                                 const target = remotePlayers.get(otherWeb.targetPeerId);
                                 if (target) {
                                     const dir = new THREE.Vector3().subVectors(player.position, target.position).normalize();
-                                    pendingTetherImpulse = {
+                                    eventBus.emit('player.pulled', {
                                         targetPeerId: otherWeb.targetPeerId,
                                         impulse: { x: dir.x * REEL_PULL_IMPULSE * dt, y: dir.y * REEL_PULL_IMPULSE * dt, z: dir.z * REEL_PULL_IMPULSE * dt },
-                                    };
+                                    }, { source: 'game' });
                                 }
                             }
                         }
@@ -1133,12 +1135,6 @@
             }
             remote.userData.isGrounded = !!state.grounded;
             remote.userData.lastSnapshotAt = performance.now();
-            if (state.tetherImpulse && state.tetherImpulse.targetPeerId === peerId) {
-                const impulse = state.tetherImpulse.impulse;
-                if (impulse) {
-                    playerVelocity.add(new THREE.Vector3(impulse.x || 0, impulse.y || 0, impulse.z || 0));
-                }
-            }
             if (state.webL) {
                 const web = remote.userData.webL;
                 web.active = !!state.webL.active;
@@ -1236,36 +1232,19 @@
             return `P${(playerSlots.get(pid) ?? 0) + 1}`;
         }
 
-        function updateChunkCoordsDisplay() {
-            const localChunkX = Math.round(player.position.x / BLOCK_SIZE);
-            const localChunkZ = Math.round(player.position.z / BLOCK_SIZE);
-            const localChunkY = Math.round(player.position.y / BLOCK_SIZE);
-            let lines = [`${displayNameForPeer(peerId)}: ${localChunkX}, ${localChunkY}, ${localChunkZ}`];
+        function updateAltitudeDisplay() {
+            const localAlt = Math.max(0, Math.round(player.position.y));
+            let lines = [`${displayNameForPeer(peerId)}: ${localAlt} m`];
             const entries = [...remotePlayers.entries()].sort((a, b) => {
                 const slotA = playerSlots.get(a[0]) ?? 999;
                 const slotB = playerSlots.get(b[0]) ?? 999;
                 return slotA - slotB;
             });
             entries.forEach(([pid, remote]) => {
-                const cx = Math.round(remote.position.x / BLOCK_SIZE);
-                const cy = Math.round(remote.position.y / BLOCK_SIZE);
-                const cz = Math.round(remote.position.z / BLOCK_SIZE);
-                lines.push(`${displayNameForPeer(pid)}: ${cx}, ${cy}, ${cz}`);
+                const alt = Math.max(0, Math.round(remote.position.y));
+                lines.push(`${displayNameForPeer(pid)}: ${alt} m`);
             });
-            document.getElementById('chunk-coords').innerHTML = lines.join('<br>');
-        }
-
-        function updateWinMessage() {
-            if (freePlay) return;
-            if (!winShown) {
-                document.getElementById('win-msg').innerText = `Win at ${WIN_HEIGHT}m`;
-                document.getElementById('win-msg').style.display = 'block';
-                return;
-            }
-            if (performance.now() - winShownAt > 20000) {
-                document.getElementById('win-msg').innerText = `Won in ${winElapsedStr}`;
-                document.getElementById('win-msg').style.display = 'block';
-            }
+            document.getElementById('player-altitudes').innerHTML = lines.join('<br>');
         }
 
         function updateCompass() {
@@ -1339,7 +1318,6 @@
                 quat: { x: player.quaternion.x, y: player.quaternion.y, z: player.quaternion.z, w: player.quaternion.w },
                 vel: { x: playerVelocity.x, y: playerVelocity.y, z: playerVelocity.z },
                 grounded: isGrounded,
-                tetherImpulse: pendingTetherImpulse,
                 webL: {
                     active: webL.active,
                     anchor: { x: webL.anchor.x, y: webL.anchor.y, z: webL.anchor.z },
@@ -1376,12 +1354,23 @@
             winElapsedStr = formatDuration(elapsedSec);
             document.getElementById('win-msg').innerHTML = `You win! You climbed ${WIN_HEIGHT}m in ${winElapsedStr}. Enjoy swinging around for fun.<br>Press P on new game to unlock everything.`;
             document.getElementById('win-msg').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('win-msg').innerText = `Won in ${winElapsedStr}`;
+            }, 20000);
         });
 
         eventBus.onAny((event) => {
             if (event.startsWith('height.')) {
                 const value = Number(event.split('.')[1]);
                 if (!Number.isNaN(value)) triggeredHeightEvents.add(value);
+            }
+        });
+
+        eventBus.on('player.pulled', (payload) => {
+            if (!payload || payload.targetPeerId !== peerId) return;
+            const impulse = payload.impulse;
+            if (impulse) {
+                playerVelocity.add(new THREE.Vector3(impulse.x || 0, impulse.y || 0, impulse.z || 0));
             }
         });
 
@@ -1546,8 +1535,7 @@
                 webReticle.position.copy(hit.point).add(hit.face.normal.clone().multiplyScalar(0.5));
                 webReticle.lookAt(hit.point.clone().add(hit.face.normal));
 
-                // --- NEW SCALING LOGIC ---
-                // Keeps the reticle visually consistent regardless of distance
+                // Keep the reticle visually consistent regardless of distance
                 const scaleFactor = dist * 0.0125; 
                 webReticle.scale.set(scaleFactor, scaleFactor, 1);
 
@@ -1605,9 +1593,8 @@
             updateReticle();
             updateCamera(dt);
             updateRemotePlayers(dt);
-            updateChunkCoordsDisplay();
+            updateAltitudeDisplay();
             updateCompass();
-            updateWinMessage();
             sendSnapshot(dt);
             renderer.render(scene, camera);
         }
