@@ -68,6 +68,39 @@
             display: grid; gap: 6px; font-size: 0.9em; color: #e2e8f0;
             pointer-events: none; z-index: 11;
         }
+        #win-modal {
+            position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+            background: rgba(4, 6, 12, 0.7); z-index: 20;
+        }
+        #win-modal .modal-card {
+            width: min(520px, 86vw);
+            background: radial-gradient(circle at top, rgba(30, 40, 70, 0.95), rgba(10, 12, 24, 0.95));
+            border: 1px solid rgba(120, 180, 220, 0.35);
+            border-radius: 16px;
+            padding: 18px 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.45);
+            text-align: center;
+            color: #e6f2ff;
+        }
+        #win-modal h2 {
+            margin: 0 0 8px 0;
+            font-size: 1.4em;
+            letter-spacing: 0.04em;
+            color: #8df9ff;
+        }
+        #win-modal .modal-sub {
+            font-size: 0.95em;
+            color: #b8d2ff;
+        }
+        #win-modal .modal-time {
+            font-size: 1.2em;
+            margin: 12px 0 8px 0;
+            color: #ffd166;
+        }
+        #win-modal .modal-hint {
+            font-size: 0.85em;
+            color: #9fb3c8;
+        }
         .chat-line {
             background: rgba(6, 10, 24, 0.6); border: 1px solid rgba(120,140,170,0.25);
             border-radius: 8px; padding: 6px 8px;
@@ -135,6 +168,8 @@
         <div><span class="key">L-Click</span> - Left Web</div>
         <div><span class="key">R-Click</span> - Right Web</div>
         <div><span class="key">Shift</span> - Boost on Downswing</div>
+        <div><span class="key">F</span> - Point</div>
+        <div><span class="key">R</span> - Restart</div>
         <div id="control-reel-left" style="display: none;"><span class="key">Q</span>- Reel Left Web</div>
         <div id="control-reel-right" style="display: none;"><span class="key">E</span>- Reel Right Web</div>
         <div id="control-bounce" style="display: none;"><span class="key">Space (hold)</span> - Bounce off walls (in air)</div>
@@ -159,6 +194,14 @@
         <input id="chat-input" placeholder="Type message and press Enter..." />
     </div>
     <div id="chat-feed"></div>
+    <div id="win-modal">
+        <div class="modal-card">
+            <h2>12000m Achieved</h2>
+            <div class="modal-time" id="win-modal-time"></div>
+            <div class="modal-sub">Enjoy swinging around for fun.</div>
+            <div class="modal-hint">Press P on new game to unlock everything.<br>Press Esc to close.</div>
+        </div>
+    </div>
 
     <script>
         // --- CONFIG ---
@@ -296,6 +339,8 @@
         const crosshairEl = document.getElementById('crosshair');
         const chunkCoordsEl = document.getElementById('player-altitudes');
         const compassEl = document.getElementById('compass');
+        const winModalEl = document.getElementById('win-modal');
+        const winModalTimeEl = document.getElementById('win-modal-time');
         const chatOverlayEl = document.getElementById('chat-overlay');
         const chatLogEl = document.getElementById('chat-log');
         const chatInputEl = document.getElementById('chat-input');
@@ -396,6 +441,9 @@
                 }
                 if (e.code === 'KeyF' && !inLobby && !chatOpen && document.activeElement !== chatInputEl) {
                     requestPointer();
+                }
+                if (e.code === 'Escape' && winModalEl.style.display === 'flex') {
+                    winModalEl.style.display = 'none';
                 }
                 if (e.code === 'Enter' && !inLobby && !chatOpen && document.activeElement !== chatInputEl) {
                     e.preventDefault();
@@ -2174,11 +2222,10 @@
             game.climbStartTime = climbStartTime;
             const elapsedSec = Math.round((game.winShownAt - game.climbStartTime) / 1000);
             winElapsedStr = formatDuration(elapsedSec);
-            document.getElementById('win-msg').innerHTML = `You win! You climbed ${WIN_HEIGHT}m in ${winElapsedStr}. Enjoy swinging around for fun.<br>Press P on new game to unlock everything.`;
+            document.getElementById('win-msg').innerText = `Won in ${winElapsedStr}`;
             document.getElementById('win-msg').style.display = 'block';
-            setTimeout(() => {
-                document.getElementById('win-msg').innerText = `Won in ${winElapsedStr}`;
-            }, 20000);
+            winModalTimeEl.innerText = `You climbed ${WIN_HEIGHT}m in ${winElapsedStr}`;
+            winModalEl.style.display = 'flex';
         }
 
         eventBus.on(`height.${WIN_HEIGHT}`, () => {
