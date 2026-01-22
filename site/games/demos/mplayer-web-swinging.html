@@ -187,9 +187,13 @@
         const INITIAL_CHUNK_HEIGHTS = {};
         const REMOTE_ORB_RADIUS = PLAYER_RADIUS * 6;
         const HONEY_STUCK_TIME_MS = 10000;
-        const HONEY_UNSTICK_FORCE = 18;
+        const HONEY_UNSTICK_FORCE = 0.1;
         const HONEY_RELEASE_PUSH = 18;
         const HONEY_STICK_MIN_FORCE = 22;
+        const TETHER_IMPULSE_DAMPING = 0.40;
+        const TETHER_IMPULSE_DEBOUNCE_MS = 16;
+        const TETHER_IMPULSE_MAX = 25;
+        const PLAYER_MASS = 1.0;
         const GAME_ID = 'mplayer-web-swinging';
 
         // --- CORE ---
@@ -225,6 +229,7 @@
         const triggeredHeightEvents = new Set();
         let localJoinedAt = 0;
         const chunkMeta = new Map();
+        const tautImpulseDebouncers = new Map();
         const remotePlayers = new Map();
         const playerSlots = new Map();
         const playerColors = [0xff3b30, 0x0a84ff, 0x34c759, 0xaf52de];
@@ -1124,13 +1129,22 @@
                     }
                     const distAfterMove = nextPos.distanceTo(web.anchor);
                     if (distAfterMove > web.length) {
+                        const overshoot = distAfterMove - web.length;
                         const toAnchor = new THREE.Vector3().subVectors(web.anchor, nextPos).normalize();
-                        nextPos.add(toAnchor.multiplyScalar(distAfterMove - web.length));
+                        const massShares = getRopeMassShares(Boolean(web.targetPeerId));
+                        nextPos.add(toAnchor.multiplyScalar(overshoot * massShares.positionLocal));
                         
                         const radial = new THREE.Vector3().subVectors(player.position, web.anchor).normalize();
                         const relVel = anchorVelocity ? playerVelocity.clone().sub(anchorVelocity) : playerVelocity;
                         const vDotR = relVel.dot(radial);
-                        if (vDotR > 0) playerVelocity.sub(radial.multiplyScalar(vDotR));
+                        if (vDotR > 0) {
+                            const localVelDelta = radial.clone().multiplyScalar(vDotR * massShares.velocityLocal);
+                            playerVelocity.sub(localVelDelta);
+                            if (web.targetPeerId) {
+                                const remoteImpulse = radial.clone().multiplyScalar(vDotR * massShares.velocityRemote * TETHER_IMPULSE_DAMPING);
+                                emitTautImpulse(web.targetPeerId, remoteImpulse);
+                            }
+                        }
 
                         // Pumping energy while swinging
                         if ((keys['ShiftLeft'] || keys['Space']) && isDownswing(playerVelocity)) {
@@ -1148,12 +1162,17 @@
                     const anchorVel = anchorPlayer.userData?.velocity || null;
                     const distAfterMove = nextPos.distanceTo(anchorPos);
                     if (distAfterMove > tether.length) {
+                        const overshoot = distAfterMove - tether.length;
                         const toAnchor = new THREE.Vector3().subVectors(anchorPos, nextPos).normalize();
-                        nextPos.add(toAnchor.multiplyScalar(distAfterMove - tether.length));
+                        const massShares = getRopeMassShares(true);
+                        nextPos.add(toAnchor.multiplyScalar(overshoot * massShares.positionLocal));
                         const radial = new THREE.Vector3().subVectors(player.position, anchorPos).normalize();
                         const relVel = anchorVel ? playerVelocity.clone().sub(anchorVel) : playerVelocity;
                         const vDotR = relVel.dot(radial);
-                        if (vDotR > 0) playerVelocity.sub(radial.multiplyScalar(vDotR));
+                        if (vDotR > 0) {
+                            const localVelDelta = radial.clone().multiplyScalar(vDotR * massShares.velocityLocal * TETHER_IMPULSE_DAMPING);
+                            playerVelocity.sub(localVelDelta);
+                        }
                     }
                 });
 
@@ -1455,6 +1474,40 @@
             p[0] = pos.x; p[1] = pos.y + 1.2; p[2] = pos.z;
             p[3] = web.anchor.x; p[4] = web.anchor.y; p[5] = web.anchor.z;
             web.line.geometry.attributes.position.needsUpdate = true;
+        }
+
+        function getRopeMassShares(hasPeerTarget) {
+            if (!hasPeerTarget) {
+                return { positionLocal: 1, velocityLocal: 1, velocityRemote: 0 };
+            }
+            const localMass = PLAYER_MASS;
+            const remoteMass = PLAYER_MASS;
+            const totalMass = localMass + remoteMass;
+            return {
+                positionLocal: remoteMass / totalMass,
+                velocityLocal: remoteMass / totalMass,
+                velocityRemote: localMass / totalMass,
+            };
+        }
+
+        function getTautImpulseEmitter(targetPeerId) {
+            if (!tautImpulseDebouncers.has(targetPeerId)) {
+                tautImpulseDebouncers.set(targetPeerId, debounce((payload) => {
+                    eventBus.emit('player.pulled', payload, { source: 'game' });
+                }, TETHER_IMPULSE_DEBOUNCE_MS));
+            }
+            return tautImpulseDebouncers.get(targetPeerId);
+        }
+
+        function emitTautImpulse(targetPeerId, impulseVec) {
+            if (!targetPeerId || !impulseVec) return;
+            const max = TETHER_IMPULSE_MAX;
+            if (impulseVec.lengthSq() > max * max) impulseVec.setLength(max);
+            const payload = {
+                targetPeerId,
+                impulse: { x: impulseVec.x, y: impulseVec.y, z: impulseVec.z },
+            };
+            getTautImpulseEmitter(targetPeerId)(payload);
         }
 
         function updateUnlocksFromGame() {
