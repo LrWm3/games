@@ -196,10 +196,15 @@
         
         let pitch = 0; 
         let lastPointerLog = 0;
-        const unlocks = new Set(['reel', 'bounce']);
-        let winShown = false, winShownAt = 0, winElapsedStr = '';
-        let freePlay = false;
-        let climbStartTime = performance.now();
+        const unlocks = new Set();
+        const freeplayRequests = new Set();
+        let winElapsedStr = '';
+        const game = {
+            freePlay: false,
+            winShown: false,
+            winShownAt: 0,
+            climbStartTime: performance.now(),
+        };
         let inLobby = true;
         let gameStarted = false;
         let socket = null;
@@ -209,6 +214,7 @@
         let snapshotAccumulator = 0;
         const heightEvents = [3000, 6000, 9000, WIN_HEIGHT];
         const triggeredHeightEvents = new Set();
+        let localJoinedAt = 0;
         const remotePlayers = new Map();
         const playerSlots = new Map();
         const playerColors = [0xff3b30, 0x0a84ff, 0x34c759, 0xaf52de];
@@ -253,6 +259,12 @@
         const chatInputEl = document.getElementById('chat-input');
         const chatFeedEl = document.getElementById('chat-feed');
 
+        const requestFreeplay = debounce(() => {
+            if (!game.freePlay) {
+                eventBus.emit('game.freeplay.request', { playerId: peerId }, { source: 'game' });
+            }
+        }, 2000);
+
         function init() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0a0a20);
@@ -292,7 +304,7 @@
             Object.entries(INITIAL_CHUNK_HEIGHTS).forEach(([key, height]) => {
                 chunkHeights.set(key, height);
             });
-            updateUnlocksUI();
+            updateUnlocksFromGame();
 
             // Safe Spawn: Intersection of roads (0,0) is skipped in updateCity for building generation
             player.position.set(0, 5, 0); 
@@ -306,15 +318,8 @@
                     isChargingJump = true;
                     document.getElementById('charge-container').style.display = 'block';
                 }
-                if (e.code === 'KeyP' && !freePlay) {
-                    freePlay = true;
-                    unlocks.add('climb');
-                    document.getElementById('control-reel-left').style.display = 'block';
-                    document.getElementById('control-reel-right').style.display = 'block';
-                    document.getElementById('control-bounce').style.display = 'block';
-                    updateUnlocksUI();
-                    document.getElementById('win-msg').innerText = 'Free play mode';
-                    document.getElementById('win-msg').style.display = 'block';
+                if (e.code === 'KeyP' && !game.freePlay) {
+                    requestFreeplay();
                 }
                 if (e.code === 'Enter' && !inLobby && !chatOpen && document.activeElement !== chatInputEl) {
                     e.preventDefault();
@@ -442,6 +447,7 @@
             joinedRoomId = msg.roomId;
             lobbyStatusEl.innerText = `Joined ${joinedRoomId}. Waiting for launch...`;
             setGameVisible(true);
+            localJoinedAt = msg.joinedAtMs || performance.now();
             if (Array.isArray(msg.peers)) {
                 msg.peers.forEach((pid, idx) => {
                     playerSlots.set(pid, idx);
@@ -460,6 +466,9 @@
                         remotePlayers.set(pid, createRemotePlayer(pid, getSlotColor(slot)));
                     }
                     const remote = remotePlayers.get(pid);
+                    if (remote && msg.peerMeta && msg.peerMeta[pid]?.joinedAtMs) {
+                        remote.userData.joinedAtMs = msg.peerMeta[pid].joinedAtMs;
+                    }
                     if (remote && msg.names && typeof msg.names[pid] === 'string') {
                         remote.userData.name = msg.names[pid].trim();
                     }
@@ -479,6 +488,13 @@
             }
             if (typeof msg.name === 'string' && msg.name.trim().length > 0) {
                 remotePlayers.get(pid).userData.name = msg.name.trim();
+            }
+            if (pid && pid !== peerId) {
+                const remote = remotePlayers.get(pid);
+                if (remote) remote.userData.joinedAtMs = msg.joinedAtMs || performance.now();
+                if (isHost()) {
+                    eventBus.emit('game.state', getGameStatePayload(), { source: 'game' });
+                }
             }
             if (voiceEnabled && peerId && pid) {
                 const shouldOffer = peerId < pid;
@@ -1243,11 +1259,25 @@
             document.getElementById('player-altitudes').innerHTML = lines.join('<br>');
         }
 
-        function updateUnlocksUI() {
+        function updateUnlocksFromGame() {
+            unlocks.clear();
+            if (game.freePlay) {
+                unlocks.add('reel');
+                unlocks.add('bounce');
+                unlocks.add('climb');
+            }
             const reel = unlocks.has('reel') ? 'Unlocked' : 'Locked';
             const bounce = unlocks.has('bounce') ? 'Unlocked' : 'Locked';
             const climb = unlocks.has('climb') ? 'Unlocked' : 'Locked';
             document.getElementById('unlocks').innerHTML = `Unlocks:<br>Reel (${reel})<br>Bounce (${bounce})<br>Climb (${climb})`;
+        }
+
+        function debounce(fn, waitMs) {
+            let timeoutId = null;
+            return (...args) => {
+                if (timeoutId) clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => fn(...args), waitMs);
+            };
         }
 
         function updateCompass() {
@@ -1316,6 +1346,25 @@
             return !socket || socket.readyState !== WebSocket.OPEN || !peerId || remotePlayers.size === 0;
         }
 
+        function isHost() {
+            if (!peerId) return false;
+            let oldest = { id: peerId, joinedAt: localJoinedAt || 0 };
+            remotePlayers.forEach((remote, pid) => {
+                const joinedAt = remote.userData.joinedAtMs ?? Infinity;
+                if (joinedAt < oldest.joinedAt) oldest = { id: pid, joinedAt };
+            });
+            return oldest.id === peerId;
+        }
+
+        function getGameStatePayload() {
+            return {
+                freePlay: game.freePlay,
+                winShown: game.winShown,
+                winShownAt: game.winShownAt,
+                climbStartTime: game.climbStartTime
+            };
+        }
+
         function getPlayerState() {
             return {
                 pos: { x: player.position.x, y: player.position.y, z: player.position.z },
@@ -1350,23 +1399,65 @@
             });
         }
 
-        eventBus.on(`height.${WIN_HEIGHT}`, (payload) => {
-            if (freePlay || winShown) return;
-            winShown = true;
-            winShownAt = performance.now();
-            const elapsedSec = Math.round((winShownAt - climbStartTime) / 1000);
+        function applyWinState(winShownAt, climbStartTime) {
+            if (game.freePlay || game.winShown) return;
+            game.winShown = true;
+            game.winShownAt = winShownAt;
+            game.climbStartTime = climbStartTime;
+            const elapsedSec = Math.round((game.winShownAt - game.climbStartTime) / 1000);
             winElapsedStr = formatDuration(elapsedSec);
             document.getElementById('win-msg').innerHTML = `You win! You climbed ${WIN_HEIGHT}m in ${winElapsedStr}. Enjoy swinging around for fun.<br>Press P on new game to unlock everything.`;
             document.getElementById('win-msg').style.display = 'block';
             setTimeout(() => {
                 document.getElementById('win-msg').innerText = `Won in ${winElapsedStr}`;
             }, 20000);
+        }
+
+        eventBus.on(`height.${WIN_HEIGHT}`, () => {
+            applyWinState(performance.now(), game.climbStartTime);
         });
 
         eventBus.onAny((event) => {
             if (event.startsWith('height.')) {
                 const value = Number(event.split('.')[1]);
                 if (!Number.isNaN(value)) triggeredHeightEvents.add(value);
+            }
+        });
+
+        eventBus.on('game.freeplay.request', (payload, meta) => {
+            if (!payload || !payload.playerId || game.freePlay) return;
+            const requester = payload.playerId;
+            // Allow requesting multiple times in case some players don't vote and leave
+            // Only show chat message once per player request
+            addChatMessage('System', `${name} requested free play. Votes: (${freeplayRequests.size}/${allPlayers.size}). Press 'P' to request free play.`);
+            freeplayRequests.add(requester);
+            const name = displayNameForPeer(requester);            
+            const allPlayers = new Set([peerId, ...remotePlayers.keys()]);
+            if (isHost()) {
+                let allRequested = true;
+                allPlayers.forEach((pid) => {
+                    if (!freeplayRequests.has(pid)) allRequested = false;
+                });
+                if (allRequested) {
+                    // Allow the 'game.state' handler to deal with unlocking
+                    payload = getGameStatePayload();
+                    payload.freePlay = true;
+                    eventBus.emit('game.state', payload, { source: 'game' });
+                }
+            }
+        });
+
+        eventBus.on('game.state', (payload, meta) => {
+            if (!payload || meta.source !== 'ws') return;
+            if (payload.freePlay && !game.freePlay) {
+                game.freePlay = true;
+                updateUnlocksFromGame();
+                document.getElementById('win-msg').innerText = 'Free play mode';
+                document.getElementById('win-msg').style.display = 'block';
+                addChatMessage('System', 'All players requested free play. Enabling free play mode.');
+            }
+            if (payload.winShownAt && payload.climbStartTime) {
+                applyWinState(payload.winShownAt, payload.climbStartTime);
             }
         });
 
