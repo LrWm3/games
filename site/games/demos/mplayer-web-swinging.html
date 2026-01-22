@@ -2069,7 +2069,6 @@
 
         eventBus.onAny((event, payload, meta) => {
             console.log('[event]', event, payload, meta);
-            addChatMessage('[Event]', `${event}`);
             if (meta.source === 'ws') return;
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: 'event', event, payload }));
