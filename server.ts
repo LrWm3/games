@@ -298,6 +298,11 @@ async function handler(req: Request): Promise<Response> {
         return;
       }
 
+      if (msg.type === "game" && msg.payload !== undefined) {
+        broadcastRoom(gameId, roomId, { type: "game", fromPeerId: peerId, payload: msg.payload }, peerId);
+        return;
+      }
+
       if (msg.type === "chat" && typeof msg.text === "string") {
         broadcastRoom(gameId, roomId, { type: "chat", fromPeerId: peerId, text: msg.text.slice(0, 500) }, peerId);
         return;
