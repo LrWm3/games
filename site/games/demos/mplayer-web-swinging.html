@@ -235,6 +235,7 @@
             saveKey: null,
             timeOffsetMs: 0,
             trickyOwnerSlot: null,
+            earnedSaveHeights: [0],
             chunkHeights: new Map(),
         };
         let inLobby = true;
@@ -281,6 +282,9 @@
         let lastShockPulseIndex = -1;
         let lastTimeSyncAt = 0;
         let timeSyncSeq = 0;
+        let trickySingleSwings = 0;
+        let trickySingleLocked = false;
+        let lastSinglePlayerMode = null;
 
         const lobbyEl = document.getElementById('lobby');
         const lobbyStatusEl = document.getElementById('lobby-status');
@@ -799,9 +803,9 @@
             const w = 30 + Math.abs(rand(seed + 3)) * 10;
             const d = 30 + Math.abs(rand(seed + 4)) * 10;
             const hue = 0.58 + (Math.abs(rand(seed + 5)) * 0.08);
-            const isTricky = isMega && h < 3000;
+            const isMegaStandard = isMega && h < 3000;
             const isShock = isMega && h >= 3000 && h < 6000;
-            const isMegaStandard = isMega && h >= 6000 && h < 9000;
+            const isTricky = isMega && h >= 6000 && h < 9000;
             const isHoney = isMega && h >= 9000;
             const trickyColor = isTricky ? new THREE.Color(getTrickyColor()) : null;
             const baseColor = isShock
@@ -1134,8 +1138,12 @@
             mega_honey: (webObj, dir, hit, data) => attachToTarget(webObj, dir, hit.point, null, data?.type || 'mega_honey', data?.key || null),
             mega_shock: (webObj, dir, hit, data) => attachToTarget(webObj, dir, hit.point, null, data?.type || 'mega_shock', data?.key || null),
             mega_tricky: (webObj, dir, hit, data) => {
-                if (game.trickyOwnerSlot === null) return false;
-                if (getLocalSlot() !== game.trickyOwnerSlot) return false;
+                if (isSinglePlayerMode()) {
+                    if (trickySingleLocked) return false;
+                } else {
+                    if (game.trickyOwnerSlot === null) return false;
+                    if (getLocalSlot() !== game.trickyOwnerSlot) return false;
+                }
                 return attachToTarget(webObj, dir, hit.point, null, data?.type || 'mega_tricky', data?.key || null);
             },
         };
@@ -1411,6 +1419,19 @@
                 player.position.y = 0; playerVelocity.y = 0; isGrounded = true; isClimbing = false;
                 webL.active = webR.active = false;
                 webL.line.visible = webR.line.visible = false;
+            }
+
+            const singlePlayer = isSinglePlayerMode();
+            if (lastSinglePlayerMode === null || lastSinglePlayerMode !== singlePlayer) {
+                if (singlePlayer) {
+                    trickySingleSwings = 0;
+                    trickySingleLocked = false;
+                }
+                lastSinglePlayerMode = singlePlayer;
+            }
+            if (singlePlayer && isGrounded && (trickySingleLocked || trickySingleSwings > 0)) {
+                trickySingleSwings = 0;
+                trickySingleLocked = false;
             }
 
             updateStatusUI();
@@ -1698,8 +1719,14 @@
         }
 
         function getTrickyColor() {
-            const slot = game.trickyOwnerSlot ?? getLocalSlot();
-            return playerColors[slot % playerColors.length] ?? 0xffffff;
+            const baseSlot = getLocalSlot();
+            const slot = isSinglePlayerMode() ? baseSlot : (game.trickyOwnerSlot ?? baseSlot);
+            const baseColor = new THREE.Color(playerColors[slot % playerColors.length] ?? 0xffffff);
+            if (!isSinglePlayerMode()) return baseColor;
+            if (trickySingleLocked) return new THREE.Color(0x666666);
+            const dimLevels = [1.0, 0.7, 0.45, 0.25];
+            const dim = dimLevels[Math.min(trickySingleSwings, dimLevels.length - 1)];
+            return baseColor.multiplyScalar(dim);
         }
 
         function applyTrickyColors() {
@@ -1805,6 +1832,7 @@
                 const data = getStandingBuilding(allPlayers[i].pos, allPlayers[i].grounded);
                 if (!data || data.key !== baseBuilding.key) return;
             }
+            if (game.spawnPos && baseBuilding.height <= (game.spawnPos.y ?? 0)) return;
             const token = findUsableSaveToken(baseBuilding.height);
             if (!token) return;
             const newTokens = game.saveTokens.slice();
@@ -1981,6 +2009,7 @@
             if (Array.isArray(game.saveTokens)) payload.saveTokens = game.saveTokens;
             if (game.saveKey) payload.saveKey = game.saveKey;
             if (typeof game.trickyOwnerSlot === 'number') payload.trickyOwnerSlot = game.trickyOwnerSlot;
+            if (Array.isArray(game.earnedSaveHeights)) payload.earnedSaveHeights = game.earnedSaveHeights;
             return payload;
         }
 
@@ -2106,6 +2135,27 @@
             applyWinState(performance.now(), game.climbStartTime);
         });
 
+        function hasSaveTokenForHeight(height) {
+            return Array.isArray(game.saveTokens) && game.saveTokens.some((token) => Number(token?.minHeight) === height);
+        }
+
+        function hasEarnedSaveHeight(height) {
+            return Array.isArray(game.earnedSaveHeights) && game.earnedSaveHeights.includes(height);
+        }
+
+        [3000, 6000, 9000].forEach((height) => {
+            eventBus.on(`height.${height}`, () => {
+                if (!isHost()) return;
+                if (hasEarnedSaveHeight(height)) return;
+                game.earnedSaveHeights = [...(game.earnedSaveHeights || []), height];
+                if (!hasSaveTokenForHeight(height)) {
+                    game.saveTokens = [...(game.saveTokens || []), { minHeight: height }];
+                }
+                eventBus.emit('game.state', getGameStatePayloadWithOptions({ includeSpawn: true }), { source: 'game' });
+                addChatMessage('System', `Save token earned for ${height}m.`);
+            });
+        });
+
         eventBus.onAny((event) => {
             if (event.startsWith('height.')) {
                 const value = Number(event.split('.')[1]);
@@ -2170,8 +2220,11 @@
                     spawnSynced = true;
                 }
             }
-            if (payload.saveKey || payload.spawnPos || payload.saveTokens) {
+            if (payload.saveKey || payload.spawnPos || payload.saveTokens || payload.earnedSaveHeights) {
                 applySaveState(payload.saveKey || game.saveKey, payload.spawnPos || game.spawnPos, payload.saveTokens || game.saveTokens);
+                if (Array.isArray(payload.earnedSaveHeights)) {
+                    game.earnedSaveHeights = payload.earnedSaveHeights;
+                }
             }
             if (typeof payload.trickyOwnerSlot === 'number') {
                 game.trickyOwnerSlot = payload.trickyOwnerSlot;
@@ -2215,13 +2268,16 @@
         eventBus.on('player.swing', (payload, meta) => {
             if (!payload) return;
             const swungOff = Array.isArray(payload.swungOff) ? payload.swungOff : [];
-            if (isHost() || isSinglePlayerMode()) {
-                const swungTricky = swungOff.some((target) => target.type === 'building' && target.targetType === 'mega_tricky');
-                if (swungTricky) {
-                    const swingerSlot = playerSlots.get(payload.playerId);
-                    if (swingerSlot !== undefined && swingerSlot === game.trickyOwnerSlot) {
-                        rotateTrickyOwner();
-                    }
+            const swungTricky = swungOff.some((target) => target.type === 'building' && target.targetType === 'mega_tricky');
+            if (swungTricky && isSinglePlayerMode()) {
+                trickySingleSwings = Math.min(trickySingleSwings + 1, 3);
+                if (trickySingleSwings >= 3) trickySingleLocked = true;
+                applyTrickyColors();
+            }
+            if (swungTricky && isHost() && !isSinglePlayerMode()) {
+                const swingerSlot = playerSlots.get(payload.playerId);
+                if (swingerSlot !== undefined && swingerSlot === game.trickyOwnerSlot) {
+                    rotateTrickyOwner();
                 }
             }
             if (!isStunned || payload.playerId === peerId) return;
