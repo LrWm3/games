@@ -32,6 +32,7 @@ type ClientInfo = {
   lastTickWindowStartMs: number;
   snapshotsThisWindow: number;
   name?: string;
+  joinedAtMs: number;
 };
 
 const rooms = new Map<string, Map<RoomId, Map<PeerId, ClientInfo>>>();
@@ -110,6 +111,7 @@ async function handler(req: Request): Promise<Response> {
 
     // We only know peerId/room after the client sends {type:"join"}
     let joined = false;
+    let joinedAtMs: number = 0;
     let roomId: RoomId | null = null;
     let peerId: PeerId | null = null;
     let gameId: string = DEFAULT_GAME_ID;
@@ -182,15 +184,17 @@ async function handler(req: Request): Promise<Response> {
         roomId = rid;
         peerId = makePeerId();
         joined = true;
+        joinedAtMs = Date.now();
 
         const clientInfo: ClientInfo = {
           peerId,
           roomId,
           gameId,
+          joinedAtMs,
           ws: socket,
           lastTickWindowStartMs: Date.now(),
           snapshotsThisWindow: 0,
-          name: typeof msg.name === "string" ? msg.name.trim().slice(0, 24) : undefined,
+          name: typeof msg.name === "string" ? msg.name.trim().slice(0, 24) : undefined
         };
 
         room.set(peerId, clientInfo);
@@ -201,9 +205,22 @@ async function handler(req: Request): Promise<Response> {
             .filter((client) => client.peerId !== peerId)
             .map((client) => [client.peerId, client.name ?? ""]),
         );
+        const peerMeta = Object.fromEntries(
+          [...room.values()]
+            .filter((client) => client.peerId !== peerId)
+            .map((client) => [client.peerId, { joinedAtMs: client.joinedAtMs }]),
+        );
 
         // Tell the joiner who they are + who else is present
-        safeSend(socket, { type: "welcome", peerId, roomId, peers, names });
+        safeSend(socket, {
+          type: "welcome",
+          peerId,
+          roomId,
+          peers,
+          names,
+          peerMeta,
+          joinedAtMs,
+        });
         if (typeof msg.name === "string" && msg.name.trim().length > 0) {
           broadcastRoom(gameId, roomId, { type: "peer-name", peerId, name: msg.name.trim().slice(0, 24) }, peerId);
           const clientRecord = room.get(peerId);
@@ -211,7 +228,12 @@ async function handler(req: Request): Promise<Response> {
         }
 
         // Tell the room about the new peer
-        broadcastRoom(gameId, roomId, { type: "peer-joined", peerId, name: clientInfo.name ?? "" }, peerId);
+        broadcastRoom(
+          gameId,
+          roomId,
+          { type: "peer-joined", peerId, name: clientInfo.name ?? "", joinedAtMs },
+          peerId,
+        );
 
         return;
       }
