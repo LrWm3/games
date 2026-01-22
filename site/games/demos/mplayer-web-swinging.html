@@ -146,7 +146,7 @@
             Reel (Locked @ 2000m)<br>
             Bounce (Locked @ 10000m)
         </div>
-        <div class="stat" id="win-msg">Win at 10000m</div>
+        <div class="stat" id="win-msg">Win at 12000m</div>
         <div class="stat" id="speed">Speed: 0 km/h</div>
         <div class="stat" id="height">Height: 0 m</div>
         <div class="stat" id="state">State: Grounded</div>
@@ -182,6 +182,7 @@
         const REEL_PULL_IMPULSE = 30.0;
         const REEL_UNLOCK_HEIGHT = 2000;
         const BOUNCE_UNLOCK_HEIGHT = 10000;
+        const WIN_HEIGHT = 12000;
         const WORLD_SEED = 1337;
         const INITIAL_CHUNK_HEIGHTS = {};
         const REMOTE_ORB_RADIUS = PLAYER_RADIUS * 6;
@@ -195,7 +196,7 @@
         
         let pitch = 0; 
         let lastPointerLog = 0;
-        let unlockReel = false, unlockBounce = false;
+        let unlockReel = true, unlockBounce = true;
         let winShown = false, winShownAt = 0, winElapsedStr = '';
         let freePlay = false;
         let climbStartTime = performance.now();
@@ -207,6 +208,8 @@
         let snapshotSeq = 0;
         let snapshotAccumulator = 0;
         let pendingTetherImpulse = null;
+        const heightEvents = [3000, 6000, 9000, 12000];
+        const triggeredHeightEvents = new Set();
         const remotePlayers = new Map();
         const playerSlots = new Map();
         const playerColors = [0xff3b30, 0x0a84ff, 0x34c759, 0xaf52de];
@@ -290,6 +293,12 @@
             Object.entries(INITIAL_CHUNK_HEIGHTS).forEach(([key, height]) => {
                 chunkHeights.set(key, height);
             });
+            unlockReel = true;
+            unlockBounce = true;
+            document.getElementById('control-reel-left').style.display = 'block';
+            document.getElementById('control-reel-right').style.display = 'block';
+            document.getElementById('control-bounce').style.display = 'block';
+            document.getElementById('unlocks').innerHTML = 'Unlocks:<br>Reel (Unlocked)<br>Bounce (Unlocked)';
 
             // Safe Spawn: Intersection of roads (0,0) is skipped in updateCity for building generation
             player.position.set(0, 5, 0); 
@@ -488,6 +497,10 @@
                         const remote = remotePlayers.get(msg.peerId);
                         if (remote) remote.userData.name = msg.name;
                     }
+                } else if (msg.type === 'event') {
+                    if (typeof msg.event === 'string') {
+                        eventBus.emit(msg.event, msg.payload, { source: 'ws', fromPeerId: msg.fromPeerId });
+                    }
                 }
             };
             socket.onerror = () => {
@@ -626,8 +639,70 @@
                 new THREE.Vector3(gx * BLOCK_SIZE + w/2, h, gz * BLOCK_SIZE + d/2)
             );
 
-            return { group, bounds: box, mesh };
+            return { group, bounds: box, mesh, type: isMega ? 'mega' : 'standard' };
         }
+
+        function handleBuildingCollision(data) {
+            const r = 1.2; // Player collision radius
+            const pos = player.position;
+            const box = data.bounds;
+            let onWall = false;
+            let wantsClimb = false;
+
+            // ROOF DETECTION: Check if X/Z are inside building footprint
+            if (pos.x > box.min.x && pos.x < box.max.x && pos.z > box.min.z && pos.z < box.max.z) {
+                // Check if player's Y is near roof height while descending
+                if (pos.y >= box.max.y - 4.0 && pos.y <= box.max.y + 1.5 && playerVelocity.y <= 0) {
+                    pos.y = box.max.y;
+                    playerVelocity.y = 0;
+                    isGrounded = true;
+                    isClimbing = false;
+                    return { onWall: false, wantsClimb: false, collided: true };
+                }
+            }
+
+            // WALL COLLISION: Check if player is between building top and bottom
+            if (pos.y < box.max.y && pos.y >= box.min.y) {
+                // Check if player footprint overlaps building footprint (with radius)
+                const wallEps = 0.01;
+                if (pos.x + r >= box.min.x - wallEps && pos.x - r <= box.max.x + wallEps && pos.z + r >= box.min.z - wallEps && pos.z - r <= box.max.z + wallEps) {
+                    onWall = true;
+                    // Push player out of building
+                    const dx1 = Math.abs(pos.x + r - box.min.x), dx2 = Math.abs(pos.x - r - box.max.x);
+                    const dz1 = Math.abs(pos.z + r - box.min.z), dz2 = Math.abs(pos.z - r - box.max.z);
+                    const min = Math.min(dx1, dx2, dz1, dz2);
+
+                    if (min === dx1) pos.x = box.min.x - r;
+                    else if (min === dx2) pos.x = box.max.x + r;
+                    else if (min === dz1) pos.z = box.min.z - r;
+                    else if (min === dz2) pos.z = box.max.z + r;
+
+                    // Climbing Trigger: Hold W against a wall
+                    if (!(webL.active || webR.active) && keys['KeyW']) {
+                        wantsClimb = true;
+                    }
+
+                    // Cancel or bounce horizontal velocity on impact
+                    if (min === dx1 || min === dx2) {
+                        playerVelocity.x = keys['Space'] ? -playerVelocity.x : 0;
+                    }
+                    if (min === dz1 || min === dz2) {
+                        playerVelocity.z = keys['Space'] ? -playerVelocity.z : 0;
+                    }
+                    return { onWall, wantsClimb, collided: true };
+                }
+            }
+            return { onWall, wantsClimb, collided: false };
+        }
+
+        const collisionHandlers = {
+            standard: handleBuildingCollision,
+            mega: handleBuildingCollision,
+        };
+        const climbHandlers = {
+            standard: () => true,
+            mega: () => true,
+        };
 
         function updateCity() {
             const px = Math.round(player.position.x / BLOCK_SIZE);
@@ -759,122 +834,96 @@
             document.getElementById('charge-container').style.display = 'none';
         }
 
+        function attachToTarget(webObj, dir, anchor, targetPeerId = null) {
+            webObj.anchor.copy(anchor);
+            webObj.length = player.position.distanceTo(webObj.anchor);
+            if (webObj.length > 5) {
+                webObj.active = true;
+                webObj.line.visible = true;
+                webObj.targetPeerId = targetPeerId;
+                isClimbing = false;
+                if (isGrounded) {
+                    playerVelocity.add(dir.multiplyScalar(35));
+                    playerVelocity.y += 15;
+                    isGrounded = false;
+                }
+                return true;
+            }
+            return false;
+        }
+
+        const webTargetHandlers = {
+            player: (webObj, dir, target) => {
+                const anchor = target.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+                return attachToTarget(webObj, dir, anchor, target.userData.peerId);
+            },
+            standard: (webObj, dir, hit) => attachToTarget(webObj, dir, hit.point, null),
+            mega: (webObj, dir, hit) => attachToTarget(webObj, dir, hit.point, null),
+        };
+
         function tryAttachWeb(webObj) {
             const raycaster = new THREE.Raycaster();
             const dir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(1, 0, 0), pitch).applyQuaternion(player.quaternion).normalize();
             const origin = player.position.clone().add(new THREE.Vector3(0, 1.5, 0));
             raycaster.set(origin, dir);
 
-            let closestPeerId = null;
+            let closestPeer = null;
             let closestDist = Infinity;
-            remotePlayers.forEach((remote, pid) => {
+            remotePlayers.forEach((remote) => {
                 const sphere = new THREE.Sphere(remote.position, REMOTE_ORB_RADIUS);
                 const hitPoint = raycaster.ray.intersectSphere(sphere, new THREE.Vector3());
                 if (hitPoint) {
                     const dist = origin.distanceTo(hitPoint);
                     if (dist < closestDist) {
                         closestDist = dist;
-                        closestPeerId = pid;
+                        closestPeer = remote;
                     }
                 }
             });
-            if (closestPeerId) {
-                const target = remotePlayers.get(closestPeerId);
-                webObj.anchor.copy(target.position).add(new THREE.Vector3(0, 1.2, 0));
-                webObj.length = player.position.distanceTo(webObj.anchor);
-                if (webObj.length > 5) {
-                    webObj.active = true;
-                    webObj.line.visible = true;
-                    webObj.targetPeerId = closestPeerId;
-                    isClimbing = false;
-                    if (isGrounded) {
-                        playerVelocity.add(dir.multiplyScalar(35));
-                        playerVelocity.y += 15;
-                        isGrounded = false;
-                    }
-                }
+            if (closestPeer) {
+                const handler = webTargetHandlers.player;
+                if (handler) handler(webObj, dir, closestPeer);
                 return;
             }
-            
+
             const targets = [];
-            chunks.forEach(d => targets.push(d.mesh));
+            const targetMeshes = new Map();
+            chunks.forEach(d => {
+                targets.push(d.mesh);
+                targetMeshes.set(d.mesh, d);
+            });
 
             const intersects = raycaster.intersectObjects(targets);
             if (intersects.length > 0) {
                 const hit = intersects[0];
-                webObj.anchor.copy(hit.point);
-                webObj.length = player.position.distanceTo(hit.point);
-                if (webObj.length > 5) {
-                    webObj.active = true;
-                    webObj.line.visible = true;
-                    webObj.targetPeerId = null;
-                    isClimbing = false;
-                    // previously allows web "flying", only provide boost on ground now
-                    if (isGrounded) {
-                        playerVelocity.add(dir.multiplyScalar(35));
-                        playerVelocity.y += 15;
-                        isGrounded = false;
-                    }
-                }
+                const data = targetMeshes.get(hit.object);
+                const type = data?.type || 'standard';
+                const handler = webTargetHandlers[type] || webTargetHandlers.standard;
+                if (handler) handler(webObj, dir, hit);
             }
         }
 
         function checkCollisions() {
-            const r = 1.2; // Player collision radius
-            const pos = player.position;
             let onWall = false;
-            const wallEps = 0.01;
+            let canClimb = false;
 
             if (playerVelocity.y < 0) isGrounded = false;
 
             chunks.forEach(data => {
-                const box = data.bounds;
-                
-                // ROOF DETECTION: Check if X/Z are inside building footprint
-                if (pos.x > box.min.x && pos.x < box.max.x && pos.z > box.min.z && pos.z < box.max.z) {
-                    // Check if player's Y is near roof height while descending
-                    if (pos.y >= box.max.y - 4.0 && pos.y <= box.max.y + 1.5 && playerVelocity.y <= 0) {
-                        pos.y = box.max.y; 
-                        playerVelocity.y = 0; 
-                        isGrounded = true; 
-                        isClimbing = false;
-                        return;
-                    }
-                }
-
-                // WALL COLLISION: Check if player is between building top and bottom
-                if (pos.y < box.max.y && pos.y >= box.min.y) {
-                    // Check if player footprint overlaps building footprint (with radius)
-                    if (pos.x + r >= box.min.x - wallEps && pos.x - r <= box.max.x + wallEps && pos.z + r >= box.min.z - wallEps && pos.z - r <= box.max.z + wallEps) {
-                        onWall = true;
-                        
-                        // Push player out of building
-                        const dx1 = Math.abs(pos.x + r - box.min.x), dx2 = Math.abs(pos.x - r - box.max.x);
-                        const dz1 = Math.abs(pos.z + r - box.min.z), dz2 = Math.abs(pos.z - r - box.max.z);
-                        const min = Math.min(dx1, dx2, dz1, dz2);
-                        
-                        if (min === dx1) pos.x = box.min.x - r; 
-                        else if (min === dx2) pos.x = box.max.x + r;
-                        else if (min === dz1) pos.z = box.min.z - r; 
-                        else if (min === dz2) pos.z = box.max.z + r;
-                        
-                        // Climbing Trigger: Hold W against a wall
-                        if (!(webL.active || webR.active) && keys['KeyW']) {
-                            isClimbing = true;
-                        }
-                        
-                        // Cancel or bounce horizontal velocity on impact
-                        if (min === dx1 || min === dx2) {
-                            playerVelocity.x = (unlockBounce && keys['Space']) ? -playerVelocity.x : 0;
-                        }
-                        if (min === dz1 || min === dz2) {
-                            playerVelocity.z = (unlockBounce && keys['Space']) ? -playerVelocity.z : 0;
-                        }
-                    }
+                const handler = collisionHandlers[data.type] || handleBuildingCollision;
+                const result = handler(data);
+                if (result.onWall) onWall = true;
+                if (result.wantsClimb) {
+                    const climbHandler = climbHandlers[data.type] || (() => true);
+                    if (climbHandler(data)) canClimb = true;
                 }
             });
 
-            if (!onWall) isClimbing = false;
+            if (canClimb) {
+                isClimbing = true;
+            } else if (!onWall) {
+                isClimbing = false;
+            }
         }
 
         function handleMovement(dt) {
@@ -920,7 +969,7 @@
                             web.length = currentDist;
                         }
                     }
-                    if (unlockReel && ((web.name === 'left' && keys['KeyQ']) || (web.name === 'right' && keys['KeyE']))) {
+                    if ((web.name === 'left' && keys['KeyQ']) || (web.name === 'right' && keys['KeyE'])) {
                         web.length -= 60 * dt;
                         if (!web.targetPeerId) {
                             const otherWeb = web.name === 'left' ? webR : webL;
@@ -953,7 +1002,7 @@
                         if (vDotR > 0) playerVelocity.sub(radial.multiplyScalar(vDotR));
 
                         // Pumping energy while swinging
-                        if ((keys['ShiftLeft'] || keys['Space']) && playerVelocity.y < 0) {
+                        if ((keys['ShiftLeft'] || keys['Space']) && isDownswing(playerVelocity)) {
                             playerVelocity.add(playerVelocity.clone().normalize().multiplyScalar(90 * dt));
                         }
                     }
@@ -988,6 +1037,26 @@
                 updateLine(webR);
                 player.position.copy(nextPos);
                 usedNextPos = true;
+
+                const swingingActive = webL.active || webR.active || incomingTethers.size > 0;
+                const down = isDownswing(playerVelocity);
+                const up = isUpswing(playerVelocity);
+                if (swingingActive && down && !swingState.wasDownswing) {
+                    swingState.wasDownswing = true;
+                    swingState.startState = getPlayerState();
+                    swingState.swungOff = getSwingTargets();
+                }
+                if (swingState.wasDownswing && up) {
+                    eventBus.emit('player.swing', {
+                        playerId: peerId,
+                        swungOff: swingState.swungOff,
+                        startState: swingState.startState,
+                        endState: getPlayerState(),
+                    });
+                    swingState.wasDownswing = false;
+                    swingState.startState = null;
+                    swingState.swungOff = [];
+                }
             } else {
                 // GROUND / AIR PHYSICS
                 const speed = keys['ShiftLeft'] ? RUN_SPEED : WALK_SPEED;
@@ -1030,31 +1099,6 @@
             const currentHeight = Math.max(0, Math.round(player.position.y));
             const heightStr = currentHeight.toString().padStart(5, '0');
             document.getElementById('height').innerText = `ALT: ${heightStr} m`;
-            if (!unlockReel && currentHeight >= REEL_UNLOCK_HEIGHT) {
-                unlockReel = true;
-                document.getElementById('control-reel-left').style.display = 'block';
-                document.getElementById('control-reel-right').style.display = 'block';
-            }
-            if (!unlockBounce && currentHeight >= BOUNCE_UNLOCK_HEIGHT) {
-                unlockBounce = true;
-                document.getElementById('control-bounce').style.display = 'block';
-            }
-            document.getElementById('unlocks').innerHTML = `Unlocks:<br>Reel (${unlockReel ? 'Unlocked' : `Locked @ ${REEL_UNLOCK_HEIGHT}m`})<br>Bounce (${unlockBounce ? 'Unlocked' : `Locked @ ${BOUNCE_UNLOCK_HEIGHT}m`})`;
-            if (!freePlay && !winShown && currentHeight >= BOUNCE_UNLOCK_HEIGHT) {
-                winShown = true;
-                winShownAt = performance.now();
-                const elapsedSec = Math.round((winShownAt - climbStartTime) / 1000);
-                winElapsedStr = formatDuration(elapsedSec);
-                document.getElementById('win-msg').innerHTML = `You win! You climbed ${BOUNCE_UNLOCK_HEIGHT}m in ${winElapsedStr}. Enjoy swinging around for fun.<br>Press P on new game to unlock everything.`;
-                document.getElementById('win-msg').style.display = 'block';
-            }
-            if (!freePlay && winShown && performance.now() - winShownAt > 20000) {
-                document.getElementById('win-msg').innerText = `Won in ${winElapsedStr}`;
-                document.getElementById('win-msg').style.display = 'block';
-            } else if (!freePlay && !winShown) {
-                document.getElementById('win-msg').innerText = `Win at ${BOUNCE_UNLOCK_HEIGHT}m`;
-                document.getElementById('win-msg').style.display = 'block';
-            }
             let stateText = (webL.active && webR.active) ? "Dual Swung" : (webL.active || webR.active ? "Swinging" : (isClimbing ? "Climbing" : (isGrounded ? "Grounded" : "Airborne")));
             document.getElementById('state').innerText = `State: ${stateText}`;
         }
@@ -1064,25 +1108,7 @@
             snapshotAccumulator += dt;
             if (snapshotAccumulator < (1 / 15)) return;
             snapshotAccumulator -= (1 / 15);
-            const state = {
-                pos: { x: player.position.x, y: player.position.y, z: player.position.z },
-                quat: { x: player.quaternion.x, y: player.quaternion.y, z: player.quaternion.z, w: player.quaternion.w },
-                vel: { x: playerVelocity.x, y: playerVelocity.y, z: playerVelocity.z },
-                grounded: isGrounded,
-                tetherImpulse: pendingTetherImpulse,
-                webL: {
-                    active: webL.active,
-                    anchor: { x: webL.anchor.x, y: webL.anchor.y, z: webL.anchor.z },
-                    length: webL.length,
-                    targetPeerId: webL.targetPeerId,
-                },
-                webR: {
-                    active: webR.active,
-                    anchor: { x: webR.anchor.x, y: webR.anchor.y, z: webR.anchor.z },
-                    length: webR.length,
-                    targetPeerId: webR.targetPeerId,
-                },
-            };
+            const state = getPlayerState();
             socket.send(JSON.stringify({ type: 'snapshot', seq: snapshotSeq++, t: performance.now(), state }));
         }
 
@@ -1151,6 +1177,7 @@
                 if (vel) {
                     remote.position.addScaledVector(vel, dt);
                 }
+                checkHeightEvents(remote.position.y, remote.userData.peerId);
                 const targetPos = remote.userData.snapshotPos;
                 const driftAlpha = 1 - Math.exp(-6 * dt);
                 remote.position.lerp(targetPos, driftAlpha);
@@ -1228,6 +1255,19 @@
             document.getElementById('chunk-coords').innerHTML = lines.join('<br>');
         }
 
+        function updateWinMessage() {
+            if (freePlay) return;
+            if (!winShown) {
+                document.getElementById('win-msg').innerText = `Win at ${WIN_HEIGHT}m`;
+                document.getElementById('win-msg').style.display = 'block';
+                return;
+            }
+            if (performance.now() - winShownAt > 20000) {
+                document.getElementById('win-msg').innerText = `Won in ${winElapsedStr}`;
+                document.getElementById('win-msg').style.display = 'block';
+            }
+        }
+
         function updateCompass() {
             const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(player.quaternion);
             const forwardAngle = Math.atan2(forward.x, forward.z);
@@ -1255,6 +1295,117 @@
             p[3] = web.anchor.x; p[4] = web.anchor.y; p[5] = web.anchor.z;
             web.line.geometry.attributes.position.needsUpdate = true;
         }
+
+        function isDownswing(velocity) {
+            return velocity.y < 0;
+        }
+
+        function isUpswing(velocity) {
+            return velocity.y > 0;
+        }
+
+        const eventBus = {
+            handlers: new Map(),
+            anyHandlers: [],
+            on(event, handler) {
+                if (!this.handlers.has(event)) this.handlers.set(event, []);
+                this.handlers.get(event).push(handler);
+            },
+            onAny(handler) {
+                this.anyHandlers.push(handler);
+            },
+            emit(event, payload, meta = {}) {
+                const list = this.handlers.get(event) || [];
+                list.forEach((handler) => handler(payload, meta));
+                this.anyHandlers.forEach((handler) => handler(event, payload, meta));
+            },
+        };
+
+        eventBus.onAny((event, payload, meta) => {
+            console.log('[event]', event, payload, meta);
+            if (meta.source === 'ws') return;
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'event', event, payload }));
+            }
+        });
+
+        function isSinglePlayerMode() {
+            return !socket || socket.readyState !== WebSocket.OPEN || !peerId || remotePlayers.size === 0;
+        }
+
+        function getPlayerState() {
+            return {
+                pos: { x: player.position.x, y: player.position.y, z: player.position.z },
+                quat: { x: player.quaternion.x, y: player.quaternion.y, z: player.quaternion.z, w: player.quaternion.w },
+                vel: { x: playerVelocity.x, y: playerVelocity.y, z: playerVelocity.z },
+                grounded: isGrounded,
+                tetherImpulse: pendingTetherImpulse,
+                webL: {
+                    active: webL.active,
+                    anchor: { x: webL.anchor.x, y: webL.anchor.y, z: webL.anchor.z },
+                    length: webL.length,
+                    targetPeerId: webL.targetPeerId,
+                },
+                webR: {
+                    active: webR.active,
+                    anchor: { x: webR.anchor.x, y: webR.anchor.y, z: webR.anchor.z },
+                    length: webR.length,
+                    targetPeerId: webR.targetPeerId,
+                },
+            };
+        }
+
+        function registerHeightEvent(height) {
+            if (!heightEvents.includes(height)) heightEvents.push(height);
+        }
+
+        function checkHeightEvents(height, playerId) {
+            heightEvents.forEach((target) => {
+                if (height >= target && !triggeredHeightEvents.has(target)) {
+                    triggeredHeightEvents.add(target);
+                    eventBus.emit(`height.${target}`, { height: target, playerId }, { source: 'game' });
+                }
+            });
+        }
+
+        eventBus.on(`height.${WIN_HEIGHT}`, (payload) => {
+            if (freePlay || winShown) return;
+            winShown = true;
+            winShownAt = performance.now();
+            const elapsedSec = Math.round((winShownAt - climbStartTime) / 1000);
+            winElapsedStr = formatDuration(elapsedSec);
+            document.getElementById('win-msg').innerHTML = `You win! You climbed ${WIN_HEIGHT}m in ${winElapsedStr}. Enjoy swinging around for fun.<br>Press P on new game to unlock everything.`;
+            document.getElementById('win-msg').style.display = 'block';
+        });
+
+        eventBus.onAny((event) => {
+            if (event.startsWith('height.')) {
+                const value = Number(event.split('.')[1]);
+                if (!Number.isNaN(value)) triggeredHeightEvents.add(value);
+            }
+        });
+
+        function getSwingTargets() {
+            const targets = [];
+            [webL, webR].forEach((web) => {
+                if (!web.active) return;
+                if (web.targetPeerId) {
+                    targets.push({ type: 'player', peerId: web.targetPeerId, web: web.name });
+                } else {
+                    targets.push({ type: 'building', anchor: { x: web.anchor.x, y: web.anchor.y, z: web.anchor.z }, web: web.name });
+                }
+            });
+            incomingTethers.forEach((tether) => {
+                targets.push({ type: 'player', peerId: tether.peerId, web: 'incoming' });
+            });
+            return targets;
+        }
+
+        const swingState = {
+            wasDownswing: false,
+            startState: null,
+            swungOff: [],
+        };
 
         async function initVoice() {
             if (voiceEnabled) return;
@@ -1450,11 +1601,13 @@
             const dt = Math.min(clock.getDelta(), 0.04);
             updateCity();
             handleMovement(dt);
+            checkHeightEvents(player.position.y, peerId);
             updateReticle();
             updateCamera(dt);
             updateRemotePlayers(dt);
             updateChunkCoordsDisplay();
             updateCompass();
+            updateWinMessage();
             sendSnapshot(dt);
             renderer.render(scene, camera);
         }
