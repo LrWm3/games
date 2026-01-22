@@ -371,6 +371,8 @@
             animate();
         }
 
+        let lobbyPollId = null;
+
         function setGameVisible(isVisible) {
             uiEl.style.display = isVisible ? 'block' : 'none';
             crosshairEl.style.display = isVisible ? 'block' : 'none';
@@ -381,6 +383,10 @@
             chatFeedEl.style.display = isVisible && !chatOpen ? 'grid' : 'none';
             lobbyEl.style.display = isVisible ? 'none' : 'flex';
             inLobby = !isVisible;
+            if (isVisible && lobbyPollId) {
+                clearInterval(lobbyPollId);
+                lobbyPollId = null;
+            }
         }
 
         function getWsUrl() {
@@ -1861,7 +1867,7 @@
 
         setGameVisible(false);
         listRooms();
-        setInterval(listRooms, 5000);
+        lobbyPollId = setInterval(listRooms, 5000);
     </script>
 </body>
 </html>>>
