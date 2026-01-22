@@ -29,9 +29,6 @@
             width: 100%; height: 8px; background: #222; margin-top: 10px; border-radius: 4px; overflow: hidden; display: none;
         }
         #charge-bar { width: 0%; height: 100%; background: #ff3300; }
-        #calibration-msg {
-            position: absolute; bottom: 20px; width: 100%; text-align: center; color: #aaa; font-size: 0.8em;
-        }
         #player-altitudes {
             position: absolute; top: 20px; right: 20px; color: #c9f0ff;
             background: rgba(0,0,0,0.7); padding: 8px 10px; border-radius: 8px;
@@ -162,7 +159,6 @@
         <input id="chat-input" placeholder="Type message and press Enter..." />
     </div>
     <div id="chat-feed"></div>
-    <div id="calibration-msg">Move mouse to calibrate...</div>
 
     <script>
         // --- CONFIG ---
@@ -205,6 +201,8 @@
         const SHOCK_CHARGE_COLOR = new THREE.Color(0x1c4f76);
         const SHOCK_PULSE_COLOR = new THREE.Color(0x32ffd8);
         const TIME_SYNC_INTERVAL_MS = 5000;
+        const POINTER_DURATION_MS = 10000;
+        const POINTER_DEBOUNCE_MS = 500;
 
         // --- CORE ---
         let scene, camera, renderer, clock;
@@ -253,13 +251,15 @@
         const remotePlayers = new Map();
         const playerSlots = new Map();
         const playerColors = [0xff3b30, 0x0a84ff, 0x34c759, 0xaf52de];
+        const pointerLines = [];
+        const pointerByPlayer = new Map();
         const chatMessages = [];
         let chatOpen = false;
         const peerConnections = new Map();
         let localStream = null;
         let audioContext = null;
         let voiceEnabled = false;
-        const PROXIMITY_RANGE = 300;
+        const PROXIMITY_RANGE = 600;
         const incomingTethers = new Map();
         const ICE_SERVERS = [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -295,24 +295,35 @@
         const uiEl = document.getElementById('ui');
         const crosshairEl = document.getElementById('crosshair');
         const chunkCoordsEl = document.getElementById('player-altitudes');
-        const calibrationEl = document.getElementById('calibration-msg');
         const compassEl = document.getElementById('compass');
         const chatOverlayEl = document.getElementById('chat-overlay');
         const chatLogEl = document.getElementById('chat-log');
         const chatInputEl = document.getElementById('chat-input');
         const chatFeedEl = document.getElementById('chat-feed');
 
-        const requestFreeplay = debounce(() => {
+        const requestFreeplay = throttle(() => {
             if (!game.freePlay) {
                 eventBus.emit('game.freeplay.request', { playerId: peerId }, { source: 'game' });
             }
         }, 2000);
 
-        const requestRespawn = debounce(() => {
+        const requestRespawn = throttle(() => {
             if (peerId) {
                 eventBus.emit('game.respawn.request', { playerId: peerId }, { source: 'game' });
             }
         }, 2000);
+
+        const requestPointer = throttle(() => {
+            if (!peerId) return;
+            const target = getPointerTarget();
+            if (!target) return;
+            eventBus.emit('player.point', {
+                playerId: peerId,
+                startedAt: performance.now(),
+                start: { x: target.start.x, y: target.start.y, z: target.start.z },
+                end: { x: target.end.x, y: target.end.y, z: target.end.z },
+            }, { source: 'game' });
+        }, POINTER_DEBOUNCE_MS);
 
         function init() {
             scene = new THREE.Scene();
@@ -383,6 +394,9 @@
                 if (e.code === 'KeyR' && !inLobby && !chatOpen && document.activeElement !== chatInputEl) {
                     requestRespawn();
                 }
+                if (e.code === 'KeyF' && !inLobby && !chatOpen && document.activeElement !== chatInputEl) {
+                    requestPointer();
+                }
                 if (e.code === 'Enter' && !inLobby && !chatOpen && document.activeElement !== chatInputEl) {
                     e.preventDefault();
                     chatOpen = true;
@@ -437,7 +451,6 @@
             uiEl.style.display = isVisible ? 'block' : 'none';
             crosshairEl.style.display = isVisible ? 'block' : 'none';
             chunkCoordsEl.style.display = isVisible ? 'block' : 'none';
-            calibrationEl.style.display = isVisible ? 'block' : 'none';
             compassEl.style.display = isVisible ? 'block' : 'none';
             chatOverlayEl.style.display = isVisible && chatOpen ? 'block' : 'none';
             chatFeedEl.style.display = isVisible && !chatOpen ? 'grid' : 'none';
@@ -803,10 +816,11 @@
             const w = 30 + Math.abs(rand(seed + 3)) * 10;
             const d = 30 + Math.abs(rand(seed + 4)) * 10;
             const hue = 0.58 + (Math.abs(rand(seed + 5)) * 0.08);
-            const isMegaStandard = isMega && h < 3000;
-            const isShock = isMega && h >= 3000 && h < 6000;
-            const isTricky = isMega && h >= 6000 && h < 9000;
-            const isHoney = isMega && h >= 9000;
+            const megaVariantAllowed = !game.freePlay;
+            const isMegaStandard = isMega && (!megaVariantAllowed || h < 3000);
+            const isShock = isMega && megaVariantAllowed && h >= 3000 && h < 6000;
+            const isTricky = isMega && megaVariantAllowed && h >= 6000 && h < 9000;
+            const isHoney = isMega && megaVariantAllowed && h >= 9000;
             const trickyColor = isTricky ? new THREE.Color(getTrickyColor()) : null;
             const baseColor = isShock
                 ? new THREE.Color(0x0b1b3a)
@@ -1064,6 +1078,11 @@
 
         function getSlotColor(slot) {
             return playerColors[slot % playerColors.length];
+        }
+
+        function getColorForPeerId(pid) {
+            if (pid && playerSlots.has(pid)) return getSlotColor(playerSlots.get(pid));
+            return getSlotColor(0);
         }
 
         function allocateSlot(peer) {
@@ -1579,7 +1598,7 @@
 
         function updateAltitudeDisplay() {
             const localAlt = Math.max(0, Math.round(player.position.y));
-            let lines = [`${displayNameForPeer(peerId)}: ${localAlt} m`];
+            let lines = [`${displayNameForPeer(peerId)}: alt ${localAlt} m, dist 0 m`];
             const entries = [...remotePlayers.entries()].sort((a, b) => {
                 const slotA = playerSlots.get(a[0]) ?? 999;
                 const slotB = playerSlots.get(b[0]) ?? 999;
@@ -1587,9 +1606,36 @@
             });
             entries.forEach(([pid, remote]) => {
                 const alt = Math.max(0, Math.round(remote.position.y));
-                lines.push(`${displayNameForPeer(pid)}: ${alt} m`);
+                const dist = Math.round(Math.hypot(remote.position.x - player.position.x, remote.position.z - player.position.z));
+                lines.push(`${displayNameForPeer(pid)}: alt ${alt} m, dist ${dist} m`);
             });
             document.getElementById('player-altitudes').innerHTML = lines.join('<br>');
+        }
+
+        function updatePointerLines(lines, dt, now) {
+            if (!lines.length) return;
+            const dashSpeed = 6.5 * 2;
+            for (let i = lines.length - 1; i >= 0; i--) {
+                const entry = lines[i];
+                if (now >= entry.expiresAt) {
+                    scene.remove(entry.mesh);
+                    entry.mesh.traverse((child) => {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) child.material.dispose();
+                    });
+                    lines.splice(i, 1);
+                    if (entry.playerId) pointerByPlayer.delete(entry.playerId);
+                    continue;
+                }
+                const pointer = entry.mesh.userData.pointer;
+                if (pointer) {
+                    pointer.phase = (pointer.phase + dashSpeed * dt) % pointer.dashSpacing;
+                    pointer.dashes.forEach((dash, idx) => {
+                        const pos = (idx * pointer.dashSpacing + pointer.phase) % pointer.length;
+                        dash.position.y = pos;
+                    });
+                }
+            }
         }
 
         function formatChunkSyncPayload(key, meta) {
@@ -1877,7 +1923,7 @@
 
         function getTautImpulseEmitter(targetPeerId) {
             if (!tautImpulseDebouncers.has(targetPeerId)) {
-                tautImpulseDebouncers.set(targetPeerId, debounce((payload) => {
+                tautImpulseDebouncers.set(targetPeerId, throttle((payload) => {
                     eventBus.emit('player.pulled', payload, { source: 'game' });
                 }, TETHER_IMPULSE_DEBOUNCE_MS));
             }
@@ -1908,11 +1954,15 @@
             document.getElementById('unlocks').innerHTML = `Unlocks:<br>Reel (${reel})<br>Bounce (${bounce})<br>Climb (${climb})`;
         }
 
-        function debounce(fn, waitMs) {
+        function throttle(fn, waitMs) {
             let timeoutId = null;
-            return (...args) => {
-                if (timeoutId) clearTimeout(timeoutId);
-                timeoutId = setTimeout(() => fn(...args), waitMs);
+            return function (...args) {
+                if (timeoutId === null) {
+                    fn(...args);
+                    timeoutId = setTimeout(() => {
+                        timeoutId = null;
+                    }, waitMs);
+                }
             };
         }
 
@@ -2295,6 +2345,29 @@
             }
         });
 
+        eventBus.on('player.point', (payload) => {
+            if (!payload || !payload.start || !payload.end) return;
+            const start = new THREE.Vector3(payload.start.x, payload.start.y, payload.start.z);
+            const end = new THREE.Vector3(payload.end.x, payload.end.y, payload.end.z);
+            const color = getColorForPeerId(payload.playerId);
+            const existing = pointerByPlayer.get(payload.playerId);
+            if (existing) {
+                scene.remove(existing.mesh);
+                existing.mesh.traverse((child) => {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                });
+                const index = pointerLines.indexOf(existing);
+                if (index >= 0) pointerLines.splice(index, 1);
+            }
+            const mesh = createPointerMesh(start, end, color);
+            mesh.frustumCulled = false;
+            scene.add(mesh);
+            const entry = { mesh, expiresAt: performance.now() + POINTER_DURATION_MS, playerId: payload.playerId };
+            pointerLines.push(entry);
+            pointerByPlayer.set(payload.playerId, entry);
+        });
+
         function getSwingTargets() {
             const targets = [];
             [webL, webR].forEach((web) => {
@@ -2440,6 +2513,50 @@
             });
         }
 
+        function createPointerMesh(start, end, color) {
+            const dir = new THREE.Vector3().subVectors(end, start);
+            const length = dir.length();
+            const dashLength = 4.8*2;
+            const dashSpacing = 3.2*3*2;
+            const count = Math.max(1, Math.floor(length / dashSpacing));
+            const group = new THREE.Group();
+            const geometry = new THREE.CylinderGeometry(1, 1, dashLength, 12, 1, true);
+            const material = new THREE.MeshBasicMaterial({ color });
+            const dashes = [];
+            for (let i = 0; i < count; i++) {
+                const dash = new THREE.Mesh(geometry, material);
+                dash.position.y = Math.min(i * dashSpacing, length);
+                group.add(dash);
+                dashes.push(dash);
+            }
+            group.position.copy(start);
+            if (length > 0.0001) {
+                group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+            }
+            group.userData.pointer = {
+                length,
+                dashSpacing,
+                phase: 0,
+                dashes,
+            };
+            return group;
+        }
+
+        function getPointerTarget() {
+            const raycaster = new THREE.Raycaster();
+            const dir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(1, 0, 0), pitch).applyQuaternion(player.quaternion).normalize();
+            const start = player.position.clone();
+            const origin = start.clone().add(new THREE.Vector3(0, 1.5, 0));
+            raycaster.set(origin, dir);
+            const targets = [];
+            chunks.forEach(d => targets.push(d.mesh));
+            const intersects = raycaster.intersectObjects(targets);
+            if (intersects.length > 0) {
+                return { start, end: intersects[0].point.clone() };
+            }
+            return { start, end: origin.clone().add(dir.clone().multiplyScalar(MAX_AIM_DISTANCE)) };
+        }
+
         function updateReticle() {
             const raycaster = new THREE.Raycaster();
             const dir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(1, 0, 0), pitch).applyQuaternion(player.quaternion).normalize();
@@ -2527,6 +2644,7 @@
                 lastTimeSyncAt = now;
                 sendTimeSync();
             }
+            updatePointerLines(pointerLines, dt, now);
             sendSnapshot(dt);
             renderer.render(scene, camera);
         }
