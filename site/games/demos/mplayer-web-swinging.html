@@ -1429,10 +1429,10 @@
             const requester = payload.playerId;
             // Allow requesting multiple times in case some players don't vote and leave
             // Only show chat message once per player request
-            addChatMessage('System', `${name} requested free play. Votes: (${freeplayRequests.size}/${allPlayers.size}). Press 'P' to request free play.`);
-            freeplayRequests.add(requester);
-            const name = displayNameForPeer(requester);            
+            const name = displayNameForPeer(requester);
             const allPlayers = new Set([peerId, ...remotePlayers.keys()]);
+            freeplayRequests.add(requester);
+            addChatMessage('System', `Player '${name}'' requested free play. Votes: (${freeplayRequests.size}/${allPlayers.size}). Press 'P' to request free play.`);
             if (isHost()) {
                 let allRequested = true;
                 allPlayers.forEach((pid) => {
@@ -1448,8 +1448,10 @@
         });
 
         eventBus.on('game.state', (payload, meta) => {
-            if (!payload || meta.source !== 'ws') return;
-            if (payload.freePlay && !game.freePlay) {
+            console.log('[game.state] received (precheck)', payload);
+            if (!payload) return;
+            console.log('[game.state] received', payload);
+            if (payload.freePlay) {
                 game.freePlay = true;
                 updateUnlocksFromGame();
                 document.getElementById('win-msg').innerText = 'Free play mode';
@@ -1459,6 +1461,7 @@
             if (payload.winShownAt && payload.climbStartTime) {
                 applyWinState(payload.winShownAt, payload.climbStartTime);
             }
+            game = { ...game, ...payload};
         });
 
         eventBus.on('player.pulled', (payload) => {
