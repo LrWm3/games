@@ -195,6 +195,7 @@
         const TETHER_IMPULSE_MAX = 25;
         const PLAYER_MASS = 1.0;
         const GAME_ID = 'mplayer-web-swinging';
+        const SAVE_CHECK_INTERVAL_MS = 500;
 
         // --- CORE ---
         let scene, camera, renderer, clock;
@@ -210,12 +211,17 @@
         let lastPointerLog = 0;
         const unlocks = new Set();
         const freeplayRequests = new Set();
+        const respawnRequests = new Set();
         let winElapsedStr = '';
+        let spawnSynced = false;
         let game = {
             freePlay: false,
             winShown: false,
             winShownAt: 0,
             climbStartTime: performance.now(),
+            spawnPos: null,
+            saveTokens: [{ minHeight: 0 }],
+            saveKey: null,
             chunkHeights: new Map(),
         };
         let inLobby = true;
@@ -257,6 +263,8 @@
         const chunks = new Map(); 
         const chunkHeights = game.chunkHeights;
         let windowTextureSmall, windowTextureMega, windowTextureHoney;
+        let currentSaveKey = null;
+        let lastSaveCheckAt = 0;
 
         const lobbyEl = document.getElementById('lobby');
         const lobbyStatusEl = document.getElementById('lobby-status');
@@ -277,6 +285,12 @@
         const requestFreeplay = debounce(() => {
             if (!game.freePlay) {
                 eventBus.emit('game.freeplay.request', { playerId: peerId }, { source: 'game' });
+            }
+        }, 2000);
+
+        const requestRespawn = debounce(() => {
+            if (peerId) {
+                eventBus.emit('game.respawn.request', { playerId: peerId }, { source: 'game' });
             }
         }, 2000);
 
@@ -324,7 +338,8 @@
             updateUnlocksFromGame();
 
             // Safe Spawn: Intersection of roads (0,0) is skipped in updateCity for building generation
-            player.position.set(0, 5, 0); 
+            player.position.set(0, 5, 0);
+            game.spawnPos = { x: player.position.x, y: player.position.y, z: player.position.z };
             updateCity();
 
             window.addEventListener('contextmenu', e => e.preventDefault());
@@ -337,6 +352,9 @@
                 }
                 if (e.code === 'KeyP' && !game.freePlay) {
                     requestFreeplay();
+                }
+                if (e.code === 'KeyR' && !inLobby && !chatOpen && document.activeElement !== chatInputEl) {
+                    requestRespawn();
                 }
                 if (e.code === 'Enter' && !inLobby && !chatOpen && document.activeElement !== chatInputEl) {
                     e.preventDefault();
@@ -728,7 +746,12 @@
             );
 
             const type = isMega ? (isHoney ? 'mega_honey' : 'mega') : 'standard';
-            return { group, bounds: box, mesh, type, hash, height: h };
+            const key = `${gx},${gz}`;
+            const data = { group, bounds: box, mesh, type, hash, height: h, key };
+            if (game.saveKey && game.saveKey === key) {
+                applySaveMarker(data, true);
+            }
+            return data;
         }
 
         function handleBuildingCollision(data) {
@@ -1061,6 +1084,7 @@
                 } else {
                     playerVelocity.set(0, 0, 0);
                     player.position.copy(stuckPosition);
+                    refreshWebAnchorsForTargets();
                     updateWebLineForPosition(webL, player.position);
                     updateWebLineForPosition(webR, player.position);
                     return;
@@ -1476,6 +1500,113 @@
             web.line.geometry.attributes.position.needsUpdate = true;
         }
 
+        function applySaveMarker(data, enabled) {
+            if (!data || !data.group) return;
+            if (!enabled) {
+                if (data.saveMarker) {
+                    data.group.remove(data.saveMarker);
+                    data.saveMarker.geometry.dispose();
+                    data.saveMarker.material.dispose();
+                    data.saveMarker = null;
+                }
+                return;
+            }
+            if (data.saveMarker) return;
+            const marker = new THREE.Mesh(new THREE.SphereGeometry(3.4), new THREE.MeshBasicMaterial({ color: 0x2dff7c, transparent: true, opacity: 0.9 }));
+            marker.position.set(0, data.height + 18, 0);
+            data.group.add(marker);
+            data.saveMarker = marker;
+        }
+
+        function getStandingBuilding(pos, grounded) {
+            if (!grounded) return null;
+            for (const data of chunks.values()) {
+                const box = data.bounds;
+                if (pos.x > box.min.x && pos.x < box.max.x && pos.z > box.min.z && pos.z < box.max.z) {
+                    const roofY = box.max.y;
+                    if (Math.abs(pos.y - roofY) <= 2.5) {
+                        return data;
+                    }
+                }
+            }
+            return null;
+        }
+
+        function findUsableSaveToken(height) {
+            if (!Array.isArray(game.saveTokens) || game.saveTokens.length === 0) return null;
+            let selectedIdx = -1;
+            let selectedMin = -Infinity;
+            game.saveTokens.forEach((token, idx) => {
+                const minHeight = Number(token?.minHeight ?? 0);
+                if (height >= minHeight && minHeight >= selectedMin) {
+                    selectedMin = minHeight;
+                    selectedIdx = idx;
+                }
+            });
+            if (selectedIdx === -1) return null;
+            return { index: selectedIdx, minHeight: selectedMin };
+        }
+
+        function applySaveState(key, spawnPos, saveTokens) {
+            if (typeof key === 'string') {
+                if (currentSaveKey && currentSaveKey !== key) {
+                    const previous = chunks.get(currentSaveKey);
+                    if (previous) applySaveMarker(previous, false);
+                }
+                currentSaveKey = key;
+                game.saveKey = key;
+                const next = chunks.get(key);
+                if (next) applySaveMarker(next, true);
+            }
+            if (spawnPos) {
+                game.spawnPos = spawnPos;
+            }
+            if (Array.isArray(saveTokens)) {
+                game.saveTokens = saveTokens;
+            }
+        }
+
+        function checkSaveTokens() {
+            if (!isHost() || !Array.isArray(game.saveTokens) || game.saveTokens.length === 0) return;
+            const allPlayers = [];
+            allPlayers.push({ pos: player.position, grounded: isGrounded });
+            remotePlayers.forEach((remote) => {
+                allPlayers.push({ pos: remote.position, grounded: remote.userData.isGrounded });
+            });
+            const baseBuilding = getStandingBuilding(allPlayers[0].pos, allPlayers[0].grounded);
+            if (!baseBuilding) return;
+            for (let i = 1; i < allPlayers.length; i++) {
+                const data = getStandingBuilding(allPlayers[i].pos, allPlayers[i].grounded);
+                if (!data || data.key !== baseBuilding.key) return;
+            }
+            const token = findUsableSaveToken(baseBuilding.height);
+            if (!token) return;
+            const newTokens = game.saveTokens.slice();
+            newTokens.splice(token.index, 1);
+            const box = baseBuilding.bounds;
+            const spawnPos = {
+                x: (box.min.x + box.max.x) * 0.5,
+                y: box.max.y,
+                z: (box.min.z + box.max.z) * 0.5,
+            };
+            game.saveTokens = newTokens;
+            game.saveKey = baseBuilding.key;
+            game.spawnPos = spawnPos;
+            applySaveState(game.saveKey, game.spawnPos, game.saveTokens);
+            eventBus.emit('game.state', getGameStatePayloadWithOptions({ includeSpawn: true }), { source: 'game' });
+            addChatMessage('System', 'Save point updated.');
+        }
+
+        function refreshWebAnchorsForTargets() {
+            [webL, webR].forEach((web) => {
+                if (!web.active || !web.targetPeerId) return;
+                const target = remotePlayers.get(web.targetPeerId);
+                if (target) {
+                    web.anchor.copy(target.position).add(new THREE.Vector3(0, 1.2, 0));
+                }
+            });
+        }
+
         function getRopeMassShares(hasPeerTarget) {
             if (!hasPeerTarget) {
                 return { positionLocal: 1, velocityLocal: 1, velocityRemote: 0 };
@@ -1608,12 +1739,47 @@
         }
 
         function getGameStatePayload() {
-            return {
+            return getGameStatePayloadWithOptions({ includeSpawn: true });
+        }
+
+        function getGameStatePayloadWithOptions(options) {
+            const includeSpawn = options?.includeSpawn !== false;
+            const payload = {
                 freePlay: game.freePlay,
                 winShown: game.winShown,
                 winShownAt: game.winShownAt,
-                climbStartTime: game.climbStartTime
+                climbStartTime: game.climbStartTime,
             };
+            if (includeSpawn && game.spawnPos) payload.spawnPos = game.spawnPos;
+            if (Array.isArray(game.saveTokens)) payload.saveTokens = game.saveTokens;
+            if (game.saveKey) payload.saveKey = game.saveKey;
+            return payload;
+        }
+
+        function resetPlayerToSpawn() {
+            if (!game.spawnPos) return;
+            const spawn = new THREE.Vector3(game.spawnPos.x, game.spawnPos.y + 1, game.spawnPos.z);
+            player.position.copy(spawn);
+            playerVelocity.set(0, 0, 0);
+            isGrounded = false;
+            isClimbing = false;
+            isChargingJump = false;
+            jumpChargeTime = 0;
+            document.getElementById('charge-container').style.display = 'none';
+            isStuck = false;
+            stuckUntilMs = 0;
+            stuckNormal.set(0, 0, 0);
+            stuckPosition.copy(spawn);
+            [webL, webR].forEach((web) => {
+                web.active = false;
+                web.line.visible = false;
+                web.targetPeerId = null;
+                web.length = 0;
+            });
+            incomingTethers.clear();
+            swingState.wasDownswing = false;
+            swingState.startState = null;
+            swingState.swungOff = [];
         }
 
         function getPlayerState() {
@@ -1691,8 +1857,28 @@
                 });
                 if (allRequested) {
                     // Allow the 'game.state' handler to deal with unlocking
-                    payload = getGameStatePayload();
+                    payload = getGameStatePayloadWithOptions({ includeSpawn: false });
                     payload.freePlay = true;
+                    eventBus.emit('game.state', payload, { source: 'game' });
+                }
+            }
+        });
+
+        eventBus.on('game.respawn.request', (payload) => {
+            if (!payload || !payload.playerId) return;
+            const requester = payload.playerId;
+            const name = displayNameForPeer(requester);
+            const allPlayers = new Set([peerId, ...remotePlayers.keys()]);
+            respawnRequests.add(requester);
+            addChatMessage('System', `Player '${name}' requested respawn. Votes: (${respawnRequests.size}/${allPlayers.size}). Press 'R' to request respawn.`);
+            if (isHost()) {
+                let allRequested = true;
+                allPlayers.forEach((pid) => {
+                    if (!respawnRequests.has(pid)) allRequested = false;
+                });
+                if (allRequested) {
+                    const payload = getGameStatePayloadWithOptions({ includeSpawn: true });
+                    payload.respawnAt = performance.now();
                     eventBus.emit('game.state', payload, { source: 'game' });
                 }
             }
@@ -1702,6 +1888,16 @@
             console.log('[game.state] received (precheck)', payload);
             if (!payload) return;
             console.log('[game.state] received', payload);
+            if (payload.spawnPos) {
+                game.spawnPos = payload.spawnPos;
+                if (!isHost() && !spawnSynced) {
+                    resetPlayerToSpawn();
+                    spawnSynced = true;
+                }
+            }
+            if (payload.saveKey || payload.spawnPos || payload.saveTokens) {
+                applySaveState(payload.saveKey || game.saveKey, payload.spawnPos || game.spawnPos, payload.saveTokens || game.saveTokens);
+            }
             if (payload.freePlay) {
                 game.freePlay = true;
                 updateUnlocksFromGame();
@@ -1711,6 +1907,11 @@
             }
             if (payload.winShownAt && payload.climbStartTime) {
                 applyWinState(payload.winShownAt, payload.climbStartTime);
+            }
+            if (payload.respawnAt) {
+                resetPlayerToSpawn();
+                respawnRequests.clear();
+                addChatMessage('System', 'Respawn vote passed. Resetting players.');
             }
             game = { ...game, ...payload};
         });
@@ -1953,6 +2154,11 @@
             updateRemotePlayers(dt);
             updateAltitudeDisplay();
             updateCompass();
+            const now = performance.now();
+            if (now - lastSaveCheckAt >= SAVE_CHECK_INTERVAL_MS) {
+                lastSaveCheckAt = now;
+                checkSaveTokens();
+            }
             sendSnapshot(dt);
             renderer.render(scene, camera);
         }
