@@ -267,6 +267,7 @@
         let stuckUntilMs = 0;
         let stuckNormal = new THREE.Vector3();
         let stuckPosition = new THREE.Vector3();
+        let prevPlayerPos = new THREE.Vector3();
         let jumpChargeTime = 0, isChargingJump = false;
         
         let pitch = 0; 
@@ -296,7 +297,7 @@
         let joinedRoomId = null;
         let snapshotSeq = 0;
         let snapshotAccumulator = 0;
-        const heightEvents = [5000, 10000, 15000, WIN_HEIGHT];
+        const heightEvents = [5000, 10000, 15000];
         const triggeredHeightEvents = new Set();
         let localJoinedAt = 0;
         const chunkMeta = new Map();
@@ -978,6 +979,26 @@
                     return { onWall: false, wantsClimb: false, collided: true };
                 }
             }
+            // Swept roof check to prevent clipping at high speed
+            if (playerVelocity.y <= 0 && prevPlayerPos.y > box.max.y + 0.5 && pos.y <= box.max.y + 1.5) {
+                const denom = prevPlayerPos.y - pos.y;
+                if (Math.abs(denom) > 1e-6) {
+                    const t = (prevPlayerPos.y - box.max.y) / denom;
+                    if (t >= 0 && t <= 1) {
+                        const xAt = prevPlayerPos.x + (pos.x - prevPlayerPos.x) * t;
+                        const zAt = prevPlayerPos.z + (pos.z - prevPlayerPos.z) * t;
+                        if (xAt > box.min.x && xAt < box.max.x && zAt > box.min.z && zAt < box.max.z) {
+                            pos.y = box.max.y;
+                            pos.x = THREE.MathUtils.clamp(xAt, box.min.x + r, box.max.x - r);
+                            pos.z = THREE.MathUtils.clamp(zAt, box.min.z + r, box.max.z - r);
+                            playerVelocity.y = 0;
+                            isGrounded = true;
+                            isClimbing = false;
+                            return { onWall: false, wantsClimb: false, collided: true };
+                        }
+                    }
+                }
+            }
 
             // WALL COLLISION: Check if player is between building top and bottom
             if (pos.y < box.max.y && pos.y >= box.min.y) {
@@ -1327,6 +1348,7 @@
         }
 
         function handleMovement(dt) {
+            prevPlayerPos.copy(player.position);
             if (isChargingJump) jumpChargeTime += dt;
             document.getElementById('charge-bar').style.width = Math.min((jumpChargeTime / MAX_JUMP_CHARGE_TIME) * 100, 100) + '%';
             if (isClimbing && !unlocks.has('climb')) isClimbing = false;
@@ -2077,6 +2099,24 @@
             addChatMessage('System', 'Save point updated.');
         }
 
+        function checkWinCondition() {
+            if (!isHost() || game.freePlay || game.winShown) return;
+            const baseBuilding = getStandingBuilding(player.position, isGrounded);
+            if (!baseBuilding || baseBuilding.height < WIN_HEIGHT) return;
+            const allPlayers = [];
+            remotePlayers.forEach((remote) => {
+                allPlayers.push({ pos: remote.position, grounded: remote.userData.isGrounded });
+            });
+            for (let i = 0; i < allPlayers.length; i++) {
+                const data = getStandingBuilding(allPlayers[i].pos, allPlayers[i].grounded);
+                if (!data || data.height < WIN_HEIGHT) return;
+            }
+            if (!triggeredHeightEvents.has(WIN_HEIGHT)) {
+                triggeredHeightEvents.add(WIN_HEIGHT);
+                eventBus.emit('game.win', { height: WIN_HEIGHT, playerId: peerId }, { source: 'game' });
+            }
+        }
+
         function refreshWebAnchorsForTargets() {
             [webL, webR].forEach((web) => {
                 if (!web.active || !web.targetPeerId) return;
@@ -2395,7 +2435,7 @@
             winModalEl.style.display = 'flex';
         }
 
-        eventBus.on(`height.${WIN_HEIGHT}`, () => {
+        eventBus.on('game.win', () => {
             applyWinState(performance.now(), game.climbStartTime);
         });
 
@@ -2862,6 +2902,7 @@
                 lastSaveCheckAt = now;
                 checkSaveTokens();
             }
+            checkWinCondition();
             if (now - lastTimeSyncAt >= TIME_SYNC_INTERVAL_MS) {
                 lastTimeSyncAt = now;
                 sendTimeSync();
