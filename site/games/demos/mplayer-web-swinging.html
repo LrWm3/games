@@ -50,6 +50,12 @@
             background: #fff; transform: translateX(-50%);
             box-shadow: 0 0 10px rgba(255,255,255,0.4);
         }
+        .compass-arrow {
+            position: absolute; top: 2px; width: 0; height: 0; transform: translateX(-50%);
+            border-left: 7px solid transparent; border-right: 7px solid transparent;
+            border-bottom: 14px solid #ffd166;
+            filter: drop-shadow(0 0 6px rgba(255, 209, 102, 0.6));
+        }
         #chat-overlay {
             position: absolute; left: 20px; bottom: 60px; width: min(420px, 80vw);
             background: rgba(6, 10, 24, 0.85); border: 1px solid rgba(120,140,170,0.35);
@@ -354,6 +360,9 @@
         const compassEl = document.getElementById('compass');
         const winModalEl = document.getElementById('win-modal');
         const winModalTimeEl = document.getElementById('win-modal-time');
+        const compassDirEl = document.createElement('div');
+        compassDirEl.className = 'compass-arrow';
+        compassEl.appendChild(compassDirEl);
         const chatOverlayEl = document.getElementById('chat-overlay');
         const chatLogEl = document.getElementById('chat-log');
         const chatInputEl = document.getElementById('chat-input');
@@ -1218,7 +1227,6 @@
                 webObj.targetPeerId = targetPeerId;
                 webObj.targetType = targetType;
                 webObj.targetKey = targetKey;
-                addChatMessage('System', `Tether length: ${Math.round(webObj.length)}m`);
                 isClimbing = false;
                 if (isGrounded) {
                     playerVelocity.add(dir.multiplyScalar(35));
@@ -2156,6 +2164,19 @@
         function updateCompass() {
             const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(player.quaternion);
             const forwardAngle = Math.atan2(forward.x, forward.z);
+            if (game.freePlay || !initialFacing) {
+                compassDirEl.style.display = 'none';
+            } else {
+                const targetDir = initialFacing.axis === 'x'
+                    ? new THREE.Vector3(initialFacing.sign, 0, 0)
+                    : new THREE.Vector3(0, 0, initialFacing.sign);
+                const targetAngle = Math.atan2(targetDir.x, targetDir.z);
+                let delta = targetAngle - forwardAngle;
+                delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+                const percent = ((-delta) / Math.PI + 1) * 0.5;
+                compassDirEl.style.display = 'block';
+                compassDirEl.style.left = `${(percent * 100).toFixed(2)}%`;
+            }
             remotePlayers.forEach((remote) => {
                 const marker = remote.userData.compassEl;
                 if (!marker) return;
