@@ -311,6 +311,7 @@
             shockStunDurationMs: 4400,
             pointerDurationMs: 15000,
             pointerThrottleMs: 500,
+            voiceProximityRange: 600,
         };
         let config = { ...CONFIG_DEFAULTS };
 
@@ -378,7 +379,6 @@
         let localStream = null;
         let audioContext = null;
         let voiceEnabled = false;
-        const PROXIMITY_RANGE = 600;
         const incomingTethers = new Map();
         const ICE_SERVERS = [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -1855,7 +1855,7 @@
                 }
                 if (remote.userData.audioGain) {
                     const dist = remote.position.distanceTo(player.position);
-                    const gain = Math.max(0, 1 - dist / PROXIMITY_RANGE);
+                    const gain = Math.max(0, 1 - dist / config.voiceProximityRange);
                     remote.userData.audioGain.gain.value = gain * gain;
                 }
                 if (remote.userData.webL.active && remote.userData.webL.targetPeerId) {
