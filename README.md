@@ -45,3 +45,31 @@ python3 build.py
 `build.py` scans `site/games/playable/` and `site/games/demos/`, then rebuilds
 the `games` array in `site/games/index.html` using each page's `<title>`,
 `game-description`, and `game-tags` values.
+
+## Multiplayer Games
+
+Multiplayer games are not static and require the `server.ts` backend to work. A simple Deno
+server is provided that serves static files and handles WebSocket connections at
+`/ws`.
+
+## Deno server (WebSocket + static)
+
+Run the Deno server that serves `site/` and handles `/ws`:
+
+```bash
+deno run --allow-net --allow-read --allow-env server.ts
+```
+
+Then visit `http://localhost:8080/` (WebSocket endpoint: `ws://localhost:8080/ws`).
+
+## Caddy (DuckDNS)
+
+1. Start the Deno server on port 8080 (see above).
+2. Ensure DNS for `swing-climb.duckdns.org` points to this host.
+3. Run Caddy from the project root:
+
+```bash
+sudo caddy run --config Caddyfile
+```
+
+This will terminate HTTPS for `https://swing-climb.duckdns.org/` and proxy to the Deno server.

@@ -1,0 +1,5 @@
+swing-climb.duckdns.org {
+  encode zstd gzip
+
+  reverse_proxy localhost:8080
+}
