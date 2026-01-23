@@ -52,6 +52,12 @@ Multiplayer games are not static and require the `server.ts` backend to work. A 
 server is provided that serves static files and handles WebSocket connections at
 `/ws`.
 
+## Requirements
+
+- [Deno](https://deno.land/) (v1.30.0+)
+- (Optional) [Caddy](https://caddyserver.com/) (for HTTPS + reverse proxy)
+- (Optional) [DuckDNS](https://www.duckdns.org/) account for dynamic DNS, allowing TLS termination with Caddy.
+
 ## Deno server (WebSocket + static)
 
 Run the Deno server that serves `site/` and handles `/ws`:
@@ -69,7 +75,8 @@ Then visit `http://localhost:8080/` (WebSocket endpoint: `ws://localhost:8080/ws
 3. Run Caddy from the project root:
 
 ```bash
-sudo caddy run --config Caddyfile
+sudo setcap cap_net_bind_service=+ep $(which caddy)
+caddy run --config Caddyfile
 ```
 
 This will terminate HTTPS for `https://swing-climb.duckdns.org/` and proxy to the Deno server.
