@@ -1,4 +1,4 @@
-swing-climb.duckdns.org {
+lrwm3.xyz {
   encode zstd gzip
 
   reverse_proxy localhost:8080
