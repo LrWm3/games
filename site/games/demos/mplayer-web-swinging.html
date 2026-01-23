@@ -877,7 +877,7 @@
 
             // 1. Calculate the "typical" random height components
             const variance = Math.abs(rand(seed + 1)) * 120;
-            const baseHeight = 150 + variance;
+            const baseHeight = 3000 + variance;
     
             let h = baseHeight;
             let isMega = false;
@@ -2039,20 +2039,20 @@
 
         function checkSaveTokens() {
             if (!isHost() || !Array.isArray(game.saveTokens) || game.saveTokens.length === 0) return;
+            const baseBuilding = getStandingBuilding(player.position, isGrounded);
+            if (!baseBuilding) return;
             const allPlayers = [];
-            allPlayers.push({ pos: player.position, grounded: isGrounded });
             remotePlayers.forEach((remote) => {
                 allPlayers.push({ pos: remote.position, grounded: remote.userData.isGrounded });
             });
-            const baseBuilding = getStandingBuilding(allPlayers[0].pos, allPlayers[0].grounded);
-            if (!baseBuilding) return;
-            for (let i = 1; i < allPlayers.length; i++) {
-                const data = getStandingBuilding(allPlayers[i].pos, allPlayers[i].grounded);
-                if (!data || data.key !== baseBuilding.key) return;
-            }
             if (game.spawnPos && baseBuilding.height <= (game.spawnPos.y ?? 0)) return;
             const token = findUsableSaveToken(baseBuilding.height);
             if (!token) return;
+            if (baseBuilding.height < token.minHeight) return;
+            for (let i = 0; i < allPlayers.length; i++) {
+                const data = getStandingBuilding(allPlayers[i].pos, allPlayers[i].grounded);
+                if (!data || data.height < token.minHeight) return;
+            }
             const newTokens = game.saveTokens.slice();
             newTokens.splice(token.index, 1);
             const box = baseBuilding.bounds;
