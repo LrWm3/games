@@ -228,41 +228,41 @@
             blockSize: 120,
             buildingWidth: 60,
             buildingDepth: 60,
+            renderDistance: 22,
+            gravity: -80.0, // Slightly higher gravity for better feel
+            walkSpeed: 25.0,
+            runSpeed: 45.0,
+            climbSpeed: 30.0,
+            jumpForce: 25.0,
+            airControl: 2.0,
+            playerRadius: 1.2,
+            maxJumpChargeTime: 2.5,
+            mouseSensitivity: 0.0025,
+            maxAimDistance: 300,
+            maxWebAttachLen: 1300,
+            swingControl: 12.0,
+            swingSpeedThreshold: 18,
+            swingMinDurationMs: 300,
+            reelPullImpulse: 30.0,
+            reelUnlockHeight: 2000,
+            bounceUnlockHeight: 20000,
+            winHeight: 20000,
+            worldSeed: 1337,
+            remoteOrbRadius: 7.2,
+            honeyStuckTimeMs: 6500,
+            honeyUnstickForce: 0.1,
+            honeyReleasePush: 18,
+            honeyStickMinForce: 22,
+            tetherImpulseDamping: 0.40,
+            tetherImpulseDebounceMs: 16,
+            tetherImpulseMax: 25,
+            playerMass: 1.0,
+            shockPulsePeriod: 6.0,
+            shockPulseDuration: 0.2,
+            shockStunDurationMs: 6500,
+            pointerDurationMs: 15000,
+            pointerThrottleMs: 500,
         }
-        const RENDER_DISTANCE = 22; 
-        const GRAVITY = -80.0; // Slightly higher gravity for better feel
-        const WALK_SPEED = 25.0;
-        const RUN_SPEED = 45.0;
-        const CLIMB_SPEED = 30.0;
-        const JUMP_FORCE = 25.0;
-        const AIR_CONTROL = 2.0;
-        const PLAYER_RADIUS = 1.2;
-        const MAX_JUMP_CHARGE_TIME = 2.5;
-        const MOUSE_SENSITIVITY = 0.0025;
-        const MAX_AIM_DISTANCE = 300;
-        const MAX_WEB_ATTACH_LEN = 1300;
-        const SWING_CONTROL = 12.0;
-        const SWING_SPEED_THRESHOLD = 18;
-        const SWING_MIN_DURATION_MS = 300;
-        const REEL_PULL_IMPULSE = 30.0;
-        const REEL_UNLOCK_HEIGHT = 2000;
-        const BOUNCE_UNLOCK_HEIGHT = 20000;
-        const WIN_HEIGHT = 20000;
-        const WORLD_SEED = 1337;
-        const REMOTE_ORB_RADIUS = 7.2;
-        const HONEY_STUCK_TIME_MS = 6500;
-        const HONEY_UNSTICK_FORCE = 0.1;
-        const HONEY_RELEASE_PUSH = 18;
-        const HONEY_STICK_MIN_FORCE = 22;
-        const TETHER_IMPULSE_DAMPING = 0.40;
-        const TETHER_IMPULSE_DEBOUNCE_MS = 16;
-        const TETHER_IMPULSE_MAX = 25;
-        const PLAYER_MASS = 1.0;
-        const SHOCK_PULSE_PERIOD = 6.0;
-        const SHOCK_PULSE_DURATION = 0.2;
-        const SHOCK_STUN_DURATION_MS = 6500;
-        const POINTER_DURATION_MS = 15000;
-        const POINTER_THROTTLE_MS = 500;
 
         // --- CORE ---
         let scene, camera, renderer, clock;
@@ -398,7 +398,7 @@
                 start: { x: target.start.x, y: target.start.y, z: target.start.z },
                 end: { x: target.end.x, y: target.end.y, z: target.end.z },
             }, { source: 'game' });
-        }, POINTER_THROTTLE_MS);
+        }, config.pointerThrottleMs);
         let controlsVisible = true;
         const controlsHeaderEl = document.getElementById('controls-header');
         const controlsBodyEl = document.getElementById('controls-body');
@@ -421,11 +421,11 @@
             document.body.appendChild(renderer.domElement);
 
             clock = new THREE.Clock();
-            windowTextureSmall = createProceduralWindowTexture(WORLD_SEED ^ 0x9e3779b9);
-            windowTextureMega = createProceduralWindowTexture(WORLD_SEED ^ 0x85ebca6b);
-            windowTextureHoney = createHoneyTexture(WORLD_SEED ^ 0xc2b2ae35);
-            windowTextureShock = createShockTexture(WORLD_SEED ^ 0x7f4a7c15);
-            windowTextureTricky = createTrickyTexture(WORLD_SEED ^ 0x62a7f2f1);
+            windowTextureSmall = createProceduralWindowTexture(config.worldSeed ^ 0x9e3779b9);
+            windowTextureMega = createProceduralWindowTexture(config.worldSeed ^ 0x85ebca6b);
+            windowTextureHoney = createHoneyTexture(config.worldSeed ^ 0xc2b2ae35);
+            windowTextureShock = createShockTexture(config.worldSeed ^ 0x7f4a7c15);
+            windowTextureTricky = createTrickyTexture(config.worldSeed ^ 0x62a7f2f1);
             windowTextureSmall.repeat.set(3, 6);
             windowTextureMega.repeat.set(5, 16);
             windowTextureHoney.repeat.set(4, 10);
@@ -534,8 +534,8 @@
                     if (now - lastPointerLog > 200) {
                         lastPointerLog = now;
                     }
-                    player.rotation.y -= e.movementX * MOUSE_SENSITIVITY;
-                    pitch += e.movementY * MOUSE_SENSITIVITY;
+                    player.rotation.y -= e.movementX * config.mouseSensitivity;
+                    pitch += e.movementY * config.mouseSensitivity;
                     pitch = Math.max(-1.48, Math.min(1.48, pitch));
                 }
             });
@@ -878,8 +878,8 @@
             const dz = z - initialFacing.originZ;
             const forward = initialFacing.axis === 'x' ? dx * initialFacing.sign : dz * initialFacing.sign;
             const lateral = initialFacing.axis === 'x' ? dz : dx;
-            if (Math.abs(lateral) > RENDER_DISTANCE) return false;
-            if (forward < -RENDER_DISTANCE) return false;
+            if (Math.abs(lateral) > config.renderDistance) return false;
+            if (forward < -config.renderDistance) return false;
             return true;
         }
 
@@ -900,7 +900,7 @@
         }
 
         function createBuilding(gx, gz, py) {
-            const seed = Math.abs((gx * 73856093) ^ (gz * 19349663) ^ WORLD_SEED);
+            const seed = Math.abs((gx * 73856093) ^ (gz * 19349663) ^ config.worldSeed);
             const rand = (s) => (Math.sin(s) * 10000) % 1;
             const r = Math.abs(rand(seed));
 
@@ -1058,7 +1058,7 @@
             const result = handleBuildingCollision(data);
             if (result.collided && result.onWall && result.wallNormal) {
                 const normalForce = Math.abs(prevPlayerVelocity.dot(result.wallNormal));
-                if (normalForce < HONEY_STICK_MIN_FORCE) {
+                if (normalForce < config.honeyStickMinForce) {
                     return result;
                 }
                 isStuck = true;
@@ -1067,7 +1067,7 @@
                 stuckPosition.copy(player.position);
                 addChatMessage('System', `${displayNameForPeer(peerId)} is stuck in honey!`);
                 if (isSinglePlayerMode()) {
-                    stuckUntilMs = performance.now() + HONEY_STUCK_TIME_MS;
+                    stuckUntilMs = performance.now() + config.honeyStuckTimeMs;
                 }
             }
             return result;
@@ -1093,8 +1093,8 @@
             const pz = Math.round(player.position.z / config.blockSize);
             const py = Math.round(player.position.y);
 
-            for (let x = px - RENDER_DISTANCE; x <= px + RENDER_DISTANCE; x++) {
-                for (let z = pz - RENDER_DISTANCE; z <= pz + RENDER_DISTANCE; z++) {
+            for (let x = px - config.renderDistance; x <= px + config.renderDistance; x++) {
+                for (let z = pz - config.renderDistance; z <= pz + config.renderDistance; z++) {
                     const key = `${x},${z}`;
                     if (!isChunkAllowed(x, z)) continue;
                     // Skip roads on 3x3 grid
@@ -1120,7 +1120,7 @@
 
             for (let [key, data] of chunks) {
                 const [cx, cz] = key.split(',').map(Number);
-                if (!isChunkAllowed(cx, cz) || Math.abs(cx - px) > RENDER_DISTANCE + 2 || Math.abs(cz - pz) > RENDER_DISTANCE + 2) {
+                if (!isChunkAllowed(cx, cz) || Math.abs(cx - px) > config.renderDistance + 2 || Math.abs(cz - pz) > config.renderDistance + 2) {
                     scene.remove(data.group);
                     chunks.delete(key);
                 }
@@ -1128,9 +1128,9 @@
 
             const time = clock.getElapsedTime();
             const shockTimeSeconds = getShockTimeSeconds();
-            const shockPhase = shockTimeSeconds === null ? 0 : (shockTimeSeconds % SHOCK_PULSE_PERIOD);
-            const shockPulseActive = shockPhase >= (SHOCK_PULSE_PERIOD - SHOCK_PULSE_DURATION);
-            const shockCharge = shockPulseActive ? 1 : shockPhase / (SHOCK_PULSE_PERIOD - SHOCK_PULSE_DURATION);
+            const shockPhase = shockTimeSeconds === null ? 0 : (shockTimeSeconds % config.shockPulsePeriod);
+            const shockPulseActive = shockPhase >= (config.shockPulsePeriod - config.shockPulseDuration);
+            const shockCharge = shockPulseActive ? 1 : shockPhase / (config.shockPulsePeriod - config.shockPulseDuration);
             const trickyColor = new THREE.Color(getTrickyColor());
             chunks.forEach(data => {
                 data.group.traverse(obj => { if (obj.userData.isBlinker) obj.visible = Math.sin(time * 10) > 0; });
@@ -1185,7 +1185,7 @@
             group.userData.lastSnapshotAt = performance.now();
             group.userData.snapshotPos = new THREE.Vector3();
             const orbMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35 });
-            const orb = new THREE.Mesh(new THREE.SphereGeometry(REMOTE_ORB_RADIUS, 18, 18), orbMat);
+            const orb = new THREE.Mesh(new THREE.SphereGeometry(config.remoteOrbRadius, 18, 18), orbMat);
             orb.renderOrder = 2;
             group.userData.orb = orb;
             group.add(orb);
@@ -1248,8 +1248,8 @@
         }
 
         function performJump() {
-            const charge = Math.min(jumpChargeTime / MAX_JUMP_CHARGE_TIME, 1);
-            playerVelocity.y = JUMP_FORCE * (1 + charge * 4.0);
+            const charge = Math.min(jumpChargeTime / config.maxJumpChargeTime, 1);
+            playerVelocity.y = config.jumpForce * (1 + charge * 4.0);
             if (isClimbing) {
                 const backDir = new THREE.Vector3(0, 0, -25).applyQuaternion(player.quaternion);
                 playerVelocity.add(backDir);
@@ -1307,7 +1307,7 @@
             let closestPeer = null;
             let closestDist = Infinity;
             remotePlayers.forEach((remote) => {
-                const sphere = new THREE.Sphere(remote.position, REMOTE_ORB_RADIUS);
+                const sphere = new THREE.Sphere(remote.position, config.remoteOrbRadius);
                 const hitPoint = raycaster.ray.intersectSphere(sphere, new THREE.Vector3());
                 if (hitPoint) {
                     const dist = origin.distanceTo(hitPoint);
@@ -1318,7 +1318,7 @@
                 }
             });
             if (closestPeer) {
-                if (!game.freePlay && closestDist > MAX_WEB_ATTACH_LEN) return;
+                if (!game.freePlay && closestDist > config.maxWebAttachLen) return;
                 const handler = webTargetHandlers.player;
                 if (handler) handler(webObj, dir, closestPeer);
                 return;
@@ -1335,7 +1335,7 @@
             if (intersects.length > 0) {
                 const hit = intersects[0];
                 const dist = player.position.distanceTo(hit.point);
-                if (!game.freePlay && dist > MAX_WEB_ATTACH_LEN) return;
+                if (!game.freePlay && dist > config.maxWebAttachLen) return;
                 const data = targetMeshes.get(hit.object);
                 const type = data?.type || 'standard';
                 const handler = webTargetHandlers[type] || webTargetHandlers.standard;
@@ -1369,12 +1369,12 @@
         function handleMovement(dt) {
             prevPlayerPos.copy(player.position);
             if (isChargingJump) jumpChargeTime += dt;
-            document.getElementById('charge-bar').style.width = Math.min((jumpChargeTime / MAX_JUMP_CHARGE_TIME) * 100, 100) + '%';
+            document.getElementById('charge-bar').style.width = Math.min((jumpChargeTime / config.maxJumpChargeTime) * 100, 100) + '%';
             if (isClimbing && !unlocks.has('climb')) isClimbing = false;
             if (isStuck) {
                 if (isSinglePlayerMode() && performance.now() >= stuckUntilMs) {
                     isStuck = false;
-                    playerVelocity.copy(stuckNormal).multiplyScalar(HONEY_RELEASE_PUSH);
+                    playerVelocity.copy(stuckNormal).multiplyScalar(config.honeyReleasePush);
                 } else {
                     playerVelocity.set(0, 0, 0);
                     player.position.copy(stuckPosition);
@@ -1406,12 +1406,12 @@
 
             let usedNextPos = false;
             if (isClimbing) {
-                playerVelocity.y = keys['KeyW'] ? CLIMB_SPEED : (keys['KeyS'] ? -CLIMB_SPEED : 0);
+                playerVelocity.y = keys['KeyW'] ? config.climbSpeed : (keys['KeyS'] ? -config.climbSpeed : 0);
                 playerVelocity.x = playerVelocity.z = 0;
             } else if (webL.active || webR.active || incomingTethers.size > 0) {
                 // SWINGING PHYSICS
-                playerVelocity.y += GRAVITY * dt;
-                playerVelocity.add(moveDir.clone().multiplyScalar(SWING_CONTROL * dt));
+                playerVelocity.y += config.gravity * dt;
+                playerVelocity.add(moveDir.clone().multiplyScalar(config.swingControl * dt));
                 
                 let nextPos = player.position.clone().add(playerVelocity.clone().multiplyScalar(dt));
 
@@ -1448,7 +1448,7 @@
                                     const dir = new THREE.Vector3().subVectors(player.position, target.position).normalize();
                                     eventBus.emit('player.pulled', {
                                         targetPeerId: otherWeb.targetPeerId,
-                                        impulse: { x: dir.x * REEL_PULL_IMPULSE * dt, y: dir.y * REEL_PULL_IMPULSE * dt, z: dir.z * REEL_PULL_IMPULSE * dt },
+                                        impulse: { x: dir.x * config.reelPullImpulse * dt, y: dir.y * config.reelPullImpulse * dt, z: dir.z * config.reelPullImpulse * dt },
                                     }, { source: 'game' });
                                 }
                             }
@@ -1474,7 +1474,7 @@
                             const localVelDelta = radial.clone().multiplyScalar(vDotR * massShares.velocityLocal);
                             playerVelocity.sub(localVelDelta);
                             if (web.targetPeerId) {
-                                const remoteImpulse = radial.clone().multiplyScalar(vDotR * massShares.velocityRemote * TETHER_IMPULSE_DAMPING);
+                                const remoteImpulse = radial.clone().multiplyScalar(vDotR * massShares.velocityRemote * config.tetherImpulseDamping);
                                 emitTautImpulse(web.targetPeerId, remoteImpulse);
                             }
                         }
@@ -1503,7 +1503,7 @@
                         const relVel = anchorVel ? playerVelocity.clone().sub(anchorVel) : playerVelocity;
                         const vDotR = relVel.dot(radial);
                         if (vDotR > 0) {
-                            const localVelDelta = radial.clone().multiplyScalar(vDotR * massShares.velocityLocal * TETHER_IMPULSE_DAMPING);
+                            const localVelDelta = radial.clone().multiplyScalar(vDotR * massShares.velocityLocal * config.tetherImpulseDamping);
                             playerVelocity.sub(localVelDelta);
                         }
                     }
@@ -1524,7 +1524,7 @@
                     swingState.startedAtMs = performance.now();
                 }
                 if (swingState.wasDownswing && up) {
-                    if (performance.now() - swingState.startedAtMs >= SWING_MIN_DURATION_MS) {
+                    if (performance.now() - swingState.startedAtMs >= config.swingMinDurationMs) {
                         eventBus.emit('player.swing', {
                             playerId: peerId,
                             swungOff: swingState.swungOff,
@@ -1539,7 +1539,7 @@
                 }
             } else {
                 // GROUND / AIR PHYSICS
-                const speed = keys['ShiftLeft'] ? RUN_SPEED : WALK_SPEED;
+                const speed = keys['ShiftLeft'] ? config.runSpeed : config.walkSpeed;
                 if (isGrounded) {
                     const acc = 35;
                     if (input.length() > 0) {
@@ -1550,10 +1550,10 @@
                         playerVelocity.z = THREE.MathUtils.lerp(playerVelocity.z, 0, 20 * dt);
                     }
                 } else if (input.length() > 0) {
-                    playerVelocity.x += moveDir.x * (AIR_CONTROL * 20) * dt;
-                    playerVelocity.z += moveDir.z * (AIR_CONTROL * 20) * dt;
+                    playerVelocity.x += moveDir.x * (config.airControl * 20) * dt;
+                    playerVelocity.z += moveDir.z * (config.airControl * 20) * dt;
                 }
-                playerVelocity.y += GRAVITY * dt;
+                playerVelocity.y += config.gravity * dt;
             }
 
             if (!usedNextPos) {
@@ -1926,8 +1926,8 @@
             const baseZ = initialFacing.originZ * config.blockSize;
             const wallHeight = 30000;
             const wallThickness = 2;
-            const span = (RENDER_DISTANCE * 2 + 2) * config.blockSize;
-            const far = (RENDER_DISTANCE + 1) * config.blockSize;
+            const span = (config.renderDistance * 2 + 2) * config.blockSize;
+            const far = (config.renderDistance + 1) * config.blockSize;
             let leftPos, rightPos, backPos, leftSize, rightSize, backSize;
             if (initialFacing.axis === 'x') {
                 leftPos = new THREE.Vector3(px, wallHeight * 0.5, baseZ - far);
@@ -2121,18 +2121,18 @@
         function checkWinCondition() {
             if (!isHost() || game.freePlay || game.winShown) return;
             const baseBuilding = getStandingBuilding(player.position, isGrounded);
-            if (!baseBuilding || baseBuilding.height < WIN_HEIGHT) return;
+            if (!baseBuilding || baseBuilding.height < config.winHeight) return;
             const allPlayers = [];
             remotePlayers.forEach((remote) => {
                 allPlayers.push({ pos: remote.position, grounded: remote.userData.isGrounded });
             });
             for (let i = 0; i < allPlayers.length; i++) {
                 const data = getStandingBuilding(allPlayers[i].pos, allPlayers[i].grounded);
-                if (!data || data.height < WIN_HEIGHT) return;
+                if (!data || data.height < config.winHeight) return;
             }
-            if (!triggeredHeightEvents.has(WIN_HEIGHT)) {
-                triggeredHeightEvents.add(WIN_HEIGHT);
-                eventBus.emit('game.win', { height: WIN_HEIGHT, playerId: peerId }, { source: 'game' });
+            if (!triggeredHeightEvents.has(config.winHeight)) {
+                triggeredHeightEvents.add(config.winHeight);
+                eventBus.emit('game.win', { height: config.winHeight, playerId: peerId }, { source: 'game' });
             }
         }
 
@@ -2150,8 +2150,8 @@
             if (!hasPeerTarget) {
                 return { positionLocal: 1, velocityLocal: 1, velocityRemote: 0 };
             }
-            const localMass = PLAYER_MASS;
-            const remoteMass = PLAYER_MASS;
+            const localMass = config.playerMass;
+            const remoteMass = config.playerMass;
             const totalMass = localMass + remoteMass;
             return {
                 positionLocal: remoteMass / totalMass,
@@ -2164,14 +2164,14 @@
             if (!tautImpulseDebouncers.has(targetPeerId)) {
                 tautImpulseDebouncers.set(targetPeerId, throttle((payload) => {
                     eventBus.emit('player.pulled', payload, { source: 'game' });
-                }, TETHER_IMPULSE_DEBOUNCE_MS));
+                }, config.tetherImpulseDebounceMs));
             }
             return tautImpulseDebouncers.get(targetPeerId);
         }
 
         function emitTautImpulse(targetPeerId, impulseVec) {
             if (!targetPeerId || !impulseVec) return;
-            const max = TETHER_IMPULSE_MAX;
+            const max = config.tetherImpulseMax;
             if (impulseVec.lengthSq() > max * max) impulseVec.setLength(max);
             const payload = {
                 targetPeerId,
@@ -2262,11 +2262,11 @@
         }
 
         function isDownswing(velocity) {
-            return velocity.y < -SWING_SPEED_THRESHOLD;
+            return velocity.y < -config.swingSpeedThreshold;
         }
 
         function isUpswing(velocity) {
-            return velocity.y > SWING_SPEED_THRESHOLD;
+            return velocity.y > config.swingSpeedThreshold;
         }
 
         const eventBus = {
@@ -2372,7 +2372,7 @@
         function applyStun() {
             if (isStunned) return;
             isStunned = true;
-            stunnedUntilMs = isSinglePlayerMode() ? performance.now() + SHOCK_STUN_DURATION_MS : 0;
+            stunnedUntilMs = isSinglePlayerMode() ? performance.now() + config.shockStunDurationMs : 0;
             playerVelocity.set(0, 0, 0);
             isClimbing = false;
             isChargingJump = false;
@@ -2393,9 +2393,9 @@
 
         function checkShockPulse(timeSeconds) {
             if (timeSeconds === null) return;
-            const pulseIndex = Math.floor(timeSeconds / SHOCK_PULSE_PERIOD);
-            const phase = timeSeconds % SHOCK_PULSE_PERIOD;
-            const pulseActive = phase >= (SHOCK_PULSE_PERIOD - SHOCK_PULSE_DURATION);
+            const pulseIndex = Math.floor(timeSeconds / config.shockPulsePeriod);
+            const phase = timeSeconds % config.shockPulsePeriod;
+            const pulseActive = phase >= (config.shockPulsePeriod - config.shockPulseDuration);
             if (!pulseActive || isStunned || !isTetheredToShockBuilding()) return;
             if (pulseIndex !== lastShockPulseIndex) {
                 lastShockPulseIndex = pulseIndex;
@@ -2450,7 +2450,7 @@
             winElapsedStr = formatDuration(elapsedSec);
             document.getElementById('win-msg').innerText = `Won in ${winElapsedStr}`;
             document.getElementById('win-msg').style.display = 'block';
-            winModalTimeEl.innerText = `You climbed ${WIN_HEIGHT}m in ${winElapsedStr}`;
+            winModalTimeEl.innerText = `You climbed ${config.winHeight}m in ${winElapsedStr}`;
             winModalEl.style.display = 'flex';
         }
 
@@ -2579,9 +2579,9 @@
                 const impulseVec = new THREE.Vector3(impulse.x || 0, impulse.y || 0, impulse.z || 0);
                 if (isStuck && !isSinglePlayerMode()) {
                     const normalComponent = impulseVec.dot(stuckNormal);
-                    if (Math.abs(normalComponent) >= HONEY_UNSTICK_FORCE) {
+                    if (Math.abs(normalComponent) >= config.honeyUnstickForce) {
                         isStuck = false;
-                        playerVelocity.add(stuckNormal.clone().multiplyScalar(HONEY_RELEASE_PUSH));
+                        playerVelocity.add(stuckNormal.clone().multiplyScalar(config.honeyReleasePush));
                     }
                 } else {
                     playerVelocity.add(impulseVec);
@@ -2637,7 +2637,7 @@
             const mesh = createPointerMesh(start, end, color);
             mesh.frustumCulled = false;
             scene.add(mesh);
-            const entry = { mesh, expiresAt: performance.now() + POINTER_DURATION_MS, playerId: payload.playerId };
+            const entry = { mesh, expiresAt: performance.now() + config.pointerDurationMs, playerId: payload.playerId };
             pointerLines.push(entry);
             pointerByPlayer.set(payload.playerId, entry);
         });
@@ -2828,7 +2828,7 @@
             if (intersects.length > 0) {
                 return { start, end: intersects[0].point.clone() };
             }
-            return { start, end: origin.clone().add(dir.clone().multiplyScalar(MAX_AIM_DISTANCE)) };
+            return { start, end: origin.clone().add(dir.clone().multiplyScalar(config.maxAimDistance)) };
         }
 
         function updateReticle() {
@@ -2844,7 +2844,7 @@
             if (intersects.length > 0) {
                 const hit = intersects[0];
                 const dist = player.position.distanceTo(hit.point);
-                const canAttach = game.freePlay || dist <= MAX_WEB_ATTACH_LEN;
+                const canAttach = game.freePlay || dist <= config.maxWebAttachLen;
 
                 webReticle.position.copy(hit.point).add(hit.face.normal.clone().multiplyScalar(0.5));
                 webReticle.lookAt(hit.point.clone().add(hit.face.normal));
@@ -2865,9 +2865,9 @@
                 laserDot.material.color.set(canAttach ? 0xff4fa3 : 0xff2d2d);
             } else {
                 webReticle.visible = false;
-                const end = origin.clone().add(dir.clone().multiplyScalar(MAX_AIM_DISTANCE));
-                laserBeam.position.copy(origin).add(dir.clone().multiplyScalar(MAX_AIM_DISTANCE * 0.5));
-                laserBeam.scale.set(1, MAX_AIM_DISTANCE, 1);
+                const end = origin.clone().add(dir.clone().multiplyScalar(config.maxAimDistance));
+                laserBeam.position.copy(origin).add(dir.clone().multiplyScalar(config.maxAimDistance * 0.5));
+                laserBeam.scale.set(1, config.maxAimDistance, 1);
                 laserBeam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
                 laserDot.position.copy(end);
                 laserBeam.material.color.set(0xff2d2d);
