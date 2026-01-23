@@ -270,20 +270,22 @@
             blockSize: 120,
             buildingWidth: 60,
             buildingDepth: 60,
-            smallBuildingBaseHeight: 150,
-            megaBuildingBaseHeight: 300,
+            smallBuildingBaseHeight: 250,
+            megaBuildingBaseHeight: 350,
             megaBuildingFrequency: 0.23,
             mBuildingZAxisHeightScaling: 0,
             mBuildingPHeightScaling: 1,
             renderDistance: 22,
-            gravity: -80.0, // Slightly higher gravity for better feel
+            gravity: -120.0, // Slightly higher gravity for better feel
             walkSpeed: 25.0,
             runSpeed: 45.0,
             climbSpeed: 30.0,
-            jumpForce: 25.0,
-            airControl: 2.0,
+            jumpForce: 30.0,
+            airControl: 3.0,
+            airDrag: 0.0,
+            webAcceleration: 90.0,
             playerRadius: 1.2,
-            maxJumpChargeTime: 2.5,
+            maxJumpChargeTime: 1.5,
             mouseSensitivity: 0.0025,
             maxAimDistance: 300,
             maxWebAttachLen: 1300,
@@ -403,6 +405,7 @@
         let trickySingleLocked = false;
         let lastSinglePlayerMode = null;
         let initialFacing = null;
+        let welcomeChunksApplied = false;
 
         const lobbyEl = document.getElementById('lobby');
         const lobbyStatusEl = document.getElementById('lobby-status');
@@ -755,7 +758,7 @@
                 if (isHost()) {
                     eventBus.emit('game.state', getGameStatePayload(), { source: 'game' });
                     const payloads = [...chunkMeta.entries()].map(([key, meta]) => formatChunkSyncPayload(key, meta));
-                    sendChunkSync(payloads);
+                    sendChunkSync(payloads, { welcome: true });
                     if (JSON.stringify(config) !== JSON.stringify(CONFIG_DEFAULTS)) {
                         eventBus.emit('config.update', { config }, { source: 'game' });
                     }
@@ -1632,7 +1635,7 @@
 
                         // Pumping energy while swinging
                         if ((keys['ShiftLeft'] || keys['Space']) && isDownswing(playerVelocity)) {
-                            playerVelocity.add(playerVelocity.clone().normalize().multiplyScalar(90 * dt));
+                            playerVelocity.add(playerVelocity.clone().normalize().multiplyScalar(config.webAcceleration * dt));
                         }
                     }
                 };
@@ -1703,6 +1706,10 @@
                 } else if (input.length() > 0) {
                     playerVelocity.x += moveDir.x * (config.airControl * 20) * dt;
                     playerVelocity.z += moveDir.z * (config.airControl * 20) * dt;
+                }
+                if (!isGrounded && config.airDrag > 0) {
+                    const drag = Math.max(0, 1 - config.airDrag * dt);
+                    playerVelocity.multiplyScalar(drag);
                 }
                 playerVelocity.y += config.gravity * dt;
             }
@@ -1946,11 +1953,12 @@
             socket.send(JSON.stringify({ type: 'game', payload }));
         }
 
-        function sendChunkSync(chunks) {
+        function sendChunkSync(chunks, options = {}) {
             if (!chunks.length) return;
+            const welcome = options.welcome === true;
             for (let i = 0; i < chunks.length; i += 256) {
                 const batch = chunks.slice(i, i + 256);
-                sendGameMessage({ kind: gameMessageTypes.CHUNK_SYNC, chunks: batch });
+                sendGameMessage({ kind: gameMessageTypes.CHUNK_SYNC, chunks: batch, welcome });
             }
         }
 
@@ -1990,6 +1998,7 @@
 
         function handleChunkSync(message) {
             if (!message || !Array.isArray(message.chunks)) return;
+            const welcome = message.welcome === true && !welcomeChunksApplied;
             message.chunks.forEach((incoming) => {
                 if (!incoming || typeof incoming.key !== 'string') return;
                 const key = incoming.key;
@@ -2005,7 +2014,7 @@
                     z: incoming.z,
                 };
 
-                if (!local) {
+                if (welcome || !local) {
                     applyChunkMeta(key, incomingMeta);
                     return;
                 }
@@ -2025,6 +2034,9 @@
                     sendChunkSync([formatChunkSyncPayload(key, local)]);
                 }
             });
+            if (welcome) {
+                welcomeChunksApplied = true;
+            }
         }
 
         function updateWebLineForPosition(web, pos) {
