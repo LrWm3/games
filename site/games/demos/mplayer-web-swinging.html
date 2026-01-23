@@ -178,7 +178,7 @@
             Reel (Locked @ 2000m)<br>
             Bounce (Locked @ 10000m)
         </div>
-        <div class="stat" id="win-msg">Win at 12000m</div>
+        <div class="stat" id="win-msg">Win at 20000m</div>
         <div class="stat" id="speed">Speed: 0 km/h</div>
         <div class="stat" id="height">Height: 0 m</div>
         <div class="stat" id="state">State: Grounded</div>
@@ -196,7 +196,7 @@
     <div id="chat-feed"></div>
     <div id="win-modal">
         <div class="modal-card">
-            <h2>12000m Achieved</h2>
+            <h2>20000m Achieved</h2>
             <div class="modal-time" id="win-modal-time"></div>
             <div class="modal-sub">Enjoy swinging around for fun.</div>
             <div class="modal-hint">Press P on new game to unlock everything.<br>Press Esc to close.</div>
@@ -205,7 +205,9 @@
 
     <script>
         // --- CONFIG ---
-        const BLOCK_SIZE = 60;
+        // SCALE_FACTOR - for testing building sizes.
+        const SCALE_FACTOR = 2;
+        const BLOCK_SIZE = 60 * SCALE_FACTOR;
         const RENDER_DISTANCE = 22; 
         const GRAVITY = -80.0; // Slightly higher gravity for better feel
         const WALK_SPEED = 25.0;
@@ -222,8 +224,8 @@
         const SWING_MIN_DURATION_MS = 300;
         const REEL_PULL_IMPULSE = 30.0;
         const REEL_UNLOCK_HEIGHT = 2000;
-        const BOUNCE_UNLOCK_HEIGHT = 12000;
-        const WIN_HEIGHT = 12000;
+        const BOUNCE_UNLOCK_HEIGHT = 20000;
+        const WIN_HEIGHT = 20000;
         const WORLD_SEED = 1337;
         const INITIAL_CHUNK_HEIGHTS = {};
         const REMOTE_ORB_RADIUS = PLAYER_RADIUS * 6;
@@ -286,7 +288,7 @@
         let joinedRoomId = null;
         let snapshotSeq = 0;
         let snapshotAccumulator = 0;
-        const heightEvents = [3000, 6000, 9000, WIN_HEIGHT];
+        const heightEvents = [5000, 10000, 15000, WIN_HEIGHT];
         const triggeredHeightEvents = new Set();
         let localJoinedAt = 0;
         const chunkMeta = new Map();
@@ -888,14 +890,14 @@
               h = Math.max(py + typicalMegaHeight, typicalMegaHeight);
             }
 
-            const w = 30 + Math.abs(rand(seed + 3)) * 10;
-            const d = 30 + Math.abs(rand(seed + 4)) * 10;
+            const w = (30) * SCALE_FACTOR;
+            const d = (30) * SCALE_FACTOR;
             const hue = 0.58 + (Math.abs(rand(seed + 5)) * 0.08);
             const megaVariantAllowed = !game.freePlay;
-            const isMegaStandard = isMega && (!megaVariantAllowed || h < 3000);
-            const isShock = isMega && megaVariantAllowed && h >= 3000 && h < 6000;
-            const isTricky = isMega && megaVariantAllowed && h >= 6000 && h < 9000;
-            const isHoney = isMega && megaVariantAllowed && h >= 9000;
+            const isMegaStandard = isMega && (!megaVariantAllowed || h < 5000);
+            const isHoney = isMega && megaVariantAllowed && h >= 5000 && h < 10000;
+            const isShock = isMega && megaVariantAllowed && h >= 10000 && h < 15000;
+            const isTricky = isMega && megaVariantAllowed && h >= 15000;
             const trickyColor = isTricky ? new THREE.Color(getTrickyColor()) : null;
             const baseColor = isShock
                 ? new THREE.Color(0x0b1b3a)
@@ -1908,7 +1910,7 @@
                 }
             });
 
-            const planeHeights = [3000, 6000, 9000, 12000];
+            const planeHeights = [5000, 10000, 15000, 20000];
             planeHeights.forEach((height) => {
                 let plane = corridorPlanes.get(height);
                 if (!plane) {
@@ -1934,7 +1936,7 @@
             const cz = Math.round(player.position.z / BLOCK_SIZE);
             if (isChunkAllowed(cx, cz)) return;
             resetPlayerToSpawn();
-            addChatMessage('System', `${displayNameForPeer(peerId)} left the valid area.`);
+            addChatMessage('System', `${displayNameForPeer(peerId)} left the city and died instantly.`);
         }
 
         function applyTrickyColors() {
