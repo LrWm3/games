@@ -107,6 +107,38 @@
             font-size: 0.85em;
             color: #9fb3c8;
         }
+        #config-modal {
+            position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+            background: rgba(4, 6, 12, 0.7); z-index: 21;
+        }
+        #config-modal .modal-card {
+            width: min(620px, 88vw);
+            background: rgba(10, 12, 24, 0.95);
+            border: 1px solid rgba(120, 180, 220, 0.35);
+            border-radius: 16px;
+            padding: 18px 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.45);
+            color: #e6f2ff;
+        }
+        #config-fields {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-top: 10px;
+            max-height: 55vh; overflow: auto; padding-right: 6px;
+        }
+        #config-actions {
+            margin-top: 12px; display: flex; justify-content: flex-end;
+        }
+        #config-reset {
+            background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148,163,184,0.3);
+            color: #e2e8f0; padding: 6px 10px; border-radius: 8px; cursor: pointer;
+        }
+        .config-row {
+            display: grid; grid-template-columns: 1fr 120px; align-items: center; gap: 8px;
+            font-size: 0.85em;
+        }
+        .config-row input {
+            width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #334155;
+            background: rgba(10, 15, 30, 0.9); color: #e2e8f0;
+        }
         .chat-line {
             background: rgba(6, 10, 24, 0.6); border: 1px solid rgba(120,140,170,0.25);
             border-radius: 8px; padding: 6px 8px;
@@ -212,6 +244,16 @@
             <div class="modal-hint">Press P on new game to unlock everything.<br>Press Esc to close.</div>
         </div>
     </div>
+    <div id="config-modal">
+        <div class="modal-card">
+            <h2>Config</h2>
+            <div id="config-fields"></div>
+            <div id="config-actions">
+                <button id="config-reset">Reset Defaults</button>
+            </div>
+            <div class="modal-hint">Press Esc to close.</div>
+        </div>
+    </div>
 
     <script>
         // --- CONFIG ---
@@ -224,10 +266,15 @@
         const SHOCK_CHARGE_COLOR = new THREE.Color(0x1c4f76);
         const SHOCK_PULSE_COLOR = new THREE.Color(0x32ffd8);
 
-        let config = {
+        const CONFIG_DEFAULTS = {
             blockSize: 120,
             buildingWidth: 60,
             buildingDepth: 60,
+            smallBuildingBaseHeight: 150,
+            megaBuildingBaseHeight: 300,
+            megaBuildingFrequency: 0.23,
+            mBuildingZAxisHeightScaling: 0,
+            mBuildingPHeightScaling: 1,
             renderDistance: 22,
             gravity: -80.0, // Slightly higher gravity for better feel
             walkSpeed: 25.0,
@@ -262,7 +309,8 @@
             shockStunDurationMs: 6500,
             pointerDurationMs: 15000,
             pointerThrottleMs: 500,
-        }
+        };
+        let config = { ...CONFIG_DEFAULTS };
 
         // --- CORE ---
         let scene, camera, renderer, clock;
@@ -375,6 +423,9 @@
         const chatLogEl = document.getElementById('chat-log');
         const chatInputEl = document.getElementById('chat-input');
         const chatFeedEl = document.getElementById('chat-feed');
+        const configModalEl = document.getElementById('config-modal');
+        const configFieldsEl = document.getElementById('config-fields');
+        const configResetEl = document.getElementById('config-reset');
 
         const requestFreeplay = throttle(() => {
             if (!game.freePlay) {
@@ -407,6 +458,16 @@
             controlsBodyEl.style.display = controlsVisible ? 'block' : 'none';
             controlsHeaderEl.innerHTML = controlsVisible ? '<b>Controls:</b>' : '<b>Controls:</b> Tab to open';
         }, 50);
+        const toggleConfigModal = throttle(() => {
+            const isOpen = configModalEl.style.display === 'flex';
+            configModalEl.style.display = isOpen ? 'none' : 'flex';
+        }, 50);
+        if (configResetEl) {
+            configResetEl.addEventListener('click', () => {
+                resetConfigDefaults();
+                buildConfigFields();
+            });
+        }
 
         function init() {
             scene = new THREE.Scene();
@@ -485,16 +546,24 @@
                 if (e.code === 'KeyR' && !inLobby && !chatOpen && document.activeElement !== chatInputEl) {
                     requestRespawn();
                 }
-                if (e.code === 'KeyF' && !inLobby && !chatOpen && document.activeElement !== chatInputEl) {
-                    requestPointer();
-                }
-                if (e.code === 'Tab') {
-                    e.preventDefault();
-                    toggleControls();
-                }
-                if (e.code === 'Escape' && winModalEl.style.display === 'flex') {
-                    winModalEl.style.display = 'none';
-                }
+            if (e.code === 'KeyF' && !inLobby && !chatOpen && document.activeElement !== chatInputEl) {
+                requestPointer();
+            }
+            if (e.code === 'Tab') {
+                e.preventDefault();
+                toggleControls();
+            }
+            if (e.code === 'Semicolon' && isHost()) {
+                e.preventDefault();
+                buildConfigFields();
+                toggleConfigModal();
+            }
+            if (e.code === 'Escape' && winModalEl.style.display === 'flex') {
+                winModalEl.style.display = 'none';
+            }
+            if (e.code === 'Escape' && configModalEl.style.display === 'flex') {
+                configModalEl.style.display = 'none';
+            }
                 if (e.code === 'Enter' && !inLobby && !chatOpen && document.activeElement !== chatInputEl) {
                     e.preventDefault();
                     chatOpen = true;
@@ -687,6 +756,9 @@
                     eventBus.emit('game.state', getGameStatePayload(), { source: 'game' });
                     const payloads = [...chunkMeta.entries()].map(([key, meta]) => formatChunkSyncPayload(key, meta));
                     sendChunkSync(payloads);
+                    if (JSON.stringify(config) !== JSON.stringify(CONFIG_DEFAULTS)) {
+                        eventBus.emit('config.update', { config }, { source: 'game' });
+                    }
                     if (game.trickyOwnerSlot === null) {
                         const slots = getActiveSlots();
                         game.trickyOwnerSlot = slots.length ? slots[0] : getLocalSlot();
@@ -755,6 +827,82 @@
                 .catch(() => {
                     roomListEl.innerHTML = '<div class="room-item"><span>Failed to load rooms.</span></div>';
                 });
+        }
+
+        function rebuildAllBuildings() {
+            chunks.forEach((data) => {
+                scene.remove(data.group);
+            });
+            const entries = [...chunks.keys()];
+            entries.forEach((key) => {
+                const [cx, cz] = key.split(',').map(Number);
+                const height = chunkHeights.get(key);
+                const rebuilt = createBuilding(cx, cz, height);
+                chunks.set(key, rebuilt);
+            });
+        }
+
+        function applyConfigUpdate(nextConfig, source = 'game') {
+            if (!nextConfig) return;
+            const prev = { ...config };
+            Object.keys(nextConfig).forEach((key) => {
+                if (Object.prototype.hasOwnProperty.call(config, key) && typeof nextConfig[key] === 'number') {
+                    config[key] = nextConfig[key];
+                }
+            });
+            if (configFieldsEl && source === 'ws') {
+                Array.from(configFieldsEl.querySelectorAll('input[data-key]')).forEach((input) => {
+                    const key = input.getAttribute('data-key');
+                    if (key && typeof config[key] === 'number') {
+                        input.value = config[key];
+                    }
+                });
+            }
+            if (
+                config.blockSize !== prev.blockSize ||
+                config.buildingWidth !== prev.buildingWidth ||
+                config.buildingDepth !== prev.buildingDepth ||
+                config.smallBuildingBaseHeight !== prev.smallBuildingBaseHeight ||
+                config.megaBuildingBaseHeight !== prev.megaBuildingBaseHeight ||
+                config.megaBuildingFrequency !== prev.megaBuildingFrequency ||
+                config.renderDistance !== prev.renderDistance ||
+                config.mBuildingZAxisHeightScaling !== prev.mBuildingZAxisHeightScaling ||
+                config.mBuildingPHeightScaling !== prev.mBuildingPHeightScaling
+            ) {
+                rebuildAllBuildings();
+                updateCity();
+            }
+        }
+
+        function buildConfigFields() {
+            if (!configFieldsEl) return;
+            configFieldsEl.innerHTML = '';
+            Object.keys(config).forEach((key) => {
+                const row = document.createElement('div');
+                row.className = 'config-row';
+                const label = document.createElement('label');
+                label.innerText = key;
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.step = 'any';
+                input.value = config[key];
+                input.setAttribute('data-key', key);
+                input.addEventListener('change', () => {
+                    const next = Number(input.value);
+                    if (!Number.isFinite(next)) return;
+                    const nextConfig = { [key]: next };
+                    applyConfigUpdate(nextConfig, 'local');
+                    eventBus.emit('config.update', { config: nextConfig }, { source: 'game' });
+                });
+                row.appendChild(label);
+                row.appendChild(input);
+                configFieldsEl.appendChild(row);
+            });
+        }
+
+        function resetConfigDefaults() {
+            applyConfigUpdate({ ...CONFIG_DEFAULTS }, 'local');
+            eventBus.emit('config.update', { config: { ...CONFIG_DEFAULTS } }, { source: 'game' });
         }
 
         function mulberry32(seed) {
@@ -906,20 +1054,23 @@
 
             // 1. Calculate the "typical" random height components
             const variance = Math.abs(rand(seed + 1)) * 120;
-            const baseHeight = 150 + variance;
+            const baseHeight = config.smallBuildingBaseHeight + variance;
     
             let h = baseHeight;
             let isMega = false;
-            if (r < 0.23) { 
+            if (r < config.megaBuildingFrequency) { 
               isMega = true;
         
               // 2. The "Typical Mega" calculation (from your original code)
               const megaMultiplier = (1.5 + Math.abs(rand(seed + 2)) * 2.5);
-              const typicalMegaHeight = baseHeight * megaMultiplier;
+              const megaBase = Math.max(baseHeight, config.megaBuildingBaseHeight);
+              const typicalMegaHeight = megaBase * megaMultiplier;
 
               // 3. Set height to Player Y + typical generation, 
               // but keep it at least as tall as a standard mega building
-              h = Math.max(py + typicalMegaHeight, typicalMegaHeight);
+              const zBoost = Math.abs(gz * config.blockSize) * config.mBuildingZAxisHeightScaling;
+              const scaledPy = py * config.mBuildingPHeightScaling;
+              h = Math.max(scaledPy + typicalMegaHeight, typicalMegaHeight, config.megaBuildingBaseHeight, zBoost + typicalMegaHeight);
             }
 
             const w = config.buildingWidth;
@@ -2640,6 +2791,11 @@
             const entry = { mesh, expiresAt: performance.now() + config.pointerDurationMs, playerId: payload.playerId };
             pointerLines.push(entry);
             pointerByPlayer.set(payload.playerId, entry);
+        });
+
+        eventBus.on('config.update', (payload, meta) => {
+            if (!payload || !payload.config) return;
+            applyConfigUpdate(payload.config, meta?.source === 'ws' ? 'ws' : 'game');
         });
 
         function getSwingTargets() {
