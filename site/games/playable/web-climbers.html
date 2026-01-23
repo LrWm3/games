@@ -168,21 +168,24 @@
         </div>
     </div>
     <div id="ui">
-        <div><b>Controls:</b></div>
-        <div><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> - Move</div>
-        <div><span class="key">Space (hold)</span> - Charge Jump (on ground)</div>
-        <div><span class="key">L-Click</span> - Left Web</div>
-        <div><span class="key">R-Click</span> - Right Web</div>
-        <div><span class="key">Shift</span> - Boost on Downswing</div>
-        <div><span class="key">F</span> - Point</div>
-        <div><span class="key">R</span> - Restart</div>
-        <div id="control-reel-left" style="display: none;"><span class="key">Q</span>- Reel Left Web</div>
-        <div id="control-reel-right" style="display: none;"><span class="key">E</span>- Reel Right Web</div>
-        <div id="control-bounce" style="display: none;"><span class="key">Space (hold)</span> - Bounce off walls (in air)</div>
-        <div class="stat" style="display: none" id="unlocks">
-            Unlocks:<br>
-            Reel (Locked @ 2000m)<br>
-            Bounce (Locked @ 10000m)
+        <div id="controls-header"><b>Controls:</b></div>
+        <div id="controls-body">
+            <div><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> - Move</div>
+            <div><span class="key">Space (hold)</span> - Charge Jump (on ground)</div>
+            <div><span class="key">L-Click</span> - Left Web</div>
+            <div><span class="key">R-Click</span> - Right Web</div>
+            <div><span class="key">Shift</span> - Boost on Downswing</div>
+            <div><span class="key">F</span> - Point</div>
+            <div><span class="key">R</span> - Restart</div>
+            <div><span class="key">Tab</span> - Hide Controls</div>
+            <div id="control-reel-left" style="display: none;"><span class="key">Q</span>- Reel Left Web</div>
+            <div id="control-reel-right" style="display: none;"><span class="key">E</span>- Reel Right Web</div>
+            <div id="control-bounce" style="display: none;"><span class="key">Space (hold)</span> - Bounce off walls (in air)</div>
+            <div class="stat" style="display: none" id="unlocks">
+                Unlocks:<br>
+                Reel (Locked @ 2000m)<br>
+                Bounce (Locked @ 10000m)
+            </div>
         </div>
         <div class="stat" id="save-tokens">Save Tokens: None</div>
         <div class="stat" id="win-msg">Win at 20000m</div>
@@ -213,8 +216,16 @@
     <script>
         // --- CONFIG ---
         // SCALE_FACTOR - for testing building sizes.
-        const SCALE_FACTOR = 2;
-        const BLOCK_SIZE = 60 * SCALE_FACTOR;
+        const INITIAL_CHUNK_HEIGHTS = {};
+        const GAME_ID = 'mplayer-web-swinging';
+        const SAVE_CHECK_INTERVAL_MS = 500;
+        const TIME_SYNC_INTERVAL_MS = 5000;
+
+        let config = {
+            blockSize: 120,
+            buildingWidth: 60,
+            buildingDepth: 60,
+        }
         const RENDER_DISTANCE = 22; 
         const GRAVITY = -80.0; // Slightly higher gravity for better feel
         const WALK_SPEED = 25.0;
@@ -235,8 +246,7 @@
         const BOUNCE_UNLOCK_HEIGHT = 20000;
         const WIN_HEIGHT = 20000;
         const WORLD_SEED = 1337;
-        const INITIAL_CHUNK_HEIGHTS = {};
-        const REMOTE_ORB_RADIUS = PLAYER_RADIUS * 6;
+        const REMOTE_ORB_RADIUS = 7.2;
         const HONEY_STUCK_TIME_MS = 6500;
         const HONEY_UNSTICK_FORCE = 0.1;
         const HONEY_RELEASE_PUSH = 18;
@@ -245,17 +255,14 @@
         const TETHER_IMPULSE_DEBOUNCE_MS = 16;
         const TETHER_IMPULSE_MAX = 25;
         const PLAYER_MASS = 1.0;
-        const GAME_ID = 'mplayer-web-swinging';
-        const SAVE_CHECK_INTERVAL_MS = 500;
         const SHOCK_PULSE_PERIOD = 6.0;
         const SHOCK_PULSE_DURATION = 0.2;
         const SHOCK_STUN_DURATION_MS = 6500;
         const SHOCK_BASE_COLOR = new THREE.Color(0x0b1b3a);
         const SHOCK_CHARGE_COLOR = new THREE.Color(0x1c4f76);
         const SHOCK_PULSE_COLOR = new THREE.Color(0x32ffd8);
-        const TIME_SYNC_INTERVAL_MS = 5000;
         const POINTER_DURATION_MS = 15000;
-        const POINTER_DEBOUNCE_MS = 500;
+        const POINTER_THROTTLE_MS = 500;
 
         // --- CORE ---
         let scene, camera, renderer, clock;
@@ -391,7 +398,15 @@
                 start: { x: target.start.x, y: target.start.y, z: target.start.z },
                 end: { x: target.end.x, y: target.end.y, z: target.end.z },
             }, { source: 'game' });
-        }, POINTER_DEBOUNCE_MS);
+        }, POINTER_THROTTLE_MS);
+        let controlsVisible = true;
+        const controlsHeaderEl = document.getElementById('controls-header');
+        const controlsBodyEl = document.getElementById('controls-body');
+        const toggleControls = throttle(() => {
+            controlsVisible = !controlsVisible;
+            controlsBodyEl.style.display = controlsVisible ? 'block' : 'none';
+            controlsHeaderEl.innerHTML = controlsVisible ? '<b>Controls:</b>' : '<b>Controls:</b> Tab to open';
+        }, 50);
 
         function init() {
             scene = new THREE.Scene();
@@ -451,8 +466,8 @@
             initialFacing = {
                 axis: Math.abs(forward.x) > Math.abs(forward.z) ? 'x' : 'z',
                 sign: (Math.abs(forward.x) > Math.abs(forward.z) ? forward.x : forward.z) >= 0 ? 1 : -1,
-                originX: Math.round(player.position.x / BLOCK_SIZE),
-                originZ: Math.round(player.position.z / BLOCK_SIZE),
+                originX: Math.round(player.position.x / config.blockSize),
+                originZ: Math.round(player.position.z / config.blockSize),
             };
             updateCity();
 
@@ -472,6 +487,10 @@
                 }
                 if (e.code === 'KeyF' && !inLobby && !chatOpen && document.activeElement !== chatInputEl) {
                     requestPointer();
+                }
+                if (e.code === 'Tab') {
+                    e.preventDefault();
+                    toggleControls();
                 }
                 if (e.code === 'Escape' && winModalEl.style.display === 'flex') {
                     winModalEl.style.display = 'none';
@@ -903,8 +922,8 @@
               h = Math.max(py + typicalMegaHeight, typicalMegaHeight);
             }
 
-            const w = (30) * SCALE_FACTOR;
-            const d = (30) * SCALE_FACTOR;
+            const w = config.buildingWidth;
+            const d = config.buildingDepth;
             const hue = 0.58 + (Math.abs(rand(seed + 5)) * 0.08);
             const megaVariantAllowed = !game.freePlay;
             const isMegaStandard = isMega && (!megaVariantAllowed || h < 5000);
@@ -942,13 +961,13 @@
                 group.add(light);
             }
 
-            group.position.set(gx * BLOCK_SIZE, 0, gz * BLOCK_SIZE);
+            group.position.set(gx * config.blockSize, 0, gz * config.blockSize);
             scene.add(group);
 
             // Mathematical Box3 is more reliable than setFromObject on uninitialized objects
             const box = new THREE.Box3(
-                new THREE.Vector3(gx * BLOCK_SIZE - w/2, 0, gz * BLOCK_SIZE - d/2),
-                new THREE.Vector3(gx * BLOCK_SIZE + w/2, h, gz * BLOCK_SIZE + d/2)
+                new THREE.Vector3(gx * config.blockSize - w/2, 0, gz * config.blockSize - d/2),
+                new THREE.Vector3(gx * config.blockSize + w/2, h, gz * config.blockSize + d/2)
             );
 
             const type = isMega ? (isHoney ? 'mega_honey' : (isShock ? 'mega_shock' : (isTricky ? 'mega_tricky' : 'mega'))) : 'standard';
@@ -1070,8 +1089,8 @@
         };
 
         function updateCity() {
-            const px = Math.round(player.position.x / BLOCK_SIZE);
-            const pz = Math.round(player.position.z / BLOCK_SIZE);
+            const px = Math.round(player.position.x / config.blockSize);
+            const pz = Math.round(player.position.z / config.blockSize);
             const py = Math.round(player.position.y);
 
             for (let x = px - RENDER_DISTANCE; x <= px + RENDER_DISTANCE; x++) {
@@ -1661,10 +1680,10 @@
                     remote.userData.orb.position.set(0, 0, 0);
                 }
                 if (remote.userData.beam) {
-                    const localChunkX = Math.round(player.position.x / BLOCK_SIZE);
-                    const localChunkZ = Math.round(player.position.z / BLOCK_SIZE);
-                    const remoteChunkX = Math.round(remote.position.x / BLOCK_SIZE);
-                    const remoteChunkZ = Math.round(remote.position.z / BLOCK_SIZE);
+                    const localChunkX = Math.round(player.position.x / config.blockSize);
+                    const localChunkZ = Math.round(player.position.z / config.blockSize);
+                    const remoteChunkX = Math.round(remote.position.x / config.blockSize);
+                    const remoteChunkZ = Math.round(remote.position.z / config.blockSize);
                     const chunkDist = Math.hypot(localChunkX - remoteChunkX, localChunkZ - remoteChunkZ);
                     if (chunkDist <= 1) {
                         remote.userData.beam.visible = false;
@@ -1903,12 +1922,12 @@
             }
             const px = player.position.x;
             const pz = player.position.z;
-            const baseX = initialFacing.originX * BLOCK_SIZE;
-            const baseZ = initialFacing.originZ * BLOCK_SIZE;
+            const baseX = initialFacing.originX * config.blockSize;
+            const baseZ = initialFacing.originZ * config.blockSize;
             const wallHeight = 30000;
             const wallThickness = 2;
-            const span = (RENDER_DISTANCE * 2 + 2) * BLOCK_SIZE;
-            const far = (RENDER_DISTANCE + 1) * BLOCK_SIZE;
+            const span = (RENDER_DISTANCE * 2 + 2) * config.blockSize;
+            const far = (RENDER_DISTANCE + 1) * config.blockSize;
             let leftPos, rightPos, backPos, leftSize, rightSize, backSize;
             if (initialFacing.axis === 'x') {
                 leftPos = new THREE.Vector3(px, wallHeight * 0.5, baseZ - far);
@@ -1969,8 +1988,8 @@
 
         function enforceCorridor() {
             if (game.freePlay || !initialFacing) return;
-            const cx = Math.round(player.position.x / BLOCK_SIZE);
-            const cz = Math.round(player.position.z / BLOCK_SIZE);
+            const cx = Math.round(player.position.x / config.blockSize);
+            const cz = Math.round(player.position.z / config.blockSize);
             if (isChunkAllowed(cx, cz)) return;
             resetPlayerToSpawn();
             addChatMessage('System', `${displayNameForPeer(peerId)} left the city and died instantly.`);
