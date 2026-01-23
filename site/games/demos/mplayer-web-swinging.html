@@ -178,6 +178,7 @@
             Reel (Locked @ 2000m)<br>
             Bounce (Locked @ 10000m)
         </div>
+        <div class="stat" id="save-tokens">Save Tokens: None</div>
         <div class="stat" id="win-msg">Win at 20000m</div>
         <div class="stat" id="speed">Speed: 0 km/h</div>
         <div class="stat" id="height">Height: 0 m</div>
@@ -219,6 +220,7 @@
         const MAX_JUMP_CHARGE_TIME = 2.5;
         const MOUSE_SENSITIVITY = 0.0025;
         const MAX_AIM_DISTANCE = 300;
+        const MAX_WEB_ATTACH_LEN = 1300;
         const SWING_CONTROL = 12.0;
         const SWING_SPEED_THRESHOLD = 18;
         const SWING_MIN_DURATION_MS = 300;
@@ -430,6 +432,7 @@
                 chunkHeights.set(key, height);
             });
             updateUnlocksFromGame();
+            updateSaveTokenDisplay();
 
             // Safe Spawn: Intersection of roads (0,0) is skipped in updateCity for building generation
             player.position.set(0, 5, 0);
@@ -1215,6 +1218,7 @@
                 webObj.targetPeerId = targetPeerId;
                 webObj.targetType = targetType;
                 webObj.targetKey = targetKey;
+                addChatMessage('System', `Tether length: ${Math.round(webObj.length)}m`);
                 isClimbing = false;
                 if (isGrounded) {
                     playerVelocity.add(dir.multiplyScalar(35));
@@ -1266,6 +1270,7 @@
                 }
             });
             if (closestPeer) {
+                if (!game.freePlay && closestDist > MAX_WEB_ATTACH_LEN) return;
                 const handler = webTargetHandlers.player;
                 if (handler) handler(webObj, dir, closestPeer);
                 return;
@@ -1281,6 +1286,8 @@
             const intersects = raycaster.intersectObjects(targets);
             if (intersects.length > 0) {
                 const hit = intersects[0];
+                const dist = player.position.distanceTo(hit.point);
+                if (!game.freePlay && dist > MAX_WEB_ATTACH_LEN) return;
                 const data = targetMeshes.get(hit.object);
                 const type = data?.type || 'standard';
                 const handler = webTargetHandlers[type] || webTargetHandlers.standard;
@@ -2027,6 +2034,7 @@
             if (Array.isArray(saveTokens)) {
                 game.saveTokens = saveTokens;
             }
+            updateSaveTokenDisplay();
         }
 
         function checkSaveTokens() {
@@ -2116,6 +2124,21 @@
             const bounce = unlocks.has('bounce') ? 'Unlocked' : 'Locked';
             const climb = unlocks.has('climb') ? 'Unlocked' : 'Locked';
             document.getElementById('unlocks').innerHTML = `Unlocks:<br>Reel (${reel})<br>Bounce (${bounce})<br>Climb (${climb})`;
+        }
+
+        function updateSaveTokenDisplay() {
+            const el = document.getElementById('save-tokens');
+            if (!el) return;
+            const earned = Array.isArray(game.earnedSaveHeights)
+                ? [...game.earnedSaveHeights].filter((h) => Number.isFinite(h)).sort((a, b) => a - b)
+                : [];
+            if (!earned.length) {
+                el.innerText = 'Save Tokens: None';
+                return;
+            }
+            const available = new Set((game.saveTokens || []).map((token) => Number(token?.minHeight)));
+            const lines = earned.map((height) => `${height}m - ${available.has(height) ? 'Ready' : 'Used'}`);
+            el.innerHTML = `Save Tokens:<br>${lines.join('<br>')}`;
         }
 
         function throttle(fn, waitMs) {
@@ -2242,6 +2265,13 @@
             stuckUntilMs = 0;
             stuckNormal.set(0, 0, 0);
             stuckPosition.copy(spawn);
+            if (initialFacing) {
+                const dir = initialFacing.axis === 'x'
+                    ? new THREE.Vector3(initialFacing.sign, 0, 0)
+                    : new THREE.Vector3(0, 0, initialFacing.sign);
+                player.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.normalize());
+                pitch = 0;
+            }
             [webL, webR].forEach((web) => {
                 web.active = false;
                 web.line.visible = false;
@@ -2356,7 +2386,7 @@
             return Array.isArray(game.earnedSaveHeights) && game.earnedSaveHeights.includes(height);
         }
 
-        [3000, 6000, 9000].forEach((height) => {
+        [5000, 10000, 15000].forEach((height) => {
             eventBus.on(`height.${height}`, () => {
                 if (!isHost()) return;
                 if (hasEarnedSaveHeight(height)) return;
@@ -2437,6 +2467,7 @@
                 applySaveState(payload.saveKey || game.saveKey, payload.spawnPos || game.spawnPos, payload.saveTokens || game.saveTokens);
                 if (Array.isArray(payload.earnedSaveHeights)) {
                     game.earnedSaveHeights = payload.earnedSaveHeights;
+                    updateSaveTokenDisplay();
                 }
             }
             if (typeof payload.trickyOwnerSlot === 'number') {
@@ -2733,6 +2764,7 @@
             if (intersects.length > 0) {
                 const hit = intersects[0];
                 const dist = player.position.distanceTo(hit.point);
+                const canAttach = game.freePlay || dist <= MAX_WEB_ATTACH_LEN;
 
                 webReticle.position.copy(hit.point).add(hit.face.normal.clone().multiplyScalar(0.5));
                 webReticle.lookAt(hit.point.clone().add(hit.face.normal));
@@ -2741,7 +2773,7 @@
                 const scaleFactor = dist * 0.0125; 
                 webReticle.scale.set(scaleFactor, scaleFactor, 1);
 
-                webReticle.material.color.set(dist > 5 ? 0x00ffff : 0xff3300);
+                webReticle.material.color.set(canAttach ? 0x00ffff : 0xff3300);
                 webReticle.visible = true;
                 const beamDir = hit.point.clone().sub(origin).normalize();
                 const beamLen = origin.distanceTo(hit.point);
@@ -2749,6 +2781,8 @@
                 laserBeam.scale.set(1, beamLen, 1);
                 laserBeam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), beamDir);
                 laserDot.position.copy(hit.point);
+                laserBeam.material.color.set(canAttach ? 0xff4fa3 : 0xff2d2d);
+                laserDot.material.color.set(canAttach ? 0xff4fa3 : 0xff2d2d);
             } else {
                 webReticle.visible = false;
                 const end = origin.clone().add(dir.clone().multiplyScalar(MAX_AIM_DISTANCE));
@@ -2756,6 +2790,8 @@
                 laserBeam.scale.set(1, MAX_AIM_DISTANCE, 1);
                 laserBeam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
                 laserDot.position.copy(end);
+                laserBeam.material.color.set(0xff2d2d);
+                laserDot.material.color.set(0xff2d2d);
             }
 
             laserBeam.visible = true;
