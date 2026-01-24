@@ -183,6 +183,26 @@
     }
   }
 
+  class EntityManager {
+    constructor(){
+      this.entities = [];
+    }
+    add(entity){
+      this.entities.push(entity);
+    }
+    remove(entity){
+      const idx = this.entities.indexOf(entity);
+      if (idx >= 0) this.entities.splice(idx, 1);
+    }
+    forEachComponent(kind, fn){
+      for (const e of this.entities) {
+        for (const c of e.components) {
+          if (c.kind === kind) fn(c, e);
+        }
+      }
+    }
+  }
+
   // -----------------------------
   // Physics v1
   // -----------------------------
@@ -461,7 +481,7 @@
   // -----------------------------
   // Scene setup
   // -----------------------------
-  const entities = [];
+  const entityManager = new EntityManager();
   const bodies = [];
   const ropes = [];
   const threeDrawables = [];
@@ -498,6 +518,9 @@
       threeDrawables.push(new ThreeDrawable({ binding, object3d: mesh }));
       return { kind: 'visual', binding, object3d: mesh };
     }
+    if (def.kind === 'physics') {
+      return { kind: 'physics', update: def.update ?? null };
+    }
     if (def.kind === 'behavior') {
       return { kind: 'behavior', update: def.update ?? null };
     }
@@ -514,7 +537,7 @@
           const component = instantiateComponent(resolved, entity);
           if (component) entity.addComponent(component);
         }
-        entities.push(entity);
+        entityManager.add(entity);
         return entity;
       }
     };
@@ -525,18 +548,59 @@
     return collider ? collider.body : null;
   }
 
+  const defaultPhysicsComponent = (opts)=>({
+    kind:'physics',
+    update: (body) => {
+      if (Number.isFinite(opts?.linearDampPerSec)) body.linearDampPerSec = opts.linearDampPerSec;
+      if (Number.isFinite(opts?.maxSpeed)) body.maxSpeed = opts.maxSpeed;
+    }
+  });
+
   const boxFactory = createEntityFactory([
     (opts)=>({ kind:'collider', body:{ type: opts.type ?? 'static', mass: opts.mass ?? 1, shape:'box', halfExtents: opts.halfExtents } }),
+    (opts)=>defaultPhysicsComponent(opts),
     (opts)=>({ kind:'visual', shape:'box', localPos:[0,0,0], localScale: opts.halfExtents, material: opts.material ?? ((opts.type ?? 'static') === 'static' ? matStatic : matDynamic) })
   ]);
 
   const sphereFactory = createEntityFactory([
     (opts)=>({ kind:'collider', body:{ type: opts.type ?? 'static', mass: opts.mass ?? 1, shape:'sphere', radius: opts.radius } }),
+    (opts)=>defaultPhysicsComponent(opts),
     (opts)=>({ kind:'visual', shape:'sphere', localPos:[0,0,0], localScale: [opts.radius, opts.radius, opts.radius], material: opts.material ?? matDynamic })
   ]);
 
   const playerFactory = createEntityFactory([
     (opts)=>({ kind:'collider', body:{ type:'dynamic', mass: opts.mass ?? 1, shape:'box', halfExtents: opts.halfExtents } }),
+    () => ({
+      kind:'physics',
+      update: (body, dt) => {
+        // input accel
+        const f = cameraForward();
+        const r = cameraRight();
+        // movement on XZ plane
+        const fXZ = v3.norm([f[0], 0, f[2]]);
+        const rXZ = v3.norm([r[0], 0, r[2]]);
+
+        let wish = [0,0,0];
+        if (keys.has('KeyW')) wish = v3.add(wish, fXZ);
+        if (keys.has('KeyS')) wish = v3.sub(wish, fXZ);
+        if (keys.has('KeyD')) wish = v3.add(wish, rXZ);
+        if (keys.has('KeyA')) wish = v3.sub(wish, rXZ);
+        wish = v3.norm(wish);
+
+        const airControl = playerGrounded ? 1.0 : 0.35;
+        const accel = playerGrounded ? moveParams.accelGround : moveParams.accelAir;
+
+        // apply acceleration in wish dir
+        body.v = v3.add(body.v, v3.scale(wish, accel * airControl * dt));
+
+        // update damping and speed cap based on state
+        const hasWeb = !!player.webLeft || !!player.webRight;
+        body.linearDampPerSec = playerGrounded
+          ? moveParams.groundDampPerSec
+          : (hasWeb ? moveParams.aerialWebDampPerSec : moveParams.airDampPerSec);
+        body.maxSpeed = moveParams.maxSpeed;
+      }
+    }),
     (opts)=>({ kind:'visual', shape:'box', localPos:[0, 0, 0], localScale:[opts.halfExtents[0]*1.05, opts.halfExtents[1]*0.78, opts.halfExtents[2]*1.05], material: matPlayer, mode:'smooth', smoothHz:22 }),
     (opts)=>({ kind:'visual', shape:'box', localPos:[0, opts.halfExtents[1]*0.75, 0], localScale:[opts.halfExtents[0]*1.05, opts.halfExtents[0]*1.05, opts.halfExtents[2]*1.05], material: matPlayer, mode:'smooth', smoothHz:22 }),
     (opts)=>({ kind:'visual', shape:'box', localPos:[0, -opts.halfExtents[1]*0.75, 0], localScale:[opts.halfExtents[0]*1.05, opts.halfExtents[0]*1.05, opts.halfExtents[2]*1.05], material: matPlayer, mode:'smooth', smoothHz:22 })
@@ -780,33 +844,19 @@
     for (const b of bodies){
       if (b.type !== 'dynamic') continue;
 
-      if (b.isPlayer) {
-        // input accel
-        const f = cameraForward();
-        const r = cameraRight();
-        // movement on XZ plane
-        const fXZ = v3.norm([f[0], 0, f[2]]);
-        const rXZ = v3.norm([r[0], 0, r[2]]);
-
-        let wish = [0,0,0];
-        if (keys.has('KeyW')) wish = v3.add(wish, fXZ);
-        if (keys.has('KeyS')) wish = v3.sub(wish, fXZ);
-        if (keys.has('KeyD')) wish = v3.add(wish, rXZ);
-        if (keys.has('KeyA')) wish = v3.sub(wish, rXZ);
-        wish = v3.norm(wish);
-
-        const airControl = playerGrounded ? 1.0 : 0.35;
-        const accel = playerGrounded ? moveParams.accelGround : moveParams.accelAir;
-
-        // apply acceleration in wish dir
-        b.v = v3.add(b.v, v3.scale(wish, accel * airControl * dt));
+      if (b.entity) {
+        for (const c of b.entity.components) {
+          if (c.kind === 'physics' && typeof c.update === 'function') {
+            c.update(b, dt);
+          }
+        }
       }
 
       // gravity
       b.v = v3.add(b.v, v3.scale(gravity, dt));
 
       // optional horizontal speed cap
-      const maxSpeed = b.isPlayer ? moveParams.maxSpeed : b.maxSpeed;
+      const maxSpeed = b.maxSpeed;
       if (Number.isFinite(maxSpeed)) {
         const hv = [b.v[0], 0, b.v[2]];
         const hlen = v3.len(hv);
@@ -818,13 +868,7 @@
       }
 
       // basic damping (time-based)
-      let dampRate = b.linearDampPerSec;
-      if (b.isPlayer) {
-        const hasWeb = !!player.webLeft || !!player.webRight;
-        dampRate = playerGrounded
-          ? moveParams.groundDampPerSec
-          : (hasWeb ? moveParams.aerialWebDampPerSec : moveParams.airDampPerSec);
-      }
+      const dampRate = b.linearDampPerSec;
       const damp = Math.exp(-Math.max(0, dampRate) * dt);
       b.v[0] *= damp;
       b.v[2] *= damp;
@@ -909,13 +953,9 @@
   }
 
   function updateBehaviors(dt){
-    for (const e of entities) {
-      for (const c of e.components) {
-        if (c.kind === 'behavior' && typeof c.update === 'function') {
-          c.update(e, dt);
-        }
-      }
-    }
+    entityManager.forEachComponent('behavior', (c, e)=>{
+      if (typeof c.update === 'function') c.update(e, dt);
+    });
   }
 
   function stepPhysics(dt){
