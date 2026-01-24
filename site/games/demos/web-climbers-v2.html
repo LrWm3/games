@@ -437,12 +437,18 @@
   player.v = [0, 0, 0];
   player.isPlayer = true;
   player.restitution = 0.0;
+  player.state = 'aerial';
+  player.webLeft = null;
+  player.webRight = null;
   bodies.push(player);
 
   // Ground
   const ground = new Body({ type:'static', shape:'box', halfExtents:[40, 1, 40] });
   ground.x = [0, -1, 0];
   bodies.push(ground);
+  const ceiling = new Body({ type:'static', shape:'box', halfExtents:[40, 1, 40] });
+  ceiling.x = [0, 49, 0];
+  bodies.push(ceiling);
 
   // Some static boxes to swing from
   function addBox(pos, he){
@@ -706,8 +712,8 @@
     const t = clamp(jumpChargeT / jumpChargeMax, 0, 1);
     // feels better with curve
     const curve = t*t*(3-2*t);
-    const minJ = 6.0;
-    const maxJ = 12.5;
+    const minJ = 8.0;
+    const maxJ = 24.0;
     const jv = minJ + (maxJ-minJ)*curve;
     player.v[1] = jv;
   }
@@ -719,7 +725,10 @@
   const moveParams = {
     accelGround: 128.0,
     accelAir: 18.0,
-    maxSpeed: Infinity
+    maxSpeed: Infinity,
+    groundDampPerSec: 7.66,
+    airDampPerSec: 0.50,
+    aerialWebDampPerSec: 0.0
   };
 
   function integrateDynamics(dt){
@@ -759,8 +768,12 @@
       }
     }
 
-    // basic damping
-    const damp = playerGrounded ? 0.88 : 0.985;
+    // basic damping (time-based)
+    const hasWeb = !!player.webLeft || !!player.webRight;
+    const dampRate = playerGrounded
+      ? moveParams.groundDampPerSec
+      : (hasWeb ? moveParams.aerialWebDampPerSec : moveParams.airDampPerSec);
+    const damp = Math.exp(-Math.max(0, dampRate) * dt);
     player.v[0] *= damp;
     player.v[2] *= damp;
 
@@ -829,6 +842,9 @@
         solveContact(A,B,c);
       }
     }
+    player.state = playerGrounded
+      ? 'ground'
+      : ((player.webLeft || player.webRight) ? 'aerialWeb' : 'aerial');
   }
 
   function solveRopes(dt){
@@ -875,9 +891,11 @@
       if (!leftRope) {
         const hit = raycast(origin, f, maxDist, bodies, player);
         if (hit) leftRope = makeRopeToHit(hit);
+        player.webLeft = leftRope;
       }
     } else {
       if (leftRope) { releaseRope(leftRope); leftRope = null; }
+      player.webLeft = null;
     }
 
     // Right
@@ -885,9 +903,11 @@
       if (!rightRope) {
         const hit = raycast(origin, f, maxDist, bodies, player);
         if (hit) rightRope = makeRopeToHit(hit);
+        player.webRight = rightRope;
       }
     } else {
       if (rightRope) { releaseRope(rightRope); rightRope = null; }
+      player.webRight = null;
     }
   }
 
