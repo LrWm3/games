@@ -162,7 +162,7 @@
   // Physics v1
   // -----------------------------
   class Body {
-    constructor({ type='dynamic', mass=1, shape='box', halfExtents=[.5,.5,.5], radius=.5, kinematicPoseFn=null }){
+    constructor({ type='dynamic', mass=1, shape='box', halfExtents=[.5,.5,.5], radius=.5, kinematicPoseFn=null, linearDampPerSec=0, maxSpeed=Infinity }){
       this.type = type; // dynamic | kinematic | static
       this.mass = mass;
       this.invMass = (type === 'dynamic' && mass > 0) ? 1/mass : 0;
@@ -170,6 +170,8 @@
       this.halfExtents = halfExtents;
       this.radius = radius;
       this.kinematicPoseFn = kinematicPoseFn;
+      this.linearDampPerSec = linearDampPerSec;
+      this.maxSpeed = maxSpeed;
 
       this.x = [0,0,0];
       this.v = [0,0,0];
@@ -451,14 +453,14 @@
   bodies.push(ceiling);
 
   // Some static boxes to swing from
-  function addBox(pos, he){
-    const b = new Body({ type:'static', shape:'box', halfExtents:he });
+  function addBox(pos, he, type='static', mass=1){
+    const b = new Body({ type, shape:'box', halfExtents:he, mass });
     b.x = [...pos];
     bodies.push(b);
     return b;
   }
-  function addSphere(pos, r){
-    const s = new Body({ type:'static', shape:'sphere', radius:r });
+  function addSphere(pos, r, type='static', mass=1){
+    const s = new Body({ type, shape:'sphere', radius:r, mass });
     s.x = [...pos];
     bodies.push(s);
     return s;
@@ -473,6 +475,16 @@
 
   addSphere([3, 6, -10], 1.2);
   addSphere([-4, 7.5, -16], 1.6);
+
+  // Dynamic spheres to test gravity + tethering
+  addSphere([2, 12, -6], 0.9, 'dynamic', 1);
+  addSphere([5, 12, -6], 0.9, 'dynamic', 2);
+  addSphere([8, 12, -6], 0.9, 'dynamic', 10);
+
+  // Dynamic boxes to test gravity + tethering
+  addBox([2, 12, -10], [0.6, 0.6, 0.6], 'dynamic', 1);
+  addBox([5, 12, -10], [0.6, 0.6, 0.6], 'dynamic', 2);
+  addBox([8, 12, -10], [0.6, 0.6, 0.6], 'dynamic', 10);
 
   // -----------------------------
   // Visuals (separate from physics bodies)
@@ -731,58 +743,66 @@
     aerialWebDampPerSec: 0.0
   };
 
-  function integrateDynamics(dt){
-    // player only (v1)
-    // input accel
-    const f = cameraForward();
-    const r = cameraRight();
-    // movement on XZ plane
-    const fXZ = v3.norm([f[0], 0, f[2]]);
-    const rXZ = v3.norm([r[0], 0, r[2]]);
+  function integrateBodies(dt){
+    for (const b of bodies){
+      if (b.type !== 'dynamic') continue;
 
-    let wish = [0,0,0];
-    if (keys.has('KeyW')) wish = v3.add(wish, fXZ);
-    if (keys.has('KeyS')) wish = v3.sub(wish, fXZ);
-    if (keys.has('KeyD')) wish = v3.add(wish, rXZ);
-    if (keys.has('KeyA')) wish = v3.sub(wish, rXZ);
-    wish = v3.norm(wish);
+      if (b.isPlayer) {
+        // input accel
+        const f = cameraForward();
+        const r = cameraRight();
+        // movement on XZ plane
+        const fXZ = v3.norm([f[0], 0, f[2]]);
+        const rXZ = v3.norm([r[0], 0, r[2]]);
 
-    const airControl = playerGrounded ? 1.0 : 0.35;
-    const accel = playerGrounded ? moveParams.accelGround : moveParams.accelAir;
+        let wish = [0,0,0];
+        if (keys.has('KeyW')) wish = v3.add(wish, fXZ);
+        if (keys.has('KeyS')) wish = v3.sub(wish, fXZ);
+        if (keys.has('KeyD')) wish = v3.add(wish, rXZ);
+        if (keys.has('KeyA')) wish = v3.sub(wish, rXZ);
+        wish = v3.norm(wish);
 
-    // apply acceleration in wish dir
-    player.v = v3.add(player.v, v3.scale(wish, accel * airControl * dt));
+        const airControl = playerGrounded ? 1.0 : 0.35;
+        const accel = playerGrounded ? moveParams.accelGround : moveParams.accelAir;
 
-    // gravity
-    player.v = v3.add(player.v, v3.scale(gravity, dt));
-
-    // optional horizontal speed cap
-    const maxSpeed = moveParams.maxSpeed;
-    if (Number.isFinite(maxSpeed)) {
-      const hv = [player.v[0], 0, player.v[2]];
-      const hlen = v3.len(hv);
-      if (hlen > maxSpeed) {
-        const hcap = v3.scale(hv, maxSpeed / hlen);
-        player.v[0] = hcap[0];
-        player.v[2] = hcap[2];
+        // apply acceleration in wish dir
+        b.v = v3.add(b.v, v3.scale(wish, accel * airControl * dt));
       }
-    }
 
-    // basic damping (time-based)
-    const hasWeb = !!player.webLeft || !!player.webRight;
-    const dampRate = playerGrounded
-      ? moveParams.groundDampPerSec
-      : (hasWeb ? moveParams.aerialWebDampPerSec : moveParams.airDampPerSec);
-    const damp = Math.exp(-Math.max(0, dampRate) * dt);
-    player.v[0] *= damp;
-    player.v[2] *= damp;
+      // gravity
+      b.v = v3.add(b.v, v3.scale(gravity, dt));
 
-    // integrate position (predicted)
-    player.xPrev = [...player.x];
-    player.x = v3.add(player.xPrev, v3.scale(player.v, dt));
-    if (!isFiniteVec3(player.x) || !isFiniteVec3(player.v)) {
-      player.x = [0, 2.0, 0];
-      player.v = [0, 0, 0];
+      // optional horizontal speed cap
+      const maxSpeed = b.isPlayer ? moveParams.maxSpeed : b.maxSpeed;
+      if (Number.isFinite(maxSpeed)) {
+        const hv = [b.v[0], 0, b.v[2]];
+        const hlen = v3.len(hv);
+        if (hlen > maxSpeed) {
+          const hcap = v3.scale(hv, maxSpeed / hlen);
+          b.v[0] = hcap[0];
+          b.v[2] = hcap[2];
+        }
+      }
+
+      // basic damping (time-based)
+      let dampRate = b.linearDampPerSec;
+      if (b.isPlayer) {
+        const hasWeb = !!player.webLeft || !!player.webRight;
+        dampRate = playerGrounded
+          ? moveParams.groundDampPerSec
+          : (hasWeb ? moveParams.aerialWebDampPerSec : moveParams.airDampPerSec);
+      }
+      const damp = Math.exp(-Math.max(0, dampRate) * dt);
+      b.v[0] *= damp;
+      b.v[2] *= damp;
+
+      // integrate position (predicted)
+      b.xPrev = [...b.x];
+      b.x = v3.add(b.xPrev, v3.scale(b.v, dt));
+      if (!isFiniteVec3(b.x) || !isFiniteVec3(b.v)) {
+        b.x = [0, 2.0, 0];
+        b.v = [0, 0, 0];
+      }
     }
   }
 
@@ -864,7 +884,7 @@
       if (jumpCharging) jumpChargeT = Math.min(jumpChargeMax, jumpChargeT + h);
 
       // integrate
-      integrateDynamics(h);
+      integrateBodies(h);
 
       // iterative solve
       const iters = 10;
