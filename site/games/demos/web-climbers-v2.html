@@ -274,6 +274,53 @@
   }
 
   // -----------------------------
+  // Render bindings (Body -> Visual)
+  // -----------------------------
+  class VisualBinding {
+    constructor({
+      body,
+      localPos=[0,0,0],
+      localScale=[1,1,1],
+      mode='direct', // 'direct' | 'smooth'
+      smoothHz=18,
+    }){
+      this.body = body;
+      this.localPos = localPos;
+      this.localScale = localScale;
+      this.mode = mode;
+      this.smoothHz = smoothHz;
+
+      // render state
+      this.renderPos = body ? v3.add(body.x, localPos) : [...localPos];
+    }
+
+    update(dt){
+      const target = v3.add(this.body.x, this.localPos);
+      if (this.mode === 'direct') {
+        this.renderPos = target;
+        return;
+      }
+      // exponential smoothing
+      const a = 1 - Math.exp(-this.smoothHz * dt);
+      this.renderPos = v3.add(this.renderPos, v3.scale(v3.sub(target, this.renderPos), a));
+    }
+  }
+
+  class Drawable {
+    constructor({ binding, color=[1,1,1,1] }){
+      this.binding = binding;
+      this.color = color;
+    }
+    draw(P, V){
+      const p = this.binding.renderPos;
+      const s = this.binding.localScale;
+      const M = m4.mul(m4.translate(p), m4.scale(s));
+      const MVP = m4.mul(m4.mul(P, V), M);
+      drawCube(MVP, this.color);
+    }
+  }
+
+  // -----------------------------
   // Physics v1
   // -----------------------------
   class Body {
@@ -582,6 +629,79 @@
 
   addSphere([3, 6, -10], 1.2);
   addSphere([-4, 7.5, -16], 1.6);
+
+  // -----------------------------
+  // Visuals (separate from physics bodies)
+  // -----------------------------
+  const drawables = [];
+
+  // World visuals (static + dynamic boxes/spheres)
+  for (const b of bodies) {
+    if (b.isPlayer) continue;
+
+    let binding, color;
+
+    if (b.shape === 'box') {
+      binding = new VisualBinding({
+        body: b,
+        localPos: [0,0,0],
+        localScale: [b.halfExtents[0], b.halfExtents[1], b.halfExtents[2]],
+        mode: 'direct'
+      });
+      color = (b.type==='static') ? [0.25,0.55,0.95,1] : [0.85,0.55,0.25,1];
+    } else {
+      // sphere rendered as cube scaled to radius (cheap placeholder)
+      binding = new VisualBinding({
+        body: b,
+        localPos: [0,0,0],
+        localScale: [b.radius, b.radius, b.radius],
+        mode: 'direct'
+      });
+      color = [0.20,0.78,0.65,1];
+    }
+
+    drawables.push(new Drawable({ binding, color }));
+  }
+
+  // Player visuals: 3-cube "pill-ish" mesh bound to player body
+  const pillColor = [0.95,0.95,0.98,1];
+  const he = player.halfExtents;
+
+  // center segment
+  drawables.push(new Drawable({
+    binding: new VisualBinding({
+      body: player,
+      localPos: [0, 0, 0],
+      localScale: [he[0]*1.05, he[1]*0.78, he[2]*1.05],
+      mode: 'smooth',
+      smoothHz: 22
+    }),
+    color: pillColor
+  }));
+
+  // top cap
+  drawables.push(new Drawable({
+    binding: new VisualBinding({
+      body: player,
+      localPos: [0, he[1]*0.75, 0],
+      localScale: [he[0]*1.05, he[0]*1.05, he[2]*1.05],
+      mode: 'smooth',
+      smoothHz: 22
+    }),
+    color: pillColor
+  }));
+
+  // bottom cap
+  drawables.push(new Drawable({
+    binding: new VisualBinding({
+      body: player,
+      localPos: [0, -he[1]*0.75, 0],
+      localScale: [he[0]*1.05, he[0]*1.05, he[2]*1.05],
+      mode: 'smooth',
+      smoothHz: 22
+    }),
+    color: pillColor
+  }));
 
   // -----------------------------
   // Input + camera
@@ -894,21 +1014,11 @@
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    // draw bodies
-    for (const b of bodies){
-      let M = m4.translate(b.x);
-      let S;
-      let color;
-      if (b.shape === 'box'){
-        S = m4.scale([b.halfExtents[0], b.halfExtents[1], b.halfExtents[2]]);
-        color = b.isPlayer ? [0.95,0.95,0.98,1] : (b.type==='static' ? [0.25,0.55,0.95,1] : [0.85,0.55,0.25,1]);
-      } else {
-        S = m4.scale([b.radius, b.radius, b.radius]);
-        color = [0.20,0.78,0.65,1];
-      }
-      const MVP = m4.mul(m4.mul(P, V), m4.mul(M, S));
-      drawCube(MVP, color);
-    }
+    // update visual bindings
+    for (const d of drawables) d.binding.update(dt);
+
+    // draw visuals (separate from physics)
+    for (const d of drawables) d.draw(P, V);
 
     // draw aim ray
     const aimDir = cameraForward();
