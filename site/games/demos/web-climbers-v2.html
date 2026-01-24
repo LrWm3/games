@@ -213,6 +213,7 @@
       this.L = maxLength;
       this.compliance = 1e-4; // soft-ish, good for v1
       this.damping = 1.2;
+      this.velDamping = 0.2;
       this.lambda = 0;
       this.active = true;
     }
@@ -231,8 +232,7 @@
       const vA = this.a.worldVel();
       const vB = this.b.worldVel();
       const vn = v3.dot(v3.sub(vB,vA), n);
-      const stretchV = Math.max(0, vn);
-      const biasVel = this.damping * stretchV;
+      const biasVel = this.damping * vn;
 
       const wEff = A.invMass + B.invMass;
       if (wEff < 1e-10) return;
@@ -764,19 +764,46 @@
     player.v[0] *= damp;
     player.v[2] *= damp;
 
-    // integrate position
+    // integrate position (predicted)
     player.xPrev = [...player.x];
-    player.x = v3.add(player.x, v3.scale(player.v, dt));
+    player.x = v3.add(player.xPrev, v3.scale(player.v, dt));
     if (!isFiniteVec3(player.x) || !isFiniteVec3(player.v)) {
       player.x = [0, 2.0, 0];
       player.v = [0, 0, 0];
     }
   }
 
-  function updateVelocities(dt){
-    if (dt <= 0 || !Number.isFinite(dt)) return;
-    // player only
-    player.v = v3.scale(v3.sub(player.x, player.xPrev), 1/dt);
+  function projectRopeVelocities(){
+    for (const r of ropes){
+      if (!r.active) continue;
+      const A = r.a.body, B = r.b.body;
+      const pA = r.a.worldPoint();
+      const pB = r.b.worldPoint();
+      const d = v3.sub(pB, pA);
+      const len = v3.len(d);
+      if (len < 1e-8) continue;
+      const C = len - r.L;
+      if (C <= 0) continue;
+
+      const n = v3.scale(d, 1/len); // A -> B
+      const vA = A.v;
+      const vB = B.v;
+      const vn = v3.dot(v3.sub(vB, vA), n);
+      const wSum = A.invMass + B.invMass;
+      if (wSum > 0) {
+        if (vn > 0) {
+          const j = vn / wSum;
+          if (A.invMass > 0) A.v = v3.add(A.v, v3.scale(n, j * A.invMass));
+          if (B.invMass > 0) B.v = v3.sub(B.v, v3.scale(n, j * B.invMass));
+        }
+        const damp = clamp(r.velDamping, 0, 1);
+        if (damp > 0) {
+          const jD = vn * damp / wSum;
+          if (A.invMass > 0) A.v = v3.add(A.v, v3.scale(n, jD * A.invMass));
+          if (B.invMass > 0) B.v = v3.sub(B.v, v3.scale(n, jD * B.invMass));
+        }
+      }
+    }
   }
 
   function solveCollisions(){
@@ -830,8 +857,8 @@
         solveRopes(h);
       }
 
-      // velocities from correction
-      updateVelocities(h);
+      // remove rope-violating velocity (stabilizes XPBD)
+      projectRopeVelocities();
     }
   }
 
