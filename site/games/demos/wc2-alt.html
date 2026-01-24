@@ -88,52 +88,82 @@
     clamp:(a, lo, hi)=>[Math.max(lo[0],Math.min(hi[0],a[0])),Math.max(lo[1],Math.min(hi[1],a[1])),Math.max(lo[2],Math.min(hi[2],a[2]))],
   };
 
+  const quat = {
+    normalize(q){
+      const l = Math.hypot(q[0], q[1], q[2], q[3]);
+      if (l < 1e-12) return [0,0,0,1];
+      return [q[0]/l, q[1]/l, q[2]/l, q[3]/l];
+    },
+    mul(a,b){
+      const ax=a[0], ay=a[1], az=a[2], aw=a[3];
+      const bx=b[0], by=b[1], bz=b[2], bw=b[3];
+      return [
+        aw*bx + ax*bw + ay*bz - az*by,
+        aw*by - ax*bz + ay*bw + az*bx,
+        aw*bz + ax*by - ay*bx + az*bw,
+        aw*bw - ax*bx - ay*by - az*bz
+      ];
+    },
+    conj(q){ return [-q[0], -q[1], -q[2], q[3]]; },
+    fromEuler(e){
+      const hx = e[0] * 0.5;
+      const hy = e[1] * 0.5;
+      const hz = e[2] * 0.5;
+      const cx = Math.cos(hx), sx = Math.sin(hx);
+      const cy = Math.cos(hy), sy = Math.sin(hy);
+      const cz = Math.cos(hz), sz = Math.sin(hz);
+      return [
+        sx*cy*cz + cx*sy*sz,
+        cx*sy*cz - sx*cy*sz,
+        cx*cy*sz + sx*sy*cz,
+        cx*cy*cz - sx*sy*sz
+      ];
+    },
+    toEuler(q){
+      const x=q[0], y=q[1], z=q[2], w=q[3];
+      const sinr = 2 * (w*x + y*z);
+      const cosr = 1 - 2 * (x*x + y*y);
+      const roll = Math.atan2(sinr, cosr);
+
+      const sinp = 2 * (w*y - z*x);
+      const pitch = Math.abs(sinp) >= 1 ? Math.sign(sinp) * Math.PI/2 : Math.asin(sinp);
+
+      const siny = 2 * (w*z + x*y);
+      const cosy = 1 - 2 * (y*y + z*z);
+      const yaw = Math.atan2(siny, cosy);
+      return [roll, pitch, yaw];
+    },
+    rotate(q, v){
+      const qv = [q[0], q[1], q[2]];
+      const t = v3.scale(v3.cross(qv, v), 2);
+      return v3.add(v, v3.add(v3.scale(t, q[3]), v3.cross(qv, t)));
+    },
+    invRotate(q, v){
+      return quat.rotate(quat.conj(q), v);
+    }
+  };
+
   function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
   function isFiniteVec3(v){ return Number.isFinite(v[0]) && Number.isFinite(v[1]) && Number.isFinite(v[2]); }
   function cloneVec3(v){ return [v[0], v[1], v[2]]; }
-  function mat3FromEuler(rot){
-    const x = rot[0], y = rot[1], z = rot[2];
-    const cx = Math.cos(x), sx = Math.sin(x);
-    const cy = Math.cos(y), sy = Math.sin(y);
-    const cz = Math.cos(z), sz = Math.sin(z);
-    // Rz * Ry * Rx (XYZ)
-    return [
-      cy*cz, cz*sy*sx - sz*cx, cz*sy*cx + sz*sx,
-      cy*sz, sz*sy*sx + cz*cx, sz*sy*cx - cz*sx,
-      -sy,   cy*sx,             cy*cx
+  function integrateOrientation(q, w, dt){
+    const dq = quat.mul([w[0], w[1], w[2], 0], q);
+    const nq = [
+      q[0] + 0.5 * dt * dq[0],
+      q[1] + 0.5 * dt * dq[1],
+      q[2] + 0.5 * dt * dq[2],
+      q[3] + 0.5 * dt * dq[3]
     ];
+    return quat.normalize(nq);
   }
-  function mat3MulVec3(m, v){
-    return [
-      m[0]*v[0] + m[1]*v[1] + m[2]*v[2],
-      m[3]*v[0] + m[4]*v[1] + m[5]*v[2],
-      m[6]*v[0] + m[7]*v[1] + m[8]*v[2]
-    ];
-  }
-  function mat3MulVec3T(m, v){
-    return [
-      m[0]*v[0] + m[3]*v[1] + m[6]*v[2],
-      m[1]*v[0] + m[4]*v[1] + m[7]*v[2],
-      m[2]*v[0] + m[5]*v[1] + m[8]*v[2]
-    ];
-  }
-  function boxAxes(body){
-    if (!body.entity) return [[1,0,0],[0,1,0],[0,0,1]];
-    const R = mat3FromEuler(body.entity.rot);
-    return [
-      mat3MulVec3(R, [1,0,0]),
-      mat3MulVec3(R, [0,1,0]),
-      mat3MulVec3(R, [0,0,1])
-    ];
-  }
-  function supportPointBox(center, axes, he, dir){
-    const s0 = v3.dot(dir, axes[0]) >= 0 ? 1 : -1;
-    const s1 = v3.dot(dir, axes[1]) >= 0 ? 1 : -1;
-    const s2 = v3.dot(dir, axes[2]) >= 0 ? 1 : -1;
-    let p = v3.add(center, v3.scale(axes[0], he[0] * s0));
-    p = v3.add(p, v3.scale(axes[1], he[1] * s1));
-    p = v3.add(p, v3.scale(axes[2], he[2] * s2));
-    return p;
+  function angularVelocityFromDelta(qPrev, qNext, dt){
+    if (dt <= 0) return [0,0,0];
+    let dq = quat.mul(qNext, quat.conj(qPrev));
+    if (dq[3] < 0) dq = [-dq[0], -dq[1], -dq[2], -dq[3]];
+    const angle = 2 * Math.acos(clamp(dq[3], -1, 1));
+    const s = Math.sqrt(Math.max(1e-12, 1 - dq[3]*dq[3]));
+    const axis = s < 1e-6 ? [0,0,0] : [dq[0]/s, dq[1]/s, dq[2]/s];
+    return v3.scale(axis, angle / dt);
   }
 
   const canvas = document.getElementById('c');
@@ -191,8 +221,10 @@
     }
 
     update(dt){
-      const target = v3.add(this.entity.pos, this.localPos);
-      const rotTarget = v3.add(this.entity.rot, this.localRot);
+      const qEntity = quat.normalize(quat.fromEuler(this.entity.rot));
+      const qLocal = quat.fromEuler(this.localRot);
+      const target = v3.add(this.entity.pos, quat.rotate(qEntity, this.localPos));
+      const rotTarget = quat.toEuler(quat.mul(qEntity, qLocal));
       if (this.mode === 'direct') {
         this.renderPos = target;
         this.renderRot = rotTarget;
@@ -228,7 +260,6 @@
       this.pos = cloneVec3(pos);
       this.rot = cloneVec3(rot);
       this.prevPos = cloneVec3(pos);
-      this.prevRot = cloneVec3(rot);
       this.components = [];
     }
     addComponent(component){
@@ -261,7 +292,7 @@
   // Physics v1
   // -----------------------------
   class Body {
-    constructor({ type='dynamic', mass=1, shape='box', halfExtents=[.5,.5,.5], radius=.5, kinematicPoseFn=null, linearDampPerSec=0, angularDampPerSec=0, maxSpeed=Infinity, entity=null }){
+    constructor({ type='dynamic', mass=1, shape='box', halfExtents=[.5,.5,.5], radius=.5, kinematicPoseFn=null, linearDampPerSec=0, maxSpeed=Infinity, entity=null }){
       this.type = type; // dynamic | kinematic | static
       this.mass = mass;
       this.invMass = (type === 'dynamic' && mass > 0) ? 1/mass : 0;
@@ -270,14 +301,16 @@
       this.radius = radius;
       this.kinematicPoseFn = kinematicPoseFn;
       this.linearDampPerSec = linearDampPerSec;
-      this.angularDampPerSec = angularDampPerSec;
+      this.angularDampPerSec = 0;
       this.maxSpeed = maxSpeed;
       this.entity = entity;
 
       this._x = [0,0,0];
       this.v = [0,0,0];
-      this.omega = [0,0,0];
-      this.invInertiaLocal = [0,0,0];
+      this.w = [0,0,0];
+      const startRot = entity?.rot ?? [0,0,0];
+      this.q = quat.normalize(quat.fromEuler(startRot));
+      this._qPrev = [...this.q];
 
       // for kinematic velocity estimation
       this._xPrev = [0,0,0];
@@ -287,65 +320,56 @@
       this.friction = 0.0;
 
       this.isPlayer = false;
+      this.lockRotation = false;
 
-      this.computeInertia();
+      if (this.invMass <= 0) {
+        this.invInertiaLocal = [0,0,0];
+      } else if (this.shape === 'sphere') {
+        const r = Math.max(1e-6, this.radius);
+        const invI = 5 / (2 * this.mass * r * r);
+        this.invInertiaLocal = [invI, invI, invI];
+      } else {
+        const hx = this.halfExtents[0];
+        const hy = this.halfExtents[1];
+        const hz = this.halfExtents[2];
+        const x2 = 2 * hx;
+        const y2 = 2 * hy;
+        const z2 = 2 * hz;
+        const ix = (1/12) * this.mass * (y2*y2 + z2*z2);
+        const iy = (1/12) * this.mass * (x2*x2 + z2*z2);
+        const iz = (1/12) * this.mass * (x2*x2 + y2*y2);
+        this.invInertiaLocal = [
+          ix > 0 ? 1/ix : 0,
+          iy > 0 ? 1/iy : 0,
+          iz > 0 ? 1/iz : 0
+        ];
+      }
     }
 
     get x(){ return this.entity ? this.entity.pos : this._x; }
     set x(v){ if (this.entity) this.entity.pos = v; else this._x = v; }
     get xPrev(){ return this.entity ? this.entity.prevPos : this._xPrev; }
     set xPrev(v){ if (this.entity) this.entity.prevPos = v; else this._xPrev = v; }
+    get qPrev(){ return this._qPrev; }
+    set qPrev(v){ this._qPrev = v; }
 
-    computeInertia(){
-      if (this.type !== 'dynamic' || this.mass <= 0) {
-        this.invInertiaLocal = [0,0,0];
-        return;
-      }
-      if (this.shape === 'sphere') {
-        const I = (2/5) * this.mass * this.radius * this.radius;
-        const invI = I > 0 ? 1 / I : 0;
-        this.invInertiaLocal = [invI, invI, invI];
-        return;
-      }
-      const x = this.halfExtents[0] * 2;
-      const y = this.halfExtents[1] * 2;
-      const z = this.halfExtents[2] * 2;
-      const Ixx = (1/12) * this.mass * (y*y + z*z);
-      const Iyy = (1/12) * this.mass * (x*x + z*z);
-      const Izz = (1/12) * this.mass * (x*x + y*y);
-      this.invInertiaLocal = [
-        Ixx > 0 ? 1 / Ixx : 0,
-        Iyy > 0 ? 1 / Iyy : 0,
-        Izz > 0 ? 1 / Izz : 0
+    invInertiaWorldMul(v){
+      if (this.invMass <= 0) return [0,0,0];
+      const local = quat.invRotate(this.q, v);
+      const scaled = [
+        local[0] * this.invInertiaLocal[0],
+        local[1] * this.invInertiaLocal[1],
+        local[2] * this.invInertiaLocal[2]
       ];
-    }
-
-    invInertiaWorldVec(v){
-      if (!this.entity) return [0,0,0];
-      const invI = this.invInertiaLocal;
-      if (invI[0] === 0 && invI[1] === 0 && invI[2] === 0) return [0,0,0];
-      const R = mat3FromEuler(this.entity.rot);
-      const vLocal = mat3MulVec3T(R, v);
-      const scaled = [vLocal[0]*invI[0], vLocal[1]*invI[1], vLocal[2]*invI[2]];
-      return mat3MulVec3(R, scaled);
+      return quat.rotate(this.q, scaled);
     }
 
     aabb(){
       // axis-aligned only
       if (this.shape === 'box') {
         const he = this.halfExtents;
-        if (!this.entity) {
-          return { min: [this.x[0]-he[0], this.x[1]-he[1], this.x[2]-he[2]],
-                   max: [this.x[0]+he[0], this.x[1]+he[1], this.x[2]+he[2]] };
-        }
-        const axes = boxAxes(this);
-        const ex = Math.abs(axes[0][0]) * he[0] + Math.abs(axes[1][0]) * he[1] + Math.abs(axes[2][0]) * he[2];
-        const ey = Math.abs(axes[0][1]) * he[0] + Math.abs(axes[1][1]) * he[1] + Math.abs(axes[2][1]) * he[2];
-        const ez = Math.abs(axes[0][2]) * he[0] + Math.abs(axes[1][2]) * he[1] + Math.abs(axes[2][2]) * he[2];
-        return {
-          min: [this.x[0]-ex, this.x[1]-ey, this.x[2]-ez],
-          max: [this.x[0]+ex, this.x[1]+ey, this.x[2]+ez]
-        };
+        return { min: [this.x[0]-he[0], this.x[1]-he[1], this.x[2]-he[2]],
+                 max: [this.x[0]+he[0], this.x[1]+he[1], this.x[2]+he[2]] };
       }
       // sphere AABB
       const r = this.radius;
@@ -356,19 +380,15 @@
   class Anchor {
     constructor(body, localPoint){
       this.body = body;
-      this.localPoint = localPoint; // v1: bodies don't rotate, so localPoint is just offset in world axes
+      this.localPoint = localPoint;
     }
     worldPoint(){
-      if (!this.body.entity) return v3.add(this.body.x, this.localPoint);
-      const R = mat3FromEuler(this.body.entity.rot);
-      const r = mat3MulVec3(R, this.localPoint);
+      const r = quat.rotate(this.body.q, this.localPoint);
       return v3.add(this.body.x, r);
     }
     worldVel(){
-      if (!this.body.entity) return this.body.v;
-      const R = mat3FromEuler(this.body.entity.rot);
-      const r = mat3MulVec3(R, this.localPoint);
-      return v3.add(this.body.v, v3.cross(this.body.omega, r));
+      const r = quat.rotate(this.body.q, this.localPoint);
+      return v3.add(this.body.v, v3.cross(this.body.w, r));
     }
   }
 
@@ -388,38 +408,40 @@
       const A = this.a.body, B = this.b.body;
       const pA = this.a.worldPoint();
       const pB = this.b.worldPoint();
-      let d = v3.sub(pB,pA);
+      const d = v3.sub(pB,pA);
       const len = v3.len(d);
       if (len < 1e-8) return;
       const n = v3.scale(d, 1/len);
       const C = len - this.L;
       if (C <= 0) { this.lambda = 0; return; } // slack
 
-      const vA = this.a.worldVel();
-      const vB = this.b.worldVel();
-      const vn = v3.dot(v3.sub(vB,vA), n);
-      const biasVel = this.damping * vn;
-
       const rA = v3.sub(pA, A.x);
       const rB = v3.sub(pB, B.x);
-      const wEff = A.invMass + B.invMass
-        + v3.dot(n, v3.cross(A.invInertiaWorldVec(v3.cross(rA, n)), rA))
-        + v3.dot(n, v3.cross(B.invInertiaWorldVec(v3.cross(rB, n)), rB));
+      const vA = v3.add(A.v, v3.cross(A.w, rA));
+      const vB = v3.add(B.v, v3.cross(B.w, rB));
+      const vn = v3.dot(v3.sub(vB,vA), n);
+
+      const rnA = v3.cross(rA, n);
+      const rnB = v3.cross(rB, n);
+      const angA = v3.cross(A.invInertiaWorldMul(rnA), rA);
+      const angB = v3.cross(B.invInertiaWorldMul(rnB), rB);
+      const wEff = A.invMass + B.invMass + v3.dot(n, v3.add(angA, angB));
       if (wEff < 1e-10) return;
 
       const alpha = this.compliance / (dt*dt);
-      const dl = -(C + dt*biasVel + alpha*this.lambda) / (wEff + alpha);
+      const biasVel = (this.damping * C) / dt;
+      const velDamp = vn * this.velDamping;
+      const dl = -(vn + velDamp + biasVel + alpha*this.lambda) / (wEff + alpha);
       this.lambda += dl;
 
+      const impulse = v3.scale(n, dl);
       if (A.invMass > 0) {
-        A.x = v3.sub(A.x, v3.scale(n, dl*A.invMass));
-        const dTheta = v3.scale(A.invInertiaWorldVec(v3.cross(rA, n)), -dl);
-        if (A.entity) A.entity.rot = v3.add(A.entity.rot, dTheta);
+        A.v = v3.sub(A.v, v3.scale(impulse, A.invMass));
+        A.w = v3.sub(A.w, A.invInertiaWorldMul(v3.cross(rA, impulse)));
       }
       if (B.invMass > 0) {
-        B.x = v3.add(B.x, v3.scale(n, dl*B.invMass));
-        const dTheta = v3.scale(B.invInertiaWorldVec(v3.cross(rB, n)), dl);
-        if (B.entity) B.entity.rot = v3.add(B.entity.rot, dTheta);
+        B.v = v3.add(B.v, v3.scale(impulse, B.invMass));
+        B.w = v3.add(B.w, B.invInertiaWorldMul(v3.cross(rB, impulse)));
       }
     }
   }
@@ -435,98 +457,25 @@
 
     // choose smallest axis
     let pen = ox;
+    let axis = 0;
     let n = [A.x[0] < B.x[0] ? 1:-1, 0, 0];
-    if (oy < pen) { pen = oy; n = [0, A.x[1] < B.x[1] ? 1:-1, 0]; }
-    if (oz < pen) { pen = oz; n = [0,0, A.x[2] < B.x[2] ? 1:-1]; }
-    const he = A.halfExtents;
-    const point = [
-      A.x[0] + n[0] * he[0],
-      A.x[1] + n[1] * he[1],
-      A.x[2] + n[2] * he[2]
+    if (oy < pen) { pen = oy; axis = 1; n = [0, A.x[1] < B.x[1] ? 1:-1, 0]; }
+    if (oz < pen) { pen = oz; axis = 2; n = [0,0, A.x[2] < B.x[2] ? 1:-1]; }
+
+    const overlapCenter = [
+      (Math.max(a.min[0], b.min[0]) + Math.min(a.max[0], b.max[0])) * 0.5,
+      (Math.max(a.min[1], b.min[1]) + Math.min(a.max[1], b.max[1])) * 0.5,
+      (Math.max(a.min[2], b.min[2]) + Math.min(a.max[2], b.max[2])) * 0.5
     ];
-    return { normal: n, penetration: pen, point };
-  }
-
-  function obbVsObb(A, B){
-    const a = A.halfExtents;
-    const b = B.halfExtents;
-    const Aaxes = boxAxes(A);
-    const Baxes = boxAxes(B);
-    const tWorld = v3.sub(B.x, A.x);
-
-    const R = [
-      v3.dot(Aaxes[0], Baxes[0]), v3.dot(Aaxes[0], Baxes[1]), v3.dot(Aaxes[0], Baxes[2]),
-      v3.dot(Aaxes[1], Baxes[0]), v3.dot(Aaxes[1], Baxes[1]), v3.dot(Aaxes[1], Baxes[2]),
-      v3.dot(Aaxes[2], Baxes[0]), v3.dot(Aaxes[2], Baxes[1]), v3.dot(Aaxes[2], Baxes[2])
-    ];
-    const eps = 1e-6;
-    const AbsR = R.map((v)=>Math.abs(v) + eps);
-
-    const t = [
-      v3.dot(tWorld, Aaxes[0]),
-      v3.dot(tWorld, Aaxes[1]),
-      v3.dot(tWorld, Aaxes[2])
-    ];
-
-    let minPen = Infinity;
-    let bestN = null;
-
-    // Axes A0, A1, A2
-    for (let i=0;i<3;i++){
-      const ra = a[i];
-      const rb = b[0]*AbsR[i*3+0] + b[1]*AbsR[i*3+1] + b[2]*AbsR[i*3+2];
-      const dist = Math.abs(t[i]);
-      const pen = ra + rb - dist;
-      if (pen < 0) return null;
-      if (pen < minPen) {
-        minPen = pen;
-        const s = t[i] >= 0 ? 1 : -1;
-        bestN = v3.scale(Aaxes[i], s);
-      }
+    const p = [...overlapCenter];
+    if (axis === 0) {
+      p[0] = A.x[0] + n[0] * A.halfExtents[0];
+    } else if (axis === 1) {
+      p[1] = A.x[1] + n[1] * A.halfExtents[1];
+    } else {
+      p[2] = A.x[2] + n[2] * A.halfExtents[2];
     }
-
-    // Axes B0, B1, B2
-    for (let j=0;j<3;j++){
-      const ra = a[0]*AbsR[0*3+j] + a[1]*AbsR[1*3+j] + a[2]*AbsR[2*3+j];
-      const rb = b[j];
-      const dist = Math.abs(v3.dot(tWorld, Baxes[j]));
-      const pen = ra + rb - dist;
-      if (pen < 0) return null;
-      if (pen < minPen) {
-        minPen = pen;
-        const s = v3.dot(tWorld, Baxes[j]) >= 0 ? 1 : -1;
-        bestN = v3.scale(Baxes[j], s);
-      }
-    }
-
-    // Axes A_i x B_j
-    for (let i=0;i<3;i++){
-      const i1 = (i+1)%3, i2 = (i+2)%3;
-      for (let j=0;j<3;j++){
-        const j1 = (j+1)%3, j2 = (j+2)%3;
-        const ra = a[i1]*AbsR[i2*3+j] + a[i2]*AbsR[i1*3+j];
-        const rb = b[j1]*AbsR[i*3+j2] + b[j2]*AbsR[i*3+j1];
-        const dist = Math.abs(t[i2]*R[i1*3+j] - t[i1]*R[i2*3+j]);
-        const pen = ra + rb - dist;
-        if (pen < 0) return null;
-        if (pen < minPen) {
-          const axis = v3.cross(Aaxes[i], Baxes[j]);
-          const len = v3.len(axis);
-          if (len > 1e-6) {
-            const n = v3.scale(axis, 1/len);
-            const s = v3.dot(n, tWorld) >= 0 ? 1 : -1;
-            minPen = pen;
-            bestN = v3.scale(n, s);
-          }
-        }
-      }
-    }
-
-    if (!bestN) return null;
-    const pA = supportPointBox(A.x, Aaxes, a, bestN);
-    const pB = supportPointBox(B.x, Baxes, b, v3.scale(bestN, -1));
-    const point = v3.scale(v3.add(pA, pB), 0.5);
-    return { normal: bestN, penetration: minPen, point };
+    return { normal: n, penetration: pen, point: p };
   }
 
   function sphereVsSphere(A,B){
@@ -535,58 +484,34 @@
     const r = A.radius + B.radius;
     if (dist >= r) return null;
     const n = dist>1e-8 ? v3.scale(d, 1/dist) : [0,1,0];
-    const point = v3.add(A.x, v3.scale(n, A.radius));
-    return { normal: n, penetration: (r - dist), point };
+    const p = v3.add(A.x, v3.scale(n, A.radius));
+    return { normal: n, penetration: (r - dist), point: p };
   }
 
-  function sphereVsObb(sphere, box){
+  function sphereVsAabb(sphere, box){
+    // box is AABB
     const he = box.halfExtents;
-    const axes = boxAxes(box);
-    const d = v3.sub(sphere.x, box.x);
-    const dist = [
-      clamp(v3.dot(d, axes[0]), -he[0], he[0]),
-      clamp(v3.dot(d, axes[1]), -he[1], he[1]),
-      clamp(v3.dot(d, axes[2]), -he[2], he[2])
-    ];
-    let closest = v3.add(box.x, v3.scale(axes[0], dist[0]));
-    closest = v3.add(closest, v3.scale(axes[1], dist[1]));
-    closest = v3.add(closest, v3.scale(axes[2], dist[2]));
-    const delta = v3.sub(closest, sphere.x);
-    const d2 = v3.len2(delta);
+    const bMin = [box.x[0]-he[0], box.x[1]-he[1], box.x[2]-he[2]];
+    const bMax = [box.x[0]+he[0], box.x[1]+he[1], box.x[2]+he[2]];
+    const closest = v3.clamp(sphere.x, bMin, bMax);
+    const d = v3.sub(closest, sphere.x);
+    const d2 = v3.len2(d);
     const r = sphere.radius;
     if (d2 >= r*r) return null;
-    let n;
-    if (d2 > 1e-10) {
-      n = v3.scale(delta, 1/Math.sqrt(d2));
-    } else {
-      // sphere center inside box: pick axis with smallest clearance
-      const ad = [Math.abs(dist[0]), Math.abs(dist[1]), Math.abs(dist[2])];
-      const pen = [he[0]-ad[0], he[1]-ad[1], he[2]-ad[2]];
-      let axis = 0;
-      if (pen[1] < pen[0]) axis = 1;
-      if (pen[2] < pen[axis]) axis = 2;
-      const sign = dist[axis] >= 0 ? 1 : -1;
-      n = v3.scale(axes[axis], sign);
-    }
-    return { normal: n, penetration: (r - Math.sqrt(Math.max(1e-12, d2))), point: closest };
+    const dist = Math.sqrt(Math.max(1e-12, d2));
+    const n = d2 > 1e-12 ? v3.scale(d, 1/dist) : [0,1,0];
+    const p = d2 > 1e-12 ? closest : v3.add(sphere.x, v3.scale(n, sphere.radius));
+    return { normal: n, penetration: (r - dist), point: p };
   }
 
   function generateContact(A,B){
     if (A.type==='static' && B.type==='static') return null;
 
-    if (A.shape==='box' && B.shape==='box') {
-      const rotA = A.entity ? A.entity.rot : [0,0,0];
-      const rotB = B.entity ? B.entity.rot : [0,0,0];
-      const axisAligned = Math.abs(rotA[0]) < 1e-6 && Math.abs(rotA[1]) < 1e-6 && Math.abs(rotA[2]) < 1e-6 &&
-                          Math.abs(rotB[0]) < 1e-6 && Math.abs(rotB[1]) < 1e-6 && Math.abs(rotB[2]) < 1e-6;
-      const c = axisAligned ? aabbVsAabb(A,B) : obbVsObb(A,B);
-      if (c) return c;
-      return axisAligned ? null : aabbVsAabb(A,B);
-    }
+    if (A.shape==='box' && B.shape==='box') return aabbVsAabb(A,B);
     if (A.shape==='sphere' && B.shape==='sphere') return sphereVsSphere(A,B);
-    if (A.shape==='sphere' && B.shape==='box') return sphereVsObb(A,B);
+    if (A.shape==='sphere' && B.shape==='box') return sphereVsAabb(A,B);
     if (A.shape==='box' && B.shape==='sphere') {
-      const c = sphereVsObb(B,A);
+      const c = sphereVsAabb(B,A);
       if (!c) return null;
       // flip normal to be from A->B
       return { normal: v3.scale(c.normal, -1), penetration: c.penetration, point: c.point };
@@ -594,54 +519,46 @@
     return null;
   }
 
-  function applyImpulseAtPoint(body, impulse, r){
-    if (body.invMass <= 0) return;
-    body.v = v3.add(body.v, v3.scale(impulse, body.invMass));
-    const dOmega = body.invInertiaWorldVec(v3.cross(r, impulse));
-    body.omega = v3.add(body.omega, dOmega);
-  }
-
-  function solveContact(A,B, contact){
+  function solveContact(A,B, contact, dt){
     const n = contact.normal;
     const pen = contact.penetration;
-    const p = contact.point ?? v3.add(A.x, v3.scale(n, 0));
-    const rA = v3.sub(p, A.x);
-    const rB = v3.sub(p, B.x);
+    const p = contact.point;
 
     const wA = A.invMass, wB = B.invMass;
-    const wSum = wA + wB
-      + v3.dot(n, v3.cross(A.invInertiaWorldVec(v3.cross(rA, n)), rA))
-      + v3.dot(n, v3.cross(B.invInertiaWorldVec(v3.cross(rB, n)), rB));
+    const wSum = wA + wB;
     if (wSum <= 0) return;
 
-    // positional correction
-    const slop = 0.001;
-    const corr = Math.max(0, pen - slop);
-    const k = 0.9; // Baumgarte-ish
-    const dl = (corr * k) / wSum;
-
-    if (wA > 0) {
-      A.x = v3.sub(A.x, v3.scale(n, dl * wA));
-      const dTheta = v3.scale(A.invInertiaWorldVec(v3.cross(rA, n)), -dl);
-      if (A.entity) A.entity.rot = v3.add(A.entity.rot, dTheta);
-    }
-    if (wB > 0) {
-      B.x = v3.add(B.x, v3.scale(n, dl * wB));
-      const dTheta = v3.scale(B.invInertiaWorldVec(v3.cross(rB, n)), dl);
-      if (B.entity) B.entity.rot = v3.add(B.entity.rot, dTheta);
-    }
-
     // velocity: remove into-surface component (inelastic)
-    const vA = v3.add(A.v, v3.cross(A.omega, rA));
-    const vB = v3.add(B.v, v3.cross(B.omega, rB));
+    const rA = v3.sub(p, A.x);
+    const rB = v3.sub(p, B.x);
+    const vA = v3.add(A.v, v3.cross(A.w, rA));
+    const vB = v3.add(B.v, v3.cross(B.w, rB));
     const relV = v3.sub(vB, vA);
     const vn = v3.dot(relV, n);
-    if (vn < 0) {
+    const slop = 0.001;
+    const beta = 0.2;
+    const biasVel = dt > 0 ? -(beta / dt) * Math.max(0, pen - slop) : 0;
+    if (vn < 0 || biasVel < 0) {
+      // normal impulse
       const e = Math.min(A.restitution ?? 0, B.restitution ?? 0);
-      const j = -(1+e) * vn / wSum;
+      const rnA = v3.cross(rA, n);
+      const rnB = v3.cross(rB, n);
+      const angA = v3.cross(A.invInertiaWorldMul(rnA), rA);
+      const angB = v3.cross(B.invInertiaWorldMul(rnB), rB);
+      const denom = wA + wB + v3.dot(n, v3.add(angA, angB));
+      if (denom <= 1e-10) return;
+      const restitutionTerm = (vn < -1.0) ? (e * vn) : 0;
+      let j = -(vn + restitutionTerm + biasVel) / denom;
+      if (j < 0) j = 0;
       const impulse = v3.scale(n, j);
-      applyImpulseAtPoint(A, v3.scale(impulse, -1), rA);
-      applyImpulseAtPoint(B, impulse, rB);
+      if (wA > 0) {
+        A.v = v3.sub(A.v, v3.scale(impulse, wA));
+        A.w = v3.sub(A.w, A.invInertiaWorldMul(v3.cross(rA, impulse)));
+      }
+      if (wB > 0) {
+        B.v = v3.add(B.v, v3.scale(impulse, wB));
+        B.w = v3.add(B.w, B.invInertiaWorldMul(v3.cross(rB, impulse)));
+      }
 
       // simple friction when player involved and grounded-ish
       const mu = 0.4;
@@ -649,11 +566,24 @@
       const vtLen = v3.len(vt);
       if (vtLen > 1e-6) {
         const t = v3.scale(vt, 1/vtLen);
-        const jt = -vtLen / wSum;
-        const jtClamped = clamp(jt, -mu*j, mu*j);
-        const impT = v3.scale(t, jtClamped);
-        applyImpulseAtPoint(A, v3.scale(impT, -1), rA);
-        applyImpulseAtPoint(B, impT, rB);
+        const rtA = v3.cross(rA, t);
+        const rtB = v3.cross(rB, t);
+        const angTA = v3.cross(A.invInertiaWorldMul(rtA), rA);
+        const angTB = v3.cross(B.invInertiaWorldMul(rtB), rB);
+        const denomT = wA + wB + v3.dot(t, v3.add(angTA, angTB));
+        if (denomT > 1e-10) {
+          const jt = -vtLen / denomT;
+          const jtClamped = clamp(jt, -mu*j, mu*j);
+          const impT = v3.scale(t, jtClamped);
+          if (wA > 0) {
+            A.v = v3.sub(A.v, v3.scale(impT, wA));
+            A.w = v3.sub(A.w, A.invInertiaWorldMul(v3.cross(rA, impT)));
+          }
+          if (wB > 0) {
+            B.v = v3.add(B.v, v3.scale(impT, wB));
+            B.w = v3.add(B.w, B.invInertiaWorldMul(v3.cross(rB, impT)));
+          }
+        }
       }
     }
   }
@@ -820,7 +750,6 @@
     kind:'physics',
     update: (body) => {
       if (Number.isFinite(opts?.linearDampPerSec)) body.linearDampPerSec = opts.linearDampPerSec;
-      if (Number.isFinite(opts?.angularDampPerSec)) body.angularDampPerSec = opts.angularDampPerSec;
       if (Number.isFinite(opts?.maxSpeed)) body.maxSpeed = opts.maxSpeed;
     }
   });
@@ -885,6 +814,11 @@
   const playerEntity = playerFactory.create({ pos: [0, 2.0, 0], halfExtents: [0.35, 0.9, 0.35], mass: 1 });
   const player = getColliderBody(playerEntity);
   player.isPlayer = true;
+  player.lockRotation = true;
+  player.invInertiaLocal = [0,0,0];
+  player.w = [0,0,0];
+  player.q = quat.normalize(quat.fromEuler([0,0,0]));
+  player.entity.rot = [0,0,0];
   player.restitution = 0.0;
   player.state = 'aerial';
   player.webLeft = null;
@@ -1083,23 +1017,11 @@
     const B = hit.body;
     let localB;
     if (B.shape === 'box'){
-      const worldOffset = v3.sub(hit.point, B.x);
-      if (B.entity) {
-        const R = mat3FromEuler(B.entity.rot);
-        localB = mat3MulVec3T(R, worldOffset);
-      } else {
-        localB = worldOffset;
-      }
+      localB = quat.invRotate(B.q, v3.sub(hit.point, B.x));
     } else {
       // project to sphere surface
       const n = v3.norm(v3.sub(hit.point, B.x));
-      const worldOffset = v3.scale(n, B.radius);
-      if (B.entity) {
-        const R = mat3FromEuler(B.entity.rot);
-        localB = mat3MulVec3T(R, worldOffset);
-      } else {
-        localB = worldOffset;
-      }
+      localB = quat.invRotate(B.q, v3.scale(n, B.radius));
     }
     const aB = new Anchor(B, localB);
     const dist = v3.len(v3.sub(hit.point, player.x));
@@ -1156,6 +1078,27 @@
     });
   }
 
+  function syncKinematicBodies(dt){
+    for (const b of bodies){
+      if (b.type === 'dynamic') continue;
+      if (!b.entity) {
+        b.v = [0,0,0];
+        b.w = [0,0,0];
+        continue;
+      }
+      const pos = b.x;
+      const prevPos = b.xPrev;
+      b.v = dt > 0 ? v3.scale(v3.sub(pos, prevPos), 1/dt) : [0,0,0];
+      b.xPrev = cloneVec3(pos);
+
+      const qPrev = b.q;
+      const qNext = quat.normalize(quat.fromEuler(b.entity.rot));
+      b.w = angularVelocityFromDelta(qPrev, qNext, dt);
+      b.qPrev = qPrev;
+      b.q = qNext;
+    }
+  }
+
   function integrateBodies(dt){
     for (const b of bodies){
       if (b.type !== 'dynamic') continue;
@@ -1180,20 +1123,27 @@
       const damp = Math.exp(-Math.max(0, dampRate) * dt);
       b.v[0] *= damp;
       b.v[2] *= damp;
-      const angDamp = Math.exp(-Math.max(0, b.angularDampPerSec) * dt);
-      b.omega[0] *= angDamp;
-      b.omega[1] *= angDamp;
-      b.omega[2] *= angDamp;
 
       // integrate position (predicted)
       b.xPrev = [...b.x];
-      if (b.entity) b.entity.prevRot = [...b.entity.rot];
       b.x = v3.add(b.xPrev, v3.scale(b.v, dt));
-      if (b.entity) b.entity.rot = v3.add(b.entity.rot, v3.scale(b.omega, dt));
       if (!isFiniteVec3(b.x) || !isFiniteVec3(b.v)) {
         b.x = [0, 2.0, 0];
         b.v = [0, 0, 0];
       }
+
+      // integrate orientation
+      if (b.lockRotation) {
+        b.w = [0,0,0];
+      } else {
+        const angDamp = Math.exp(-Math.max(0, b.angularDampPerSec) * dt);
+        b.w[0] *= angDamp;
+        b.w[1] *= angDamp;
+        b.w[2] *= angDamp;
+      }
+      b.qPrev = [...b.q];
+      b.q = b.lockRotation ? b.q : integrateOrientation(b.q, b.w, dt);
+      if (b.entity) b.entity.rot = quat.toEuler(b.q);
     }
   }
 
@@ -1212,29 +1162,45 @@
       const n = v3.scale(d, 1/len); // A -> B
       const rA = v3.sub(pA, A.x);
       const rB = v3.sub(pB, B.x);
-      const vA = v3.add(A.v, v3.cross(A.omega, rA));
-      const vB = v3.add(B.v, v3.cross(B.omega, rB));
+      const vA = v3.add(A.v, v3.cross(A.w, rA));
+      const vB = v3.add(B.v, v3.cross(B.w, rB));
       const vn = v3.dot(v3.sub(vB, vA), n);
-      const wSum = A.invMass + B.invMass
-        + v3.dot(n, v3.cross(A.invInertiaWorldVec(v3.cross(rA, n)), rA))
-        + v3.dot(n, v3.cross(B.invInertiaWorldVec(v3.cross(rB, n)), rB));
-      if (wSum > 0) {
+      const rnA = v3.cross(rA, n);
+      const rnB = v3.cross(rB, n);
+      const angA = v3.cross(A.invInertiaWorldMul(rnA), rA);
+      const angB = v3.cross(B.invInertiaWorldMul(rnB), rB);
+      const wEff = A.invMass + B.invMass + v3.dot(n, v3.add(angA, angB));
+      if (wEff > 1e-10) {
         if (vn > 0) {
-          const j = vn / wSum;
-          applyImpulseAtPoint(A, v3.scale(n, -j), rA);
-          applyImpulseAtPoint(B, v3.scale(n, j), rB);
+          const j = vn / wEff;
+          const impulse = v3.scale(n, j);
+          if (A.invMass > 0) {
+            A.v = v3.add(A.v, v3.scale(impulse, A.invMass));
+            A.w = v3.add(A.w, A.invInertiaWorldMul(v3.cross(rA, impulse)));
+          }
+          if (B.invMass > 0) {
+            B.v = v3.sub(B.v, v3.scale(impulse, B.invMass));
+            B.w = v3.sub(B.w, B.invInertiaWorldMul(v3.cross(rB, impulse)));
+          }
         }
         const damp = clamp(r.velDamping, 0, 1);
         if (damp > 0) {
-          const jD = vn * damp / wSum;
-          applyImpulseAtPoint(A, v3.scale(n, -jD), rA);
-          applyImpulseAtPoint(B, v3.scale(n, jD), rB);
+          const jD = vn * damp / wEff;
+          const impulse = v3.scale(n, jD);
+          if (A.invMass > 0) {
+            A.v = v3.add(A.v, v3.scale(impulse, A.invMass));
+            A.w = v3.add(A.w, A.invInertiaWorldMul(v3.cross(rA, impulse)));
+          }
+          if (B.invMass > 0) {
+            B.v = v3.sub(B.v, v3.scale(impulse, B.invMass));
+            B.w = v3.sub(B.w, B.invInertiaWorldMul(v3.cross(rB, impulse)));
+          }
         }
       }
     }
   }
 
-  function solveCollisions(){
+  function solveCollisions(dt){
     playerGrounded = false;
 
     for (let i=0;i<bodies.length;i++){
@@ -1254,7 +1220,7 @@
           if (c.normal[1] > 0.5) playerGrounded = true;
         }
 
-        solveContact(A,B,c);
+        solveContact(A,B,c,dt);
       }
     }
     player.state = playerGrounded
@@ -1286,6 +1252,7 @@
 
       updateBehaviors(h);
       updatePhysicsComponents(h);
+      syncKinematicBodies(h);
 
       // integrate
       integrateBodies(h);
@@ -1293,7 +1260,7 @@
       // iterative solve
       const iters = 10;
       for (let it=0; it<iters; it++){
-        solveCollisions();
+        solveCollisions(h);
         solveRopes(h);
       }
 
