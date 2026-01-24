@@ -716,6 +716,11 @@
   // Simulation
   // -----------------------------
   const gravity = [0, -18.0, 0];
+  const moveParams = {
+    accelGround: 28.0,
+    accelAir: 18.0,
+    maxSpeed: Infinity
+  };
 
   function integrateDynamics(dt){
     // player only (v1)
@@ -734,7 +739,7 @@
     wish = v3.norm(wish);
 
     const airControl = playerGrounded ? 1.0 : 0.35;
-    const accel = playerGrounded ? 28.0 : 18.0;
+    const accel = playerGrounded ? moveParams.accelGround : moveParams.accelAir;
 
     // apply acceleration in wish dir
     player.v = v3.add(player.v, v3.scale(wish, accel * airControl * dt));
@@ -742,7 +747,17 @@
     // gravity
     player.v = v3.add(player.v, v3.scale(gravity, dt));
 
-    // no horizontal speed cap
+    // optional horizontal speed cap
+    const maxSpeed = moveParams.maxSpeed;
+    if (Number.isFinite(maxSpeed)) {
+      const hv = [player.v[0], 0, player.v[2]];
+      const hlen = v3.len(hv);
+      if (hlen > maxSpeed) {
+        const hcap = v3.scale(hv, maxSpeed / hlen);
+        player.v[0] = hcap[0];
+        player.v[2] = hcap[2];
+      }
+    }
 
     // basic damping
     const damp = playerGrounded ? 0.88 : 0.985;
