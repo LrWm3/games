@@ -82,6 +82,7 @@
   };
 
   function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
+  function isFiniteVec3(v){ return Number.isFinite(v[0]) && Number.isFinite(v[1]) && Number.isFinite(v[2]); }
 
   // Mat4 (column-major) helpers
   const m4 = {
@@ -307,7 +308,7 @@
       }
       // sphere AABB
       const r = this.radius;
-      return { min:[this.x[0]-r,this.x[1]-r,this.x[2]-r], max:[this.x[0]+r,this.x[1]+r,this.x[2]+r,this.x[2]+r] };
+      return { min:[this.x[0]-r,this.x[1]-r,this.x[2]-r], max:[this.x[0]+r,this.x[1]+r,this.x[2]+r] };
     }
   }
 
@@ -371,9 +372,9 @@
 
     // choose smallest axis
     let pen = ox;
-    let n = [A.x[0] < B.x[0] ? -1:1, 0, 0];
-    if (oy < pen) { pen = oy; n = [0, A.x[1] < B.x[1] ? -1:1, 0]; }
-    if (oz < pen) { pen = oz; n = [0,0, A.x[2] < B.x[2] ? -1:1]; }
+    let n = [A.x[0] < B.x[0] ? 1:-1, 0, 0];
+    if (oy < pen) { pen = oy; n = [0, A.x[1] < B.x[1] ? 1:-1, 0]; }
+    if (oz < pen) { pen = oz; n = [0,0, A.x[2] < B.x[2] ? 1:-1]; }
     return { normal: n, penetration: pen };
   }
 
@@ -735,7 +736,6 @@
   // Simulation
   // -----------------------------
   const gravity = [0, -18.0, 0];
-  const maxSpeed = 14.0;
 
   function integrateDynamics(dt){
     // player only (v1)
@@ -762,14 +762,7 @@
     // gravity
     player.v = v3.add(player.v, v3.scale(gravity, dt));
 
-    // cap horizontal speed
-    const hv = [player.v[0], 0, player.v[2]];
-    const hlen = v3.len(hv);
-    if (hlen > maxSpeed) {
-      const hcap = v3.scale(hv, maxSpeed / hlen);
-      player.v[0] = hcap[0];
-      player.v[2] = hcap[2];
-    }
+    // no horizontal speed cap
 
     // basic damping
     const damp = playerGrounded ? 0.88 : 0.985;
@@ -779,9 +772,14 @@
     // integrate position
     player.xPrev = [...player.x];
     player.x = v3.add(player.x, v3.scale(player.v, dt));
+    if (!isFiniteVec3(player.x) || !isFiniteVec3(player.v)) {
+      player.x = [0, 2.0, 0];
+      player.v = [0, 0, 0];
+    }
   }
 
   function updateVelocities(dt){
+    if (dt <= 0 || !Number.isFinite(dt)) return;
     // player only
     player.v = v3.scale(v3.sub(player.x, player.xPrev), 1/dt);
   }
@@ -820,6 +818,7 @@
   }
 
   function stepPhysics(dt){
+    if (dt <= 0 || !Number.isFinite(dt)) return;
     const substeps = 3;
     const h = dt / substeps;
     for (let s=0;s<substeps;s++){
