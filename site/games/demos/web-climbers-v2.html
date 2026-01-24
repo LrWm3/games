@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rope Swinging Demo (v1)</title>
+  <style>
+    :root{ color-scheme: dark; }
+    html,body{ height:100%; margin:0; background:#0b0f17; overflow:hidden; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    #wrap{ position:relative; width:100%; height:100%; }
+    canvas{ display:block; width:100%; height:100%; }
+    .hud{
+      position:absolute; left:12px; top:12px; padding:10px 12px;
+      background: rgba(10,14,24,.72); border:1px solid rgba(255,255,255,.08);
+      border-radius:12px; color:#cfe2ff; font-size:13px; line-height:1.35;
+      backdrop-filter: blur(10px);
+      max-width: 360px;
+    }
+    .hud b{ color:#ffffff; }
+    .hud .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; opacity:.95; }
+    .pill{
+      position:absolute; right:12px; top:12px;
+      padding:8px 10px; border-radius:999px;
+      background: rgba(10,14,24,.72); border:1px solid rgba(255,255,255,.08);
+      color:#d8e6ff; font-size:12px;
+      backdrop-filter: blur(10px);
+    }
+    .warn{ color:#ffd48a; }
+  </style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div class="hud">
+    <div><b>Controls</b></div>
+    <div class="row">
+      <span><b>WASD</b>: move (air control)</span>
+      <span><b>Mouse</b>: aim</span>
+    </div>
+    <div class="row">
+      <span><b>LMB (hold)</b>: left web</span>
+      <span><b>RMB (hold)</b>: right web</span>
+    </div>
+    <div class="row">
+      <span><b>Space (hold)</b>: charge jump (≤ 1.5s)</span>
+      <span><b>Shift</b>: fast camera</span>
+    </div>
+    <div style="margin-top:8px; opacity:.9">
+      <span class="warn">Tip:</span> webs only become taut when stretched beyond max length. Swing into the blue boxes/spheres.
+    </div>
+  </div>
+  <div class="pill" id="stats">—</div>
+</div>
+
+<script>
+// Rope Swinging Demo (v1)
+// - Minimal WebGL renderer (no deps)
+// - v1 physics: dynamic translation-only player + AABB/Sphere colliders (static/kinematic supported)
+// - XPBD-style unilateral rope constraints (two webs)
+// - Substeps + iterative solver: collisions + ropes
+// - Simple 3D camera with mouse aim
+
+(() => {
+  "use strict";
+
+  // -----------------------------
+  // Math
+  // -----------------------------
+  const v3 = {
+    add: (a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],
+    sub: (a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],
+    scale: (a,s)=>[a[0]*s,a[1]*s,a[2]*s],
+    dot: (a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
+    cross:(a,b)=>[a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]],
+    len: (a)=>Math.hypot(a[0],a[1],a[2]),
+    len2:(a)=>a[0]*a[0]+a[1]*a[1]+a[2]*a[2],
+    norm:(a)=>{
+      const l=Math.hypot(a[0],a[1],a[2]);
+      return l>1e-12?[a[0]/l,a[1]/l,a[2]/l]:[0,0,0];
+    },
+    clamp:(a, lo, hi)=>[Math.max(lo[0],Math.min(hi[0],a[0])),Math.max(lo[1],Math.min(hi[1],a[1])),Math.max(lo[2],Math.min(hi[2],a[2]))],
+  };
+
+  function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
+
+  // Mat4 (column-major) helpers
+  const m4 = {
+    ident: ()=>[1,0,0,0,
+               0,1,0,0,
+               0,0,1,0,
+               0,0,0,1],
+    mul:(A,B)=>{
+      const o=new Array(16);
+      for(let c=0;c<4;c++){
+        for(let r=0;r<4;r++){
+          o[c*4+r]=A[0*4+r]*B[c*4+0]+A[1*4+r]*B[c*4+1]+A[2*4+r]*B[c*4+2]+A[3*4+r]*B[c*4+3];
+        }
+      }
+      return o;
+    },
+    translate:(t)=>[1,0,0,0,
+                    0,1,0,0,
+                    0,0,1,0,
+                    t[0],t[1],t[2],1],
+    scale:(s)=>[s[0],0,0,0,
+                0,s[1],0,0,
+                0,0,s[2],0,
+                0,0,0,1],
+    rotY:(a)=>{
+      const c=Math.cos(a), s=Math.sin(a);
+      return [ c,0,-s,0,
+               0,1, 0,0,
+               s,0, c,0,
+               0,0, 0,1];
+    },
+    rotX:(a)=>{
+      const c=Math.cos(a), s=Math.sin(a);
+      return [1,0,0,0,
+              0,c,s,0,
+              0,-s,c,0,
+              0,0,0,1];
+    },
+    perspective:(fovy, aspect, near, far)=>{
+      const f=1/Math.tan(fovy/2);
+      const nf=1/(near-far);
+      return [f/aspect,0,0,0,
+              0,f,0,0,
+              0,0,(far+near)*nf,-1,
+              0,0,(2*far*near)*nf,0];
+    },
+    lookAt:(eye, target, up)=>{
+      const z=v3.norm(v3.sub(eye,target));
+      const x=v3.norm(v3.cross(up,z));
+      const y=v3.cross(z,x);
+      return [x[0],y[0],z[0],0,
+              x[1],y[1],z[1],0,
+              x[2],y[2],z[2],0,
+              -v3.dot(x,eye),-v3.dot(y,eye),-v3.dot(z,eye),1];
+    }
+  };
+
+  // -----------------------------
+  // WebGL minimal renderer (instanced-ish via per-draw uniforms)
+  // -----------------------------
+  const canvas = document.getElementById('c');
+  const gl = canvas.getContext('webgl', { antialias:true, alpha:false, depth:true });
+  if (!gl) {
+    alert('WebGL not supported');
+    return;
+  }
+
+  function resize(){
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio||1));
+    const w = Math.floor(canvas.clientWidth * dpr);
+    const h = Math.floor(canvas.clientHeight * dpr);
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w; canvas.height = h;
+      gl.viewport(0,0,w,h);
+    }
+  }
+  window.addEventListener('resize', resize);
+
+  function compileShader(type, src){
+    const s=gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
+      console.error(gl.getShaderInfoLog(s));
+      throw new Error('Shader compile failed');
+    }
+    return s;
+  }
+
+  const VS = `
+    attribute vec3 aPos;
+    uniform mat4 uMVP;
+    void main(){
+      gl_Position = uMVP * vec4(aPos, 1.0);
+    }
+  `;
+
+  const FS = `
+    precision mediump float;
+    uniform vec4 uColor;
+    void main(){
+      gl_FragColor = uColor;
+    }
+  `;
+
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compileShader(gl.VERTEX_SHADER, VS));
+  gl.attachShader(prog, compileShader(gl.FRAGMENT_SHADER, FS));
+  gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){
+    console.error(gl.getProgramInfoLog(prog));
+    throw new Error('Program link failed');
+  }
+  gl.useProgram(prog);
+
+  const loc = {
+    aPos: gl.getAttribLocation(prog, 'aPos'),
+    uMVP: gl.getUniformLocation(prog, 'uMVP'),
+    uColor: gl.getUniformLocation(prog, 'uColor')
+  };
+
+  // Simple cube mesh
+  const cubeVerts = new Float32Array([
+    // 12 triangles (36 verts)
+    // +X
+    1, -1, -1,  1,  1, -1,  1,  1,  1,
+    1, -1, -1,  1,  1,  1,  1, -1,  1,
+    // -X
+   -1, -1, -1, -1, -1,  1, -1,  1,  1,
+   -1, -1, -1, -1,  1,  1, -1,  1, -1,
+    // +Y
+   -1,  1, -1, -1,  1,  1,  1,  1,  1,
+   -1,  1, -1,  1,  1,  1,  1,  1, -1,
+    // -Y
+   -1, -1, -1,  1, -1, -1,  1, -1,  1,
+   -1, -1, -1,  1, -1,  1, -1, -1,  1,
+    // +Z
+   -1, -1,  1,  1, -1,  1,  1,  1,  1,
+   -1, -1,  1,  1,  1,  1, -1,  1,  1,
+    // -Z
+   -1, -1, -1, -1,  1, -1,  1,  1, -1,
+   -1, -1, -1,  1,  1, -1,  1, -1, -1,
+  ]);
+  const cubeVbo = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVbo);
+  gl.bufferData(gl.ARRAY_BUFFER, cubeVerts, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(loc.aPos);
+  gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+
+  // Simple line renderer (rope + aim ray)
+  const lineProg = gl.createProgram();
+  gl.attachShader(lineProg, compileShader(gl.VERTEX_SHADER, `
+    attribute vec3 aPos;
+    uniform mat4 uMVP;
+    void main(){ gl_Position = uMVP * vec4(aPos,1.0); }
+  `));
+  gl.attachShader(lineProg, compileShader(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+    uniform vec4 uColor;
+    void main(){ gl_FragColor = uColor; }
+  `));
+  gl.linkProgram(lineProg);
+  const lineLoc = {
+    aPos: gl.getAttribLocation(lineProg, 'aPos'),
+    uMVP: gl.getUniformLocation(lineProg, 'uMVP'),
+    uColor: gl.getUniformLocation(lineProg, 'uColor')
+  };
+  const lineVbo = gl.createBuffer();
+
+  function drawCube(mvp, color){
+    gl.useProgram(prog);
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVbo);
+    gl.enableVertexAttribArray(loc.aPos);
+    gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+    gl.uniformMatrix4fv(loc.uMVP, false, new Float32Array(mvp));
+    gl.uniform4fv(loc.uColor, new Float32Array(color));
+    gl.drawArrays(gl.TRIANGLES, 0, cubeVerts.length/3);
+  }
+
+  function drawLine(mvp, a, b, color){
+    gl.useProgram(lineProg);
+    gl.bindBuffer(gl.ARRAY_BUFFER, lineVbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([...a,...b]), gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(lineLoc.aPos);
+    gl.vertexAttribPointer(lineLoc.aPos, 3, gl.FLOAT, false, 0, 0);
+    gl.uniformMatrix4fv(lineLoc.uMVP, false, new Float32Array(mvp));
+    gl.uniform4fv(lineLoc.uColor, new Float32Array(color));
+    gl.drawArrays(gl.LINES, 0, 2);
+  }
+
+  // -----------------------------
+  // Physics v1
+  // -----------------------------
+  class Body {
+    constructor({ type='dynamic', mass=1, shape='box', halfExtents=[.5,.5,.5], radius=.5, kinematicPoseFn=null }){
+      this.type = type; // dynamic | kinematic | static
+      this.mass = mass;
+      this.invMass = (type === 'dynamic' && mass > 0) ? 1/mass : 0;
+      this.shape = shape;
+      this.halfExtents = halfExtents;
+      this.radius = radius;
+      this.kinematicPoseFn = kinematicPoseFn;
+
+      this.x = [0,0,0];
+      this.v = [0,0,0];
+
+      // for kinematic velocity estimation
+      this.xPrev = [0,0,0];
+
+      // collision material-ish
+      this.restitution = 0.0;
+      this.friction = 0.0;
+
+      this.isPlayer = false;
+    }
+
+    aabb(){
+      // axis-aligned only
+      if (this.shape === 'box') {
+        const he = this.halfExtents;
+        return { min: [this.x[0]-he[0], this.x[1]-he[1], this.x[2]-he[2]],
+                 max: [this.x[0]+he[0], this.x[1]+he[1], this.x[2]+he[2]] };
+      }
+      // sphere AABB
+      const r = this.radius;
+      return { min:[this.x[0]-r,this.x[1]-r,this.x[2]-r], max:[this.x[0]+r,this.x[1]+r,this.x[2]+r,this.x[2]+r] };
+    }
+  }
+
+  class Anchor {
+    constructor(body, localPoint){
+      this.body = body;
+      this.localPoint = localPoint; // v1: bodies don't rotate, so localPoint is just offset in world axes
+    }
+    worldPoint(){ return v3.add(this.body.x, this.localPoint); }
+    worldVel(){ return this.body.v; }
+  }
+
+  class RopeConstraint {
+    constructor(anchorA, anchorB, maxLength){
+      this.a = anchorA;
+      this.b = anchorB;
+      this.L = maxLength;
+      this.compliance = 1e-4; // soft-ish, good for v1
+      this.damping = 1.2;
+      this.lambda = 0;
+      this.active = true;
+    }
+    solve(dt){
+      if(!this.active) return;
+      const A = this.a.body, B = this.b.body;
+      const pA = this.a.worldPoint();
+      const pB = this.b.worldPoint();
+      let d = v3.sub(pB,pA);
+      const len = v3.len(d);
+      if (len < 1e-8) return;
+      const n = v3.scale(d, 1/len);
+      const C = len - this.L;
+      if (C <= 0) { this.lambda = 0; return; } // slack
+
+      const vA = this.a.worldVel();
+      const vB = this.b.worldVel();
+      const vn = v3.dot(v3.sub(vB,vA), n);
+      const stretchV = Math.max(0, vn);
+      const biasVel = this.damping * stretchV;
+
+      const wEff = A.invMass + B.invMass;
+      if (wEff < 1e-10) return;
+
+      const alpha = this.compliance / (dt*dt);
+      const dl = -(C + dt*biasVel + alpha*this.lambda) / (wEff + alpha);
+      this.lambda += dl;
+
+      if (A.invMass > 0) A.x = v3.sub(A.x, v3.scale(n, dl*A.invMass));
+      if (B.invMass > 0) B.x = v3.add(B.x, v3.scale(n, dl*B.invMass));
+    }
+  }
+
+  // Contact generation
+  function aabbVsAabb(A, B){
+    const a = A.aabb();
+    const b = B.aabb();
+    const ox = Math.min(a.max[0], b.max[0]) - Math.max(a.min[0], b.min[0]);
+    const oy = Math.min(a.max[1], b.max[1]) - Math.max(a.min[1], b.min[1]);
+    const oz = Math.min(a.max[2], b.max[2]) - Math.max(a.min[2], b.min[2]);
+    if (ox <= 0 || oy <= 0 || oz <= 0) return null;
+
+    // choose smallest axis
+    let pen = ox;
+    let n = [A.x[0] < B.x[0] ? -1:1, 0, 0];
+    if (oy < pen) { pen = oy; n = [0, A.x[1] < B.x[1] ? -1:1, 0]; }
+    if (oz < pen) { pen = oz; n = [0,0, A.x[2] < B.x[2] ? -1:1]; }
+    return { normal: n, penetration: pen };
+  }
+
+  function sphereVsSphere(A,B){
+    const d = v3.sub(B.x, A.x);
+    const dist = v3.len(d);
+    const r = A.radius + B.radius;
+    if (dist >= r) return null;
+    const n = dist>1e-8 ? v3.scale(d, 1/dist) : [0,1,0];
+    return { normal: n, penetration: (r - dist) };
+  }
+
+  function sphereVsAabb(sphere, box){
+    // box is AABB
+    const he = box.halfExtents;
+    const bMin = [box.x[0]-he[0], box.x[1]-he[1], box.x[2]-he[2]];
+    const bMax = [box.x[0]+he[0], box.x[1]+he[1], box.x[2]+he[2]];
+    const closest = v3.clamp(sphere.x, bMin, bMax);
+    const d = v3.sub(sphere.x, closest);
+    const d2 = v3.len2(d);
+    const r = sphere.radius;
+    if (d2 >= r*r) return null;
+    const dist = Math.sqrt(Math.max(1e-12, d2));
+    const n = dist>1e-8 ? v3.scale(d, 1/dist) : [0,1,0];
+    return { normal: n, penetration: (r - dist) };
+  }
+
+  function generateContact(A,B){
+    if (A.type==='static' && B.type==='static') return null;
+
+    if (A.shape==='box' && B.shape==='box') return aabbVsAabb(A,B);
+    if (A.shape==='sphere' && B.shape==='sphere') return sphereVsSphere(A,B);
+    if (A.shape==='sphere' && B.shape==='box') return sphereVsAabb(A,B);
+    if (A.shape==='box' && B.shape==='sphere') {
+      const c = sphereVsAabb(B,A);
+      if (!c) return null;
+      // flip normal to be from A->B
+      return { normal: v3.scale(c.normal, -1), penetration: c.penetration };
+    }
+    return null;
+  }
+
+  function solveContact(A,B, contact){
+    const n = contact.normal;
+    const pen = contact.penetration;
+
+    const wA = A.invMass, wB = B.invMass;
+    const wSum = wA + wB;
+    if (wSum <= 0) return;
+
+    // positional correction
+    const slop = 0.001;
+    const corr = Math.max(0, pen - slop);
+    const k = 0.9; // Baumgarte-ish
+
+    const dp = v3.scale(n, corr * k);
+    if (wA > 0) A.x = v3.sub(A.x, v3.scale(dp, wA / wSum));
+    if (wB > 0) B.x = v3.add(B.x, v3.scale(dp, wB / wSum));
+
+    // velocity: remove into-surface component (inelastic)
+    const relV = v3.sub(B.v, A.v);
+    const vn = v3.dot(relV, n);
+    if (vn < 0) {
+      // normal impulse
+      const e = Math.min(A.restitution ?? 0, B.restitution ?? 0);
+      const j = -(1+e) * vn / wSum;
+      const impulse = v3.scale(n, j);
+      if (wA > 0) A.v = v3.sub(A.v, v3.scale(impulse, wA));
+      if (wB > 0) B.v = v3.add(B.v, v3.scale(impulse, wB));
+
+      // simple friction when player involved and grounded-ish
+      const mu = 0.4;
+      const vt = v3.sub(relV, v3.scale(n, vn));
+      const vtLen = v3.len(vt);
+      if (vtLen > 1e-6) {
+        const t = v3.scale(vt, 1/vtLen);
+        const jt = -vtLen / wSum;
+        const jtClamped = clamp(jt, -mu*j, mu*j);
+        const impT = v3.scale(t, jtClamped);
+        if (wA > 0) A.v = v3.sub(A.v, v3.scale(impT, wA));
+        if (wB > 0) B.v = v3.add(B.v, v3.scale(impT, wB));
+      }
+    }
+  }
+
+  // Raycast (for web shooting) against box/sphere colliders
+    function raycast(origin, dir, maxDist, bodies, ignoreBody=null){
+    // Returns { body, t, point, normal }
+    let best = null;
+
+    // Ray vs AABB (slabs)
+    function rayAabb(o, d, bMin, bMax){
+      let tmin = 0;
+      let tmax = maxDist;
+      let hitAxis = -1;
+      let hitSign = 1;
+
+      for (let i=0;i<3;i++){
+        const di = d[i];
+        const oi = o[i];
+        if (Math.abs(di) < 1e-9){
+          if (oi < bMin[i] || oi > bMax[i]) return null;
+        } else {
+          let inv = 1/di;
+          let t1 = (bMin[i]-oi)*inv;
+          let t2 = (bMax[i]-oi)*inv;
+          let sign = -1;
+          if (t1 > t2){ const tmp=t1; t1=t2; t2=tmp; sign = 1; }
+
+          if (t1 > tmin){
+            tmin = t1;
+            hitAxis = i;
+            hitSign = sign;
+          }
+          tmax = Math.min(tmax, t2);
+          if (tmin > tmax) return null;
+        }
+      }
+
+      if (tmin < 0 || tmin > maxDist) return null;
+      const p = v3.add(o, v3.scale(d, tmin));
+      let n = [0,0,0];
+      if (hitAxis >= 0) n[hitAxis] = hitSign;
+      return { t: tmin, point: p, normal: n };
+    }
+
+    // Ray vs Sphere
+    function raySphere(o, d, c, r){
+      const oc = v3.sub(o, c);
+      const b = v3.dot(oc, d);
+      const cTerm = v3.dot(oc, oc) - r*r;
+      const disc = b*b - cTerm;
+      if (disc < 0) return null;
+      const s = Math.sqrt(disc);
+      // smallest positive t
+      let t = -b - s;
+      if (t < 0) t = -b + s;
+      if (t < 0 || t > maxDist) return null;
+      const p = v3.add(o, v3.scale(d, t));
+      const n = v3.norm(v3.sub(p, c));
+      return { t, point: p, normal: n };
+    }
+
+    for (const B of bodies){
+      if (B === ignoreBody) continue;
+      // allow attaching to everything except player if you want; keep it simple: any non-player
+      if (B.isPlayer) continue;
+
+      let hit = null;
+      if (B.shape === 'box'){
+        const he = B.halfExtents;
+        const bMin = [B.x[0]-he[0], B.x[1]-he[1], B.x[2]-he[2]];
+        const bMax = [B.x[0]+he[0], B.x[1]+he[1], B.x[2]+he[2]];
+        hit = rayAabb(origin, dir, bMin, bMax);
+      } else if (B.shape === 'sphere'){
+        hit = raySphere(origin, dir, B.x, B.radius);
+      }
+      if (hit && (!best || hit.t < best.t)){
+        best = { body: B, t: hit.t, point: hit.point, normal: hit.normal };
+      }
+    }
+
+    return best;
+  }
+
+  // -----------------------------
+  // Scene setup
+  // -----------------------------
+  const bodies = [];
+  const ropes = [];
+
+  // Player: box collider, translation-only
+  const player = new Body({ type:'dynamic', mass:1, shape:'box', halfExtents:[0.35, 0.9, 0.35] });
+  player.x = [0, 2.0, 0];
+  player.v = [0, 0, 0];
+  player.isPlayer = true;
+  player.restitution = 0.0;
+  bodies.push(player);
+
+  // Ground
+  const ground = new Body({ type:'static', shape:'box', halfExtents:[40, 1, 40] });
+  ground.x = [0, -1, 0];
+  bodies.push(ground);
+
+  // Some static boxes to swing from
+  function addBox(pos, he){
+    const b = new Body({ type:'static', shape:'box', halfExtents:he });
+    b.x = [...pos];
+    bodies.push(b);
+    return b;
+  }
+  function addSphere(pos, r){
+    const s = new Body({ type:'static', shape:'sphere', radius:r });
+    s.x = [...pos];
+    bodies.push(s);
+    return s;
+  }
+
+  addBox([6, 3, -6], [1.2, 3.0, 1.2]);
+  addBox([-7, 4, -4], [1.6, 4.0, 1.6]);
+  addBox([0, 6, -14], [6.0, 0.5, 1.2]);
+  addBox([12, 7, -18], [1.5, 6.0, 1.5]);
+  addBox([-12, 8, -18], [1.5, 7.0, 1.5]);
+  addBox([0, 10, -25], [10.0, 0.5, 2.0]);
+
+  addSphere([3, 6, -10], 1.2);
+  addSphere([-4, 7.5, -16], 1.6);
+
+  // -----------------------------
+  // Input + camera
+  // -----------------------------
+  const statsEl = document.getElementById('stats');
+
+  const keys = new Set();
+  window.addEventListener('keydown', (e)=>{
+    keys.add(e.code);
+    if (e.code === 'Space') {
+      if (!jumpCharging) {
+        jumpCharging = true;
+        jumpChargeT = 0;
+      }
+      e.preventDefault();
+    }
+  });
+  window.addEventListener('keyup', (e)=>{
+    keys.delete(e.code);
+    if (e.code === 'Space') {
+      // release jump
+      if (jumpCharging) {
+        doChargedJump();
+      }
+      jumpCharging = false;
+      jumpChargeT = 0;
+    }
+  });
+
+  // Pointer lock for mouselook
+  let yaw = 0;
+  let pitch = 0;
+  let pointerLocked = false;
+
+  canvas.addEventListener('click', ()=>{
+    if (!pointerLocked) canvas.requestPointerLock();
+  });
+
+  document.addEventListener('pointerlockchange', ()=>{
+    pointerLocked = (document.pointerLockElement === canvas);
+  });
+
+  document.addEventListener('mousemove', (e)=>{
+    if (!pointerLocked) return;
+    const sens = 0.0022;
+    yaw -= e.movementX * sens;
+    pitch -= e.movementY * sens;
+    pitch = clamp(pitch, -1.35, 1.35);
+  });
+
+  // Prevent context menu (RMB)
+  canvas.addEventListener('contextmenu', (e)=>e.preventDefault());
+
+  let lmbDown = false;
+  let rmbDown = false;
+
+  canvas.addEventListener('mousedown', (e)=>{
+    if (e.button === 0) { lmbDown = true; }
+    if (e.button === 2) { rmbDown = true; }
+  });
+  window.addEventListener('mouseup', (e)=>{
+    if (e.button === 0) { lmbDown = false; }
+    if (e.button === 2) { rmbDown = false; }
+  });
+
+  // Camera parameters
+  const cam = {
+    pos:[0,0,0],
+    target:[0,0,0],
+    up:[0,1,0],
+    fov: 70 * Math.PI/180,
+    near: 0.05,
+    far: 300,
+    thirdPersonDist: 5.0,
+    height: 1.35,
+  };
+
+  function cameraForward(){
+    const cp = Math.cos(pitch), sp = Math.sin(pitch);
+    const cy = Math.cos(yaw), sy = Math.sin(yaw);
+    // right-handed-ish
+    return v3.norm([sy*cp, sp, -cy*cp]);
+  }
+
+  function cameraRight(){
+    const f = cameraForward();
+    return v3.norm(v3.cross(f, cam.up));
+  }
+
+  function updateCamera(){
+    const head = v3.add(player.x, [0, cam.height, 0]);
+    const f = cameraForward();
+    cam.target = head;
+    cam.pos = v3.sub(head, v3.scale(f, cam.thirdPersonDist));
+  }
+
+  // -----------------------------
+  // Web (rope) handling
+  // -----------------------------
+  let leftRope = null;
+  let rightRope = null;
+
+  function makeRopeToHit(hit){
+    // Anchor A: player CoM
+    const aA = new Anchor(player, [0,0,0]);
+
+    // Anchor B: local point on hit body
+    const B = hit.body;
+    let localB;
+    if (B.shape === 'box'){
+      localB = v3.sub(hit.point, B.x); // since no rotation
+    } else {
+      // project to sphere surface
+      const n = v3.norm(v3.sub(hit.point, B.x));
+      localB = v3.scale(n, B.radius);
+    }
+    const aB = new Anchor(B, localB);
+    const dist = v3.len(v3.sub(hit.point, player.x));
+
+    const rope = new RopeConstraint(aA, aB, dist);
+    rope.compliance = 1e-4;
+    rope.damping = 1.25;
+    ropes.push(rope);
+    return rope;
+  }
+
+  function releaseRope(rope){
+    if (!rope) return;
+    rope.active = false;
+  }
+
+  // -----------------------------
+  // Jump charge
+  // -----------------------------
+  let jumpCharging = false;
+  let jumpChargeT = 0;
+  const jumpChargeMax = 1.5;
+  let playerGrounded = false;
+
+  function doChargedJump(){
+    if (!playerGrounded) return;
+    const t = clamp(jumpChargeT / jumpChargeMax, 0, 1);
+    // feels better with curve
+    const curve = t*t*(3-2*t);
+    const minJ = 6.0;
+    const maxJ = 12.5;
+    const jv = minJ + (maxJ-minJ)*curve;
+    player.v[1] = jv;
+  }
+
+  // -----------------------------
+  // Simulation
+  // -----------------------------
+  const gravity = [0, -18.0, 0];
+  const maxSpeed = 14.0;
+
+  function integrateDynamics(dt){
+    // player only (v1)
+    // input accel
+    const f = cameraForward();
+    const r = cameraRight();
+    // movement on XZ plane
+    const fXZ = v3.norm([f[0], 0, f[2]]);
+    const rXZ = v3.norm([r[0], 0, r[2]]);
+
+    let wish = [0,0,0];
+    if (keys.has('KeyW')) wish = v3.add(wish, fXZ);
+    if (keys.has('KeyS')) wish = v3.sub(wish, fXZ);
+    if (keys.has('KeyD')) wish = v3.add(wish, rXZ);
+    if (keys.has('KeyA')) wish = v3.sub(wish, rXZ);
+    wish = v3.norm(wish);
+
+    const airControl = playerGrounded ? 1.0 : 0.35;
+    const accel = playerGrounded ? 28.0 : 18.0;
+
+    // apply acceleration in wish dir
+    player.v = v3.add(player.v, v3.scale(wish, accel * airControl * dt));
+
+    // gravity
+    player.v = v3.add(player.v, v3.scale(gravity, dt));
+
+    // cap horizontal speed
+    const hv = [player.v[0], 0, player.v[2]];
+    const hlen = v3.len(hv);
+    if (hlen > maxSpeed) {
+      const hcap = v3.scale(hv, maxSpeed / hlen);
+      player.v[0] = hcap[0];
+      player.v[2] = hcap[2];
+    }
+
+    // basic damping
+    const damp = playerGrounded ? 0.88 : 0.985;
+    player.v[0] *= damp;
+    player.v[2] *= damp;
+
+    // integrate position
+    player.xPrev = [...player.x];
+    player.x = v3.add(player.x, v3.scale(player.v, dt));
+  }
+
+  function updateVelocities(dt){
+    // player only
+    player.v = v3.scale(v3.sub(player.x, player.xPrev), 1/dt);
+  }
+
+  function solveCollisions(){
+    playerGrounded = false;
+
+    for (let i=0;i<bodies.length;i++){
+      for (let j=i+1;j<bodies.length;j++){
+        const A = bodies[i], B = bodies[j];
+        if ((A.type==='static' || A.type==='kinematic') && (B.type==='static' || B.type==='kinematic')) continue;
+
+        const c = generateContact(A,B);
+        if (!c) continue;
+
+        // track grounded if player involved and normal points upward on player
+        if (A.isPlayer) {
+          // normal points from A->B; if pushing player up, normal.y should be +1? depends axis choice
+          if (c.normal[1] > 0.5) playerGrounded = true;
+        } else if (B.isPlayer) {
+          // flip for B's perspective
+          if (-c.normal[1] > 0.5) playerGrounded = true;
+        }
+
+        solveContact(A,B,c);
+      }
+    }
+  }
+
+  function solveRopes(dt){
+    for (const r of ropes) r.solve(dt);
+    // prune inactive ropes occasionally
+    for (let i=ropes.length-1;i>=0;i--){
+      if (!ropes[i].active) ropes.splice(i,1);
+    }
+  }
+
+  function stepPhysics(dt){
+    const substeps = 3;
+    const h = dt / substeps;
+    for (let s=0;s<substeps;s++){
+      // jump charge timer
+      if (jumpCharging) jumpChargeT = Math.min(jumpChargeMax, jumpChargeT + h);
+
+      // integrate
+      integrateDynamics(h);
+
+      // iterative solve
+      const iters = 10;
+      for (let it=0; it<iters; it++){
+        solveCollisions();
+        solveRopes(h);
+      }
+
+      // velocities from correction
+      updateVelocities(h);
+    }
+  }
+
+  // -----------------------------
+  // Web firing logic (per-frame)
+  // -----------------------------
+  function updateWebs(){
+    const f = cameraForward();
+    const origin = cam.pos;
+    const maxDist = 80.0;
+
+    // Left
+    if (lmbDown) {
+      if (!leftRope) {
+        const hit = raycast(origin, f, maxDist, bodies, player);
+        if (hit) leftRope = makeRopeToHit(hit);
+      }
+    } else {
+      if (leftRope) { releaseRope(leftRope); leftRope = null; }
+    }
+
+    // Right
+    if (rmbDown) {
+      if (!rightRope) {
+        const hit = raycast(origin, f, maxDist, bodies, player);
+        if (hit) rightRope = makeRopeToHit(hit);
+      }
+    } else {
+      if (rightRope) { releaseRope(rightRope); rightRope = null; }
+    }
+  }
+
+  // -----------------------------
+  // Render loop
+  // -----------------------------
+  gl.enable(gl.DEPTH_TEST);
+  gl.clearColor(0.04,0.06,0.10,1);
+
+  let lastT = performance.now();
+
+  function frame(t){
+    resize();
+    const dt = clamp((t - lastT) / 1000, 0, 1/20);
+    lastT = t;
+
+    updateCamera();
+    updateWebs();
+    stepPhysics(dt);
+    updateCamera();
+
+    // Matrices
+    const aspect = canvas.width / canvas.height;
+    const P = m4.perspective(cam.fov, aspect, cam.near, cam.far);
+    const V = m4.lookAt(cam.pos, cam.target, cam.up);
+
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    // draw bodies
+    for (const b of bodies){
+      let M = m4.translate(b.x);
+      let S;
+      let color;
+      if (b.shape === 'box'){
+        S = m4.scale([b.halfExtents[0], b.halfExtents[1], b.halfExtents[2]]);
+        color = b.isPlayer ? [0.95,0.95,0.98,1] : (b.type==='static' ? [0.25,0.55,0.95,1] : [0.85,0.55,0.25,1]);
+      } else {
+        S = m4.scale([b.radius, b.radius, b.radius]);
+        color = [0.20,0.78,0.65,1];
+      }
+      const MVP = m4.mul(m4.mul(P, V), m4.mul(M, S));
+      drawCube(MVP, color);
+    }
+
+    // draw aim ray
+    const aimDir = cameraForward();
+    const rayA = cam.pos;
+    const rayB = v3.add(cam.pos, v3.scale(aimDir, 30));
+    drawLine(m4.mul(P, V), rayA, rayB, [1,1,1,0.35]);
+
+    // draw ropes
+    if (leftRope){
+      const a = leftRope.a.worldPoint();
+      const b = leftRope.b.worldPoint();
+      drawLine(m4.mul(P, V), a, b, [1.0,0.82,0.38,1]);
+    }
+    if (rightRope){
+      const a = rightRope.a.worldPoint();
+      const b = rightRope.b.worldPoint();
+      drawLine(m4.mul(P, V), a, b, [0.62,0.88,1.0,1]);
+    }
+
+    // HUD
+    const speed = v3.len([player.v[0],0,player.v[2]]);
+    statsEl.textContent = `speed ${speed.toFixed(1)}  |  y ${player.x[1].toFixed(2)}  |  grounded ${playerGrounded ? 'yes':'no'}  |  jump ${jumpCharging ? (jumpChargeT.toFixed(2)+'s'):'—'}  |  webs ${(leftRope?1:0)+(rightRope?1:0)}`;
+
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>
