@@ -1,0 +1,1418 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rope Swinging Demo (v1)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/lines/LineSegments2.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/lines/LineSegmentsGeometry.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/lines/LineMaterial.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/lines/LineGeometry.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/lines/Line2.js"></script>
+  <style>
+    :root{ color-scheme: dark; }
+    html,body{ height:100%; margin:0; background:#0b0f17; overflow:hidden; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    #wrap{ position:relative; width:100%; height:100%; }
+    canvas{ display:block; width:100%; height:100%; }
+    .hud{
+      position:absolute; left:12px; top:12px; padding:10px 12px;
+      background: rgba(10,14,24,.72); border:1px solid rgba(255,255,255,.08);
+      border-radius:12px; color:#cfe2ff; font-size:13px; line-height:1.35;
+      backdrop-filter: blur(10px);
+      max-width: 360px;
+    }
+    .hud b{ color:#ffffff; }
+    .hud .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; opacity:.95; }
+    .pill{
+      position:absolute; right:12px; top:12px;
+      padding:8px 10px; border-radius:999px;
+      background: rgba(10,14,24,.72); border:1px solid rgba(255,255,255,.08);
+      color:#d8e6ff; font-size:12px;
+      backdrop-filter: blur(10px);
+    }
+    .warn{ color:#ffd48a; }
+  </style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div class="hud">
+    <div><b>Controls</b></div>
+    <div class="row">
+      <span><b>WASD</b>: move (air control)</span>
+      <span><b>Mouse</b>: aim</span>
+    </div>
+    <div class="row">
+      <span><b>LMB (hold)</b>: left web</span>
+      <span><b>RMB (hold)</b>: right web</span>
+    </div>
+    <div class="row">
+      <span><b>Space (hold)</b>: charge jump (≤ 1.5s)</span>
+      <span><b>Shift</b>: fast camera</span>
+    </div>
+    <div style="margin-top:8px; opacity:.9">
+      <span class="warn">Tip:</span> webs only become taut when stretched beyond max length. Swing into the blue boxes/spheres.
+    </div>
+  </div>
+  <div class="pill" id="stats">—</div>
+  <div class="pill" id="perf" style="top:48px; display:none;">—</div>
+</div>
+
+<script>
+// Rope Swinging Demo (v1)
+// - Minimal WebGL renderer (no deps)
+// - v1 physics: dynamic translation-only player + AABB/Sphere colliders (static/kinematic supported)
+// - XPBD-style unilateral rope constraints (two webs)
+// - Substeps + iterative solver: collisions + ropes
+// - Simple 3D camera with mouse aim
+
+(() => {
+  "use strict";
+
+  // -----------------------------
+  // Math
+  // -----------------------------
+  const v3 = {
+    add: (a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],
+    sub: (a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],
+    scale: (a,s)=>[a[0]*s,a[1]*s,a[2]*s],
+    dot: (a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
+    cross:(a,b)=>[a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]],
+    len: (a)=>Math.hypot(a[0],a[1],a[2]),
+    len2:(a)=>a[0]*a[0]+a[1]*a[1]+a[2]*a[2],
+    norm:(a)=>{
+      const l=Math.hypot(a[0],a[1],a[2]);
+      return l>1e-12?[a[0]/l,a[1]/l,a[2]/l]:[0,0,0];
+    },
+    clamp:(a, lo, hi)=>[Math.max(lo[0],Math.min(hi[0],a[0])),Math.max(lo[1],Math.min(hi[1],a[1])),Math.max(lo[2],Math.min(hi[2],a[2]))],
+  };
+
+  const quat = {
+    normalize(q){
+      const l = Math.hypot(q[0], q[1], q[2], q[3]);
+      if (l < 1e-12) return [0,0,0,1];
+      return [q[0]/l, q[1]/l, q[2]/l, q[3]/l];
+    },
+    mul(a,b){
+      const ax=a[0], ay=a[1], az=a[2], aw=a[3];
+      const bx=b[0], by=b[1], bz=b[2], bw=b[3];
+      return [
+        aw*bx + ax*bw + ay*bz - az*by,
+        aw*by - ax*bz + ay*bw + az*bx,
+        aw*bz + ax*by - ay*bx + az*bw,
+        aw*bw - ax*bx - ay*by - az*bz
+      ];
+    },
+    conj(q){ return [-q[0], -q[1], -q[2], q[3]]; },
+    fromEuler(e){
+      const hx = e[0] * 0.5;
+      const hy = e[1] * 0.5;
+      const hz = e[2] * 0.5;
+      const cx = Math.cos(hx), sx = Math.sin(hx);
+      const cy = Math.cos(hy), sy = Math.sin(hy);
+      const cz = Math.cos(hz), sz = Math.sin(hz);
+      return [
+        sx*cy*cz + cx*sy*sz,
+        cx*sy*cz - sx*cy*sz,
+        cx*cy*sz + sx*sy*cz,
+        cx*cy*cz - sx*sy*sz
+      ];
+    },
+    toEuler(q){
+      const x=q[0], y=q[1], z=q[2], w=q[3];
+      const sinr = 2 * (w*x + y*z);
+      const cosr = 1 - 2 * (x*x + y*y);
+      const roll = Math.atan2(sinr, cosr);
+
+      const sinp = 2 * (w*y - z*x);
+      const pitch = Math.abs(sinp) >= 1 ? Math.sign(sinp) * Math.PI/2 : Math.asin(sinp);
+
+      const siny = 2 * (w*z + x*y);
+      const cosy = 1 - 2 * (y*y + z*z);
+      const yaw = Math.atan2(siny, cosy);
+      return [roll, pitch, yaw];
+    },
+    rotate(q, v){
+      const qv = [q[0], q[1], q[2]];
+      const t = v3.scale(v3.cross(qv, v), 2);
+      return v3.add(v, v3.add(v3.scale(t, q[3]), v3.cross(qv, t)));
+    },
+    invRotate(q, v){
+      return quat.rotate(quat.conj(q), v);
+    }
+  };
+
+  function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
+  function isFiniteVec3(v){ return Number.isFinite(v[0]) && Number.isFinite(v[1]) && Number.isFinite(v[2]); }
+  function cloneVec3(v){ return [v[0], v[1], v[2]]; }
+  function integrateOrientation(q, w, dt){
+    const dq = quat.mul([w[0], w[1], w[2], 0], q);
+    const nq = [
+      q[0] + 0.5 * dt * dq[0],
+      q[1] + 0.5 * dt * dq[1],
+      q[2] + 0.5 * dt * dq[2],
+      q[3] + 0.5 * dt * dq[3]
+    ];
+    return quat.normalize(nq);
+  }
+  function angularVelocityFromDelta(qPrev, qNext, dt){
+    if (dt <= 0) return [0,0,0];
+    let dq = quat.mul(qNext, quat.conj(qPrev));
+    if (dq[3] < 0) dq = [-dq[0], -dq[1], -dq[2], -dq[3]];
+    const angle = 2 * Math.acos(clamp(dq[3], -1, 1));
+    const s = Math.sqrt(Math.max(1e-12, 1 - dq[3]*dq[3]));
+    const axis = s < 1e-6 ? [0,0,0] : [dq[0]/s, dq[1]/s, dq[2]/s];
+    return v3.scale(axis, angle / dt);
+  }
+
+  const canvas = document.getElementById('c');
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0b0f17);
+
+  const camera = new THREE.PerspectiveCamera(70, 1, 0.05, 300);
+  camera.up.set(0, 1, 0);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.75);
+  dirLight.position.set(10, 20, 8);
+  scene.add(dirLight);
+
+  const lineMaterials = [];
+  function resizeThree(){
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    for (const m of lineMaterials) {
+      m.resolution.set(w, h);
+    }
+  }
+  window.addEventListener('resize', resizeThree);
+  resizeThree();
+
+  // -----------------------------
+  // Render bindings (Entity -> Visual)
+  // -----------------------------
+  class VisualBinding {
+    constructor({
+      entity,
+      localPos=[0,0,0],
+      localRot=[0,0,0],
+      localScale=[1,1,1],
+      mode='direct', // 'direct' | 'smooth'
+      smoothHz=18,
+    }){
+      this.entity = entity;
+      this.localPos = localPos;
+      this.localRot = localRot;
+      this.localScale = localScale;
+      this.mode = mode;
+      this.smoothHz = smoothHz;
+
+      // render state
+      this.renderPos = entity ? v3.add(entity.pos, localPos) : [...localPos];
+      this.renderRot = entity ? v3.add(entity.rot, localRot) : [...localRot];
+    }
+
+    update(dt){
+      const qEntity = quat.normalize(quat.fromEuler(this.entity.rot));
+      const qLocal = quat.fromEuler(this.localRot);
+      const target = v3.add(this.entity.pos, quat.rotate(qEntity, this.localPos));
+      const rotTarget = quat.toEuler(quat.mul(qEntity, qLocal));
+      if (this.mode === 'direct') {
+        this.renderPos = target;
+        this.renderRot = rotTarget;
+        return;
+      }
+      // exponential smoothing
+      const a = 1 - Math.exp(-this.smoothHz * dt);
+      this.renderPos = v3.add(this.renderPos, v3.scale(v3.sub(target, this.renderPos), a));
+      this.renderRot = rotTarget;
+    }
+  }
+
+  class ThreeDrawable {
+    constructor({ binding, object3d }){
+      this.binding = binding;
+      this.object3d = object3d;
+    }
+    syncFromBinding(){
+      const p = this.binding.renderPos;
+      const r = this.binding.renderRot;
+      const s = this.binding.localScale;
+      this.object3d.position.set(p[0], p[1], p[2]);
+      this.object3d.rotation.set(r[0], r[1], r[2]);
+      this.object3d.scale.set(s[0], s[1], s[2]);
+    }
+  }
+
+  // -----------------------------
+  // Entities + components
+  // -----------------------------
+  class Entity {
+    constructor({ pos=[0,0,0], rot=[0,0,0] } = {}){
+      this.pos = cloneVec3(pos);
+      this.rot = cloneVec3(rot);
+      this.prevPos = cloneVec3(pos);
+      this.components = [];
+    }
+    addComponent(component){
+      component.entity = this;
+      this.components.push(component);
+    }
+  }
+
+  class EntityManager {
+    constructor(){
+      this.entities = [];
+    }
+    add(entity){
+      this.entities.push(entity);
+    }
+    remove(entity){
+      const idx = this.entities.indexOf(entity);
+      if (idx >= 0) this.entities.splice(idx, 1);
+    }
+    forEachComponent(kind, fn){
+      for (const e of this.entities) {
+        for (const c of e.components) {
+          if (c.kind === kind) fn(c, e);
+        }
+      }
+    }
+  }
+
+  // -----------------------------
+  // Physics v1
+  // -----------------------------
+  class Body {
+    constructor({ type='dynamic', mass=1, shape='box', halfExtents=[.5,.5,.5], radius=.5, kinematicPoseFn=null, linearDampPerSec=0, maxSpeed=Infinity, entity=null }){
+      this.type = type; // dynamic | kinematic | static
+      this.mass = mass;
+      this.invMass = (type === 'dynamic' && mass > 0) ? 1/mass : 0;
+      this.shape = shape;
+      this.halfExtents = halfExtents;
+      this.radius = radius;
+      this.kinematicPoseFn = kinematicPoseFn;
+      this.linearDampPerSec = linearDampPerSec;
+      this.angularDampPerSec = 0;
+      this.maxSpeed = maxSpeed;
+      this.entity = entity;
+
+      this._x = [0,0,0];
+      this.v = [0,0,0];
+      this.w = [0,0,0];
+      const startRot = entity?.rot ?? [0,0,0];
+      this.q = quat.normalize(quat.fromEuler(startRot));
+      this._qPrev = [...this.q];
+
+      // for kinematic velocity estimation
+      this._xPrev = [0,0,0];
+
+      // collision material-ish
+      this.restitution = 0.0;
+      this.friction = 0.0;
+
+      this.isPlayer = false;
+      this.lockRotation = false;
+
+      if (this.invMass <= 0) {
+        this.invInertiaLocal = [0,0,0];
+      } else if (this.shape === 'sphere') {
+        const r = Math.max(1e-6, this.radius);
+        const invI = 5 / (2 * this.mass * r * r);
+        this.invInertiaLocal = [invI, invI, invI];
+      } else {
+        const hx = this.halfExtents[0];
+        const hy = this.halfExtents[1];
+        const hz = this.halfExtents[2];
+        const x2 = 2 * hx;
+        const y2 = 2 * hy;
+        const z2 = 2 * hz;
+        const ix = (1/12) * this.mass * (y2*y2 + z2*z2);
+        const iy = (1/12) * this.mass * (x2*x2 + z2*z2);
+        const iz = (1/12) * this.mass * (x2*x2 + y2*y2);
+        this.invInertiaLocal = [
+          ix > 0 ? 1/ix : 0,
+          iy > 0 ? 1/iy : 0,
+          iz > 0 ? 1/iz : 0
+        ];
+      }
+    }
+
+    get x(){ return this.entity ? this.entity.pos : this._x; }
+    set x(v){ if (this.entity) this.entity.pos = v; else this._x = v; }
+    get xPrev(){ return this.entity ? this.entity.prevPos : this._xPrev; }
+    set xPrev(v){ if (this.entity) this.entity.prevPos = v; else this._xPrev = v; }
+    get qPrev(){ return this._qPrev; }
+    set qPrev(v){ this._qPrev = v; }
+
+    invInertiaWorldMul(v){
+      if (this.invMass <= 0) return [0,0,0];
+      const local = quat.invRotate(this.q, v);
+      const scaled = [
+        local[0] * this.invInertiaLocal[0],
+        local[1] * this.invInertiaLocal[1],
+        local[2] * this.invInertiaLocal[2]
+      ];
+      return quat.rotate(this.q, scaled);
+    }
+
+    aabb(){
+      // axis-aligned only
+      if (this.shape === 'box') {
+        const he = this.halfExtents;
+        return { min: [this.x[0]-he[0], this.x[1]-he[1], this.x[2]-he[2]],
+                 max: [this.x[0]+he[0], this.x[1]+he[1], this.x[2]+he[2]] };
+      }
+      // sphere AABB
+      const r = this.radius;
+      return { min:[this.x[0]-r,this.x[1]-r,this.x[2]-r], max:[this.x[0]+r,this.x[1]+r,this.x[2]+r] };
+    }
+  }
+
+  class Anchor {
+    constructor(body, localPoint){
+      this.body = body;
+      this.localPoint = localPoint;
+    }
+    worldPoint(){
+      const r = quat.rotate(this.body.q, this.localPoint);
+      return v3.add(this.body.x, r);
+    }
+    worldVel(){
+      const r = quat.rotate(this.body.q, this.localPoint);
+      return v3.add(this.body.v, v3.cross(this.body.w, r));
+    }
+  }
+
+  class RopeConstraint {
+    constructor(anchorA, anchorB, maxLength){
+      this.a = anchorA;
+      this.b = anchorB;
+      this.L = maxLength;
+      this.compliance = 1e-4; // soft-ish, good for v1
+      this.damping = 1.2;
+      this.velDamping = 0.2;
+      this.lambda = 0;
+      this.active = true;
+    }
+    solve(dt){
+      if(!this.active) return;
+      const A = this.a.body, B = this.b.body;
+      const pA = this.a.worldPoint();
+      const pB = this.b.worldPoint();
+      const d = v3.sub(pB,pA);
+      const len = v3.len(d);
+      if (len < 1e-8) return;
+      const n = v3.scale(d, 1/len);
+      const C = len - this.L;
+      if (C <= 0) { this.lambda = 0; return; } // slack
+
+      const rA = v3.sub(pA, A.x);
+      const rB = v3.sub(pB, B.x);
+      const vA = v3.add(A.v, v3.cross(A.w, rA));
+      const vB = v3.add(B.v, v3.cross(B.w, rB));
+      const vn = v3.dot(v3.sub(vB,vA), n);
+
+      const rnA = v3.cross(rA, n);
+      const rnB = v3.cross(rB, n);
+      const angA = v3.cross(A.invInertiaWorldMul(rnA), rA);
+      const angB = v3.cross(B.invInertiaWorldMul(rnB), rB);
+      const wEff = A.invMass + B.invMass + v3.dot(n, v3.add(angA, angB));
+      if (wEff < 1e-10) return;
+
+      const alpha = this.compliance / (dt*dt);
+      const biasVel = (this.damping * C) / dt;
+      const velDamp = vn * this.velDamping;
+      const dl = -(vn + velDamp + biasVel + alpha*this.lambda) / (wEff + alpha);
+      this.lambda += dl;
+
+      const impulse = v3.scale(n, dl);
+      if (A.invMass > 0) {
+        A.v = v3.sub(A.v, v3.scale(impulse, A.invMass));
+        A.w = v3.sub(A.w, A.invInertiaWorldMul(v3.cross(rA, impulse)));
+      }
+      if (B.invMass > 0) {
+        B.v = v3.add(B.v, v3.scale(impulse, B.invMass));
+        B.w = v3.add(B.w, B.invInertiaWorldMul(v3.cross(rB, impulse)));
+      }
+    }
+  }
+
+  // Contact generation
+  function aabbVsAabb(A, B){
+    const a = A.aabb();
+    const b = B.aabb();
+    const ox = Math.min(a.max[0], b.max[0]) - Math.max(a.min[0], b.min[0]);
+    const oy = Math.min(a.max[1], b.max[1]) - Math.max(a.min[1], b.min[1]);
+    const oz = Math.min(a.max[2], b.max[2]) - Math.max(a.min[2], b.min[2]);
+    if (ox <= 0 || oy <= 0 || oz <= 0) return null;
+
+    // choose smallest axis
+    let pen = ox;
+    let axis = 0;
+    let n = [A.x[0] < B.x[0] ? 1:-1, 0, 0];
+    if (oy < pen) { pen = oy; axis = 1; n = [0, A.x[1] < B.x[1] ? 1:-1, 0]; }
+    if (oz < pen) { pen = oz; axis = 2; n = [0,0, A.x[2] < B.x[2] ? 1:-1]; }
+
+    const overlapCenter = [
+      (Math.max(a.min[0], b.min[0]) + Math.min(a.max[0], b.max[0])) * 0.5,
+      (Math.max(a.min[1], b.min[1]) + Math.min(a.max[1], b.max[1])) * 0.5,
+      (Math.max(a.min[2], b.min[2]) + Math.min(a.max[2], b.max[2])) * 0.5
+    ];
+    const p = [...overlapCenter];
+    if (axis === 0) {
+      p[0] = A.x[0] + n[0] * A.halfExtents[0];
+    } else if (axis === 1) {
+      p[1] = A.x[1] + n[1] * A.halfExtents[1];
+    } else {
+      p[2] = A.x[2] + n[2] * A.halfExtents[2];
+    }
+    return { normal: n, penetration: pen, point: p };
+  }
+
+  function sphereVsSphere(A,B){
+    const d = v3.sub(B.x, A.x);
+    const dist = v3.len(d);
+    const r = A.radius + B.radius;
+    if (dist >= r) return null;
+    const n = dist>1e-8 ? v3.scale(d, 1/dist) : [0,1,0];
+    const p = v3.add(A.x, v3.scale(n, A.radius));
+    return { normal: n, penetration: (r - dist), point: p };
+  }
+
+  function sphereVsAabb(sphere, box){
+    // box is AABB
+    const he = box.halfExtents;
+    const bMin = [box.x[0]-he[0], box.x[1]-he[1], box.x[2]-he[2]];
+    const bMax = [box.x[0]+he[0], box.x[1]+he[1], box.x[2]+he[2]];
+    const closest = v3.clamp(sphere.x, bMin, bMax);
+    const d = v3.sub(closest, sphere.x);
+    const d2 = v3.len2(d);
+    const r = sphere.radius;
+    if (d2 >= r*r) return null;
+    const dist = Math.sqrt(Math.max(1e-12, d2));
+    const n = d2 > 1e-12 ? v3.scale(d, 1/dist) : [0,1,0];
+    const p = d2 > 1e-12 ? closest : v3.add(sphere.x, v3.scale(n, sphere.radius));
+    return { normal: n, penetration: (r - dist), point: p };
+  }
+
+  function generateContact(A,B){
+    if (A.type==='static' && B.type==='static') return null;
+
+    if (A.shape==='box' && B.shape==='box') return aabbVsAabb(A,B);
+    if (A.shape==='sphere' && B.shape==='sphere') return sphereVsSphere(A,B);
+    if (A.shape==='sphere' && B.shape==='box') return sphereVsAabb(A,B);
+    if (A.shape==='box' && B.shape==='sphere') {
+      const c = sphereVsAabb(B,A);
+      if (!c) return null;
+      // flip normal to be from A->B
+      return { normal: v3.scale(c.normal, -1), penetration: c.penetration, point: c.point };
+    }
+    return null;
+  }
+
+  function solveContact(A,B, contact, dt){
+    const n = contact.normal;
+    const pen = contact.penetration;
+    const p = contact.point;
+
+    const wA = A.invMass, wB = B.invMass;
+    const wSum = wA + wB;
+    if (wSum <= 0) return;
+
+    // velocity: remove into-surface component (inelastic)
+    const rA = v3.sub(p, A.x);
+    const rB = v3.sub(p, B.x);
+    const vA = v3.add(A.v, v3.cross(A.w, rA));
+    const vB = v3.add(B.v, v3.cross(B.w, rB));
+    const relV = v3.sub(vB, vA);
+    const vn = v3.dot(relV, n);
+    const slop = 0.001;
+    const beta = 0.2;
+    const biasVel = dt > 0 ? -(beta / dt) * Math.max(0, pen - slop) : 0;
+    if (vn < 0 || biasVel < 0) {
+      // normal impulse
+      const e = Math.min(A.restitution ?? 0, B.restitution ?? 0);
+      const rnA = v3.cross(rA, n);
+      const rnB = v3.cross(rB, n);
+      const angA = v3.cross(A.invInertiaWorldMul(rnA), rA);
+      const angB = v3.cross(B.invInertiaWorldMul(rnB), rB);
+      const denom = wA + wB + v3.dot(n, v3.add(angA, angB));
+      if (denom <= 1e-10) return;
+      const restitutionTerm = (vn < -1.0) ? (e * vn) : 0;
+      let j = -(vn + restitutionTerm + biasVel) / denom;
+      if (j < 0) j = 0;
+      const impulse = v3.scale(n, j);
+      if (wA > 0) {
+        A.v = v3.sub(A.v, v3.scale(impulse, wA));
+        A.w = v3.sub(A.w, A.invInertiaWorldMul(v3.cross(rA, impulse)));
+      }
+      if (wB > 0) {
+        B.v = v3.add(B.v, v3.scale(impulse, wB));
+        B.w = v3.add(B.w, B.invInertiaWorldMul(v3.cross(rB, impulse)));
+      }
+
+      // simple friction when player involved and grounded-ish
+      const mu = 0.4;
+      const vt = v3.sub(relV, v3.scale(n, vn));
+      const vtLen = v3.len(vt);
+      if (vtLen > 1e-6) {
+        const t = v3.scale(vt, 1/vtLen);
+        const rtA = v3.cross(rA, t);
+        const rtB = v3.cross(rB, t);
+        const angTA = v3.cross(A.invInertiaWorldMul(rtA), rA);
+        const angTB = v3.cross(B.invInertiaWorldMul(rtB), rB);
+        const denomT = wA + wB + v3.dot(t, v3.add(angTA, angTB));
+        if (denomT > 1e-10) {
+          const jt = -vtLen / denomT;
+          const jtClamped = clamp(jt, -mu*j, mu*j);
+          const impT = v3.scale(t, jtClamped);
+          if (wA > 0) {
+            A.v = v3.sub(A.v, v3.scale(impT, wA));
+            A.w = v3.sub(A.w, A.invInertiaWorldMul(v3.cross(rA, impT)));
+          }
+          if (wB > 0) {
+            B.v = v3.add(B.v, v3.scale(impT, wB));
+            B.w = v3.add(B.w, B.invInertiaWorldMul(v3.cross(rB, impT)));
+          }
+        }
+      }
+    }
+  }
+
+  // Raycast (for web shooting) against box/sphere colliders
+    function raycast(origin, dir, maxDist, bodies, ignoreBody=null){
+    // Returns { body, t, point, normal }
+    let best = null;
+
+    // Ray vs AABB (slabs)
+    function rayAabb(o, d, bMin, bMax){
+      let tmin = 0;
+      let tmax = maxDist;
+      let hitAxis = -1;
+      let hitSign = 1;
+
+      for (let i=0;i<3;i++){
+        const di = d[i];
+        const oi = o[i];
+        if (Math.abs(di) < 1e-9){
+          if (oi < bMin[i] || oi > bMax[i]) return null;
+        } else {
+          let inv = 1/di;
+          let t1 = (bMin[i]-oi)*inv;
+          let t2 = (bMax[i]-oi)*inv;
+          let sign = -1;
+          if (t1 > t2){ const tmp=t1; t1=t2; t2=tmp; sign = 1; }
+
+          if (t1 > tmin){
+            tmin = t1;
+            hitAxis = i;
+            hitSign = sign;
+          }
+          tmax = Math.min(tmax, t2);
+          if (tmin > tmax) return null;
+        }
+      }
+
+      if (tmin < 0 || tmin > maxDist) return null;
+      const p = v3.add(o, v3.scale(d, tmin));
+      let n = [0,0,0];
+      if (hitAxis >= 0) n[hitAxis] = hitSign;
+      return { t: tmin, point: p, normal: n };
+    }
+
+    // Ray vs Sphere
+    function raySphere(o, d, c, r){
+      const oc = v3.sub(o, c);
+      const b = v3.dot(oc, d);
+      const cTerm = v3.dot(oc, oc) - r*r;
+      const disc = b*b - cTerm;
+      if (disc < 0) return null;
+      const s = Math.sqrt(disc);
+      // smallest positive t
+      let t = -b - s;
+      if (t < 0) t = -b + s;
+      if (t < 0 || t > maxDist) return null;
+      const p = v3.add(o, v3.scale(d, t));
+      const n = v3.norm(v3.sub(p, c));
+      return { t, point: p, normal: n };
+    }
+
+    for (const B of bodies){
+      if (B === ignoreBody) continue;
+      // allow attaching to everything except player if you want; keep it simple: any non-player
+      if (B.isPlayer) continue;
+
+      let hit = null;
+      if (B.shape === 'box'){
+        const he = B.halfExtents;
+        const bMin = [B.x[0]-he[0], B.x[1]-he[1], B.x[2]-he[2]];
+        const bMax = [B.x[0]+he[0], B.x[1]+he[1], B.x[2]+he[2]];
+        hit = rayAabb(origin, dir, bMin, bMax);
+      } else if (B.shape === 'sphere'){
+        hit = raySphere(origin, dir, B.x, B.radius);
+      }
+      if (hit && (!best || hit.t < best.t)){
+        best = { body: B, t: hit.t, point: hit.point, normal: hit.normal };
+      }
+    }
+
+    return best;
+  }
+
+  // -----------------------------
+  // Scene setup
+  // -----------------------------
+  const entityManager = new EntityManager();
+  const bodies = [];
+  const ropes = [];
+  const threeDrawables = [];
+  const unitBoxGeo = new THREE.BoxGeometry(2, 2, 2);
+  const unitSphereGeo = new THREE.SphereGeometry(1, 18, 14);
+  const matStatic = new THREE.MeshStandardMaterial({ color: 0x3f86ff });
+  const matDynamic = new THREE.MeshStandardMaterial({ color: 0x33c7a7 });
+  const matPlayer = new THREE.MeshStandardMaterial({ color: 0xf2f2fa });
+
+  function instantiateComponent(def, entity){
+    if (def.kind === 'collider') {
+      const bodyArgs = { ...def.body };
+      if (bodyArgs.halfExtents) bodyArgs.halfExtents = cloneVec3(bodyArgs.halfExtents);
+      const body = new Body({ ...bodyArgs, entity });
+      bodies.push(body);
+      return { kind: 'collider', body };
+    }
+    if (def.kind === 'visual') {
+      const localPos = def.localPos ? cloneVec3(def.localPos) : [0,0,0];
+      const localRot = def.localRot ? cloneVec3(def.localRot) : [0,0,0];
+      const localScale = def.localScale ? cloneVec3(def.localScale) : [1,1,1];
+      const binding = new VisualBinding({
+        entity,
+        localPos,
+        localRot,
+        localScale,
+        mode: def.mode ?? 'direct',
+        smoothHz: def.smoothHz ?? 18
+      });
+      const geo = (def.shape === 'sphere') ? unitSphereGeo : unitBoxGeo;
+      const material = def.material ?? new THREE.MeshStandardMaterial({ color: def.color ?? 0xffffff });
+      const mesh = new THREE.Mesh(geo, material);
+      scene.add(mesh);
+      threeDrawables.push(new ThreeDrawable({ binding, object3d: mesh }));
+      return { kind: 'visual', binding, object3d: mesh };
+    }
+    if (def.kind === 'physics') {
+      return { kind: 'physics', update: def.update ?? null };
+    }
+    if (def.kind === 'behavior') {
+      return { kind: 'behavior', update: def.update ?? null };
+    }
+    return null;
+  }
+
+  function createEntityFactory(componentDefs){
+    return {
+      create(opts={}){
+        const entity = new Entity({ pos: opts.pos ?? [0,0,0], rot: opts.rot ?? [0,0,0] });
+        for (const def of componentDefs) {
+          const resolved = (typeof def === 'function') ? def(opts) : def;
+          if (!resolved) continue;
+          const component = instantiateComponent(resolved, entity);
+          if (component) entity.addComponent(component);
+        }
+        if (Array.isArray(opts.components)) {
+          for (const def of opts.components) {
+            const resolved = (typeof def === 'function') ? def(opts) : def;
+            if (!resolved) continue;
+            const component = instantiateComponent(resolved, entity);
+            if (component) entity.addComponent(component);
+          }
+        }
+        entityManager.add(entity);
+        return entity;
+      }
+    };
+  }
+
+  function getColliderBody(entity){
+    const collider = entity.components.find((c)=>c.kind === 'collider');
+    return collider ? collider.body : null;
+  }
+
+  const defaultPhysicsComponent = (opts)=>({
+    kind:'physics',
+    update: (body) => {
+      if (Number.isFinite(opts?.linearDampPerSec)) body.linearDampPerSec = opts.linearDampPerSec;
+      if (Number.isFinite(opts?.maxSpeed)) body.maxSpeed = opts.maxSpeed;
+    }
+  });
+
+  const boxFactory = createEntityFactory([
+    (opts)=>({ kind:'collider', body:{ type: opts.type ?? 'static', mass: opts.mass ?? 1, shape:'box', halfExtents: opts.halfExtents } }),
+    (opts)=>defaultPhysicsComponent(opts),
+    (opts)=>({ kind:'visual', shape:'box', localPos:[0,0,0], localScale: opts.halfExtents, material: opts.material ?? ((opts.type ?? 'static') === 'static' ? matStatic : matDynamic) })
+  ]);
+
+  const sphereFactory = createEntityFactory([
+    (opts)=>({ kind:'collider', body:{ type: opts.type ?? 'static', mass: opts.mass ?? 1, shape:'sphere', radius: opts.radius } }),
+    (opts)=>defaultPhysicsComponent(opts),
+    (opts)=>({ kind:'visual', shape:'sphere', localPos:[0,0,0], localScale: [opts.radius, opts.radius, opts.radius], material: opts.material ?? matDynamic })
+  ]);
+
+  const playerFactory = createEntityFactory([
+    (opts)=>({ kind:'collider', body:{ type:'dynamic', mass: opts.mass ?? 1, shape:'box', halfExtents: opts.halfExtents } }),
+    () => ({
+      kind:'physics',
+      update: (body, dt) => {
+        // input accel
+        const f = cameraForward();
+        const r = cameraRight();
+        // movement on XZ plane
+        const fXZ = v3.norm([f[0], 0, f[2]]);
+        const rXZ = v3.norm([r[0], 0, r[2]]);
+
+        let wish = [0,0,0];
+        if (keys.has('KeyW')) wish = v3.add(wish, fXZ);
+        if (keys.has('KeyS')) wish = v3.sub(wish, fXZ);
+        if (keys.has('KeyD')) wish = v3.add(wish, rXZ);
+        if (keys.has('KeyA')) wish = v3.sub(wish, rXZ);
+        wish = v3.norm(wish);
+
+        const airControl = playerGrounded ? 1.0 : 0.35;
+        const accel = playerGrounded ? moveParams.accelGround : moveParams.accelAir;
+
+        // apply acceleration in wish dir
+        body.v = v3.add(body.v, v3.scale(wish, accel * airControl * dt));
+
+        // update damping and speed cap based on state
+        const hasWeb = !!player.webLeft || !!player.webRight;
+        body.linearDampPerSec = playerGrounded
+          ? moveParams.groundDampPerSec
+          : (hasWeb ? moveParams.aerialWebDampPerSec : moveParams.airDampPerSec);
+        body.maxSpeed = moveParams.maxSpeed;
+      }
+    }),
+    (opts)=>({ kind:'visual', shape:'box', localPos:[0, 0, 0], localScale:[opts.halfExtents[0]*1.05, opts.halfExtents[1]*0.78, opts.halfExtents[2]*1.05], material: matPlayer, mode:'smooth', smoothHz:22 }),
+    (opts)=>({ kind:'visual', shape:'box', localPos:[0, opts.halfExtents[1]*0.75, 0], localScale:[opts.halfExtents[0]*1.05, opts.halfExtents[0]*1.05, opts.halfExtents[2]*1.05], material: matPlayer, mode:'smooth', smoothHz:22 }),
+    (opts)=>({ kind:'visual', shape:'box', localPos:[0, -opts.halfExtents[1]*0.75, 0], localScale:[opts.halfExtents[0]*1.05, opts.halfExtents[0]*1.05, opts.halfExtents[2]*1.05], material: matPlayer, mode:'smooth', smoothHz:22 })
+  ]);
+
+  function addBox(pos, he, type='static', mass=1, material=null){
+    return boxFactory.create({ pos, halfExtents: he, type, mass, material });
+  }
+  function addSphere(pos, r, type='static', mass=1, material=null){
+    return sphereFactory.create({ pos, radius: r, type, mass, material });
+  }
+
+  const playerEntity = playerFactory.create({ pos: [0, 2.0, 0], halfExtents: [0.35, 0.9, 0.35], mass: 1 });
+  const player = getColliderBody(playerEntity);
+  player.isPlayer = true;
+  player.lockRotation = true;
+  player.invInertiaLocal = [0,0,0];
+  player.w = [0,0,0];
+  player.q = quat.normalize(quat.fromEuler([0,0,0]));
+  player.entity.rot = [0,0,0];
+  player.restitution = 0.0;
+  player.state = 'aerial';
+  player.webLeft = null;
+  player.webRight = null;
+
+  addBox([0, -1, 0], [40, 1, 40], 'static');
+  addBox([0, 49, 0], [40, 1, 40], 'static');
+
+  addBox([6, 3, -6], [1.2, 3.0, 1.2]);
+  addBox([-7, 4, -4], [1.6, 4.0, 1.6]);
+  addBox([0, 6, -14], [6.0, 0.5, 1.2]);
+  addBox([12, 7, -18], [1.5, 6.0, 1.5]);
+  addBox([-12, 8, -18], [1.5, 7.0, 1.5]);
+  addBox([0, 10, -25], [10.0, 0.5, 2.0]);
+
+  addSphere([3, 6, -10], 1.2);
+  addSphere([-4, 7.5, -16], 1.6);
+
+  // Dynamic spheres to test gravity + tethering
+  addSphere([2, 12, -6], 0.9, 'dynamic', 1);
+  addSphere([5, 12, -6], 0.9, 'dynamic', 2);
+  addSphere([8, 12, -6], 0.9, 'dynamic', 10);
+
+  // Dynamic boxes to test gravity + tethering
+  addBox([2, 12, -10], [0.6, 0.6, 0.6], 'dynamic', 1);
+  addBox([5, 12, -10], [0.6, 0.6, 0.6], 'dynamic', 2);
+  addBox([8, 12, -10], [0.6, 0.6, 0.6], 'dynamic', 10);
+
+  // Oscillating static cube for tether tests
+  const testCubeMat = new THREE.MeshStandardMaterial({ color: 0xff6b6b });
+  const testCube = boxFactory.create({
+    pos: [0, 8, -8],
+    halfExtents: [1.0, 1.0, 1.0],
+    type: 'static',
+    material: testCubeMat,
+    components: [
+      {
+        kind: 'physics',
+        update: (body) => {
+          if (!body.entity) return;
+          const t = performance.now() * 0.001;
+          body.entity.rot[1] = t * 0.6;
+          body.entity.pos[1] = 8 + Math.sin(t * 1.2) * 2.0;
+        }
+      }
+    ]
+  });
+
+  function makeLine(colorHex, width=2.5){
+    const geo = new THREE.LineGeometry();
+    geo.setPositions([0,0,0, 0,0,0]);
+    const mat = new THREE.LineMaterial({
+      color: colorHex,
+      transparent: true,
+      opacity: 1.0,
+      linewidth: width,
+      depthTest: true,
+      depthWrite: false
+    });
+    mat.resolution.set(canvas.clientWidth, canvas.clientHeight);
+    lineMaterials.push(mat);
+    const line = new THREE.Line2(geo, mat);
+    line.computeLineDistances();
+    scene.add(line);
+    return line;
+  }
+
+  function setLine(line, a, b){
+    line.geometry.setPositions([a[0], a[1], a[2], b[0], b[1], b[2]]);
+    line.computeLineDistances();
+  }
+
+  const aimLine = makeLine(0xffffff);
+  aimLine.material.opacity = 0.35;
+
+  const leftLine = makeLine(0xffd166);
+  const rightLine = makeLine(0x9fe3ff);
+  leftLine.visible = false;
+  rightLine.visible = false;
+
+  // -----------------------------
+  // Input + camera
+  // -----------------------------
+  const statsEl = document.getElementById('stats');
+  const perfEl = document.getElementById('perf');
+
+  const keys = new Set();
+  window.addEventListener('keydown', (e)=>{
+    keys.add(e.code);
+    if (e.code === 'KeyP') {
+      perfEl.style.display = (perfEl.style.display === 'none') ? 'block' : 'none';
+    }
+    if (e.code === 'Space') {
+      if (!jumpCharging) {
+        jumpCharging = true;
+        jumpChargeT = 0;
+      }
+      e.preventDefault();
+    }
+  });
+  window.addEventListener('keyup', (e)=>{
+    keys.delete(e.code);
+    if (e.code === 'Space') {
+      // release jump
+      if (jumpCharging) {
+        doChargedJump();
+      }
+      jumpCharging = false;
+      jumpChargeT = 0;
+    }
+  });
+
+  // Pointer lock for mouselook
+  let yaw = 0;
+  let pitch = 0;
+  let pointerLocked = false;
+
+  canvas.addEventListener('click', ()=>{
+    if (!pointerLocked) canvas.requestPointerLock();
+  });
+
+  document.addEventListener('pointerlockchange', ()=>{
+    pointerLocked = (document.pointerLockElement === canvas);
+  });
+
+  document.addEventListener('mousemove', (e)=>{
+    if (!pointerLocked) return;
+    const sens = 0.0022;
+    yaw -= e.movementX * sens;
+    pitch -= e.movementY * sens;
+    pitch = clamp(pitch, -1.35, 1.35);
+  });
+
+  // Prevent context menu (RMB)
+  canvas.addEventListener('contextmenu', (e)=>e.preventDefault());
+
+  let lmbDown = false;
+  let rmbDown = false;
+
+  canvas.addEventListener('mousedown', (e)=>{
+    if (e.button === 0) { lmbDown = true; }
+    if (e.button === 2) { rmbDown = true; }
+  });
+  window.addEventListener('mouseup', (e)=>{
+    if (e.button === 0) { lmbDown = false; }
+    if (e.button === 2) { rmbDown = false; }
+  });
+
+  // Camera parameters
+  const cam = {
+    pos:[0,0,0],
+    target:[0,0,0],
+    up:[0,1,0],
+    fov: 70 * Math.PI/180,
+    near: 0.05,
+    far: 300,
+    thirdPersonDist: 5.0,
+    height: 1.35,
+  };
+
+  camera.fov = cam.fov * 180 / Math.PI;
+  camera.near = cam.near;
+  camera.far = cam.far;
+  camera.updateProjectionMatrix();
+
+  function cameraForward(){
+    const cp = Math.cos(pitch), sp = Math.sin(pitch);
+    const cy = Math.cos(yaw), sy = Math.sin(yaw);
+    // right-handed-ish
+    return v3.norm([sy*cp, sp, -cy*cp]);
+  }
+
+  function cameraRight(){
+    const f = cameraForward();
+    return v3.norm(v3.cross(f, cam.up));
+  }
+
+  function updateCamera(){
+    const head = v3.add(player.x, [0, cam.height, 0]);
+    const f = cameraForward();
+    cam.target = head;
+    cam.pos = v3.sub(head, v3.scale(f, cam.thirdPersonDist));
+  }
+
+  // -----------------------------
+  // Web (rope) handling
+  // -----------------------------
+  let leftRope = null;
+  let rightRope = null;
+
+  function makeRopeToHit(hit){
+    // Anchor A: player CoM
+    const aA = new Anchor(player, [0,0,0]);
+
+    // Anchor B: local point on hit body
+    const B = hit.body;
+    let localB;
+    if (B.shape === 'box'){
+      localB = quat.invRotate(B.q, v3.sub(hit.point, B.x));
+    } else {
+      // project to sphere surface
+      const n = v3.norm(v3.sub(hit.point, B.x));
+      localB = quat.invRotate(B.q, v3.scale(n, B.radius));
+    }
+    const aB = new Anchor(B, localB);
+    const dist = v3.len(v3.sub(hit.point, player.x));
+
+    const rope = new RopeConstraint(aA, aB, dist);
+    rope.compliance = 1e-4;
+    rope.damping = 1.25;
+    ropes.push(rope);
+    return rope;
+  }
+
+  function releaseRope(rope){
+    if (!rope) return;
+    rope.active = false;
+  }
+
+  // -----------------------------
+  // Jump charge
+  // -----------------------------
+  let jumpCharging = false;
+  let jumpChargeT = 0;
+  const jumpChargeMax = 1.5;
+  let playerGrounded = false;
+
+  function doChargedJump(){
+    if (!playerGrounded) return;
+    const t = clamp(jumpChargeT / jumpChargeMax, 0, 1);
+    // feels better with curve
+    const curve = t*t*(3-2*t);
+    const minJ = 8.0;
+    const maxJ = 24.0;
+    const jv = minJ + (maxJ-minJ)*curve;
+    player.v[1] = jv;
+  }
+
+  // -----------------------------
+  // Simulation
+  // -----------------------------
+  const gravity = [0, -18.0, 0];
+  const moveParams = {
+    accelGround: 128.0,
+    accelAir: 18.0,
+    maxSpeed: Infinity,
+    groundDampPerSec: 7.66,
+    airDampPerSec: 0.50,
+    aerialWebDampPerSec: 0.0
+  };
+
+  function updatePhysicsComponents(dt){
+    entityManager.forEachComponent('physics', (c, e)=>{
+      if (typeof c.update !== 'function') return;
+      const body = getColliderBody(e);
+      c.update(body, dt);
+    });
+  }
+
+  function syncKinematicBodies(dt){
+    for (const b of bodies){
+      if (b.type === 'dynamic') continue;
+      if (!b.entity) {
+        b.v = [0,0,0];
+        b.w = [0,0,0];
+        continue;
+      }
+      const pos = b.x;
+      const prevPos = b.xPrev;
+      b.v = dt > 0 ? v3.scale(v3.sub(pos, prevPos), 1/dt) : [0,0,0];
+      b.xPrev = cloneVec3(pos);
+
+      const qPrev = b.q;
+      const qNext = quat.normalize(quat.fromEuler(b.entity.rot));
+      b.w = angularVelocityFromDelta(qPrev, qNext, dt);
+      b.qPrev = qPrev;
+      b.q = qNext;
+    }
+  }
+
+  function integrateBodies(dt){
+    for (const b of bodies){
+      if (b.type !== 'dynamic') continue;
+
+      // gravity
+      b.v = v3.add(b.v, v3.scale(gravity, dt));
+
+      // optional horizontal speed cap
+      const maxSpeed = b.maxSpeed;
+      if (Number.isFinite(maxSpeed)) {
+        const hv = [b.v[0], 0, b.v[2]];
+        const hlen = v3.len(hv);
+        if (hlen > maxSpeed) {
+          const hcap = v3.scale(hv, maxSpeed / hlen);
+          b.v[0] = hcap[0];
+          b.v[2] = hcap[2];
+        }
+      }
+
+      // basic damping (time-based)
+      const dampRate = b.linearDampPerSec;
+      const damp = Math.exp(-Math.max(0, dampRate) * dt);
+      b.v[0] *= damp;
+      b.v[2] *= damp;
+
+      // integrate position (predicted)
+      b.xPrev = [...b.x];
+      b.x = v3.add(b.xPrev, v3.scale(b.v, dt));
+      if (!isFiniteVec3(b.x) || !isFiniteVec3(b.v)) {
+        b.x = [0, 2.0, 0];
+        b.v = [0, 0, 0];
+      }
+
+      // integrate orientation
+      if (b.lockRotation) {
+        b.w = [0,0,0];
+      } else {
+        const angDamp = Math.exp(-Math.max(0, b.angularDampPerSec) * dt);
+        b.w[0] *= angDamp;
+        b.w[1] *= angDamp;
+        b.w[2] *= angDamp;
+      }
+      b.qPrev = [...b.q];
+      b.q = b.lockRotation ? b.q : integrateOrientation(b.q, b.w, dt);
+      if (b.entity) b.entity.rot = quat.toEuler(b.q);
+    }
+  }
+
+  function projectRopeVelocities(){
+    for (const r of ropes){
+      if (!r.active) continue;
+      const A = r.a.body, B = r.b.body;
+      const pA = r.a.worldPoint();
+      const pB = r.b.worldPoint();
+      const d = v3.sub(pB, pA);
+      const len = v3.len(d);
+      if (len < 1e-8) continue;
+      const C = len - r.L;
+      if (C <= 0) continue;
+
+      const n = v3.scale(d, 1/len); // A -> B
+      const rA = v3.sub(pA, A.x);
+      const rB = v3.sub(pB, B.x);
+      const vA = v3.add(A.v, v3.cross(A.w, rA));
+      const vB = v3.add(B.v, v3.cross(B.w, rB));
+      const vn = v3.dot(v3.sub(vB, vA), n);
+      const rnA = v3.cross(rA, n);
+      const rnB = v3.cross(rB, n);
+      const angA = v3.cross(A.invInertiaWorldMul(rnA), rA);
+      const angB = v3.cross(B.invInertiaWorldMul(rnB), rB);
+      const wEff = A.invMass + B.invMass + v3.dot(n, v3.add(angA, angB));
+      if (wEff > 1e-10) {
+        if (vn > 0) {
+          const j = vn / wEff;
+          const impulse = v3.scale(n, j);
+          if (A.invMass > 0) {
+            A.v = v3.add(A.v, v3.scale(impulse, A.invMass));
+            A.w = v3.add(A.w, A.invInertiaWorldMul(v3.cross(rA, impulse)));
+          }
+          if (B.invMass > 0) {
+            B.v = v3.sub(B.v, v3.scale(impulse, B.invMass));
+            B.w = v3.sub(B.w, B.invInertiaWorldMul(v3.cross(rB, impulse)));
+          }
+        }
+        const damp = clamp(r.velDamping, 0, 1);
+        if (damp > 0) {
+          const jD = vn * damp / wEff;
+          const impulse = v3.scale(n, jD);
+          if (A.invMass > 0) {
+            A.v = v3.add(A.v, v3.scale(impulse, A.invMass));
+            A.w = v3.add(A.w, A.invInertiaWorldMul(v3.cross(rA, impulse)));
+          }
+          if (B.invMass > 0) {
+            B.v = v3.sub(B.v, v3.scale(impulse, B.invMass));
+            B.w = v3.sub(B.w, B.invInertiaWorldMul(v3.cross(rB, impulse)));
+          }
+        }
+      }
+    }
+  }
+
+  function solveCollisions(dt){
+    playerGrounded = false;
+
+    for (let i=0;i<bodies.length;i++){
+      for (let j=i+1;j<bodies.length;j++){
+        const A = bodies[i], B = bodies[j];
+        if ((A.type==='static' || A.type==='kinematic') && (B.type==='static' || B.type==='kinematic')) continue;
+
+        const c = generateContact(A,B);
+        if (!c) continue;
+
+        // track grounded if player involved and normal points upward on player
+        if (A.isPlayer) {
+          // normal points from A->B; grounded if contact normal points downward from player to ground
+          if (c.normal[1] < -0.5) playerGrounded = true;
+        } else if (B.isPlayer) {
+          // normal points from A->B; grounded if normal points upward toward player
+          if (c.normal[1] > 0.5) playerGrounded = true;
+        }
+
+        solveContact(A,B,c,dt);
+      }
+    }
+    player.state = playerGrounded
+      ? 'ground'
+      : ((player.webLeft || player.webRight) ? 'aerialWeb' : 'aerial');
+  }
+
+  function solveRopes(dt){
+    for (const r of ropes) r.solve(dt);
+    // prune inactive ropes occasionally
+    for (let i=ropes.length-1;i>=0;i--){
+      if (!ropes[i].active) ropes.splice(i,1);
+    }
+  }
+
+  function updateBehaviors(dt){
+    entityManager.forEachComponent('behavior', (c, e)=>{
+      if (typeof c.update === 'function') c.update(e, dt);
+    });
+  }
+
+  function stepPhysics(dt){
+    if (dt <= 0 || !Number.isFinite(dt)) return;
+    const substeps = 3;
+    const h = dt / substeps;
+    for (let s=0;s<substeps;s++){
+      // jump charge timer
+      if (jumpCharging) jumpChargeT = Math.min(jumpChargeMax, jumpChargeT + h);
+
+      updateBehaviors(h);
+      updatePhysicsComponents(h);
+      syncKinematicBodies(h);
+
+      // integrate
+      integrateBodies(h);
+
+      // iterative solve
+      const iters = 10;
+      for (let it=0; it<iters; it++){
+        solveCollisions(h);
+        solveRopes(h);
+      }
+
+      // remove rope-violating velocity (stabilizes XPBD)
+      projectRopeVelocities();
+    }
+  }
+
+  // -----------------------------
+  // Web firing logic (per-frame)
+  // -----------------------------
+  function updateWebs(){
+    const f = cameraForward();
+    const origin = player.entity ? player.entity.pos : player.x;
+    const maxDist = 80.0;
+
+    // Left
+    if (lmbDown) {
+      if (!leftRope) {
+        const hit = raycast(origin, f, maxDist, bodies, player);
+        if (hit) leftRope = makeRopeToHit(hit);
+        player.webLeft = leftRope;
+      }
+    } else {
+      if (leftRope) { releaseRope(leftRope); leftRope = null; }
+      player.webLeft = null;
+    }
+
+    // Right
+    if (rmbDown) {
+      if (!rightRope) {
+        const hit = raycast(origin, f, maxDist, bodies, player);
+        if (hit) rightRope = makeRopeToHit(hit);
+        player.webRight = rightRope;
+      }
+    } else {
+      if (rightRope) { releaseRope(rightRope); rightRope = null; }
+      player.webRight = null;
+    }
+  }
+
+  // -----------------------------
+  // Render loop
+  // -----------------------------
+  let lastT = performance.now();
+  const perfWindowMs = 5000;
+  const perfSamples = {
+    frame: [],
+    physics: [],
+    render: []
+  };
+
+  function pushSample(bucket, t, v){
+    bucket.push({ t, v });
+    const cutoff = t - perfWindowMs;
+    while (bucket.length && bucket[0].t < cutoff) bucket.shift();
+  }
+
+  function calcStats(bucket){
+    if (!bucket.length) return null;
+    const vals = bucket.map(s => s.v).sort((a,b)=>a-b);
+    const pick = (p)=>{
+      const idx = Math.min(vals.length - 1, Math.max(0, Math.floor(p * (vals.length - 1))));
+      return vals[idx];
+    };
+    return {
+      avg: vals.reduce((a,b)=>a+b,0) / vals.length,
+      p50: pick(0.50),
+      p95: pick(0.95),
+      p99: pick(0.99),
+      worst: vals[vals.length - 1]
+    };
+  }
+
+  function frame(t){
+    const frameStart = performance.now();
+    const dt = clamp((t - lastT) / 1000, 0, 1/20);
+    lastT = t;
+
+    updateCamera();
+    updateWebs();
+    const physicsStart = performance.now();
+    stepPhysics(dt);
+    const physicsEnd = performance.now();
+    updateCamera();
+
+    const renderStart = performance.now();
+    camera.position.set(cam.pos[0], cam.pos[1], cam.pos[2]);
+    camera.lookAt(cam.target[0], cam.target[1], cam.target[2]);
+
+    // update visual bindings
+    for (const d of threeDrawables) {
+      d.binding.update(dt);
+      d.syncFromBinding();
+    }
+
+    // draw aim ray
+    const aimDir = cameraForward();
+    const rayA = cam.pos;
+    const rayB = v3.add(cam.pos, v3.scale(aimDir, 30));
+    setLine(aimLine, rayA, rayB);
+
+    // draw ropes
+    if (leftRope){
+      const a = leftRope.a.worldPoint();
+      const b = leftRope.b.worldPoint();
+      leftLine.visible = true;
+      setLine(leftLine, a, b);
+    } else {
+      leftLine.visible = false;
+    }
+    if (rightRope){
+      const a = rightRope.a.worldPoint();
+      const b = rightRope.b.worldPoint();
+      rightLine.visible = true;
+      setLine(rightLine, a, b);
+    } else {
+      rightLine.visible = false;
+    }
+
+    renderer.render(scene, camera);
+    const renderEnd = performance.now();
+
+    // HUD
+    const speed = v3.len([player.v[0],0,player.v[2]]);
+    statsEl.textContent = `speed ${speed.toFixed(1)}  |  y ${player.x[1].toFixed(2)}  |  grounded ${playerGrounded ? 'yes':'no'}  |  jump ${jumpCharging ? (jumpChargeT.toFixed(2)+'s'):'—'}  |  webs ${(leftRope?1:0)+(rightRope?1:0)}`;
+
+    const frameEnd = performance.now();
+    pushSample(perfSamples.frame, frameEnd, frameEnd - frameStart);
+    pushSample(perfSamples.physics, physicsEnd, physicsEnd - physicsStart);
+    pushSample(perfSamples.render, renderEnd, renderEnd - renderStart);
+
+    if (perfEl.style.display !== 'none') {
+      const f = calcStats(perfSamples.frame);
+      const p = calcStats(perfSamples.physics);
+      const r = calcStats(perfSamples.render);
+      if (f && p && r) {
+        perfEl.textContent =
+          `frame ms avg ${f.avg.toFixed(2)} p50 ${f.p50.toFixed(2)} p95 ${f.p95.toFixed(2)} p99 ${f.p99.toFixed(2)} max ${f.worst.toFixed(2)} | ` +
+          `physics ms avg ${p.avg.toFixed(2)} p50 ${p.p50.toFixed(2)} p95 ${p.p95.toFixed(2)} p99 ${p.p99.toFixed(2)} max ${p.worst.toFixed(2)} | ` +
+          `render ms avg ${r.avg.toFixed(2)} p50 ${r.p50.toFixed(2)} p95 ${r.p95.toFixed(2)} p99 ${r.p99.toFixed(2)} max ${r.worst.toFixed(2)}`;
+      } else {
+        perfEl.textContent = 'perf: collecting...';
+      }
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>
