@@ -85,6 +85,7 @@
 
   function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
   function isFiniteVec3(v){ return Number.isFinite(v[0]) && Number.isFinite(v[1]) && Number.isFinite(v[2]); }
+  function cloneVec3(v){ return [v[0], v[1], v[2]]; }
 
   const canvas = document.getElementById('c');
 
@@ -113,35 +114,41 @@
   resizeThree();
 
   // -----------------------------
-  // Render bindings (Body -> Visual)
+  // Render bindings (Entity -> Visual)
   // -----------------------------
   class VisualBinding {
     constructor({
-      body,
+      entity,
       localPos=[0,0,0],
+      localRot=[0,0,0],
       localScale=[1,1,1],
       mode='direct', // 'direct' | 'smooth'
       smoothHz=18,
     }){
-      this.body = body;
+      this.entity = entity;
       this.localPos = localPos;
+      this.localRot = localRot;
       this.localScale = localScale;
       this.mode = mode;
       this.smoothHz = smoothHz;
 
       // render state
-      this.renderPos = body ? v3.add(body.x, localPos) : [...localPos];
+      this.renderPos = entity ? v3.add(entity.pos, localPos) : [...localPos];
+      this.renderRot = entity ? v3.add(entity.rot, localRot) : [...localRot];
     }
 
     update(dt){
-      const target = v3.add(this.body.x, this.localPos);
+      const target = v3.add(this.entity.pos, this.localPos);
+      const rotTarget = v3.add(this.entity.rot, this.localRot);
       if (this.mode === 'direct') {
         this.renderPos = target;
+        this.renderRot = rotTarget;
         return;
       }
       // exponential smoothing
       const a = 1 - Math.exp(-this.smoothHz * dt);
       this.renderPos = v3.add(this.renderPos, v3.scale(v3.sub(target, this.renderPos), a));
+      this.renderRot = rotTarget;
     }
   }
 
@@ -152,9 +159,27 @@
     }
     syncFromBinding(){
       const p = this.binding.renderPos;
+      const r = this.binding.renderRot;
       const s = this.binding.localScale;
       this.object3d.position.set(p[0], p[1], p[2]);
+      this.object3d.rotation.set(r[0], r[1], r[2]);
       this.object3d.scale.set(s[0], s[1], s[2]);
+    }
+  }
+
+  // -----------------------------
+  // Entities + components
+  // -----------------------------
+  class Entity {
+    constructor({ pos=[0,0,0], rot=[0,0,0] } = {}){
+      this.pos = cloneVec3(pos);
+      this.rot = cloneVec3(rot);
+      this.prevPos = cloneVec3(pos);
+      this.components = [];
+    }
+    addComponent(component){
+      component.entity = this;
+      this.components.push(component);
     }
   }
 
@@ -162,7 +187,7 @@
   // Physics v1
   // -----------------------------
   class Body {
-    constructor({ type='dynamic', mass=1, shape='box', halfExtents=[.5,.5,.5], radius=.5, kinematicPoseFn=null, linearDampPerSec=0, maxSpeed=Infinity }){
+    constructor({ type='dynamic', mass=1, shape='box', halfExtents=[.5,.5,.5], radius=.5, kinematicPoseFn=null, linearDampPerSec=0, maxSpeed=Infinity, entity=null }){
       this.type = type; // dynamic | kinematic | static
       this.mass = mass;
       this.invMass = (type === 'dynamic' && mass > 0) ? 1/mass : 0;
@@ -172,12 +197,13 @@
       this.kinematicPoseFn = kinematicPoseFn;
       this.linearDampPerSec = linearDampPerSec;
       this.maxSpeed = maxSpeed;
+      this.entity = entity;
 
-      this.x = [0,0,0];
+      this._x = [0,0,0];
       this.v = [0,0,0];
 
       // for kinematic velocity estimation
-      this.xPrev = [0,0,0];
+      this._xPrev = [0,0,0];
 
       // collision material-ish
       this.restitution = 0.0;
@@ -185,6 +211,11 @@
 
       this.isPlayer = false;
     }
+
+    get x(){ return this.entity ? this.entity.pos : this._x; }
+    set x(v){ if (this.entity) this.entity.pos = v; else this._x = v; }
+    get xPrev(){ return this.entity ? this.entity.prevPos : this._xPrev; }
+    set xPrev(v){ if (this.entity) this.entity.prevPos = v; else this._xPrev = v; }
 
     aabb(){
       // axis-aligned only
@@ -430,41 +461,104 @@
   // -----------------------------
   // Scene setup
   // -----------------------------
+  const entities = [];
   const bodies = [];
   const ropes = [];
+  const threeDrawables = [];
+  const unitBoxGeo = new THREE.BoxGeometry(2, 2, 2);
+  const unitSphereGeo = new THREE.SphereGeometry(1, 18, 14);
+  const matStatic = new THREE.MeshStandardMaterial({ color: 0x3f86ff });
+  const matDynamic = new THREE.MeshStandardMaterial({ color: 0x33c7a7 });
+  const matPlayer = new THREE.MeshStandardMaterial({ color: 0xf2f2fa });
 
-  // Player: box collider, translation-only
-  const player = new Body({ type:'dynamic', mass:1, shape:'box', halfExtents:[0.35, 0.9, 0.35] });
-  player.x = [0, 2.0, 0];
-  player.v = [0, 0, 0];
+  function instantiateComponent(def, entity){
+    if (def.kind === 'collider') {
+      const bodyArgs = { ...def.body };
+      if (bodyArgs.halfExtents) bodyArgs.halfExtents = cloneVec3(bodyArgs.halfExtents);
+      const body = new Body({ ...bodyArgs, entity });
+      bodies.push(body);
+      return { kind: 'collider', body };
+    }
+    if (def.kind === 'visual') {
+      const localPos = def.localPos ? cloneVec3(def.localPos) : [0,0,0];
+      const localRot = def.localRot ? cloneVec3(def.localRot) : [0,0,0];
+      const localScale = def.localScale ? cloneVec3(def.localScale) : [1,1,1];
+      const binding = new VisualBinding({
+        entity,
+        localPos,
+        localRot,
+        localScale,
+        mode: def.mode ?? 'direct',
+        smoothHz: def.smoothHz ?? 18
+      });
+      const geo = (def.shape === 'sphere') ? unitSphereGeo : unitBoxGeo;
+      const material = def.material ?? new THREE.MeshStandardMaterial({ color: def.color ?? 0xffffff });
+      const mesh = new THREE.Mesh(geo, material);
+      scene.add(mesh);
+      threeDrawables.push(new ThreeDrawable({ binding, object3d: mesh }));
+      return { kind: 'visual', binding, object3d: mesh };
+    }
+    if (def.kind === 'behavior') {
+      return { kind: 'behavior', update: def.update ?? null };
+    }
+    return null;
+  }
+
+  function createEntityFactory(componentDefs){
+    return {
+      create(opts={}){
+        const entity = new Entity({ pos: opts.pos ?? [0,0,0], rot: opts.rot ?? [0,0,0] });
+        for (const def of componentDefs) {
+          const resolved = (typeof def === 'function') ? def(opts) : def;
+          if (!resolved) continue;
+          const component = instantiateComponent(resolved, entity);
+          if (component) entity.addComponent(component);
+        }
+        entities.push(entity);
+        return entity;
+      }
+    };
+  }
+
+  function getColliderBody(entity){
+    const collider = entity.components.find((c)=>c.kind === 'collider');
+    return collider ? collider.body : null;
+  }
+
+  const boxFactory = createEntityFactory([
+    (opts)=>({ kind:'collider', body:{ type: opts.type ?? 'static', mass: opts.mass ?? 1, shape:'box', halfExtents: opts.halfExtents } }),
+    (opts)=>({ kind:'visual', shape:'box', localPos:[0,0,0], localScale: opts.halfExtents, material: opts.material ?? ((opts.type ?? 'static') === 'static' ? matStatic : matDynamic) })
+  ]);
+
+  const sphereFactory = createEntityFactory([
+    (opts)=>({ kind:'collider', body:{ type: opts.type ?? 'static', mass: opts.mass ?? 1, shape:'sphere', radius: opts.radius } }),
+    (opts)=>({ kind:'visual', shape:'sphere', localPos:[0,0,0], localScale: [opts.radius, opts.radius, opts.radius], material: opts.material ?? matDynamic })
+  ]);
+
+  const playerFactory = createEntityFactory([
+    (opts)=>({ kind:'collider', body:{ type:'dynamic', mass: opts.mass ?? 1, shape:'box', halfExtents: opts.halfExtents } }),
+    (opts)=>({ kind:'visual', shape:'box', localPos:[0, 0, 0], localScale:[opts.halfExtents[0]*1.05, opts.halfExtents[1]*0.78, opts.halfExtents[2]*1.05], material: matPlayer, mode:'smooth', smoothHz:22 }),
+    (opts)=>({ kind:'visual', shape:'box', localPos:[0, opts.halfExtents[1]*0.75, 0], localScale:[opts.halfExtents[0]*1.05, opts.halfExtents[0]*1.05, opts.halfExtents[2]*1.05], material: matPlayer, mode:'smooth', smoothHz:22 }),
+    (opts)=>({ kind:'visual', shape:'box', localPos:[0, -opts.halfExtents[1]*0.75, 0], localScale:[opts.halfExtents[0]*1.05, opts.halfExtents[0]*1.05, opts.halfExtents[2]*1.05], material: matPlayer, mode:'smooth', smoothHz:22 })
+  ]);
+
+  function addBox(pos, he, type='static', mass=1, material=null){
+    return boxFactory.create({ pos, halfExtents: he, type, mass, material });
+  }
+  function addSphere(pos, r, type='static', mass=1, material=null){
+    return sphereFactory.create({ pos, radius: r, type, mass, material });
+  }
+
+  const playerEntity = playerFactory.create({ pos: [0, 2.0, 0], halfExtents: [0.35, 0.9, 0.35], mass: 1 });
+  const player = getColliderBody(playerEntity);
   player.isPlayer = true;
   player.restitution = 0.0;
   player.state = 'aerial';
   player.webLeft = null;
   player.webRight = null;
-  bodies.push(player);
 
-  // Ground
-  const ground = new Body({ type:'static', shape:'box', halfExtents:[40, 1, 40] });
-  ground.x = [0, -1, 0];
-  bodies.push(ground);
-  const ceiling = new Body({ type:'static', shape:'box', halfExtents:[40, 1, 40] });
-  ceiling.x = [0, 49, 0];
-  bodies.push(ceiling);
-
-  // Some static boxes to swing from
-  function addBox(pos, he, type='static', mass=1){
-    const b = new Body({ type, shape:'box', halfExtents:he, mass });
-    b.x = [...pos];
-    bodies.push(b);
-    return b;
-  }
-  function addSphere(pos, r, type='static', mass=1){
-    const s = new Body({ type, shape:'sphere', radius:r, mass });
-    s.x = [...pos];
-    bodies.push(s);
-    return s;
-  }
+  addBox([0, -1, 0], [40, 1, 40], 'static');
+  addBox([0, 49, 0], [40, 1, 40], 'static');
 
   addBox([6, 3, -6], [1.2, 3.0, 1.2]);
   addBox([-7, 4, -4], [1.6, 4.0, 1.6]);
@@ -485,67 +579,6 @@
   addBox([2, 12, -10], [0.6, 0.6, 0.6], 'dynamic', 1);
   addBox([5, 12, -10], [0.6, 0.6, 0.6], 'dynamic', 2);
   addBox([8, 12, -10], [0.6, 0.6, 0.6], 'dynamic', 10);
-
-  // -----------------------------
-  // Visuals (separate from physics bodies)
-  // -----------------------------
-  const threeDrawables = [];
-  const unitBoxGeo = new THREE.BoxGeometry(2, 2, 2);
-  const unitSphereGeo = new THREE.SphereGeometry(1, 18, 14);
-  const matStatic = new THREE.MeshStandardMaterial({ color: 0x3f86ff });
-  const matSphere = new THREE.MeshStandardMaterial({ color: 0x33c7a7 });
-  const matPlayer = new THREE.MeshStandardMaterial({ color: 0xf2f2fa });
-
-  // World visuals (static + dynamic boxes/spheres)
-  for (const b of bodies) {
-    if (b.isPlayer) continue;
-
-    let binding, material;
-
-    if (b.shape === 'box') {
-      binding = new VisualBinding({
-        body: b,
-        localPos: [0,0,0],
-        localScale: [b.halfExtents[0], b.halfExtents[1], b.halfExtents[2]],
-        mode: 'direct'
-      });
-      material = (b.type === 'static') ? matStatic : matSphere;
-    } else {
-      // sphere rendered as cube scaled to radius (cheap placeholder)
-      binding = new VisualBinding({
-        body: b,
-        localPos: [0,0,0],
-        localScale: [b.radius, b.radius, b.radius],
-        mode: 'direct'
-      });
-      material = matSphere;
-    }
-
-    const geo = (b.shape === 'sphere') ? unitSphereGeo : unitBoxGeo;
-    const mesh = new THREE.Mesh(geo, material);
-    scene.add(mesh);
-    threeDrawables.push(new ThreeDrawable({ binding, object3d: mesh }));
-  }
-
-  // Player visuals: 3-cube "pill-ish" mesh bound to player body
-  const he = player.halfExtents;
-
-  function addPlayerPart(localPos, localScale){
-    const binding = new VisualBinding({
-      body: player,
-      localPos,
-      localScale,
-      mode: 'smooth',
-      smoothHz: 22
-    });
-    const mesh = new THREE.Mesh(unitBoxGeo, matPlayer);
-    scene.add(mesh);
-    threeDrawables.push(new ThreeDrawable({ binding, object3d: mesh }));
-  }
-
-  addPlayerPart([0, 0, 0], [he[0]*1.05, he[1]*0.78, he[2]*1.05]);
-  addPlayerPart([0, he[1]*0.75, 0], [he[0]*1.05, he[0]*1.05, he[2]*1.05]);
-  addPlayerPart([0, -he[1]*0.75, 0], [he[0]*1.05, he[0]*1.05, he[2]*1.05]);
 
   function makeLine(colorHex){
     const geo = new THREE.BufferGeometry();
@@ -875,6 +908,16 @@
     }
   }
 
+  function updateBehaviors(dt){
+    for (const e of entities) {
+      for (const c of e.components) {
+        if (c.kind === 'behavior' && typeof c.update === 'function') {
+          c.update(e, dt);
+        }
+      }
+    }
+  }
+
   function stepPhysics(dt){
     if (dt <= 0 || !Number.isFinite(dt)) return;
     const substeps = 3;
@@ -882,6 +925,8 @@
     for (let s=0;s<substeps;s++){
       // jump charge timer
       if (jumpCharging) jumpChargeT = Math.min(jumpChargeMax, jumpChargeT + h);
+
+      updateBehaviors(h);
 
       // integrate
       integrateBodies(h);
