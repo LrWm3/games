@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Rope Swinging Demo (v1)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     :root{ color-scheme: dark; }
     html,body{ height:100%; margin:0; background:#0b0f17; overflow:hidden; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
@@ -50,6 +51,7 @@
     </div>
   </div>
   <div class="pill" id="stats">—</div>
+  <div class="pill" id="perf" style="top:48px; display:none;">—</div>
 </div>
 
 <script>
@@ -84,194 +86,31 @@
   function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
   function isFiniteVec3(v){ return Number.isFinite(v[0]) && Number.isFinite(v[1]) && Number.isFinite(v[2]); }
 
-  // Mat4 (column-major) helpers
-  const m4 = {
-    ident: ()=>[1,0,0,0,
-               0,1,0,0,
-               0,0,1,0,
-               0,0,0,1],
-    mul:(A,B)=>{
-      const o=new Array(16);
-      for(let c=0;c<4;c++){
-        for(let r=0;r<4;r++){
-          o[c*4+r]=A[0*4+r]*B[c*4+0]+A[1*4+r]*B[c*4+1]+A[2*4+r]*B[c*4+2]+A[3*4+r]*B[c*4+3];
-        }
-      }
-      return o;
-    },
-    translate:(t)=>[1,0,0,0,
-                    0,1,0,0,
-                    0,0,1,0,
-                    t[0],t[1],t[2],1],
-    scale:(s)=>[s[0],0,0,0,
-                0,s[1],0,0,
-                0,0,s[2],0,
-                0,0,0,1],
-    rotY:(a)=>{
-      const c=Math.cos(a), s=Math.sin(a);
-      return [ c,0,-s,0,
-               0,1, 0,0,
-               s,0, c,0,
-               0,0, 0,1];
-    },
-    rotX:(a)=>{
-      const c=Math.cos(a), s=Math.sin(a);
-      return [1,0,0,0,
-              0,c,s,0,
-              0,-s,c,0,
-              0,0,0,1];
-    },
-    perspective:(fovy, aspect, near, far)=>{
-      const f=1/Math.tan(fovy/2);
-      const nf=1/(near-far);
-      return [f/aspect,0,0,0,
-              0,f,0,0,
-              0,0,(far+near)*nf,-1,
-              0,0,(2*far*near)*nf,0];
-    },
-    lookAt:(eye, target, up)=>{
-      const z=v3.norm(v3.sub(eye,target));
-      const x=v3.norm(v3.cross(up,z));
-      const y=v3.cross(z,x);
-      return [x[0],y[0],z[0],0,
-              x[1],y[1],z[1],0,
-              x[2],y[2],z[2],0,
-              -v3.dot(x,eye),-v3.dot(y,eye),-v3.dot(z,eye),1];
-    }
-  };
-
-  // -----------------------------
-  // WebGL minimal renderer (instanced-ish via per-draw uniforms)
-  // -----------------------------
   const canvas = document.getElementById('c');
-  const gl = canvas.getContext('webgl', { antialias:true, alpha:false, depth:true });
-  if (!gl) {
-    alert('WebGL not supported');
-    return;
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0b0f17);
+
+  const camera = new THREE.PerspectiveCamera(70, 1, 0.05, 300);
+  camera.up.set(0, 1, 0);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.75);
+  dirLight.position.set(10, 20, 8);
+  scene.add(dirLight);
+
+  function resizeThree(){
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
   }
-
-  function resize(){
-    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio||1));
-    const w = Math.floor(canvas.clientWidth * dpr);
-    const h = Math.floor(canvas.clientHeight * dpr);
-    if (canvas.width !== w || canvas.height !== h) {
-      canvas.width = w; canvas.height = h;
-      gl.viewport(0,0,w,h);
-    }
-  }
-  window.addEventListener('resize', resize);
-
-  function compileShader(type, src){
-    const s=gl.createShader(type);
-    gl.shaderSource(s, src);
-    gl.compileShader(s);
-    if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
-      console.error(gl.getShaderInfoLog(s));
-      throw new Error('Shader compile failed');
-    }
-    return s;
-  }
-
-  const VS = `
-    attribute vec3 aPos;
-    uniform mat4 uMVP;
-    void main(){
-      gl_Position = uMVP * vec4(aPos, 1.0);
-    }
-  `;
-
-  const FS = `
-    precision mediump float;
-    uniform vec4 uColor;
-    void main(){
-      gl_FragColor = uColor;
-    }
-  `;
-
-  const prog = gl.createProgram();
-  gl.attachShader(prog, compileShader(gl.VERTEX_SHADER, VS));
-  gl.attachShader(prog, compileShader(gl.FRAGMENT_SHADER, FS));
-  gl.linkProgram(prog);
-  if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){
-    console.error(gl.getProgramInfoLog(prog));
-    throw new Error('Program link failed');
-  }
-  gl.useProgram(prog);
-
-  const loc = {
-    aPos: gl.getAttribLocation(prog, 'aPos'),
-    uMVP: gl.getUniformLocation(prog, 'uMVP'),
-    uColor: gl.getUniformLocation(prog, 'uColor')
-  };
-
-  // Simple cube mesh
-  const cubeVerts = new Float32Array([
-    // 12 triangles (36 verts)
-    // +X
-    1, -1, -1,  1,  1, -1,  1,  1,  1,
-    1, -1, -1,  1,  1,  1,  1, -1,  1,
-    // -X
-   -1, -1, -1, -1, -1,  1, -1,  1,  1,
-   -1, -1, -1, -1,  1,  1, -1,  1, -1,
-    // +Y
-   -1,  1, -1, -1,  1,  1,  1,  1,  1,
-   -1,  1, -1,  1,  1,  1,  1,  1, -1,
-    // -Y
-   -1, -1, -1,  1, -1, -1,  1, -1,  1,
-   -1, -1, -1,  1, -1,  1, -1, -1,  1,
-    // +Z
-   -1, -1,  1,  1, -1,  1,  1,  1,  1,
-   -1, -1,  1,  1,  1,  1, -1,  1,  1,
-    // -Z
-   -1, -1, -1, -1,  1, -1,  1,  1, -1,
-   -1, -1, -1,  1,  1, -1,  1, -1, -1,
-  ]);
-  const cubeVbo = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVbo);
-  gl.bufferData(gl.ARRAY_BUFFER, cubeVerts, gl.STATIC_DRAW);
-  gl.enableVertexAttribArray(loc.aPos);
-  gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
-
-  // Simple line renderer (rope + aim ray)
-  const lineProg = gl.createProgram();
-  gl.attachShader(lineProg, compileShader(gl.VERTEX_SHADER, `
-    attribute vec3 aPos;
-    uniform mat4 uMVP;
-    void main(){ gl_Position = uMVP * vec4(aPos,1.0); }
-  `));
-  gl.attachShader(lineProg, compileShader(gl.FRAGMENT_SHADER, `
-    precision mediump float;
-    uniform vec4 uColor;
-    void main(){ gl_FragColor = uColor; }
-  `));
-  gl.linkProgram(lineProg);
-  const lineLoc = {
-    aPos: gl.getAttribLocation(lineProg, 'aPos'),
-    uMVP: gl.getUniformLocation(lineProg, 'uMVP'),
-    uColor: gl.getUniformLocation(lineProg, 'uColor')
-  };
-  const lineVbo = gl.createBuffer();
-
-  function drawCube(mvp, color){
-    gl.useProgram(prog);
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVbo);
-    gl.enableVertexAttribArray(loc.aPos);
-    gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
-    gl.uniformMatrix4fv(loc.uMVP, false, new Float32Array(mvp));
-    gl.uniform4fv(loc.uColor, new Float32Array(color));
-    gl.drawArrays(gl.TRIANGLES, 0, cubeVerts.length/3);
-  }
-
-  function drawLine(mvp, a, b, color){
-    gl.useProgram(lineProg);
-    gl.bindBuffer(gl.ARRAY_BUFFER, lineVbo);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([...a,...b]), gl.DYNAMIC_DRAW);
-    gl.enableVertexAttribArray(lineLoc.aPos);
-    gl.vertexAttribPointer(lineLoc.aPos, 3, gl.FLOAT, false, 0, 0);
-    gl.uniformMatrix4fv(lineLoc.uMVP, false, new Float32Array(mvp));
-    gl.uniform4fv(lineLoc.uColor, new Float32Array(color));
-    gl.drawArrays(gl.LINES, 0, 2);
-  }
+  window.addEventListener('resize', resizeThree);
+  resizeThree();
 
   // -----------------------------
   // Render bindings (Body -> Visual)
@@ -306,17 +145,16 @@
     }
   }
 
-  class Drawable {
-    constructor({ binding, color=[1,1,1,1] }){
+  class ThreeDrawable {
+    constructor({ binding, object3d }){
       this.binding = binding;
-      this.color = color;
+      this.object3d = object3d;
     }
-    draw(P, V){
+    syncFromBinding(){
       const p = this.binding.renderPos;
       const s = this.binding.localScale;
-      const M = m4.mul(m4.translate(p), m4.scale(s));
-      const MVP = m4.mul(m4.mul(P, V), M);
-      drawCube(MVP, this.color);
+      this.object3d.position.set(p[0], p[1], p[2]);
+      this.object3d.scale.set(s[0], s[1], s[2]);
     }
   }
 
@@ -633,13 +471,18 @@
   // -----------------------------
   // Visuals (separate from physics bodies)
   // -----------------------------
-  const drawables = [];
+  const threeDrawables = [];
+  const unitBoxGeo = new THREE.BoxGeometry(2, 2, 2);
+  const unitSphereGeo = new THREE.SphereGeometry(1, 18, 14);
+  const matStatic = new THREE.MeshStandardMaterial({ color: 0x3f86ff });
+  const matSphere = new THREE.MeshStandardMaterial({ color: 0x33c7a7 });
+  const matPlayer = new THREE.MeshStandardMaterial({ color: 0xf2f2fa });
 
   // World visuals (static + dynamic boxes/spheres)
   for (const b of bodies) {
     if (b.isPlayer) continue;
 
-    let binding, color;
+    let binding, material;
 
     if (b.shape === 'box') {
       binding = new VisualBinding({
@@ -648,7 +491,7 @@
         localScale: [b.halfExtents[0], b.halfExtents[1], b.halfExtents[2]],
         mode: 'direct'
       });
-      color = (b.type==='static') ? [0.25,0.55,0.95,1] : [0.85,0.55,0.25,1];
+      material = (b.type === 'static') ? matStatic : matSphere;
     } else {
       // sphere rendered as cube scaled to radius (cheap placeholder)
       binding = new VisualBinding({
@@ -657,60 +500,72 @@
         localScale: [b.radius, b.radius, b.radius],
         mode: 'direct'
       });
-      color = [0.20,0.78,0.65,1];
+      material = matSphere;
     }
 
-    drawables.push(new Drawable({ binding, color }));
+    const geo = (b.shape === 'sphere') ? unitSphereGeo : unitBoxGeo;
+    const mesh = new THREE.Mesh(geo, material);
+    scene.add(mesh);
+    threeDrawables.push(new ThreeDrawable({ binding, object3d: mesh }));
   }
 
   // Player visuals: 3-cube "pill-ish" mesh bound to player body
-  const pillColor = [0.95,0.95,0.98,1];
   const he = player.halfExtents;
 
-  // center segment
-  drawables.push(new Drawable({
-    binding: new VisualBinding({
+  function addPlayerPart(localPos, localScale){
+    const binding = new VisualBinding({
       body: player,
-      localPos: [0, 0, 0],
-      localScale: [he[0]*1.05, he[1]*0.78, he[2]*1.05],
+      localPos,
+      localScale,
       mode: 'smooth',
       smoothHz: 22
-    }),
-    color: pillColor
-  }));
+    });
+    const mesh = new THREE.Mesh(unitBoxGeo, matPlayer);
+    scene.add(mesh);
+    threeDrawables.push(new ThreeDrawable({ binding, object3d: mesh }));
+  }
 
-  // top cap
-  drawables.push(new Drawable({
-    binding: new VisualBinding({
-      body: player,
-      localPos: [0, he[1]*0.75, 0],
-      localScale: [he[0]*1.05, he[0]*1.05, he[2]*1.05],
-      mode: 'smooth',
-      smoothHz: 22
-    }),
-    color: pillColor
-  }));
+  addPlayerPart([0, 0, 0], [he[0]*1.05, he[1]*0.78, he[2]*1.05]);
+  addPlayerPart([0, he[1]*0.75, 0], [he[0]*1.05, he[0]*1.05, he[2]*1.05]);
+  addPlayerPart([0, -he[1]*0.75, 0], [he[0]*1.05, he[0]*1.05, he[2]*1.05]);
 
-  // bottom cap
-  drawables.push(new Drawable({
-    binding: new VisualBinding({
-      body: player,
-      localPos: [0, -he[1]*0.75, 0],
-      localScale: [he[0]*1.05, he[0]*1.05, he[2]*1.05],
-      mode: 'smooth',
-      smoothHz: 22
-    }),
-    color: pillColor
-  }));
+  function makeLine(colorHex){
+    const geo = new THREE.BufferGeometry();
+    const positions = new Float32Array(6);
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 1.0 });
+    const line = new THREE.Line(geo, mat);
+    scene.add(line);
+    return line;
+  }
+
+  function setLine(line, a, b){
+    const arr = line.geometry.attributes.position.array;
+    arr[0] = a[0]; arr[1] = a[1]; arr[2] = a[2];
+    arr[3] = b[0]; arr[4] = b[1]; arr[5] = b[2];
+    line.geometry.attributes.position.needsUpdate = true;
+  }
+
+  const aimLine = makeLine(0xffffff);
+  aimLine.material.opacity = 0.35;
+
+  const leftLine = makeLine(0xffd166);
+  const rightLine = makeLine(0x9fe3ff);
+  leftLine.visible = false;
+  rightLine.visible = false;
 
   // -----------------------------
   // Input + camera
   // -----------------------------
   const statsEl = document.getElementById('stats');
+  const perfEl = document.getElementById('perf');
 
   const keys = new Set();
   window.addEventListener('keydown', (e)=>{
     keys.add(e.code);
+    if (e.code === 'KeyP') {
+      perfEl.style.display = (perfEl.style.display === 'none') ? 'block' : 'none';
+    }
     if (e.code === 'Space') {
       if (!jumpCharging) {
         jumpCharging = true;
@@ -778,6 +633,11 @@
     thirdPersonDist: 5.0,
     height: 1.35,
   };
+
+  camera.fov = cam.fov * 180 / Math.PI;
+  camera.near = cam.near;
+  camera.far = cam.far;
+  camera.updateProjectionMatrix();
 
   function cameraForward(){
     const cp = Math.cos(pitch), sp = Math.sin(pitch);
@@ -992,55 +852,107 @@
   // -----------------------------
   // Render loop
   // -----------------------------
-  gl.enable(gl.DEPTH_TEST);
-  gl.clearColor(0.04,0.06,0.10,1);
-
   let lastT = performance.now();
+  const perfWindowMs = 5000;
+  const perfSamples = {
+    frame: [],
+    physics: [],
+    render: []
+  };
+
+  function pushSample(bucket, t, v){
+    bucket.push({ t, v });
+    const cutoff = t - perfWindowMs;
+    while (bucket.length && bucket[0].t < cutoff) bucket.shift();
+  }
+
+  function calcStats(bucket){
+    if (!bucket.length) return null;
+    const vals = bucket.map(s => s.v).sort((a,b)=>a-b);
+    const pick = (p)=>{
+      const idx = Math.min(vals.length - 1, Math.max(0, Math.floor(p * (vals.length - 1))));
+      return vals[idx];
+    };
+    return {
+      avg: vals.reduce((a,b)=>a+b,0) / vals.length,
+      p50: pick(0.50),
+      p95: pick(0.95),
+      p99: pick(0.99),
+      worst: vals[vals.length - 1]
+    };
+  }
 
   function frame(t){
-    resize();
+    const frameStart = performance.now();
     const dt = clamp((t - lastT) / 1000, 0, 1/20);
     lastT = t;
 
     updateCamera();
     updateWebs();
+    const physicsStart = performance.now();
     stepPhysics(dt);
+    const physicsEnd = performance.now();
     updateCamera();
 
-    // Matrices
-    const aspect = canvas.width / canvas.height;
-    const P = m4.perspective(cam.fov, aspect, cam.near, cam.far);
-    const V = m4.lookAt(cam.pos, cam.target, cam.up);
-
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    const renderStart = performance.now();
+    camera.position.set(cam.pos[0], cam.pos[1], cam.pos[2]);
+    camera.lookAt(cam.target[0], cam.target[1], cam.target[2]);
 
     // update visual bindings
-    for (const d of drawables) d.binding.update(dt);
-
-    // draw visuals (separate from physics)
-    for (const d of drawables) d.draw(P, V);
+    for (const d of threeDrawables) {
+      d.binding.update(dt);
+      d.syncFromBinding();
+    }
 
     // draw aim ray
     const aimDir = cameraForward();
     const rayA = cam.pos;
     const rayB = v3.add(cam.pos, v3.scale(aimDir, 30));
-    drawLine(m4.mul(P, V), rayA, rayB, [1,1,1,0.35]);
+    setLine(aimLine, rayA, rayB);
 
     // draw ropes
     if (leftRope){
       const a = leftRope.a.worldPoint();
       const b = leftRope.b.worldPoint();
-      drawLine(m4.mul(P, V), a, b, [1.0,0.82,0.38,1]);
+      leftLine.visible = true;
+      setLine(leftLine, a, b);
+    } else {
+      leftLine.visible = false;
     }
     if (rightRope){
       const a = rightRope.a.worldPoint();
       const b = rightRope.b.worldPoint();
-      drawLine(m4.mul(P, V), a, b, [0.62,0.88,1.0,1]);
+      rightLine.visible = true;
+      setLine(rightLine, a, b);
+    } else {
+      rightLine.visible = false;
     }
+
+    renderer.render(scene, camera);
+    const renderEnd = performance.now();
 
     // HUD
     const speed = v3.len([player.v[0],0,player.v[2]]);
     statsEl.textContent = `speed ${speed.toFixed(1)}  |  y ${player.x[1].toFixed(2)}  |  grounded ${playerGrounded ? 'yes':'no'}  |  jump ${jumpCharging ? (jumpChargeT.toFixed(2)+'s'):'—'}  |  webs ${(leftRope?1:0)+(rightRope?1:0)}`;
+
+    const frameEnd = performance.now();
+    pushSample(perfSamples.frame, frameEnd, frameEnd - frameStart);
+    pushSample(perfSamples.physics, physicsEnd, physicsEnd - physicsStart);
+    pushSample(perfSamples.render, renderEnd, renderEnd - renderStart);
+
+    if (perfEl.style.display !== 'none') {
+      const f = calcStats(perfSamples.frame);
+      const p = calcStats(perfSamples.physics);
+      const r = calcStats(perfSamples.render);
+      if (f && p && r) {
+        perfEl.textContent =
+          `frame ms avg ${f.avg.toFixed(2)} p50 ${f.p50.toFixed(2)} p95 ${f.p95.toFixed(2)} p99 ${f.p99.toFixed(2)} max ${f.worst.toFixed(2)} | ` +
+          `physics ms avg ${p.avg.toFixed(2)} p50 ${p.p50.toFixed(2)} p95 ${p.p95.toFixed(2)} p99 ${p.p99.toFixed(2)} max ${p.worst.toFixed(2)} | ` +
+          `render ms avg ${r.avg.toFixed(2)} p50 ${r.p50.toFixed(2)} p95 ${r.p95.toFixed(2)} p99 ${r.p99.toFixed(2)} max ${r.worst.toFixed(2)}`;
+      } else {
+        perfEl.textContent = 'perf: collecting...';
+      }
+    }
 
     requestAnimationFrame(frame);
   }
