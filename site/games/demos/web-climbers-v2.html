@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Rope Swinging Demo (v1)</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/lines/Line2.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/lines/LineMaterial.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/lines/LineGeometry.js"></script>
   <style>
     :root{ color-scheme: dark; }
     html,body{ height:100%; margin:0; background:#0b0f17; overflow:hidden; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
@@ -103,12 +106,16 @@
   dirLight.position.set(10, 20, 8);
   scene.add(dirLight);
 
+  const lineMaterials = [];
   function resizeThree(){
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    for (const m of lineMaterials) {
+      m.resolution.set(w, h);
+    }
   }
   window.addEventListener('resize', resizeThree);
   resizeThree();
@@ -644,21 +651,28 @@
   addBox([5, 12, -10], [0.6, 0.6, 0.6], 'dynamic', 2);
   addBox([8, 12, -10], [0.6, 0.6, 0.6], 'dynamic', 10);
 
-  function makeLine(colorHex){
-    const geo = new THREE.BufferGeometry();
-    const positions = new Float32Array(6);
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const mat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 1.0 });
-    const line = new THREE.Line(geo, mat);
+  function makeLine(colorHex, width=2.5){
+    const geo = new THREE.LineGeometry();
+    geo.setPositions([0,0,0, 0,0,0]);
+    const mat = new THREE.LineMaterial({
+      color: colorHex,
+      transparent: true,
+      opacity: 1.0,
+      linewidth: width,
+      depthTest: true,
+      depthWrite: false
+    });
+    mat.resolution.set(canvas.clientWidth, canvas.clientHeight);
+    lineMaterials.push(mat);
+    const line = new THREE.Line2(geo, mat);
+    line.computeLineDistances();
     scene.add(line);
     return line;
   }
 
   function setLine(line, a, b){
-    const arr = line.geometry.attributes.position.array;
-    arr[0] = a[0]; arr[1] = a[1]; arr[2] = a[2];
-    arr[3] = b[0]; arr[4] = b[1]; arr[5] = b[2];
-    line.geometry.attributes.position.needsUpdate = true;
+    line.geometry.setPositions([a[0], a[1], a[2], b[0], b[1], b[2]]);
+    line.computeLineDistances();
   }
 
   const aimLine = makeLine(0xffffff);
