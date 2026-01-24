@@ -278,7 +278,7 @@
     const bMin = [box.x[0]-he[0], box.x[1]-he[1], box.x[2]-he[2]];
     const bMax = [box.x[0]+he[0], box.x[1]+he[1], box.x[2]+he[2]];
     const closest = v3.clamp(sphere.x, bMin, bMax);
-    const d = v3.sub(sphere.x, closest);
+    const d = v3.sub(closest, sphere.x);
     const d2 = v3.len2(d);
     const r = sphere.radius;
     if (d2 >= r*r) return null;
