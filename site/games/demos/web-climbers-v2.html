@@ -546,6 +546,14 @@
           const component = instantiateComponent(resolved, entity);
           if (component) entity.addComponent(component);
         }
+        if (Array.isArray(opts.components)) {
+          for (const def of opts.components) {
+            const resolved = (typeof def === 'function') ? def(opts) : def;
+            if (!resolved) continue;
+            const component = instantiateComponent(resolved, entity);
+            if (component) entity.addComponent(component);
+          }
+        }
         entityManager.add(entity);
         return entity;
       }
@@ -652,6 +660,26 @@
   addBox([2, 12, -10], [0.6, 0.6, 0.6], 'dynamic', 1);
   addBox([5, 12, -10], [0.6, 0.6, 0.6], 'dynamic', 2);
   addBox([8, 12, -10], [0.6, 0.6, 0.6], 'dynamic', 10);
+
+  // Oscillating static cube for tether tests
+  const testCubeMat = new THREE.MeshStandardMaterial({ color: 0xff6b6b });
+  const testCube = boxFactory.create({
+    pos: [0, 8, -8],
+    halfExtents: [1.0, 1.0, 1.0],
+    type: 'static',
+    material: testCubeMat,
+    components: [
+      {
+        kind: 'physics',
+        update: (body) => {
+          if (!body.entity) return;
+          const t = performance.now() * 0.001;
+          body.entity.rot[1] = t * 0.6;
+          body.entity.pos[1] = 8 + Math.sin(t * 1.2) * 2.0;
+        }
+      }
+    ]
+  });
 
   function makeLine(colorHex, width=2.5){
     const geo = new THREE.LineGeometry();
@@ -856,17 +884,17 @@
     aerialWebDampPerSec: 0.0
   };
 
+  function updatePhysicsComponents(dt){
+    entityManager.forEachComponent('physics', (c, e)=>{
+      if (typeof c.update !== 'function') return;
+      const body = getColliderBody(e);
+      c.update(body, dt);
+    });
+  }
+
   function integrateBodies(dt){
     for (const b of bodies){
       if (b.type !== 'dynamic') continue;
-
-      if (b.entity) {
-        for (const c of b.entity.components) {
-          if (c.kind === 'physics' && typeof c.update === 'function') {
-            c.update(b, dt);
-          }
-        }
-      }
 
       // gravity
       b.v = v3.add(b.v, v3.scale(gravity, dt));
@@ -983,6 +1011,7 @@
       if (jumpCharging) jumpChargeT = Math.min(jumpChargeMax, jumpChargeT + h);
 
       updateBehaviors(h);
+      updatePhysicsComponents(h);
 
       // integrate
       integrateBodies(h);
@@ -1004,7 +1033,7 @@
   // -----------------------------
   function updateWebs(){
     const f = cameraForward();
-    const origin = cam.pos;
+    const origin = player.entity ? player.entity.pos : player.x;
     const maxDist = 80.0;
 
     // Left
