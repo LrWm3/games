@@ -797,11 +797,11 @@
 
         // track grounded if player involved and normal points upward on player
         if (A.isPlayer) {
-          // normal points from A->B; if pushing player up, normal.y should be +1? depends axis choice
-          if (c.normal[1] > 0.5) playerGrounded = true;
+          // normal points from A->B; grounded if contact normal points downward from player to ground
+          if (c.normal[1] < -0.5) playerGrounded = true;
         } else if (B.isPlayer) {
-          // flip for B's perspective
-          if (-c.normal[1] > 0.5) playerGrounded = true;
+          // normal points from A->B; grounded if normal points upward toward player
+          if (c.normal[1] > 0.5) playerGrounded = true;
         }
 
         solveContact(A,B,c);
