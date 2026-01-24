@@ -21,6 +21,16 @@
             width: 6px; height: 6px; border: 1px solid rgba(255,255,255,0.5); border-radius: 50%;
             pointer-events: none;
         }
+        #player-reticles {
+            position: absolute; inset: 0; pointer-events: none; z-index: 9;
+        }
+        .player-reticle {
+            position: absolute; width: 26px; height: 26px; border-radius: 4px;
+            border: 2px solid currentColor;
+            outline: 1px solid #d8b449;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px rgba(0,0,0,0.4);
+        }
         .stat { margin-top: 8px; font-weight: bold; font-size: 0.9em; }
         #speed { color: #00ffcc; }
         #state { color: #ffcc00; }
@@ -50,6 +60,15 @@
             background: #fff; transform: translateX(-50%);
             box-shadow: 0 0 10px rgba(255,255,255,0.4);
         }
+        .compass-marker::after {
+            position: absolute; left: 50%; transform: translateX(-50%);
+            font-size: 12px; font-weight: bold; color: #ffffff;
+            text-shadow: 0 0 8px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.9);
+            z-index: 2;
+        }
+        .compass-marker[data-alt="up"]::after { content: "^"; top: -9px; }
+        .compass-marker[data-alt="down"]::after { content: "v"; top: 18px; }
+        .compass-marker[data-alt="level"]::after { content: "|"; top: 5px; }
         .compass-arrow {
             position: absolute; top: 2px; width: 0; height: 0; transform: translateX(-50%);
             border-left: 7px solid transparent; border-right: 7px solid transparent;
@@ -229,6 +248,7 @@
         </div>
     </div>
     <div id="crosshair"></div>
+    <div id="player-reticles"></div>
     <div id="player-altitudes">P1: 0m</div>
     <div id="compass"></div>
     <div id="chat-overlay">
@@ -422,6 +442,7 @@
         const compassDirEl = document.createElement('div');
         compassDirEl.className = 'compass-arrow';
         compassEl.appendChild(compassDirEl);
+        const reticlesEl = document.getElementById('player-reticles');
         const chatOverlayEl = document.getElementById('chat-overlay');
         const chatLogEl = document.getElementById('chat-log');
         const chatInputEl = document.getElementById('chat-input');
@@ -675,8 +696,14 @@
                 } else if (msg.type === 'webrtc-ice') {
                     handleWebrtcIce(msg);
                 } else if (msg.type === 'chat') {
-                    const sender = msg.fromPeerId ? displayNameForPeer(msg.fromPeerId) : 'Peer';
-                    if (typeof msg.text === 'string') addChatMessage(sender, msg.text);
+                    if (typeof msg.text === 'string') {
+                        if (msg.text.startsWith('[System] ')) {
+                            addChatMessage('System', msg.text.slice('[System] '.length));
+                        } else {
+                            const sender = msg.fromPeerId ? displayNameForPeer(msg.fromPeerId) : 'Peer';
+                            addChatMessage(sender, msg.text);
+                        }
+                    }
                 } else if (msg.type === 'peer-name') {
                     if (typeof msg.peerId === 'string' && typeof msg.name === 'string') {
                         const remote = remotePlayers.get(msg.peerId);
@@ -784,6 +811,9 @@
             if (remote) {
                 if (remote.userData.compassEl) {
                     remote.userData.compassEl.remove();
+                }
+                if (remote.userData.screenReticle) {
+                    remote.userData.screenReticle.remove();
                 }
                 scene.remove(remote);
                 remotePlayers.delete(pid);
@@ -1081,9 +1111,9 @@
             const hue = 0.58 + (Math.abs(rand(seed + 5)) * 0.08);
             const megaVariantAllowed = !game.freePlay;
             const isMegaStandard = isMega && (!megaVariantAllowed || h < 5000);
-            const isHoney = isMega && megaVariantAllowed && h >= 5000 && h < 10000;
-            const isShock = isMega && megaVariantAllowed && h >= 10000 && h < 15000;
-            const isTricky = isMega && megaVariantAllowed && h >= 15000;
+            const isTricky = isMega && megaVariantAllowed && h >= 5000 && h < 10000;
+            const isHoney = isMega && megaVariantAllowed && h >= 10000 && h < 15000;
+            const isShock = isMega && megaVariantAllowed && h >= 15000;
             const trickyColor = isTricky ? new THREE.Color(getTrickyColor()) : null;
             const baseColor = isShock
                 ? new THREE.Color(0x0b1b3a)
@@ -1219,7 +1249,7 @@
                 isClimbing = false;
                 stuckNormal.copy(result.wallNormal);
                 stuckPosition.copy(player.position);
-                addChatMessage('System', `${displayNameForPeer(peerId)} is stuck in honey!`);
+                announceSystemMessage(`${displayNameForPeer(peerId)} is stuck in honey!`);
                 if (isSinglePlayerMode()) {
                     stuckUntilMs = performance.now() + config.honeyStuckTimeMs;
                 }
@@ -1348,6 +1378,11 @@
             beam.renderOrder = 1;
             group.userData.beam = beam;
             group.add(beam);
+            const screenReticle = document.createElement('div');
+            screenReticle.className = 'player-reticle';
+            screenReticle.style.color = `#${color.toString(16).padStart(6, '0')}`;
+            reticlesEl.appendChild(screenReticle);
+            group.userData.screenReticle = screenReticle;
             group.userData.webL = { line: createWebLine(0xffffff), active: false, anchor: new THREE.Vector3(), length: 0 };
             group.userData.webR = { line: createWebLine(0xffffff), active: false, anchor: new THREE.Vector3(), length: 0 };
             group.userData.audioGain = null;
@@ -1837,6 +1872,21 @@
                 if (remote.userData.orb) {
                     remote.userData.orb.position.set(0, 0, 0);
                 }
+                if (remote.userData.screenReticle) {
+                    const target = remote.position.clone().add(new THREE.Vector3(0, 1.6, 0));
+                    const projected = target.project(camera);
+                    const width = window.innerWidth || renderer.domElement.clientWidth;
+                    const height = window.innerHeight || renderer.domElement.clientHeight;
+                    if (projected.z > 1 || projected.z < -1) {
+                        remote.userData.screenReticle.style.display = 'none';
+                    } else {
+                        remote.userData.screenReticle.style.display = 'block';
+                        const x = (projected.x * 0.5 + 0.5) * width;
+                        const y = (-projected.y * 0.5 + 0.5) * height;
+                        remote.userData.screenReticle.style.left = `${x}px`;
+                        remote.userData.screenReticle.style.top = `${y}px`;
+                    }
+                }
                 if (remote.userData.beam) {
                     const localChunkX = Math.round(player.position.x / config.blockSize);
                     const localChunkZ = Math.round(player.position.z / config.blockSize);
@@ -2155,7 +2205,7 @@
             const cz = Math.round(player.position.z / config.blockSize);
             if (isChunkAllowed(cx, cz)) return;
             resetPlayerToSpawn();
-            addChatMessage('System', `${displayNameForPeer(peerId)} left the city and died instantly.`);
+            announceSystemMessage(`${displayNameForPeer(peerId)} left the city and died instantly.`);
         }
 
         function applyTrickyColors() {
@@ -2407,6 +2457,14 @@
                     marker.style.display = 'none';
                     return;
                 }
+                const altDelta = remote.position.y - player.position.y;
+                if (altDelta > 1) {
+                    marker.dataset.alt = 'up';
+                } else if (altDelta < -1) {
+                    marker.dataset.alt = 'down';
+                } else {
+                    marker.dataset.alt = 'level';
+                }
                 const angle = Math.atan2(toRemote.x, toRemote.z);
                 let delta = angle - forwardAngle;
                 delta = Math.atan2(Math.sin(delta), Math.cos(delta));
@@ -2540,7 +2598,7 @@
             isClimbing = false;
             isChargingJump = false;
             document.getElementById('charge-container').style.display = 'none';
-            addChatMessage('System', `${displayNameForPeer(peerId)} was zapped and is frozen!`);
+            announceSystemMessage(`${displayNameForPeer(peerId)} was zapped and is frozen!`);
         }
 
         function clearStun() {
@@ -2955,6 +3013,13 @@
             });
         }
 
+        function announceSystemMessage(text) {
+            addChatMessage('System', text);
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'chat', text: `[System] ${text}` }));
+            }
+        }
+
         function createPointerMesh(start, end, color) {
             const dir = new THREE.Vector3().subVectors(end, start);
             const length = dir.length();
@@ -3029,8 +3094,8 @@
                 laserBeam.scale.set(1, beamLen, 1);
                 laserBeam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), beamDir);
                 laserDot.position.copy(hit.point);
-                laserBeam.material.color.set(canAttach ? 0xff4fa3 : 0xff2d2d);
-                laserDot.material.color.set(canAttach ? 0xff4fa3 : 0xff2d2d);
+                laserBeam.material.color.set(canAttach ? 0x33ff66 : 0xff2d2d);
+                laserDot.material.color.set(canAttach ? 0x33ff66 : 0xff2d2d);
             } else {
                 webReticle.visible = false;
                 const end = origin.clone().add(dir.clone().multiplyScalar(config.maxAimDistance));
