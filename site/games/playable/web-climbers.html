@@ -1111,9 +1111,9 @@
             const hue = 0.58 + (Math.abs(rand(seed + 5)) * 0.08);
             const megaVariantAllowed = !game.freePlay;
             const isMegaStandard = isMega && (!megaVariantAllowed || h < 5000);
-            const isTricky = isMega && megaVariantAllowed && h >= 5000 && h < 10000;
-            const isHoney = isMega && megaVariantAllowed && h >= 10000 && h < 15000;
-            const isShock = isMega && megaVariantAllowed && h >= 15000;
+            const isHoney = isMega && megaVariantAllowed && h >= 5000 && h < 10000;
+            const isShock = isMega && megaVariantAllowed && h >= 10000 && h < 15000;
+            const isTricky = isMega && megaVariantAllowed && h >= 15000;
             const trickyColor = isTricky ? new THREE.Color(getTrickyColor()) : null;
             const baseColor = isShock
                 ? new THREE.Color(0x0b1b3a)
