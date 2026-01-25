@@ -223,7 +223,7 @@
     }
 
     update(dt){
-      const qEntity = quat.normalize(quat.fromEuler(this.entity.rot));
+      const qEntity = this.entity.q ? quat.normalize(this.entity.q) : quat.normalize(quat.fromEuler(this.entity.rot));
       const qLocal = quat.fromEuler(this.localRot);
       const target = v3.add(this.entity.pos, quat.rotate(qEntity, this.localPos));
       const rotTarget = quat.toEuler(quat.mul(qEntity, qLocal));
@@ -261,6 +261,7 @@
     constructor({ pos=[0,0,0], rot=[0,0,0] } = {}){
       this.pos = cloneVec3(pos);
       this.rot = cloneVec3(rot);
+      this.q = quat.normalize(quat.fromEuler(rot));
       this.prevPos = cloneVec3(pos);
       this.components = [];
     }
@@ -314,6 +315,7 @@
       const startRot = entity?.rot ?? [0,0,0];
       this.q = quat.normalize(quat.fromEuler(startRot));
       this._qPrev = [...this.q];
+      if (this.entity) this.entity.q = [...this.q];
 
       // for kinematic velocity estimation
       this._xPrev = [0,0,0];
@@ -847,6 +849,18 @@
     const wSum = wA + wB;
     if (wSum <= 0) return;
 
+    // positional correction to prevent sinking (split impulse style)
+    const slop = 0.001;
+    const corr = Math.max(0, pen - slop);
+    if (corr > 0) {
+      const percent = 0.2;
+      const maxCorr = 0.5;
+      const m = Math.min(maxCorr, corr * percent) / wSum;
+      const dp = v3.scale(n, m);
+      if (wA > 0) A.x = v3.sub(A.x, v3.scale(dp, wA));
+      if (wB > 0) B.x = v3.add(B.x, v3.scale(dp, wB));
+    }
+
     // velocity: remove into-surface component (inelastic)
     const rA = v3.sub(p, A.x);
     const rB = v3.sub(p, B.x);
@@ -854,13 +868,10 @@
     const vB = v3.add(B.v, v3.cross(B.w, rB));
     const relV = v3.sub(vB, vA);
     const vn = v3.dot(relV, n);
-    const slop = 0.001;
-    const beta = 0.2;
-    const biasVel = dt > 0 ? -(beta / dt) * Math.max(0, pen - slop) : 0;
     let jn = 0;
     let jt = 0;
     let tDir = null;
-    if (vn < 0 || biasVel < 0) {
+    if (vn < 0) {
       // normal impulse
       const e = Math.min(A.restitution ?? 0, B.restitution ?? 0);
       const rnA = v3.cross(rA, n);
@@ -870,7 +881,7 @@
       const denom = wA + wB + v3.dot(n, v3.add(angA, angB));
       if (denom <= 1e-10) return { jn: 0, jt: 0, t: null };
       const restitutionTerm = (vn < -1.0) ? (e * vn) : 0;
-      jn = -(vn + restitutionTerm + biasVel) / denom;
+      jn = -(vn + restitutionTerm) / denom;
       if (jn < 0) jn = 0;
       if (jn > 0) {
         const impulse = v3.scale(n, jn);
@@ -1574,6 +1585,7 @@
       b.w = angularVelocityFromDelta(qPrev, qNext, dt);
       b.qPrev = qPrev;
       b.q = qNext;
+      b.entity.q = [...b.q];
     }
   }
 
@@ -1621,7 +1633,10 @@
       }
       b.qPrev = [...b.q];
       b.q = b.lockRotation ? b.q : integrateOrientation(b.q, b.w, dt);
-      if (b.entity) b.entity.rot = quat.toEuler(b.q);
+      if (b.entity) {
+        b.entity.q = [...b.q];
+        b.entity.rot = quat.toEuler(b.q);
+      }
     }
   }
 
