@@ -994,6 +994,26 @@
     }
   }
 
+  function positionSolve(contacts){
+    const posIters = 3;
+    const slop = 0.01;
+    const percent = 0.25;
+    for (let it=0; it<posIters; it++){
+      for (const c of contacts){
+        const A = c.A, B = c.B;
+        const wA = A.invMass, wB = B.invMass;
+        const wSum = wA + wB;
+        if (wSum <= 0) continue;
+        const corr = Math.max(0, c.pen - slop);
+        if (corr <= 0) continue;
+        const m = (corr * percent) / wSum;
+        const dp = v3.scale(c.n, m);
+        if (wA > 0) A.x = v3.sub(A.x, v3.scale(dp, wA));
+        if (wB > 0) B.x = v3.add(B.x, v3.scale(dp, wB));
+      }
+    }
+  }
+
   // Raycast (for web shooting) against box/sphere colliders
     function raycast(origin, dir, maxDist, bodies, ignoreBody=null){
     // Returns { body, t, point, normal }
@@ -1764,6 +1784,7 @@
       solveContacts(contacts, dt);
       solveRopes(dt);
     }
+    positionSolve(contacts);
     const nextCache = new Map();
     for (const c of contacts){
       if (c.jn <= 0) continue;
