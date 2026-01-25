@@ -183,6 +183,8 @@
   scene.add(dirLight);
 
   const lineMaterials = [];
+  const debugGroup = new THREE.Group();
+  scene.add(debugGroup);
   function resizeThree(){
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
@@ -292,7 +294,8 @@
   // Physics v1
   // -----------------------------
   class Body {
-    constructor({ type='dynamic', mass=1, shape='box', halfExtents=[.5,.5,.5], radius=.5, kinematicPoseFn=null, linearDampPerSec=0, maxSpeed=Infinity, entity=null }){
+    constructor({ type='dynamic', mass=1, shape='box', halfExtents=[.5,.5,.5], radius=.5, kinematicPoseFn=null, linearDampPerSec=0, angularDampPerSec=0, maxSpeed=Infinity, entity=null, lockRotation=false }){
+      this.id = Body._nextId++;
       this.type = type; // dynamic | kinematic | static
       this.mass = mass;
       this.invMass = (type === 'dynamic' && mass > 0) ? 1/mass : 0;
@@ -301,7 +304,7 @@
       this.radius = radius;
       this.kinematicPoseFn = kinematicPoseFn;
       this.linearDampPerSec = linearDampPerSec;
-      this.angularDampPerSec = 0;
+      this.angularDampPerSec = angularDampPerSec;
       this.maxSpeed = maxSpeed;
       this.entity = entity;
 
@@ -320,9 +323,9 @@
       this.friction = 0.0;
 
       this.isPlayer = false;
-      this.lockRotation = false;
+      this.lockRotation = lockRotation;
 
-      if (this.invMass <= 0) {
+      if (this.invMass <= 0 || this.lockRotation) {
         this.invInertiaLocal = [0,0,0];
       } else if (this.shape === 'sphere') {
         const r = Math.max(1e-6, this.radius);
@@ -367,13 +370,319 @@
     aabb(){
       // axis-aligned only
       if (this.shape === 'box') {
-        const he = this.halfExtents;
-        return { min: [this.x[0]-he[0], this.x[1]-he[1], this.x[2]-he[2]],
-                 max: [this.x[0]+he[0], this.x[1]+he[1], this.x[2]+he[2]] };
+        const obb = getObb(this);
+        const e = obb.e;
+        const u = obb.u;
+        const pad = 1e-4;
+        const ex = Math.abs(u[0][0]) * e[0] + Math.abs(u[1][0]) * e[1] + Math.abs(u[2][0]) * e[2] + pad;
+        const ey = Math.abs(u[0][1]) * e[0] + Math.abs(u[1][1]) * e[1] + Math.abs(u[2][1]) * e[2] + pad;
+        const ez = Math.abs(u[0][2]) * e[0] + Math.abs(u[1][2]) * e[1] + Math.abs(u[2][2]) * e[2] + pad;
+        return { min: [this.x[0]-ex, this.x[1]-ey, this.x[2]-ez],
+                 max: [this.x[0]+ex, this.x[1]+ey, this.x[2]+ez] };
       }
       // sphere AABB
       const r = this.radius;
       return { min:[this.x[0]-r,this.x[1]-r,this.x[2]-r], max:[this.x[0]+r,this.x[1]+r,this.x[2]+r] };
+    }
+  }
+  Body._nextId = 1;
+
+  function getObb(body){
+    const u0 = v3.norm(quat.rotate(body.q, [1,0,0]));
+    const u1 = v3.norm(quat.rotate(body.q, [0,1,0]));
+    const u2 = v3.norm(quat.rotate(body.q, [0,0,1]));
+    return {
+      c: body.x,
+      u: [u0, u1, u2],
+      e: [body.halfExtents[0], body.halfExtents[1], body.halfExtents[2]]
+    };
+  }
+
+  function getFaceVerts(obb, axisIndex, axisSign){
+    const u = obb.u;
+    const e = obb.e;
+    const center = v3.add(obb.c, v3.scale(u[axisIndex], e[axisIndex] * axisSign));
+    const a = u[(axisIndex + 1) % 3];
+    const b = u[(axisIndex + 2) % 3];
+    const ea = e[(axisIndex + 1) % 3];
+    const eb = e[(axisIndex + 2) % 3];
+    return [
+      v3.add(center, v3.add(v3.scale(a, ea), v3.scale(b, eb))),
+      v3.add(center, v3.add(v3.scale(a, -ea), v3.scale(b, eb))),
+      v3.add(center, v3.add(v3.scale(a, -ea), v3.scale(b, -eb))),
+      v3.add(center, v3.add(v3.scale(a, ea), v3.scale(b, -eb)))
+    ];
+  }
+
+  function clipPolyAgainstPlane(poly, n, d){
+    const out = [];
+    for (let i=0;i<poly.length;i++){
+      const a = poly[i];
+      const b = poly[(i+1)%poly.length];
+      const da = v3.dot(n, a) - d;
+      const db = v3.dot(n, b) - d;
+      const aIn = da <= 0;
+      const bIn = db <= 0;
+      if (aIn && bIn) {
+        out.push(b);
+      } else if (aIn && !bIn) {
+        const t = da / (da - db);
+        out.push(v3.add(a, v3.scale(v3.sub(b, a), t)));
+      } else if (!aIn && bIn) {
+        const t = da / (da - db);
+        out.push(v3.add(a, v3.scale(v3.sub(b, a), t)));
+        out.push(b);
+      }
+    }
+    return out;
+  }
+
+  function closestPointsSegSeg(p1, q1, p2, q2){
+    const d1 = v3.sub(q1, p1);
+    const d2 = v3.sub(q2, p2);
+    const r = v3.sub(p1, p2);
+    const a = v3.dot(d1, d1);
+    const e = v3.dot(d2, d2);
+    const f = v3.dot(d2, r);
+    let s = 0;
+    let t = 0;
+    if (a <= 1e-12 && e <= 1e-12) {
+      return { c1: p1, c2: p2 };
+    }
+    if (a <= 1e-12) {
+      s = 0;
+      t = clamp(f / e, 0, 1);
+    } else {
+      const c = v3.dot(d1, r);
+      if (e <= 1e-12) {
+        t = 0;
+        s = clamp(-c / a, 0, 1);
+      } else {
+        const b = v3.dot(d1, d2);
+        const denom = a*e - b*b;
+        if (denom !== 0) s = clamp((b*f - c*e) / denom, 0, 1);
+        else s = 0;
+        t = (b*s + f) / e;
+        if (t < 0) {
+          t = 0;
+          s = clamp(-c / a, 0, 1);
+        } else if (t > 1) {
+          t = 1;
+          s = clamp((b - c) / a, 0, 1);
+        }
+      }
+    }
+    const c1 = v3.add(p1, v3.scale(d1, s));
+    const c2 = v3.add(p2, v3.scale(d2, t));
+    return { c1, c2 };
+  }
+
+  const edgeSignCache = new Map();
+  function getEdgeSegment(obb, axisIndex, normal, cacheKey){
+    const k1 = (axisIndex + 1) % 3;
+    const k2 = (axisIndex + 2) % 3;
+    const eps = 1e-4;
+    const d1 = v3.dot(normal, obb.u[k1]);
+    const d2 = v3.dot(normal, obb.u[k2]);
+    let s1 = d1 >= 0 ? 1 : -1;
+    let s2 = d2 >= 0 ? 1 : -1;
+    if (cacheKey) {
+      const cached = edgeSignCache.get(cacheKey);
+      if (Math.abs(d1) < eps && cached) s1 = cached.s1;
+      if (Math.abs(d2) < eps && cached) s2 = cached.s2;
+      edgeSignCache.set(cacheKey, { s1, s2 });
+    }
+    const center = v3.add(obb.c,
+      v3.add(
+        v3.scale(obb.u[k1], obb.e[k1] * s1),
+        v3.scale(obb.u[k2], obb.e[k2] * s2)
+      ));
+    const dir = obb.u[axisIndex];
+    const p0 = v3.sub(center, v3.scale(dir, obb.e[axisIndex]));
+    const p1 = v3.add(center, v3.scale(dir, obb.e[axisIndex]));
+    return [p0, p1];
+  }
+
+  function obbVsObb(A, B){
+    const EPS = 1e-6;
+    const a = getObb(A);
+    const b = getObb(B);
+    const R = [[],[],[]];
+    const AbsR = [[],[],[]];
+    for (let i=0;i<3;i++){
+      for (let j=0;j<3;j++){
+        R[i][j] = v3.dot(a.u[i], b.u[j]);
+        AbsR[i][j] = Math.abs(R[i][j]) + EPS;
+      }
+    }
+    const t = v3.sub(b.c, a.c);
+    const tA = [v3.dot(t, a.u[0]), v3.dot(t, a.u[1]), v3.dot(t, a.u[2])];
+
+    let minPen = Infinity;
+    let bestAxis = null;
+    let axisType = null;
+    let axisIndex = -1;
+    let axisSign = 1;
+
+    // face axes from A
+    for (let i=0;i<3;i++){
+      const ra = a.e[i];
+      const rb = b.e[0]*AbsR[i][0] + b.e[1]*AbsR[i][1] + b.e[2]*AbsR[i][2];
+      const dist = Math.abs(tA[i]);
+      if (dist > ra + rb) return null;
+      const pen = (ra + rb) - dist;
+      if (pen < minPen) {
+        minPen = pen;
+        bestAxis = a.u[i];
+        axisType = 'faceA';
+        axisIndex = i;
+        axisSign = (tA[i] >= 0) ? 1 : -1;
+      }
+    }
+
+    // face axes from B
+    for (let j=0;j<3;j++){
+      const rb = b.e[j];
+      const ra = a.e[0]*AbsR[0][j] + a.e[1]*AbsR[1][j] + a.e[2]*AbsR[2][j];
+      const dist = Math.abs(v3.dot(t, b.u[j]));
+      if (dist > ra + rb) return null;
+      const pen = (ra + rb) - dist;
+      if (pen < minPen) {
+        minPen = pen;
+        bestAxis = b.u[j];
+        axisType = 'faceB';
+        axisIndex = j;
+        axisSign = (v3.dot(t, b.u[j]) >= 0) ? 1 : -1;
+      }
+    }
+
+    // edge cross products
+    for (let i=0;i<3;i++){
+      for (let j=0;j<3;j++){
+        const axis = v3.cross(a.u[i], b.u[j]);
+        const axisLen2 = v3.len2(axis);
+        if (axisLen2 < 1e-12) continue;
+        const ra = a.e[(i+1)%3]*AbsR[(i+2)%3][j] + a.e[(i+2)%3]*AbsR[(i+1)%3][j];
+        const rb = b.e[(j+1)%3]*AbsR[i][(j+2)%3] + b.e[(j+2)%3]*AbsR[i][(j+1)%3];
+        const dist = Math.abs(tA[(i+2)%3]*R[(i+1)%3][j] - tA[(i+1)%3]*R[(i+2)%3][j]);
+        if (dist > ra + rb) return null;
+        const pen = (ra + rb) - dist;
+        if (pen < minPen) {
+          minPen = pen;
+          bestAxis = v3.scale(axis, 1/Math.sqrt(axisLen2));
+          axisType = 'edge';
+          axisIndex = i * 3 + j;
+          axisSign = (v3.dot(bestAxis, t) >= 0) ? 1 : -1;
+        }
+      }
+    }
+
+    if (!bestAxis) return null;
+    let normal = v3.scale(bestAxis, axisSign);
+    if (v3.dot(normal, t) < 0) normal = v3.scale(normal, -1);
+
+    if (axisType === 'edge') {
+      const i = Math.floor(axisIndex / 3);
+      const j = axisIndex % 3;
+      const [a0, a1] = getEdgeSegment(a, i, normal, `A${A.id}-B${B.id}-i${i}`);
+      const [b0, b1] = getEdgeSegment(b, j, v3.scale(normal, -1), `B${B.id}-A${A.id}-j${j}`);
+      const closest = closestPointsSegSeg(a0, a1, b0, b1);
+      const point = v3.scale(v3.add(closest.c1, closest.c2), 0.5);
+      return [{ normal, penetration: minPen, point }];
+    }
+
+    const ref = (axisType === 'faceA') ? a : b;
+    const inc = (axisType === 'faceA') ? b : a;
+    const refNormal = (axisType === 'faceA') ? normal : v3.scale(normal, -1);
+    const refFaceIndex = axisIndex;
+    const refSign = (v3.dot(ref.u[refFaceIndex], refNormal) >= 0) ? 1 : -1;
+    const refFaceCenter = v3.add(ref.c, v3.scale(ref.u[refFaceIndex], ref.e[refFaceIndex] * refSign));
+
+    // incident face
+    let incFaceIndex = 0;
+    let minDot = Infinity;
+    for (let i=0;i<3;i++){
+      const d = v3.dot(inc.u[i], refNormal);
+      if (d < minDot) {
+        minDot = d;
+        incFaceIndex = i;
+      }
+    }
+    const incSign = (v3.dot(inc.u[incFaceIndex], refNormal) >= 0) ? -1 : 1;
+    let poly = getFaceVerts(inc, incFaceIndex, incSign);
+
+    // clip against reference face side planes
+    const refAxes = [0,1,2].filter(i=>i!==refFaceIndex);
+    for (const axis of refAxes){
+      const nPos = ref.u[axis];
+      const dPos = v3.dot(nPos, ref.c) + ref.e[axis];
+      poly = clipPolyAgainstPlane(poly, nPos, dPos);
+      if (!poly.length) return null;
+      const nNeg = v3.scale(ref.u[axis], -1);
+      const dNeg = v3.dot(nNeg, ref.c) + ref.e[axis];
+      poly = clipPolyAgainstPlane(poly, nNeg, dNeg);
+      if (!poly.length) return null;
+    }
+
+    const contacts = [];
+    for (const p of poly){
+      const depth = v3.dot(refNormal, v3.sub(p, refFaceCenter));
+      if (depth <= 0) {
+        const pOnPlane = v3.sub(p, v3.scale(refNormal, depth));
+        contacts.push({
+          normal,
+          penetration: -depth,
+          point: pOnPlane
+        });
+      }
+    }
+    if (!contacts.length) return null;
+    contacts.sort((a,b)=>b.penetration - a.penetration);
+    return contacts.slice(0, 4);
+  }
+
+  function sphereVsObb(sphere, box){
+    const obb = getObb(box);
+    const d = v3.sub(sphere.x, obb.c);
+    let closest = obb.c;
+    for (let i=0;i<3;i++){
+      const dist = v3.dot(d, obb.u[i]);
+      const clamped = clamp(dist, -obb.e[i], obb.e[i]);
+      closest = v3.add(closest, v3.scale(obb.u[i], clamped));
+    }
+    const diff = v3.sub(closest, sphere.x);
+    const d2 = v3.len2(diff);
+    const r = sphere.radius;
+    if (d2 >= r*r) return null;
+    const dist = Math.sqrt(Math.max(1e-12, d2));
+    const n = d2 > 1e-12 ? v3.scale(diff, 1/dist) : obb.u[1];
+    return { normal: n, penetration: (r - dist), point: closest };
+  }
+
+  function applyImpulseAtPoint(A, B, p, impulse){
+    const rA = v3.sub(p, A.x);
+    const rB = v3.sub(p, B.x);
+    if (A.invMass > 0) {
+      A.v = v3.sub(A.v, v3.scale(impulse, A.invMass));
+      A.w = v3.sub(A.w, A.invInertiaWorldMul(v3.cross(rA, impulse)));
+    }
+    if (B.invMass > 0) {
+      B.v = v3.add(B.v, v3.scale(impulse, B.invMass));
+      B.w = v3.add(B.w, B.invInertiaWorldMul(v3.cross(rB, impulse)));
+    }
+  }
+
+  function contactFeatureId(A, B, contact){
+    const la = quat.invRotate(A.q, v3.sub(contact.point, A.x));
+    const lb = quat.invRotate(B.q, v3.sub(contact.point, B.x));
+    const q = (v)=>Math.round(v * 20);
+    return `${q(la[0])},${q(la[1])},${q(la[2])}|${q(lb[0])},${q(lb[1])},${q(lb[2])}`;
+  }
+
+  function applyCachedImpulse(A, B, contact, cached){
+    if (!cached) return;
+    if (cached.jn > 0) {
+      applyImpulseAtPoint(A, B, contact.point, v3.scale(contact.normal, cached.jn));
     }
   }
 
@@ -507,14 +816,24 @@
   function generateContact(A,B){
     if (A.type==='static' && B.type==='static') return null;
 
-    if (A.shape==='box' && B.shape==='box') return aabbVsAabb(A,B);
-    if (A.shape==='sphere' && B.shape==='sphere') return sphereVsSphere(A,B);
-    if (A.shape==='sphere' && B.shape==='box') return sphereVsAabb(A,B);
+    if (A.shape==='box' && B.shape==='box') {
+      const broad = aabbVsAabb(A,B);
+      if (!broad) return null;
+      return obbVsObb(A,B);
+    }
+    if (A.shape==='sphere' && B.shape==='sphere') {
+      const c = sphereVsSphere(A,B);
+      return c ? [c] : null;
+    }
+    if (A.shape==='sphere' && B.shape==='box') {
+      const c = sphereVsObb(A,B);
+      return c ? [c] : null;
+    }
     if (A.shape==='box' && B.shape==='sphere') {
-      const c = sphereVsAabb(B,A);
+      const c = sphereVsObb(B,A);
       if (!c) return null;
       // flip normal to be from A->B
-      return { normal: v3.scale(c.normal, -1), penetration: c.penetration, point: c.point };
+      return [{ normal: v3.scale(c.normal, -1), penetration: c.penetration, point: c.point }];
     }
     return null;
   }
@@ -538,6 +857,9 @@
     const slop = 0.001;
     const beta = 0.2;
     const biasVel = dt > 0 ? -(beta / dt) * Math.max(0, pen - slop) : 0;
+    let jn = 0;
+    let jt = 0;
+    let tDir = null;
     if (vn < 0 || biasVel < 0) {
       // normal impulse
       const e = Math.min(A.restitution ?? 0, B.restitution ?? 0);
@@ -546,25 +868,31 @@
       const angA = v3.cross(A.invInertiaWorldMul(rnA), rA);
       const angB = v3.cross(B.invInertiaWorldMul(rnB), rB);
       const denom = wA + wB + v3.dot(n, v3.add(angA, angB));
-      if (denom <= 1e-10) return;
+      if (denom <= 1e-10) return { jn: 0, jt: 0, t: null };
       const restitutionTerm = (vn < -1.0) ? (e * vn) : 0;
-      let j = -(vn + restitutionTerm + biasVel) / denom;
-      if (j < 0) j = 0;
-      const impulse = v3.scale(n, j);
-      if (wA > 0) {
-        A.v = v3.sub(A.v, v3.scale(impulse, wA));
-        A.w = v3.sub(A.w, A.invInertiaWorldMul(v3.cross(rA, impulse)));
-      }
-      if (wB > 0) {
-        B.v = v3.add(B.v, v3.scale(impulse, wB));
-        B.w = v3.add(B.w, B.invInertiaWorldMul(v3.cross(rB, impulse)));
+      jn = -(vn + restitutionTerm + biasVel) / denom;
+      if (jn < 0) jn = 0;
+      if (jn > 0) {
+        const impulse = v3.scale(n, jn);
+        if (wA > 0) {
+          A.v = v3.sub(A.v, v3.scale(impulse, wA));
+          A.w = v3.sub(A.w, A.invInertiaWorldMul(v3.cross(rA, impulse)));
+        }
+        if (wB > 0) {
+          B.v = v3.add(B.v, v3.scale(impulse, wB));
+          B.w = v3.add(B.w, B.invInertiaWorldMul(v3.cross(rB, impulse)));
+        }
       }
 
       // simple friction when player involved and grounded-ish
       const mu = 0.4;
-      const vt = v3.sub(relV, v3.scale(n, vn));
+      const vA2 = v3.add(A.v, v3.cross(A.w, rA));
+      const vB2 = v3.add(B.v, v3.cross(B.w, rB));
+      const relV2 = v3.sub(vB2, vA2);
+      const vn2 = v3.dot(relV2, n);
+      const vt = v3.sub(relV2, v3.scale(n, vn2));
       const vtLen = v3.len(vt);
-      if (vtLen > 1e-6) {
+      if (vtLen > 1e-6 && jn > 0) {
         const t = v3.scale(vt, 1/vtLen);
         const rtA = v3.cross(rA, t);
         const rtB = v3.cross(rB, t);
@@ -572,20 +900,24 @@
         const angTB = v3.cross(B.invInertiaWorldMul(rtB), rB);
         const denomT = wA + wB + v3.dot(t, v3.add(angTA, angTB));
         if (denomT > 1e-10) {
-          const jt = -vtLen / denomT;
-          const jtClamped = clamp(jt, -mu*j, mu*j);
-          const impT = v3.scale(t, jtClamped);
-          if (wA > 0) {
-            A.v = v3.sub(A.v, v3.scale(impT, wA));
-            A.w = v3.sub(A.w, A.invInertiaWorldMul(v3.cross(rA, impT)));
-          }
-          if (wB > 0) {
-            B.v = v3.add(B.v, v3.scale(impT, wB));
-            B.w = v3.add(B.w, B.invInertiaWorldMul(v3.cross(rB, impT)));
+          jt = -vtLen / denomT;
+          jt = clamp(jt, -mu*jn, mu*jn);
+          if (Math.abs(jt) > 0) {
+            const impT = v3.scale(t, jt);
+            if (wA > 0) {
+              A.v = v3.sub(A.v, v3.scale(impT, wA));
+              A.w = v3.sub(A.w, A.invInertiaWorldMul(v3.cross(rA, impT)));
+            }
+            if (wB > 0) {
+              B.v = v3.add(B.v, v3.scale(impT, wB));
+              B.w = v3.add(B.w, B.invInertiaWorldMul(v3.cross(rB, impT)));
+            }
+            tDir = t;
           }
         }
       }
     }
+    return { jn, jt, t: tDir };
   }
 
   // Raycast (for web shooting) against box/sphere colliders
@@ -629,6 +961,52 @@
       return { t: tmin, point: p, normal: n };
     }
 
+    function rayObb(o, d, obb){
+      const oc = v3.sub(o, obb.c);
+      const oLocal = [
+        v3.dot(oc, obb.u[0]),
+        v3.dot(oc, obb.u[1]),
+        v3.dot(oc, obb.u[2])
+      ];
+      const dLocal = [
+        v3.dot(d, obb.u[0]),
+        v3.dot(d, obb.u[1]),
+        v3.dot(d, obb.u[2])
+      ];
+      let tmin = 0;
+      let tmax = maxDist;
+      let hitAxis = -1;
+      let hitSign = 1;
+      for (let i=0;i<3;i++){
+        const di = dLocal[i];
+        const oi = oLocal[i];
+        if (Math.abs(di) < 1e-9){
+          if (oi < -obb.e[i] || oi > obb.e[i]) return null;
+        } else {
+          let inv = 1/di;
+          let t1 = (-obb.e[i]-oi)*inv;
+          let t2 = (obb.e[i]-oi)*inv;
+          let sign = -1;
+          if (t1 > t2){ const tmp=t1; t1=t2; t2=tmp; sign = 1; }
+          if (t1 > tmin){
+            tmin = t1;
+            hitAxis = i;
+            hitSign = sign;
+          }
+          tmax = Math.min(tmax, t2);
+          if (tmin > tmax) return null;
+        }
+      }
+      if (tmin < 0 || tmin > maxDist) return null;
+      const p = v3.add(o, v3.scale(d, tmin));
+      let n = [0,0,0];
+      if (hitAxis >= 0) {
+        const axis = obb.u[hitAxis];
+        n = v3.scale(axis, hitSign);
+      }
+      return { t: tmin, point: p, normal: n };
+    }
+
     // Ray vs Sphere
     function raySphere(o, d, c, r){
       const oc = v3.sub(o, c);
@@ -653,10 +1031,7 @@
 
       let hit = null;
       if (B.shape === 'box'){
-        const he = B.halfExtents;
-        const bMin = [B.x[0]-he[0], B.x[1]-he[1], B.x[2]-he[2]];
-        const bMax = [B.x[0]+he[0], B.x[1]+he[1], B.x[2]+he[2]];
-        hit = rayAabb(origin, dir, bMin, bMax);
+        hit = rayObb(origin, dir, getObb(B));
       } else if (B.shape === 'sphere'){
         hit = raySphere(origin, dir, B.x, B.radius);
       }
@@ -680,6 +1055,21 @@
   const matStatic = new THREE.MeshStandardMaterial({ color: 0x3f86ff });
   const matDynamic = new THREE.MeshStandardMaterial({ color: 0x33c7a7 });
   const matPlayer = new THREE.MeshStandardMaterial({ color: 0xf2f2fa });
+  const debugMaterials = {
+    dynamic: new THREE.LineBasicMaterial({ color: 0x8ef3d6 }),
+    static: new THREE.LineBasicMaterial({ color: 0x7aa7ff }),
+    player: new THREE.LineBasicMaterial({ color: 0xffffff })
+  };
+  const debugMeshes = new WeakMap();
+  const debugAxes = new WeakMap();
+  const debugAxisMaterials = {
+    x: new THREE.LineBasicMaterial({ color: 0xff4b4b }),
+    y: new THREE.LineBasicMaterial({ color: 0x54ff84 }),
+    z: new THREE.LineBasicMaterial({ color: 0x4fa3ff })
+  };
+  const debugCenterMat = new THREE.MeshBasicMaterial({ color: 0xb36bff });
+  const debugCenterGeo = new THREE.SphereGeometry(0.06, 10, 8);
+  let debugColliders = false;
 
   function instantiateComponent(def, entity){
     if (def.kind === 'collider') {
@@ -755,7 +1145,14 @@
   });
 
   const boxFactory = createEntityFactory([
-    (opts)=>({ kind:'collider', body:{ type: opts.type ?? 'static', mass: opts.mass ?? 1, shape:'box', halfExtents: opts.halfExtents } }),
+    (opts)=>({ kind:'collider', body:{
+      type: opts.type ?? 'static',
+      mass: opts.mass ?? 1,
+      shape:'box',
+      halfExtents: opts.halfExtents,
+      lockRotation: opts.lockRotation ?? false,
+      angularDampPerSec: opts.angularDampPerSec ?? 6
+    } }),
     (opts)=>defaultPhysicsComponent(opts),
     (opts)=>({ kind:'visual', shape:'box', localPos:[0,0,0], localScale: opts.halfExtents, material: opts.material ?? ((opts.type ?? 'static') === 'static' ? matStatic : matDynamic) })
   ]);
@@ -799,9 +1196,9 @@
         body.maxSpeed = moveParams.maxSpeed;
       }
     }),
-    (opts)=>({ kind:'visual', shape:'box', localPos:[0, 0, 0], localScale:[opts.halfExtents[0]*1.05, opts.halfExtents[1]*0.78, opts.halfExtents[2]*1.05], material: matPlayer, mode:'smooth', smoothHz:22 }),
-    (opts)=>({ kind:'visual', shape:'box', localPos:[0, opts.halfExtents[1]*0.75, 0], localScale:[opts.halfExtents[0]*1.05, opts.halfExtents[0]*1.05, opts.halfExtents[2]*1.05], material: matPlayer, mode:'smooth', smoothHz:22 }),
-    (opts)=>({ kind:'visual', shape:'box', localPos:[0, -opts.halfExtents[1]*0.75, 0], localScale:[opts.halfExtents[0]*1.05, opts.halfExtents[0]*1.05, opts.halfExtents[2]*1.05], material: matPlayer, mode:'smooth', smoothHz:22 })
+    (opts)=>({ kind:'visual', shape:'box', localPos:[0, 0, 0], localScale:[opts.halfExtents[0]*1.05, opts.halfExtents[1]*0.78, opts.halfExtents[2]*1.05], material: matPlayer, mode:'direct' }),
+    (opts)=>({ kind:'visual', shape:'box', localPos:[0, opts.halfExtents[1]*0.75, 0], localScale:[opts.halfExtents[0]*1.05, opts.halfExtents[0]*1.05, opts.halfExtents[2]*1.05], material: matPlayer, mode:'direct' }),
+    (opts)=>({ kind:'visual', shape:'box', localPos:[0, -opts.halfExtents[1]*0.75, 0], localScale:[opts.halfExtents[0]*1.05, opts.halfExtents[0]*1.05, opts.halfExtents[2]*1.05], material: matPlayer, mode:'direct' })
   ]);
 
   function addBox(pos, he, type='static', mass=1, material=null){
@@ -850,8 +1247,8 @@
   // Oscillating static cube for tether tests
   const testCubeMat = new THREE.MeshStandardMaterial({ color: 0xff6b6b });
   const testCube = boxFactory.create({
-    pos: [0, 8, -8],
-    halfExtents: [1.0, 1.0, 1.0],
+    pos: [0, 4, -8],
+    halfExtents: [2.0, 2.0, 2.0],
     type: 'static',
     material: testCubeMat,
     components: [
@@ -891,6 +1288,82 @@
     line.computeLineDistances();
   }
 
+  function ensureDebugMesh(body){
+    if (debugMeshes.has(body)) return debugMeshes.get(body);
+    let geom;
+    if (body.shape === 'sphere') {
+      geom = new THREE.EdgesGeometry(new THREE.SphereGeometry(1, 12, 10));
+    } else {
+      geom = new THREE.EdgesGeometry(new THREE.BoxGeometry(2, 2, 2));
+    }
+    const mat = body.isPlayer ? debugMaterials.player : (body.type === 'dynamic' ? debugMaterials.dynamic : debugMaterials.static);
+    const mesh = new THREE.LineSegments(geom, mat);
+    debugGroup.add(mesh);
+    debugMeshes.set(body, mesh);
+    return mesh;
+  }
+
+  function ensureDebugAxes(body){
+    if (debugAxes.has(body)) return debugAxes.get(body);
+    const geom = new THREE.BufferGeometry();
+    const positions = new Float32Array(18);
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.LineBasicMaterial({ vertexColors: true });
+    const colors = new Float32Array([
+      1,0,0, 1,0,0,
+      0,1,0, 0,1,0,
+      0,0,1, 0,0,1
+    ]);
+    geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    const axes = new THREE.LineSegments(geom, mat);
+    const center = new THREE.Mesh(debugCenterGeo, debugCenterMat);
+    const group = new THREE.Group();
+    group.add(axes);
+    group.add(center);
+    debugGroup.add(group);
+    const entry = { group, axes, center, positions, geom };
+    debugAxes.set(body, entry);
+    return entry;
+  }
+
+  function syncDebugColliders(){
+    if (!debugColliders) return;
+    for (const b of bodies){
+      const mesh = ensureDebugMesh(b);
+      mesh.visible = true;
+      mesh.position.set(b.x[0], b.x[1], b.x[2]);
+      if (b.shape === 'sphere') {
+        mesh.rotation.set(0, 0, 0);
+        mesh.scale.set(b.radius, b.radius, b.radius);
+      } else {
+        const rot = b.entity ? b.entity.rot : quat.toEuler(b.q);
+        mesh.rotation.set(rot[0], rot[1], rot[2]);
+        mesh.scale.set(b.halfExtents[0], b.halfExtents[1], b.halfExtents[2]);
+      }
+
+      const axisEntry = ensureDebugAxes(b);
+      axisEntry.group.visible = true;
+      axisEntry.center.position.set(b.x[0], b.x[1], b.x[2]);
+      const q = b.q;
+      const ax = quat.rotate(q, [1,0,0]);
+      const ay = quat.rotate(q, [0,1,0]);
+      const az = quat.rotate(q, [0,0,1]);
+      const axisLen = 0.9 * Math.max(0.4, Math.min(b.halfExtents[0], b.halfExtents[1], b.halfExtents[2]));
+      const base = b.x;
+      const p = axisEntry.positions;
+      // X axis
+      p[0]=base[0]; p[1]=base[1]; p[2]=base[2];
+      p[3]=base[0]+ax[0]*axisLen; p[4]=base[1]+ax[1]*axisLen; p[5]=base[2]+ax[2]*axisLen;
+      // Y axis
+      p[6]=base[0]; p[7]=base[1]; p[8]=base[2];
+      p[9]=base[0]+ay[0]*axisLen; p[10]=base[1]+ay[1]*axisLen; p[11]=base[2]+ay[2]*axisLen;
+      // Z axis
+      p[12]=base[0]; p[13]=base[1]; p[14]=base[2];
+      p[15]=base[0]+az[0]*axisLen; p[16]=base[1]+az[1]*axisLen; p[17]=base[2]+az[2]*axisLen;
+      axisEntry.geom.attributes.position.needsUpdate = true;
+    }
+  }
+
   const aimLine = makeLine(0xffffff);
   aimLine.material.opacity = 0.35;
 
@@ -910,6 +1383,10 @@
     keys.add(e.code);
     if (e.code === 'KeyP') {
       perfEl.style.display = (perfEl.style.display === 'none') ? 'block' : 'none';
+    }
+    if (e.code === 'KeyC') {
+      debugColliders = !debugColliders;
+      debugGroup.visible = debugColliders;
     }
     if (e.code === 'Space') {
       if (!jumpCharging) {
@@ -1069,6 +1546,7 @@
     airDampPerSec: 0.50,
     aerialWebDampPerSec: 0.0
   };
+  let contactCache = new Map();
 
   function updatePhysicsComponents(dt){
     entityManager.forEachComponent('physics', (c, e)=>{
@@ -1200,27 +1678,52 @@
     }
   }
 
-  function solveCollisions(dt){
+  function solveCollisions(dt, doWarmStart, nextCache){
     playerGrounded = false;
 
     for (let i=0;i<bodies.length;i++){
       for (let j=i+1;j<bodies.length;j++){
         const A = bodies[i], B = bodies[j];
         if ((A.type==='static' || A.type==='kinematic') && (B.type==='static' || B.type==='kinematic')) continue;
+        const idA = Math.min(A.id, B.id);
+        const idB = Math.max(A.id, B.id);
+        const flip = A.id !== idA;
+        const pairKey = `${idA}|${idB}`;
+        const cachedPair = doWarmStart ? contactCache.get(pairKey) : null;
+        let nextPair = null;
 
-        const c = generateContact(A,B);
-        if (!c) continue;
+        const contacts = generateContact(A,B);
+        if (!contacts || !contacts.length) continue;
 
-        // track grounded if player involved and normal points upward on player
-        if (A.isPlayer) {
-          // normal points from A->B; grounded if contact normal points downward from player to ground
-          if (c.normal[1] < -0.5) playerGrounded = true;
-        } else if (B.isPlayer) {
-          // normal points from A->B; grounded if normal points upward toward player
-          if (c.normal[1] > 0.5) playerGrounded = true;
+        for (const c of contacts){
+          const featureId = flip ? contactFeatureId(B, A, c) : contactFeatureId(A, B, c);
+          if (doWarmStart && cachedPair) {
+            const cached = cachedPair.get(featureId);
+            if (cached) {
+              const curNormal = flip ? v3.scale(c.normal, -1) : c.normal;
+              if (v3.dot(curNormal, cached.n) > 0.8) {
+                applyCachedImpulse(A, B, c, cached);
+              }
+            }
+          }
+
+          // track grounded if player involved and normal points upward on player
+          if (A.isPlayer) {
+            // normal points from A->B; grounded if contact normal points downward from player to ground
+            if (c.normal[1] < -0.5) playerGrounded = true;
+          } else if (B.isPlayer) {
+            // normal points from A->B; grounded if normal points upward toward player
+            if (c.normal[1] > 0.5) playerGrounded = true;
+          }
+
+          const result = solveContact(A,B,c,dt);
+          if (result && result.jn > 0) {
+            if (!nextPair) nextPair = new Map();
+            const cachedNormal = flip ? v3.scale(c.normal, -1) : c.normal;
+            nextPair.set(featureId, { jn: result.jn, n: cachedNormal });
+          }
         }
-
-        solveContact(A,B,c,dt);
+        if (nextPair && nextPair.size > 0) nextCache.set(pairKey, nextPair);
       }
     }
     player.state = playerGrounded
@@ -1247,6 +1750,7 @@
     const substeps = 3;
     const h = dt / substeps;
     for (let s=0;s<substeps;s++){
+      const nextContactCache = new Map();
       // jump charge timer
       if (jumpCharging) jumpChargeT = Math.min(jumpChargeMax, jumpChargeT + h);
 
@@ -1260,9 +1764,10 @@
       // iterative solve
       const iters = 10;
       for (let it=0; it<iters; it++){
-        solveCollisions(h);
+        solveCollisions(h, it === 0, nextContactCache);
         solveRopes(h);
       }
+      contactCache = nextContactCache;
 
       // remove rope-violating velocity (stabilizes XPBD)
       projectRopeVelocities();
@@ -1356,6 +1861,7 @@
       d.binding.update(dt);
       d.syncFromBinding();
     }
+    syncDebugColliders();
 
     // draw aim ray
     const aimDir = cameraForward();
