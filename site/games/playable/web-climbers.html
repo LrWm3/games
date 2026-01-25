@@ -31,6 +31,12 @@
             transform: translate(-50%, -50%);
             box-shadow: 0 0 10px rgba(0,0,0,0.4);
         }
+        .player-reticle .reticle-distance {
+            position: absolute; left: 50%; top: 30px; transform: translateX(-50%);
+            font-size: 10px; font-weight: 600; color: #f8fafc;
+            text-shadow: 0 0 6px rgba(0,0,0,0.8);
+            white-space: nowrap;
+        }
         .stat { margin-top: 8px; font-weight: bold; font-size: 0.9em; }
         #speed { color: #00ffcc; }
         #state { color: #ffcc00; }
@@ -308,7 +314,7 @@
             maxJumpChargeTime: 1.5,
             mouseSensitivity: 0.0025,
             maxAimDistance: 300,
-            maxWebAttachLen: 650,
+            maxWebAttachLen: 800,
             swingControl: 12.0,
             swingSpeedThreshold: 18,
             swingMinDurationMs: 300,
@@ -317,7 +323,7 @@
             bounceUnlockHeight: 20000,
             winHeight: 20000,
             worldSeed: 1337,
-            remoteOrbRadius: 7.2,
+            remoteOrbRadius: 12,
             honeyStuckTimeMs: 6500,
             honeyUnstickForce: 0.1,
             honeyReleasePush: 18,
@@ -485,6 +491,10 @@
         const toggleConfigModal = throttle(() => {
             const isOpen = configModalEl.style.display === 'flex';
             configModalEl.style.display = isOpen ? 'none' : 'flex';
+            if (isOpen) {
+                const active = document.activeElement;
+                if (active && configModalEl.contains(active)) active.blur();
+            }
         }, 50);
         if (configResetEl) {
             configResetEl.addEventListener('click', () => {
@@ -558,6 +568,14 @@
 
             window.addEventListener('contextmenu', e => e.preventDefault());
 
+            document.addEventListener('keydown', (e) => {
+                if (configModalEl.style.display === 'flex' && e.code === 'KeyR') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!inLobby) requestRespawn();
+                }
+            }, true);
+
             window.addEventListener('keydown', e => {
                 keys[e.code] = true;
                 if (e.code === 'Space' && (isGrounded || isClimbing)) {
@@ -587,6 +605,8 @@
             }
             if (e.code === 'Escape' && configModalEl.style.display === 'flex') {
                 configModalEl.style.display = 'none';
+                const active = document.activeElement;
+                if (active && configModalEl.contains(active)) active.blur();
             }
                 if (e.code === 'Enter' && !inLobby && !chatOpen && document.activeElement !== chatInputEl) {
                     e.preventDefault();
@@ -732,13 +752,6 @@
             lobbyStatusEl.innerText = `Joined ${joinedRoomId}. Waiting for launch...`;
             setGameVisible(true);
             localJoinedAt = msg.joinedAtMs || performance.now();
-            if (Array.isArray(msg.peers)) {
-                msg.peers.forEach((pid, idx) => {
-                    playerSlots.set(pid, idx);
-                });
-                const localSlot = msg.peers.length;
-                playerSlots.set(peerId, localSlot);
-            }
             if (!gameStarted) {
                 init();
                 gameStarted = true;
@@ -762,6 +775,7 @@
                     }
                 });
             }
+            recomputePlayerSlots();
             if (isHost() && game.trickyOwnerSlot === null) {
                 const slots = getActiveSlots();
                 game.trickyOwnerSlot = slots.length ? slots[0] : getLocalSlot();
@@ -797,6 +811,7 @@
                     }
                 }
             }
+            recomputePlayerSlots();
             if (voiceEnabled && peerId && pid) {
                 const shouldOffer = peerId < pid;
                 if (shouldOffer) maybeStartOffer(pid);
@@ -821,7 +836,8 @@
             playerSlots.delete(pid);
             incomingTethers.delete(`${pid}:left`);
             incomingTethers.delete(`${pid}:right`);
-            if (isHost() && removedSlot !== null && game.trickyOwnerSlot === removedSlot) {
+            recomputePlayerSlots();
+            if (isHost() && removedSlot !== null && game.trickyOwnerSlot === null) {
                 rotateTrickyOwner();
             }
             const pc = peerConnections.get(pid);
@@ -1250,9 +1266,7 @@
                 stuckNormal.copy(result.wallNormal);
                 stuckPosition.copy(player.position);
                 announceSystemMessage(`${displayNameForPeer(peerId)} is stuck in honey!`);
-                if (isSinglePlayerMode()) {
-                    stuckUntilMs = performance.now() + config.honeyStuckTimeMs;
-                }
+                stuckUntilMs = performance.now() + config.honeyStuckTimeMs;
             }
             return result;
         }
@@ -1342,6 +1356,7 @@
             playerModel = new THREE.Group();
             player.add(playerModel);
             const mat = new THREE.MeshPhongMaterial({ color: color ?? 0xd32f2f });
+            player.userData.primaryMaterial = mat;
             const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.2, 12), mat);
             body.position.y = 1.1; playerModel.add(body);
             const head = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 12), mat);
@@ -1364,6 +1379,7 @@
             eyes.position.set(0, 1.9, 0.4); model.add(eyes);
             group.userData.peerId = peer;
             group.userData.model = model;
+            group.userData.primaryMaterial = mat;
             group.userData.velocity = new THREE.Vector3();
             group.userData.isGrounded = false;
             group.userData.lastSnapshotAt = performance.now();
@@ -1371,16 +1387,16 @@
             const orbMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35 });
             const orb = new THREE.Mesh(new THREE.SphereGeometry(config.remoteOrbRadius, 18, 18), orbMat);
             orb.renderOrder = 2;
+            group.userData.orbMaterial = orbMat;
             group.userData.orb = orb;
             group.add(orb);
-            const beamMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35 });
-            const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 1, 10), beamMat);
-            beam.renderOrder = 1;
-            group.userData.beam = beam;
-            group.add(beam);
             const screenReticle = document.createElement('div');
             screenReticle.className = 'player-reticle';
             screenReticle.style.color = `#${color.toString(16).padStart(6, '0')}`;
+            const distanceLabel = document.createElement('div');
+            distanceLabel.className = 'reticle-distance';
+            screenReticle.appendChild(distanceLabel);
+            group.userData.reticleDistanceEl = distanceLabel;
             reticlesEl.appendChild(screenReticle);
             group.userData.screenReticle = screenReticle;
             group.userData.webL = { line: createWebLine(0xffffff), active: false, anchor: new THREE.Vector3(), length: 0 };
@@ -1416,6 +1432,59 @@
             const fallback = playerSlots.size % playerColors.length;
             playerSlots.set(peer, fallback);
             return fallback;
+        }
+
+        function getPeerIdForSlot(slot) {
+            for (const [pid, value] of playerSlots.entries()) {
+                if (value === slot) return pid;
+            }
+            return null;
+        }
+
+        function applyPlayerColor(groupOrPlayer, color) {
+            const mat = groupOrPlayer?.userData?.primaryMaterial;
+            if (mat) mat.color.set(color);
+        }
+
+        function updatePlayerSlotColors() {
+            const localSlot = getLocalSlot();
+            applyPlayerColor(player, getSlotColor(localSlot));
+            remotePlayers.forEach((remote, pid) => {
+                const slot = playerSlots.get(pid);
+                if (slot === undefined) return;
+                const color = getSlotColor(slot);
+                applyPlayerColor(remote, color);
+                if (remote.userData.orbMaterial) remote.userData.orbMaterial.color.set(color);
+                if (remote.userData.compassEl) remote.userData.compassEl.style.background = `#${color.toString(16).padStart(6, '0')}`;
+                if (remote.userData.screenReticle) remote.userData.screenReticle.style.color = `#${color.toString(16).padStart(6, '0')}`;
+            });
+        }
+
+        function recomputePlayerSlots() {
+            const entries = [];
+            if (peerId) {
+                entries.push({ pid: peerId, joinedAt: localJoinedAt ?? performance.now() });
+            }
+            remotePlayers.forEach((remote, pid) => {
+                const joinedAt = remote.userData.joinedAtMs ?? Number.MAX_SAFE_INTEGER;
+                entries.push({ pid, joinedAt });
+            });
+            entries.sort((a, b) => {
+                if (a.joinedAt !== b.joinedAt) return a.joinedAt - b.joinedAt;
+                return String(a.pid).localeCompare(String(b.pid));
+            });
+            const previousOwner = game.trickyOwnerSlot !== null ? getPeerIdForSlot(game.trickyOwnerSlot) : null;
+            playerSlots.clear();
+            entries.forEach((entry, idx) => {
+                playerSlots.set(entry.pid, idx);
+            });
+            if (previousOwner && playerSlots.has(previousOwner)) {
+                game.trickyOwnerSlot = playerSlots.get(previousOwner);
+            } else if (game.trickyOwnerSlot !== null) {
+                game.trickyOwnerSlot = null;
+            }
+            updatePlayerSlotColors();
+            applyTrickyColors();
         }
 
         function createWebLine(color) {
@@ -1507,7 +1576,7 @@
                 }
             });
             if (closestPeer) {
-                if (!game.freePlay && closestDist > config.maxWebAttachLen) return;
+                if (!game.freePlay && closestDist > config.maxWebAttachLen * 3) return;
                 const handler = webTargetHandlers.player;
                 if (handler) handler(webObj, dir, closestPeer);
                 return;
@@ -1561,7 +1630,7 @@
             document.getElementById('charge-bar').style.width = Math.min((jumpChargeTime / config.maxJumpChargeTime) * 100, 100) + '%';
             if (isClimbing && !unlocks.has('climb')) isClimbing = false;
             if (isStuck) {
-                if (isSinglePlayerMode() && performance.now() >= stuckUntilMs) {
+                if (performance.now() >= stuckUntilMs) {
                     isStuck = false;
                     playerVelocity.copy(stuckNormal).multiplyScalar(config.honeyReleasePush);
                 } else {
@@ -1886,21 +1955,9 @@
                         remote.userData.screenReticle.style.left = `${x}px`;
                         remote.userData.screenReticle.style.top = `${y}px`;
                     }
-                }
-                if (remote.userData.beam) {
-                    const localChunkX = Math.round(player.position.x / config.blockSize);
-                    const localChunkZ = Math.round(player.position.z / config.blockSize);
-                    const remoteChunkX = Math.round(remote.position.x / config.blockSize);
-                    const remoteChunkZ = Math.round(remote.position.z / config.blockSize);
-                    const chunkDist = Math.hypot(localChunkX - remoteChunkX, localChunkZ - remoteChunkZ);
-                    if (chunkDist <= 1) {
-                        remote.userData.beam.visible = false;
-                    } else {
-                        const beamHeight = 20000;
-                        const widthScale = 0.6 + chunkDist * 0.25;
-                        remote.userData.beam.visible = true;
-                        remote.userData.beam.scale.set(widthScale, beamHeight, widthScale);
-                        remote.userData.beam.position.set(0, beamHeight * 0.5, 0);
+                    if (remote.userData.reticleDistanceEl) {
+                        const dist = Math.round(remote.position.distanceTo(player.position));
+                        remote.userData.reticleDistanceEl.textContent = `${dist}m`;
                     }
                 }
                 if (remote.userData.audioGain) {
@@ -2798,7 +2855,7 @@
             const impulse = payload.impulse;
             if (impulse) {
                 const impulseVec = new THREE.Vector3(impulse.x || 0, impulse.y || 0, impulse.z || 0);
-                if (isStuck && !isSinglePlayerMode()) {
+                if (isStuck) {
                     const normalComponent = impulseVec.dot(stuckNormal);
                     if (Math.abs(normalComponent) >= config.honeyUnstickForce) {
                         isStuck = false;
@@ -3069,14 +3126,54 @@
             const dir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(1, 0, 0), pitch).applyQuaternion(player.quaternion).normalize();
             const origin = player.position.clone().add(new THREE.Vector3(0, 1.5, 0));
             raycaster.set(origin, dir);
+
+            let closestPeer = null;
+            let closestPeerDist = Infinity;
+            let closestPeerPoint = null;
+            remotePlayers.forEach((remote) => {
+                const sphere = new THREE.Sphere(remote.position, config.remoteOrbRadius);
+                const hitPoint = raycaster.ray.intersectSphere(sphere, new THREE.Vector3());
+                if (hitPoint) {
+                    const dist = origin.distanceTo(hitPoint);
+                    if (dist < closestPeerDist) {
+                        closestPeerDist = dist;
+                        closestPeer = remote;
+                        closestPeerPoint = hitPoint.clone();
+                    }
+                }
+            });
             
             const targets = [];
             chunks.forEach(d => targets.push(d.mesh));
             const intersects = raycaster.intersectObjects(targets);
 
-            if (intersects.length > 0) {
-                const hit = intersects[0];
-                const dist = player.position.distanceTo(hit.point);
+            const buildingHit = intersects.length > 0 ? intersects[0] : null;
+            const buildingDist = buildingHit ? player.position.distanceTo(buildingHit.point) : Infinity;
+            const usePlayerHit = closestPeer && closestPeerDist <= buildingDist;
+
+            if (usePlayerHit && closestPeerPoint) {
+                const dist = closestPeerDist;
+                const canAttach = game.freePlay || dist <= config.maxWebAttachLen * 3;
+                webReticle.position.copy(closestPeerPoint);
+                webReticle.lookAt(origin);
+
+                // Keep the reticle visually consistent regardless of distance
+                const scaleFactor = dist * 0.0125; 
+                webReticle.scale.set(scaleFactor, scaleFactor, 1);
+
+                webReticle.material.color.set(canAttach ? 0x00ffff : 0xff3300);
+                webReticle.visible = true;
+                const beamDir = closestPeerPoint.clone().sub(origin).normalize();
+                const beamLen = origin.distanceTo(closestPeerPoint);
+                laserBeam.position.copy(origin).add(beamDir.clone().multiplyScalar(beamLen * 0.5));
+                laserBeam.scale.set(1, beamLen, 1);
+                laserBeam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), beamDir);
+                laserDot.position.copy(closestPeerPoint);
+                laserBeam.material.color.set(canAttach ? 0x33ff66 : 0xff2d2d);
+                laserDot.material.color.set(canAttach ? 0x33ff66 : 0xff2d2d);
+            } else if (buildingHit) {
+                const hit = buildingHit;
+                const dist = buildingDist;
                 const canAttach = game.freePlay || dist <= config.maxWebAttachLen;
 
                 webReticle.position.copy(hit.point).add(hit.face.normal.clone().multiplyScalar(0.5));
