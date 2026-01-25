@@ -429,6 +429,7 @@
         let timeSyncSeq = 0;
         let trickySingleSwings = 0;
         let trickySingleLocked = false;
+        const trickyLastSwingKeyByPeer = new Map();
         let lastSinglePlayerMode = null;
         let initialFacing = null;
         let welcomeChunksApplied = false;
@@ -834,6 +835,7 @@
                 remotePlayers.delete(pid);
             }
             playerSlots.delete(pid);
+            trickyLastSwingKeyByPeer.delete(pid);
             incomingTethers.delete(`${pid}:left`);
             incomingTethers.delete(`${pid}:right`);
             recomputePlayerSlots();
@@ -2169,6 +2171,20 @@
             return [...slots].sort((a, b) => a - b);
         }
 
+        function buildTrickySwingKey(state) {
+            if (!state) return '';
+            const webKey = (web) => {
+                if (!web?.active || web.targetType !== 'mega_tricky') return '';
+                const ax = Math.round((web.anchor?.x || 0) * 10);
+                const ay = Math.round((web.anchor?.y || 0) * 10);
+                const az = Math.round((web.anchor?.z || 0) * 10);
+                return `${ax},${ay},${az}`;
+            };
+            const left = webKey(state.webL);
+            const right = webKey(state.webR);
+            return `${left}::${right}`;
+        }
+
         function getTrickyColor() {
             const baseSlot = getLocalSlot();
             const slot = isSinglePlayerMode() ? baseSlot : (game.trickyOwnerSlot ?? baseSlot);
@@ -2878,8 +2894,12 @@
             }
             if (swungTricky && isHost() && !isSinglePlayerMode()) {
                 const swingerSlot = playerSlots.get(payload.playerId);
+                const swingKey = buildTrickySwingKey(payload.startState);
+                const lastKey = trickyLastSwingKeyByPeer.get(payload.playerId);
+                if (swingKey && swingKey === lastKey) return;
                 if (swingerSlot !== undefined && swingerSlot === game.trickyOwnerSlot) {
                     rotateTrickyOwner();
+                    trickyLastSwingKeyByPeer.set(payload.playerId, swingKey);
                 }
             }
             if (!isStunned || payload.playerId === peerId) return;
