@@ -840,95 +840,158 @@
     return null;
   }
 
-  function solveContact(A,B, contact, dt){
-    const n = contact.normal;
-    const pen = contact.penetration;
-    const p = contact.point;
-
+  function computeEffectiveMass(A, B, rA, rB, dir){
     const wA = A.invMass, wB = B.invMass;
-    const wSum = wA + wB;
-    if (wSum <= 0) return;
+    const raXn = v3.cross(rA, dir);
+    const rbXn = v3.cross(rB, dir);
+    const angA = v3.cross(A.invInertiaWorldMul(raXn), rA);
+    const angB = v3.cross(B.invInertiaWorldMul(rbXn), rB);
+    const denom = wA + wB + v3.dot(dir, v3.add(angA, angB));
+    return denom > 1e-10 ? 1 / denom : 0;
+  }
 
-    // positional correction to prevent sinking (split impulse style)
-    const slop = 0.001;
-    const corr = Math.max(0, pen - slop);
-    if (corr > 0) {
-      const percent = 0.2;
-      const maxCorr = 0.5;
-      const m = Math.min(maxCorr, corr * percent) / wSum;
-      const dp = v3.scale(n, m);
-      if (wA > 0) A.x = v3.sub(A.x, v3.scale(dp, wA));
-      if (wB > 0) B.x = v3.add(B.x, v3.scale(dp, wB));
-    }
+  function computeTangentBasis(n){
+    const ref = Math.abs(n[0]) < 0.9 ? [1,0,0] : [0,1,0];
+    const t1 = v3.norm(v3.cross(ref, n));
+    const t2 = v3.cross(n, t1);
+    return { t1, t2 };
+  }
 
-    // velocity: remove into-surface component (inelastic)
-    const rA = v3.sub(p, A.x);
-    const rB = v3.sub(p, B.x);
-    const vA = v3.add(A.v, v3.cross(A.w, rA));
-    const vB = v3.add(B.v, v3.cross(B.w, rB));
-    const relV = v3.sub(vB, vA);
-    const vn = v3.dot(relV, n);
-    let jn = 0;
-    let jt = 0;
-    let tDir = null;
-    if (vn < 0) {
-      // normal impulse
-      const e = Math.min(A.restitution ?? 0, B.restitution ?? 0);
-      const rnA = v3.cross(rA, n);
-      const rnB = v3.cross(rB, n);
-      const angA = v3.cross(A.invInertiaWorldMul(rnA), rA);
-      const angB = v3.cross(B.invInertiaWorldMul(rnB), rB);
-      const denom = wA + wB + v3.dot(n, v3.add(angA, angB));
-      if (denom <= 1e-10) return { jn: 0, jt: 0, t: null };
-      const restitutionTerm = (vn < -1.0) ? (e * vn) : 0;
-      jn = -(vn + restitutionTerm) / denom;
-      if (jn < 0) jn = 0;
-      if (jn > 0) {
-        const impulse = v3.scale(n, jn);
-        if (wA > 0) {
-          A.v = v3.sub(A.v, v3.scale(impulse, wA));
-          A.w = v3.sub(A.w, A.invInertiaWorldMul(v3.cross(rA, impulse)));
-        }
-        if (wB > 0) {
-          B.v = v3.add(B.v, v3.scale(impulse, wB));
-          B.w = v3.add(B.w, B.invInertiaWorldMul(v3.cross(rB, impulse)));
+  function buildContacts(dt){
+    const contacts = [];
+    playerGrounded = false;
+
+    for (let i=0;i<bodies.length;i++){
+      for (let j=i+1;j<bodies.length;j++){
+        const A = bodies[i], B = bodies[j];
+        if ((A.type==='static' || A.type==='kinematic') && (B.type==='static' || B.type==='kinematic')) continue;
+
+        const contactsRaw = generateContact(A,B);
+        if (!contactsRaw || !contactsRaw.length) continue;
+
+        for (const c of contactsRaw){
+          if (A.isPlayer) {
+            if (c.normal[1] < -0.5) playerGrounded = true;
+          } else if (B.isPlayer) {
+            if (c.normal[1] > 0.5) playerGrounded = true;
+          }
+
+          const n = c.normal;
+          const p = c.point;
+          const pen = c.penetration;
+          const wA = A.invMass, wB = B.invMass;
+          const wSum = wA + wB;
+          if (wSum <= 0) continue;
+
+          const rA = v3.sub(p, A.x);
+          const rB = v3.sub(p, B.x);
+          const { t1, t2 } = computeTangentBasis(n);
+          const massN = computeEffectiveMass(A, B, rA, rB, n);
+          const massT1 = computeEffectiveMass(A, B, rA, rB, t1);
+          const massT2 = computeEffectiveMass(A, B, rA, rB, t2);
+          const restitution = Math.min(A.restitution ?? 0, B.restitution ?? 0);
+          const friction = Math.min(
+            Number.isFinite(A.friction) ? A.friction : 0.4,
+            Number.isFinite(B.friction) ? B.friction : 0.4
+          );
+
+          const idA = Math.min(A.id, B.id);
+          const idB = Math.max(A.id, B.id);
+          const flip = A.id !== idA;
+          const pairKey = `${idA}|${idB}`;
+          const featureId = flip ? contactFeatureId(B, A, c) : contactFeatureId(A, B, c);
+
+          contacts.push({
+            A, B, n, p, rA, rB, t1, t2, massN, massT1, massT2,
+            friction, restitution,
+            jn: 0, jt1: 0, jt2: 0,
+            pairKey, featureId, flip,
+            pen
+          });
         }
       }
+    }
+    return contacts;
+  }
 
-      // simple friction when player involved and grounded-ish
-      const mu = 0.4;
+  function warmStartContacts(contacts){
+    for (const c of contacts){
+      const cachedPair = contactCache.get(c.pairKey);
+      if (!cachedPair) continue;
+      const cached = cachedPair.get(c.featureId);
+      if (!cached) continue;
+      const curNormal = c.flip ? v3.scale(c.n, -1) : c.n;
+      if (v3.dot(curNormal, cached.n) < 0.8) continue;
+      let tangential = v3.sub(cached.pt, v3.scale(c.n, v3.dot(cached.pt, c.n)));
+      c.jn = cached.jn;
+      c.jt1 = v3.dot(tangential, c.t1);
+      c.jt2 = v3.dot(tangential, c.t2);
+      const maxFriction = c.friction * c.jn;
+      const mag = Math.hypot(c.jt1, c.jt2);
+      if (mag > maxFriction && mag > 1e-12) {
+        const s = maxFriction / mag;
+        c.jt1 *= s;
+        c.jt2 *= s;
+        tangential = v3.add(v3.scale(c.t1, c.jt1), v3.scale(c.t2, c.jt2));
+      }
+      applyImpulseAtPoint(c.A, c.B, c.p, v3.add(v3.scale(c.n, c.jn), tangential));
+    }
+  }
+
+  function solveContacts(contacts, dt){
+    for (const c of contacts){
+      const A = c.A, B = c.B;
+      const rA = c.rA;
+      const rB = c.rB;
+      const vA = v3.add(A.v, v3.cross(A.w, rA));
+      const vB = v3.add(B.v, v3.cross(B.w, rB));
+      const relV = v3.sub(vB, vA);
+      const vn = v3.dot(relV, c.n);
+
+      const restitutionThreshold = 1.0;
+      const slop = 0.01;
+      const maxRestitutionPen = slop * 3;
+      const beta = 0.2;
+      const bias = -(beta / dt) * Math.max(0, c.pen - slop);
+      const bounce = (c.jn <= 0 && vn < -restitutionThreshold && c.pen <= maxRestitutionPen)
+        ? (-c.restitution * vn)
+        : 0;
+      const jn = -(vn + bias - bounce) * c.massN;
+      const jnOld = c.jn;
+      c.jn = Math.max(jnOld + jn, 0);
+      const dJn = c.jn - jnOld;
+      if (dJn !== 0) {
+        applyImpulseAtPoint(A, B, c.p, v3.scale(c.n, dJn));
+      }
+
       const vA2 = v3.add(A.v, v3.cross(A.w, rA));
       const vB2 = v3.add(B.v, v3.cross(B.w, rB));
       const relV2 = v3.sub(vB2, vA2);
-      const vn2 = v3.dot(relV2, n);
-      const vt = v3.sub(relV2, v3.scale(n, vn2));
-      const vtLen = v3.len(vt);
-      if (vtLen > 1e-6 && jn > 0) {
-        const t = v3.scale(vt, 1/vtLen);
-        const rtA = v3.cross(rA, t);
-        const rtB = v3.cross(rB, t);
-        const angTA = v3.cross(A.invInertiaWorldMul(rtA), rA);
-        const angTB = v3.cross(B.invInertiaWorldMul(rtB), rB);
-        const denomT = wA + wB + v3.dot(t, v3.add(angTA, angTB));
-        if (denomT > 1e-10) {
-          jt = -vtLen / denomT;
-          jt = clamp(jt, -mu*jn, mu*jn);
-          if (Math.abs(jt) > 0) {
-            const impT = v3.scale(t, jt);
-            if (wA > 0) {
-              A.v = v3.sub(A.v, v3.scale(impT, wA));
-              A.w = v3.sub(A.w, A.invInertiaWorldMul(v3.cross(rA, impT)));
-            }
-            if (wB > 0) {
-              B.v = v3.add(B.v, v3.scale(impT, wB));
-              B.w = v3.add(B.w, B.invInertiaWorldMul(v3.cross(rB, impT)));
-            }
-            tDir = t;
-          }
-        }
+      const vt1 = v3.dot(relV2, c.t1);
+      const vt2 = v3.dot(relV2, c.t2);
+
+      let jt1 = -vt1 * c.massT1;
+      let jt2 = -vt2 * c.massT2;
+      const jt1Old = c.jt1;
+      const jt2Old = c.jt2;
+      let newJt1 = jt1Old + jt1;
+      let newJt2 = jt2Old + jt2;
+      const maxFriction = c.friction * c.jn;
+      const mag = Math.hypot(newJt1, newJt2);
+      if (mag > maxFriction && mag > 1e-12) {
+        const s = maxFriction / mag;
+        newJt1 *= s;
+        newJt2 *= s;
+      }
+      c.jt1 = newJt1;
+      c.jt2 = newJt2;
+      const dJt1 = c.jt1 - jt1Old;
+      const dJt2 = c.jt2 - jt2Old;
+      if (dJt1 !== 0 || dJt2 !== 0) {
+        const impulse = v3.add(v3.scale(c.t1, dJt1), v3.scale(c.t2, dJt2));
+        applyImpulseAtPoint(A, B, c.p, impulse);
       }
     }
-    return { jn, jt, t: tDir };
   }
 
   // Raycast (for web shooting) against box/sphere colliders
@@ -1693,54 +1756,27 @@
     }
   }
 
-  function solveCollisions(dt, doWarmStart, nextCache){
-    playerGrounded = false;
-
-    for (let i=0;i<bodies.length;i++){
-      for (let j=i+1;j<bodies.length;j++){
-        const A = bodies[i], B = bodies[j];
-        if ((A.type==='static' || A.type==='kinematic') && (B.type==='static' || B.type==='kinematic')) continue;
-        const idA = Math.min(A.id, B.id);
-        const idB = Math.max(A.id, B.id);
-        const flip = A.id !== idA;
-        const pairKey = `${idA}|${idB}`;
-        const cachedPair = doWarmStart ? contactCache.get(pairKey) : null;
-        let nextPair = null;
-
-        const contacts = generateContact(A,B);
-        if (!contacts || !contacts.length) continue;
-
-        for (const c of contacts){
-          const featureId = flip ? contactFeatureId(B, A, c) : contactFeatureId(A, B, c);
-          if (doWarmStart && cachedPair) {
-            const cached = cachedPair.get(featureId);
-            if (cached) {
-              const curNormal = flip ? v3.scale(c.normal, -1) : c.normal;
-              if (v3.dot(curNormal, cached.n) > 0.8) {
-                applyCachedImpulse(A, B, c, cached);
-              }
-            }
-          }
-
-          // track grounded if player involved and normal points upward on player
-          if (A.isPlayer) {
-            // normal points from A->B; grounded if contact normal points downward from player to ground
-            if (c.normal[1] < -0.5) playerGrounded = true;
-          } else if (B.isPlayer) {
-            // normal points from A->B; grounded if normal points upward toward player
-            if (c.normal[1] > 0.5) playerGrounded = true;
-          }
-
-          const result = solveContact(A,B,c,dt);
-          if (result && result.jn > 0) {
-            if (!nextPair) nextPair = new Map();
-            const cachedNormal = flip ? v3.scale(c.normal, -1) : c.normal;
-            nextPair.set(featureId, { jn: result.jn, n: cachedNormal });
-          }
-        }
-        if (nextPair && nextPair.size > 0) nextCache.set(pairKey, nextPair);
-      }
+  function solveCollisions(dt){
+    const contacts = buildContacts(dt);
+    warmStartContacts(contacts);
+    const iters = 10;
+    for (let it=0; it<iters; it++){
+      solveContacts(contacts, dt);
+      solveRopes(dt);
     }
+    const nextCache = new Map();
+    for (const c of contacts){
+      if (c.jn <= 0) continue;
+      let pair = nextCache.get(c.pairKey);
+      if (!pair) {
+        pair = new Map();
+        nextCache.set(c.pairKey, pair);
+      }
+      const canonNormal = c.flip ? v3.scale(c.n, -1) : c.n;
+      const pt = v3.add(v3.scale(c.t1, c.jt1), v3.scale(c.t2, c.jt2));
+      pair.set(c.featureId, { jn: c.jn, pt, n: canonNormal });
+    }
+    contactCache = nextCache;
     player.state = playerGrounded
       ? 'ground'
       : ((player.webLeft || player.webRight) ? 'aerialWeb' : 'aerial');
@@ -1765,7 +1801,6 @@
     const substeps = 3;
     const h = dt / substeps;
     for (let s=0;s<substeps;s++){
-      const nextContactCache = new Map();
       // jump charge timer
       if (jumpCharging) jumpChargeT = Math.min(jumpChargeMax, jumpChargeT + h);
 
@@ -1776,13 +1811,8 @@
       // integrate
       integrateBodies(h);
 
-      // iterative solve
-      const iters = 10;
-      for (let it=0; it<iters; it++){
-        solveCollisions(h, it === 0, nextContactCache);
-        solveRopes(h);
-      }
-      contactCache = nextContactCache;
+      // iterative solve (sequential impulse)
+      solveCollisions(h);
 
       // remove rope-violating velocity (stabilizes XPBD)
       projectRopeVelocities();
