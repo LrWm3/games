@@ -217,6 +217,7 @@
                 <button id="create-room" class="lobby-button">Create</button>
                 <button id="join-room" class="lobby-button secondary">Join</button>
                 <button id="refresh-rooms" class="lobby-button secondary">Refresh</button>
+                <button id="play-offline" class="lobby-button secondary">Play Offline</button>
                 <button id="enable-voice" class="lobby-button secondary">Enable Mic</button>
             </div>
             <div id="room-list"></div>
@@ -379,6 +380,7 @@
         let socket = null;
         let peerId = null;
         let joinedRoomId = null;
+        let offlineMode = false;
         let snapshotSeq = 0;
         let snapshotAccumulator = 0;
         const heightEvents = [5000, 10000, 15000];
@@ -457,6 +459,8 @@
         const configModalEl = document.getElementById('config-modal');
         const configFieldsEl = document.getElementById('config-fields');
         const configResetEl = document.getElementById('config-reset');
+
+        const NAME_STORAGE_KEY = 'web-climbers.nickname';
 
         const requestFreeplay = throttle(() => {
             if (!game.freePlay) {
@@ -679,7 +683,42 @@
             return `${proto}://${location.host}/ws`;
         }
 
+        function startOffline() {
+            offlineMode = true;
+            if (socket && socket.readyState === WebSocket.OPEN) socket.close();
+            socket = null;
+            voiceEnabled = false;
+            peerId = `local-${Math.random().toString(36).slice(2, 8)}`;
+            joinedRoomId = 'offline';
+            lobbyStatusEl.innerText = 'Offline mode: single player';
+            setGameVisible(true);
+            localJoinedAt = performance.now();
+            if (!gameStarted) {
+                init();
+                gameStarted = true;
+            }
+            recomputePlayerSlots();
+            voiceStatusEl.innerText = 'Voice: Off (offline)';
+        }
+
+        function cacheNickname() {
+            try {
+                const name = nameInputEl.value.trim().slice(0, 24);
+                if (name.length > 0) {
+                    localStorage.setItem(NAME_STORAGE_KEY, name);
+                } else {
+                    localStorage.removeItem(NAME_STORAGE_KEY);
+                }
+            } catch {
+                // Ignore storage failures (private mode / disabled storage).
+            }
+        }
+
         function joinRoom(roomId) {
+            if (offlineMode) {
+                startOffline();
+                return;
+            }
             const trimmed = roomId.trim();
             if (!/^[a-zA-Z0-9_-]{1,64}$/.test(trimmed)) {
                 lobbyStatusEl.innerText = 'Room name must be 1-64 chars: letters, numbers, _ or -.';
@@ -689,6 +728,7 @@
             if (socket && socket.readyState === WebSocket.OPEN) socket.close();
             socket = new WebSocket(getWsUrl());
             socket.onopen = () => {
+                cacheNickname();
                 const name = nameInputEl.value.trim().slice(0, 24);
                 socket.send(JSON.stringify({ type: 'join', roomId: trimmed, name, gameId: GAME_ID }));
             };
@@ -850,6 +890,10 @@
         }
 
         function listRooms() {
+            if (offlineMode) {
+                roomListEl.innerHTML = '<div class="room-item"><span>Offline mode enabled.</span></div>';
+                return;
+            }
             fetch(`/rooms?gameId=${encodeURIComponent(GAME_ID)}`)
                 .then((res) => res.json())
                 .then((data) => {
@@ -3288,7 +3332,14 @@
             joinRoom(roomId);
         });
         document.getElementById('enable-voice').addEventListener('click', () => {
+            if (offlineMode) {
+                voiceStatusEl.innerText = 'Voice: Off (offline)';
+                return;
+            }
             initVoice();
+        });
+        document.getElementById('play-offline').addEventListener('click', () => {
+            startOffline();
         });
         document.getElementById('join-room').addEventListener('click', () => {
             joinRoom(roomInputEl.value);
@@ -3300,16 +3351,24 @@
         nameInputEl.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 if (socket && socket.readyState === WebSocket.OPEN) {
+                    cacheNickname();
                     const name = nameInputEl.value.trim().slice(0, 24);
                     socket.send(JSON.stringify({ type: 'name', name }));
+                }
+                if (!socket || socket.readyState !== WebSocket.OPEN) {
+                    cacheNickname();
                 }
                 nameInputEl.blur();
             }
         });
         nameInputEl.addEventListener('blur', () => {
             if (socket && socket.readyState === WebSocket.OPEN) {
+                cacheNickname();
                 const name = nameInputEl.value.trim().slice(0, 24);
                 socket.send(JSON.stringify({ type: 'name', name }));
+            }
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                cacheNickname();
             }
         });
         chatInputEl.addEventListener('keydown', (e) => {
@@ -3331,9 +3390,17 @@
             }
         });
 
+        try {
+            const storedName = localStorage.getItem(NAME_STORAGE_KEY);
+            if (storedName) nameInputEl.value = storedName;
+        } catch {
+            // Ignore storage failures.
+        }
         setGameVisible(false);
         listRooms();
-        lobbyPollId = setInterval(listRooms, 5000);
+        lobbyPollId = setInterval(() => {
+            if (!offlineMode) listRooms();
+        }, 5000);
     </script>
 </body>
 </html>>>
