@@ -86,6 +86,24 @@ def build_entry(title: str, href: str, blurb: str, tags: list[str], game_type: s
     )
 
 
+def parse_existing_games(block_text: str) -> list[dict[str, object]]:
+    entries: list[dict[str, object]] = []
+    for index, match in enumerate(re.finditer(r"\{\s*.*?\s*\},", block_text, re.DOTALL)):
+        chunk = match.group(0)
+        href_match = re.search(r'href:\s*"([^"]+)"', chunk)
+        if not href_match:
+            continue
+        href = href_match.group(1)
+        tags_match = re.search(r"tags:\s*\[(.*?)\]", chunk, re.DOTALL)
+        tags: list[str] = []
+        if tags_match:
+            tags = [tag.strip() for tag in re.findall(r'"([^"]+)"', tags_match.group(1))]
+        type_match = re.search(r'type:\s*"([^"]+)"', chunk)
+        game_type = type_match.group(1) if type_match else ""
+        entries.append({"href": href, "tags": tags, "type": game_type, "order": index})
+    return entries
+
+
 def main() -> int:
     if not INDEX_PATH.exists():
         print(f"Missing {INDEX_PATH}", file=sys.stderr)
@@ -97,20 +115,66 @@ def main() -> int:
         print("Could not locate games list in index.html", file=sys.stderr)
         return 1
 
-    entries = []
+    entries: list[dict[str, object]] = []
     for folder, game_type in ((PLAYABLE_DIR, "playable"), (DEMOS_DIR, "demo")):
         if not folder.exists():
             continue
         for path in sorted(folder.glob("*.html")):
             href = f"{folder.name}/{path.name}"
             title, blurb, tags = parse_game_page(path)
-            entries.append(build_entry(title, href, blurb, tags, game_type))
+            entries.append(
+                {
+                    "href": href,
+                    "title": title,
+                    "blurb": blurb,
+                    "tags": tags,
+                    "type": game_type,
+                }
+            )
 
     if not entries:
         print("No games found.")
         return 0
 
-    new_block = "\n" + "\n".join(entries)
+    existing_entries = parse_existing_games(match.group(2))
+    new_by_href = {entry["href"]: entry for entry in entries}
+    used: set[str] = set()
+    ordered_entries: list[str] = []
+
+    for existing in existing_entries:
+        href = str(existing["href"])
+        updated = new_by_href.get(href)
+        if not updated:
+            continue
+        existing_tags = sorted(str(tag) for tag in existing.get("tags", []))
+        updated_tags = sorted(str(tag) for tag in updated.get("tags", []))
+        if existing_tags == updated_tags and existing.get("type") == updated.get("type"):
+            ordered_entries.append(
+                build_entry(
+                    str(updated["title"]),
+                    href,
+                    str(updated["blurb"]),
+                    list(updated["tags"]),
+                    str(updated["type"]),
+                )
+            )
+            used.add(href)
+
+    for entry in entries:
+        href = str(entry["href"])
+        if href in used:
+            continue
+        ordered_entries.append(
+            build_entry(
+                str(entry["title"]),
+                href,
+                str(entry["blurb"]),
+                list(entry["tags"]),
+                str(entry["type"]),
+            )
+        )
+
+    new_block = "\n" + "\n".join(ordered_entries)
 
     updated_text = index_text[: match.start(2)] + new_block + index_text[match.end(2) :]
     INDEX_PATH.write_text(updated_text, encoding="utf-8")
