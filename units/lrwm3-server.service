@@ -1,0 +1,16 @@
+[Unit]
+Description=LRWM3 Deno game server
+After=network.target
+
+[Service]
+Type=simple
+User=will
+Group=will
+WorkingDirectory=/home/will/wk/tmp/lwrm3
+Environment=PORT=8080
+ExecStart=/usr/bin/deno run --allow-net --allow-read --allow-env /home/will/wk/tmp/lwrm3/server.ts
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
