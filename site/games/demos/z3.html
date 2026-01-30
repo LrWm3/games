@@ -6,7 +6,7 @@
     <title>Z3 Intent OS - Real SMT Planner</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="../coi-serviceworker.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/z3-solver@4.15.4/build/browser.min.js"></script>
+    <script type="module"> import z3Solver from 'https://cdn.jsdelivr.net/npm/z3-solver@4.15.4/+esm' </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;500&display=swap');
         body { font-family: 'Fira Code', monospace; background: #0a0a0c; color: #d1d1d1; }
@@ -120,7 +120,7 @@
         let tasks = [];
 
         // Initialize Z3
-        async function initZ3() {
+        async function bootZ3() {
             try {
                 const { init } = window.z3p;
                 z3 = await init();
@@ -299,7 +299,7 @@
         });
 
         // Initialize on load
-        window.onload = initZ3;
+        window.onload = bootZ3;
     </script>
 </body>
 </html>
