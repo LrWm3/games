@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Z3 Intent OS - Real SMT Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/z3-solver@4.12.2/dist/browser.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;500&display=swap');
+        body { font-family: 'Fira Code', monospace; background: #0a0a0c; color: #d1d1d1; }
+        .terminal { background: #000; border: 1px solid #333; height: 180px; overflow-y: auto; font-size: 0.75rem; padding: 10px; }
+        .status-sat { color: #4ade80; }
+        .status-unsat { color: #f87171; }
+        .progress-bar { transition: width 0.4s ease-in-out; }
+    </style>
+</head>
+<body class="p-4 max-w-6xl mx-auto">
+
+    <header class="mb-8 border-b border-white/10 pb-4">
+        <h1 class="text-2xl font-bold text-blue-400">Z3 Intent-Based OS</h1>
+        <p class="text-xs text-gray-500 mt-1 uppercase tracking-widest">Formal Verification Scheduling Engine</p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- INTENT INPUT -->
+        <div class="lg:col-span-4 space-y-6">
+            <div class="bg-zinc-900 p-5 rounded-lg border border-zinc-800">
+                <h2 class="text-sm font-bold mb-4 border-l-2 border-blue-500 pl-2">SUBMIT DECLARATIVE INTENT</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-[10px] text-gray-400 mb-1">TASK NAME</label>
+                        <input id="task-name" type="text" placeholder="e.g. VideoEncoder" class="w-full bg-black border border-zinc-700 p-2 text-sm rounded">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] text-gray-400 mb-1">DEADLINE (MS)</label>
+                            <input id="task-deadline" type="number" value="50" class="w-full bg-black border border-zinc-700 p-2 text-sm rounded">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-gray-400 mb-1">PRIORITY (1-10)</label>
+                            <input id="task-priority" type="number" value="5" class="w-full bg-black border border-zinc-700 p-2 text-sm rounded">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-gray-400 mb-1">RESOURCE INTENSITY</label>
+                        <select id="task-intensity" class="w-full bg-black border border-zinc-700 p-2 text-sm rounded">
+                            <option value="low">Low (IO Bound)</option>
+                            <option value="medium" selected>Medium (Balanced)</option>
+                            <option value="high">High (Compute Bound)</option>
+                        </select>
+                    </div>
+                    <button id="add-task-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded text-xs font-bold transition">
+                        INJECT INTENT INTO SOLVER
+                    </button>
+                </div>
+            </div>
+
+            <div class="terminal" id="solver-log">
+                <div class="text-blue-500 font-bold">System Booted.</div>
+                <div>Waiting for Z3 WebAssembly initialization...</div>
+            </div>
+        </div>
+
+        <!-- SOLVER VIEWPORT -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+            <div class="bg-zinc-900 p-5 rounded-lg border border-zinc-800 flex-grow">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-sm font-bold border-l-2 border-green-500 pl-2 text-green-400">PLANNER STATE: <span id="sat-status">INITIALIZING</span></h2>
+                    <div class="flex gap-4 text-[10px]">
+                        <span>CPU LIMIT: 100%</span>
+                        <span>MEM LIMIT: 100%</span>
+                    </div>
+                </div>
+
+                <div id="active-intents" class="space-y-4">
+                    <!-- Tasks Rendered Here -->
+                </div>
+
+                <div id="empty-state" class="text-center py-20 text-zinc-600">
+                    <p class="text-sm italic">The Planner is currently empty. Submit an intent to begin reasoning over OS resources.</p>
+                </div>
+            </div>
+
+            <!-- HARDWARE ABSTRACTION -->
+            <div class="bg-black border border-zinc-800 p-5 rounded-lg">
+                <h2 class="text-[10px] text-gray-500 uppercase mb-4 tracking-widest">Global OS Resource Utilization</h2>
+                <div class="grid grid-cols-2 gap-8">
+                    <div>
+                        <div class="flex justify-between text-[10px] mb-1">
+                            <span>TOTAL CPU LOAD</span>
+                            <span id="total-cpu-txt">0%</span>
+                        </div>
+                        <div class="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                            <div id="total-cpu-bar" class="h-full bg-blue-500 progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[10px] mb-1">
+                            <span>TOTAL MEMORY MAP</span>
+                            <span id="total-mem-txt">0%</span>
+                        </div>
+                        <div class="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                            <div id="total-mem-bar" class="h-full bg-green-500 progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /** * Z3 INTENT OS CORE LOGIC
+         * We use the Z3 theorem prover to find a valid schedule.
+         */
+        let z3;
+        let Context;
+        let tasks = [];
+
+        // Initialize Z3
+        async function initZ3() {
+            try {
+                const { init } = window.z3p;
+                z3 = await init();
+                Context = new z3.Context('main');
+                log("Z3 Engine Loaded Successfully.", "text-green-500 font-bold");
+                document.getElementById('sat-status').innerText = "STABLE";
+            } catch (e) {
+                log("Failed to load Z3: " + e.message, "text-red-500");
+            }
+        }
+
+        function log(msg, className = "") {
+            const logger = document.getElementById('solver-log');
+            const entry = document.createElement('div');
+            entry.className = className;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logger.prepend(entry);
+        }
+
+        async function runPlanner() {
+            if (!tasks.length) {
+                updateHardware(0, 0);
+                document.getElementById('empty-state').classList.remove('hidden');
+                document.getElementById('sat-status').innerText = "IDLE";
+                return;
+            }
+            document.getElementById('empty-state').classList.add('hidden');
+
+            const { Solver, Int, And, Or, Sum, Distinct } = Context;
+            const solver = new Solver();
+            
+            // Global limits
+            const CPU_LIMIT = 100;
+            const MEM_LIMIT = 100;
+
+            const taskVars = tasks.map(t => ({
+                id: t.id,
+                cpu: Int.const(`cpu_${t.id}`),
+                mem: Int.const(`mem_${t.id}`)
+            }));
+
+            // Constraints for each task
+            taskVars.forEach((v, i) => {
+                const task = tasks[i];
+                
+                // 1. Basic Bounds: 0 < usage < 100
+                solver.add(v.cpu.ge(5)); // Every task needs at least some CPU
+                solver.add(v.cpu.le(100));
+                solver.add(v.mem.ge(5));
+                solver.add(v.mem.le(100));
+
+                // 2. Intent-specific Constraints
+                // Lower deadline = High CPU requirement
+                // Min CPU = 100 / deadline * priority_factor
+                const minCpuRequired = Math.ceil((150 / task.deadline) * (task.priority / 2));
+                solver.add(v.cpu.ge(minCpuRequired));
+
+                // Intensity logic
+                if (task.intensity === 'high') {
+                    solver.add(v.cpu.ge(40));
+                } else if (task.intensity === 'low') {
+                    solver.add(v.mem.ge(20));
+                }
+            });
+
+            // 3. Global Invariant Constraints
+            const totalCpu = Sum(...taskVars.map(v => v.cpu));
+            const totalMem = Sum(...taskVars.map(v => v.mem));
+
+            solver.add(totalCpu.le(CPU_LIMIT));
+            solver.add(totalMem.le(MEM_LIMIT));
+
+            log(`Solving state for ${tasks.length} intents...`);
+            
+            const result = await solver.check();
+            const statusEl = document.getElementById('sat-status');
+
+            if (result === 'sat') {
+                statusEl.innerText = "SATISFIED";
+                statusEl.className = "status-sat";
+                log("Constraint Engine: SATISFIABLE found.", "text-green-400");
+                
+                const model = solver.model();
+                let sumCpu = 0;
+                let sumMem = 0;
+
+                taskVars.forEach((v, i) => {
+                    const cpuVal = Number(model.eval(v.cpu).toString());
+                    const memVal = Number(model.eval(v.mem).toString());
+                    tasks[i].currentCpu = cpuVal;
+                    tasks[i].currentMem = memVal;
+                    sumCpu += cpuVal;
+                    sumMem += memVal;
+                });
+
+                updateHardware(sumCpu, sumMem);
+                renderTasks();
+            } else {
+                statusEl.innerText = "UNSATISFIABLE";
+                statusEl.className = "status-unsat";
+                log("ERROR: Constraints are UNSAT. Resource over-commitment!", "text-red-500 font-bold");
+                
+                // Keep previous values but mark as error
+                renderTasks(true);
+            }
+        }
+
+        function renderTasks(isUnsat = false) {
+            const container = document.getElementById('active-intents');
+            container.innerHTML = '';
+
+            tasks.forEach(t => {
+                const card = document.createElement('div');
+                card.className = `p-4 bg-zinc-800/50 border ${isUnsat ? 'border-red-900' : 'border-zinc-700'} rounded flex justify-between items-center`;
+                card.innerHTML = `
+                    <div class="flex-grow">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold">${t.name}</span>
+                            <span class="text-[9px] bg-blue-900/40 text-blue-300 px-1 rounded">D:${t.deadline}ms</span>
+                            <span class="text-[9px] bg-zinc-700 px-1 rounded">P:${t.priority}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mt-2">
+                            <div>
+                                <div class="text-[8px] text-gray-500 mb-1">CPU ALLOCATION</div>
+                                <div class="h-1 bg-black rounded-full"><div class="h-full bg-blue-500 transition-all" style="width: ${t.currentCpu || 0}%"></div></div>
+                            </div>
+                            <div>
+                                <div class="text-[8px] text-gray-500 mb-1">MEM PAGE MAP</div>
+                                <div class="h-1 bg-black rounded-full"><div class="h-full bg-green-500 transition-all" style="width: ${t.currentMem || 0}%"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="removeTask('${t.id}')" class="ml-4 text-zinc-600 hover:text-red-500 text-lg">×</button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function updateHardware(cpu, mem) {
+            document.getElementById('total-cpu-txt').innerText = `${cpu}%`;
+            document.getElementById('total-cpu-bar').style.width = `${cpu}%`;
+            document.getElementById('total-mem-txt').innerText = `${mem}%`;
+            document.getElementById('total-mem-bar').style.width = `${mem}%`;
+            
+            // Color feedback
+            document.getElementById('total-cpu-bar').className = `h-full progress-bar ${cpu > 90 ? 'bg-red-500' : 'bg-blue-500'}`;
+        }
+
+        function removeTask(id) {
+            tasks = tasks.filter(t => t.id !== id);
+            log(`Intent revoked. Re-calculating global state...`);
+            runPlanner();
+        }
+
+        document.getElementById('add-task-btn').addEventListener('click', () => {
+            const name = document.getElementById('task-name').value || "Unnamed_Task";
+            const deadline = parseInt(document.getElementById('task-deadline').value);
+            const priority = parseInt(document.getElementById('task-priority').value);
+            const intensity = document.getElementById('task-intensity').value;
+
+            const newTask = {
+                id: Math.random().toString(36).substr(2, 5),
+                name,
+                deadline,
+                priority,
+                intensity,
+                currentCpu: 0,
+                currentMem: 0
+            };
+
+            tasks.push(newTask);
+            runPlanner();
+            
+            // Reset fields
+            document.getElementById('task-name').value = '';
+        });
+
+        // Initialize on load
+        window.onload = initZ3;
+    </script>
+</body>
+</html>
+
+
