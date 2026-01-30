@@ -6,7 +6,29 @@
     <title>Z3 Intent OS - Real SMT Planner</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="../coi-serviceworker.min.js"></script>
-    <script type="module"> import z3Solver from 'https://cdn.jsdelivr.net/npm/z3-solver@4.15.4/+esm' </script>
+    <script src="https://cdn.jsdelivr.net/npm/z3-solver@4.15.4/build/z3-built.js"></script>
+    <script type="module">
+        import { init } from "https://esm.sh/z3-solver@4.15.4/browser";
+
+        async function bootZ3() {
+            try {
+                if (typeof globalThis.initZ3 !== "function") {
+                    throw new Error("z3-built.js not loaded correctly");
+                }
+                const z3 = await init();
+                const Context = new z3.Context("main");
+                window.z3 = z3;
+                window.Context = Context;
+                window.__bootZ3 = { z3, Context };
+            } catch (e) {
+                window.__bootZ3 = { error: e };
+            }
+        }
+
+        window.addEventListener("load", () => {
+            window.__z3BootPromise = bootZ3();
+        });
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;500&display=swap');
         body { font-family: 'Fira Code', monospace; background: #0a0a0c; color: #d1d1d1; }
@@ -122,9 +144,17 @@
         // Initialize Z3
         async function bootZ3() {
             try {
-                const { init } = window.z3p;
-                z3 = await init();
-                Context = new z3.Context('main');
+                if (window.__z3BootPromise) {
+                    await window.__z3BootPromise;
+                }
+                if (window.__bootZ3?.error) {
+                    throw window.__bootZ3.error;
+                }
+                if (!window.__bootZ3?.z3 || !window.__bootZ3?.Context) {
+                    throw new Error("Z3 module not ready yet");
+                }
+                z3 = window.__bootZ3.z3;
+                Context = window.__bootZ3.Context;
                 log("Z3 Engine Loaded Successfully.", "text-green-500 font-bold");
                 document.getElementById('sat-status').innerText = "STABLE";
             } catch (e) {
@@ -299,9 +329,7 @@
         });
 
         // Initialize on load
-        window.onload = bootZ3;
+        window.addEventListener("load", bootZ3);
     </script>
 </body>
 </html>
-
-
