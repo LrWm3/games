@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>REPLY ALL - Corporate FFA</title>
+    <title>REPLY ALL - The Microwave Incident</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -13,129 +13,57 @@
             --win-border-light: #ffffff;
             --win-border-dark: #404040;
         }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #008080;
-            height: 100dvh;
-            overflow: hidden;
-            touch-action: manipulation;
-        }
-
-        .retro-border {
-            border-top: 2px solid var(--win-border-light);
-            border-left: 2px solid var(--win-border-light);
-            border-bottom: 2px solid var(--win-border-dark);
-            border-right: 2px solid var(--win-border-dark);
-        }
-
-        .retro-border-inset {
-            border-top: 2px solid var(--win-border-dark);
-            border-left: 2px solid var(--win-border-dark);
-            border-bottom: 2px solid var(--win-border-light);
-            border-right: 2px solid var(--win-border-light);
-        }
-
-        .retro-button {
-            background: var(--win-grey);
-            border-top: 2px solid var(--win-border-light);
-            border-left: 2px solid var(--win-border-light);
-            border-bottom: 2px solid var(--win-border-dark);
-            border-right: 2px solid var(--win-border-dark);
-            padding: 4px 8px;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .retro-button:active:not(:disabled) {
-            border-top: 2px solid var(--win-border-dark);
-            border-left: 2px solid var(--win-border-dark);
-            border-bottom: 2px solid var(--win-border-light);
-            border-right: 2px solid var(--win-border-light);
-            padding-top: 5px;
-            padding-bottom: 3px;
-        }
-
-        .retro-button:disabled {
-            color: #808080;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
+        body { font-family: 'Inter', sans-serif; background-color: #008080; height: 100dvh; overflow: hidden; touch-action: manipulation; color: black; }
+        .retro-border { border-top: 2px solid var(--win-border-light); border-left: 2px solid var(--win-border-light); border-bottom: 2px solid var(--win-border-dark); border-right: 2px solid var(--win-border-dark); }
+        .retro-border-inset { border-top: 2px solid var(--win-border-dark); border-left: 2px solid var(--win-border-dark); border-bottom: 2px solid var(--win-border-light); border-right: 2px solid var(--win-border-light); }
+        .retro-button { background: var(--win-grey); border-top: 2px solid var(--win-border-light); border-left: 2px solid var(--win-border-light); border-bottom: 2px solid var(--win-border-dark); border-right: 2px solid var(--win-border-dark); padding: 4px 8px; cursor: pointer; user-select: none; }
+        .retro-button:active:not(:disabled) { border-top: 2px solid var(--win-border-dark); border-left: 2px solid var(--win-border-dark); border-bottom: 2px solid var(--win-border-light); border-right: 2px solid var(--win-border-light); padding-top: 5px; padding-bottom: 3px; }
+        .retro-button:disabled { color: #808080; cursor: not-allowed; opacity: 0.6; }
         .terminal-font { font-family: 'VT323', monospace; }
-
-        @keyframes shake {
-            0%, 100% { transform: translate(0,0); }
-            25% { transform: translate(-4px, 4px); }
-            50% { transform: translate(4px, -4px); }
-            75% { transform: translate(-4px, -4px); }
-        }
+        @keyframes shake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(-3px, 3px); } 50% { transform: translate(3px, -3px); } 75% { transform: translate(-3px, -3px); } }
         .shaking { animation: shake 0.2s ease-in-out infinite; }
-
         .scroll-container::-webkit-scrollbar { width: 14px; }
         .scroll-container::-webkit-scrollbar-track { background: #dfdfdf; }
-        .scroll-container::-webkit-scrollbar-thumb { 
-            background: var(--win-grey);
-            border: 2px solid var(--win-border-light);
-            box-shadow: inset -1px -1px 0 var(--win-border-dark);
-        }
-
-        .target-pill {
-            transition: all 0.2s;
-            border: 1px solid #808080;
-        }
-        .target-pill.active {
-            background: #000080 !important;
-            color: white !important;
-            border-color: #ffffff;
-        }
-        
+        .scroll-container::-webkit-scrollbar-thumb { background: var(--win-grey); border: 2px solid var(--win-border-light); box-shadow: inset -1px -1px 0 var(--win-border-dark); }
+        .target-pill { transition: all 0.2s; border: 1px solid #808080; }
+        .target-pill.active { background: #000080 !important; color: white !important; border-color: #ffffff; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        .message-entry {
-            animation: slideIn 0.3s ease-out;
-        }
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .message-entry { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="flex items-center justify-center p-0 md:p-4">
+<body class="flex items-center justify-center p-0 md:p-2">
 
     <!-- START SCREEN -->
-    <div id="start-screen" class="fixed inset-0 z-[100] flex items-center justify-center bg-[#008080] p-4 text-black">
+    <div id="start-screen" class="fixed inset-0 z-[100] flex items-center justify-center bg-[#008080] p-4">
         <div class="bg-[#c0c0c0] p-4 retro-border max-w-sm w-full shadow-2xl">
             <div class="bg-[#000080] text-white px-2 py-1 mb-4 flex justify-between items-center text-xs">
-                <span>OUTLOOK SETUP WIZARD</span>
+                <span>NEW USER SETUP</span>
                 <span>✕</span>
             </div>
             <h1 class="text-4xl font-bold mb-2 text-center terminal-font tracking-widest text-[#000080]">REPLY ALL</h1>
-            <p class="mb-4 text-[11px] text-center leading-tight">A company-wide "Free For All" has broken out over the shared fridge. <br>Last employee with credibility wins.</p>
+            <p class="mb-4 text-[11px] text-center leading-tight italic">"The scent of heated salmon is a direct violation of the Employee Handbook Section 4.2."</p>
             
             <div class="space-y-3 mb-6">
                 <div>
-                    <label class="block text-[10px] font-bold uppercase mb-1">Your Full Name:</label>
-                    <input id="player-name-input" type="text" placeholder="Eke" class="w-full p-2 bg-white retro-border-inset outline-none text-sm">
+                    <label class="block text-[10px] font-bold uppercase mb-1">Full Name:</label>
+                    <input id="player-name-input" type="text" placeholder="Will Marsman" class="w-full p-2 bg-white retro-border-inset outline-none text-sm">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-bold uppercase mb-1">Auto-Generated Email:</label>
+                    <label class="block text-[10px] font-bold uppercase mb-1">Corporate Email Address:</label>
                     <div id="email-preview" class="text-[11px] font-mono text-gray-800 bg-white/50 p-2 border border-dotted border-gray-400">...</div>
                 </div>
             </div>
             
-            <button onclick="startGame()" class="w-full py-3 font-bold retro-button text-[#000080]">CONNECT TO EXCHANGE SERVER</button>
+            <button onclick="startGame()" class="w-full py-3 font-bold retro-button text-[#000080]">LOG ON</button>
         </div>
     </div>
 
     <!-- MAIN GAME INTERFACE -->
-    <div id="game-ui" class="hidden flex flex-col w-full h-full max-w-5xl bg-[#c0c0c0] retro-border overflow-hidden text-black">
-        
-        <!-- Header -->
+    <div id="game-ui" class="hidden flex flex-col w-full h-full max-w-5xl bg-[#c0c0c0] retro-border overflow-hidden">
         <div class="bg-[#000080] text-white p-1 flex justify-between items-center shrink-0">
             <div class="flex items-center gap-2 px-1">
-                <span class="text-xs font-bold truncate">Outlook Express - [Inbox]</span>
+                <span class="text-xs font-bold truncate">Outlook Express - [Thread: Microwave Smell]</span>
             </div>
             <div class="flex gap-1 pr-1">
                 <button class="w-4 h-4 bg-[#c0c0c0] border border-white text-black text-[10px] flex items-center justify-center">_</button>
@@ -145,97 +73,92 @@
 
         <!-- Toolbar -->
         <div class="flex gap-1 p-1 bg-[#c0c0c0] border-b border-[#808080] overflow-x-auto shrink-0 no-scrollbar">
-            <button class="retro-button text-[10px] flex items-center gap-1 whitespace-nowrap"><span>📧</span> New Mail</button>
-            <button class="retro-button text-[10px] flex items-center gap-1 whitespace-nowrap"><span>🗑️</span> Trash</button>
+            <button class="retro-button text-[10px] font-bold">Reply All</button>
+            <button class="retro-button text-[10px]">Forward</button>
             <div class="flex-grow"></div>
             <div id="turn-clock" class="text-[10px] bg-white px-2 py-1 retro-border-inset font-mono">09:00 AM</div>
         </div>
 
         <div class="flex flex-grow overflow-hidden relative">
-            
-            <!-- Main Thread Area -->
             <div class="flex-grow flex flex-col bg-white overflow-hidden">
-                <!-- Thread Details (INTERACTIVE HEADERS) -->
-                <div class="p-2 bg-[#f0f0f0] border-b border-[#808080] text-[11px] shrink-0 space-y-1">
-                    <div class="flex items-start gap-2 overflow-x-auto no-scrollbar py-0.5">
-                        <strong class="mt-1 shrink-0">From:</strong> 
-                        <div id="target-selector" class="flex gap-2">
-                            <!-- Target Buttons (Karen, Greg, Chad) -->
-                        </div>
+                <!-- Thread Headers -->
+                <div class="p-2 bg-[#f0f0f0] border-b border-[#808080] text-[10px] shrink-0 space-y-1">
+                    <div class="flex items-start gap-1 overflow-x-auto no-scrollbar py-0.5">
+                        <strong class="mt-1 shrink-0 text-[10px]">From:</strong> 
+                        <div id="target-selector" class="flex gap-1"></div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <strong>To:</strong> 
-                        <span id="player-email-display" class="text-blue-800 bg-blue-50 px-1 border border-blue-200">you@org.gov</span>
-                    </div>
+                    <div><strong>To:</strong> <span id="player-email-display" class="text-blue-800">you@org.gov</span></div>
                     <div class="flex gap-2 flex-wrap items-center" id="active-ccs">
-                        <strong>CC:</strong> <span class="text-gray-400 italic">No external eyes yet...</span>
+                        <strong>CC:</strong> <span class="text-gray-400 italic">No witnesses...</span>
                     </div>
-                    <div class="border-t border-gray-300 pt-1">
-                        <strong>Subject:</strong> <span class="font-bold text-red-700">RE: URGENT: The "No Fish in the Microwave" Policy</span>
-                    </div>
-                </div>
-
-                <!-- Message History -->
-                <div id="message-log" class="flex-grow overflow-y-auto p-3 space-y-3 scroll-container bg-white font-serif text-sm">
-                    <!-- Initial Email injected here -->
-                </div>
-
-                <!-- Mobile HP Bar -->
-                <div class="md:hidden px-4 py-2 bg-[#dfdfdf] border-t border-[#808080]">
-                    <div class="flex justify-between text-[10px] mb-1 font-bold">
-                        <span>YOUR CREDIBILITY</span>
-                        <span id="mobile-hp-text">100%</span>
-                    </div>
-                    <div class="h-3 w-full bg-white border border-[#808080]">
-                        <div id="mobile-hp-fill" class="h-full bg-green-500 transition-all duration-300 w-full"></div>
+                    <div class="border-t border-gray-300 pt-0.5">
+                        <strong>Subject:</strong> <span class="font-bold text-red-700">RE: URGENT: The Breakroom Incident</span>
                     </div>
                 </div>
 
-                <!-- Action Controls -->
-                <div class="p-3 bg-[#c0c0c0] border-t-2 border-white shrink-0">
-                    <div class="grid grid-cols-2 gap-2 max-w-lg mx-auto">
-                        <button onclick="performAction('CIRCLE_BACK')" class="retro-button py-2 flex flex-col items-center">
-                            <span class="text-xs font-bold">Circle Back</span>
-                            <span class="text-[9px] opacity-70">Direct Attack</span>
+                <!-- Message Log -->
+                <div id="message-log" class="flex-grow overflow-y-auto p-3 space-y-3 scroll-container bg-white font-serif text-sm"></div>
+
+                <!-- PERSISTENT PLAYER STANDING BAR -->
+                <div class="bg-[#dfdfdf] border-t border-[#808080] px-2 py-1.5 flex flex-col gap-1 shrink-0">
+                    <div class="flex justify-between items-end">
+                        <span class="text-[9px] font-bold uppercase text-[#000080]">My Standing (Credibility)</span>
+                        <span id="player-hp-label" class="text-[9px] font-mono font-bold">100/100</span>
+                    </div>
+                    <div class="h-3.5 w-full bg-white border border-[#808080] relative">
+                        <div id="player-hp-fill" class="h-full bg-green-500 transition-all duration-300" style="width: 100%"></div>
+                    </div>
+                    <div class="flex justify-between items-center mt-0.5">
+                        <div class="flex gap-3">
+                             <div class="flex items-center gap-1">
+                                <span class="text-[8px] font-bold uppercase opacity-60">Leverage:</span>
+                                <div class="w-16 h-1.5 bg-white border border-[#808080]">
+                                    <div id="player-ult-fill" class="h-full bg-yellow-400 transition-all" style="width: 0%"></div>
+                                </div>
+                             </div>
+                        </div>
+                        <div id="player-pto-status" class="text-[8px] font-bold bg-[#c0c0c0] px-1 border border-inset border-white">PTO: 3d remaining</div>
+                    </div>
+                </div>
+
+                <!-- Action Panel -->
+                <div class="p-2 bg-[#c0c0c0] border-t-2 border-white shrink-0">
+                    <div class="grid grid-cols-2 gap-1.5 max-w-lg mx-auto">
+                        <button onclick="performAction('ATTACK')" class="retro-button py-2 flex flex-col items-center">
+                            <span class="text-[11px] font-bold">Circle Back</span>
+                            <span class="text-[8px] opacity-70">Direct Reply</span>
                         </button>
                         <button onclick="openAddressBook()" class="retro-button py-2 flex flex-col items-center">
-                            <span class="text-xs font-bold">CC Someone</span>
-                            <span class="text-[9px] opacity-70">Team Synergy</span>
+                            <span class="text-[11px] font-bold">CC Personnel</span>
+                            <span class="text-[8px] opacity-70">Add Synergy</span>
                         </button>
-                        <button onclick="performAction('OOO')" class="retro-button py-2 flex flex-col items-center">
-                            <span class="text-xs font-bold">Go OOO</span>
-                            <span class="text-[9px] opacity-70">Regain Standing</span>
+                        <button id="ooo-btn" onclick="performAction('OOO')" class="retro-button py-2 flex flex-col items-center">
+                            <span class="text-[11px] font-bold">Take PTO</span>
+                            <span class="text-[8px] opacity-70">Regain Standing</span>
                         </button>
-                        <button id="reply-all-btn" onclick="performAction('REPLY_ALL')" class="retro-button py-2 flex flex-col items-center disabled:opacity-50" disabled>
-                            <span class="text-xs font-bold text-red-800 uppercase">Reply All</span>
-                            <span class="text-[9px] opacity-70" id="ult-label">Leverage: 0%</span>
+                        <button id="reply-all-btn" onclick="performAction('ULT')" class="retro-button py-2 flex flex-col items-center disabled:opacity-50" disabled>
+                            <span class="text-[11px] font-bold text-red-800">REPLY ALL</span>
+                            <span class="text-[8px] opacity-70">Execute Takedown</span>
                         </button>
                     </div>
+                </div>
+                
+                <!-- Win95 Status Bar Style Footer -->
+                <div class="bg-[#c0c0c0] border-t border-white px-1 flex gap-px text-[9px] h-5 shrink-0">
+                    <div class="retro-border-inset px-2 flex items-center flex-grow truncate" id="status-bar-name">Ready</div>
+                    <div class="retro-border-inset px-2 flex items-center w-24 justify-center" id="status-bar-email">Online</div>
+                    <div class="retro-border-inset px-2 flex items-center w-12 justify-center">NUM</div>
                 </div>
             </div>
 
-            <!-- Desktop Stats Panel -->
+            <!-- Profile Sidebar (Desktop Only) -->
             <div class="hidden lg:flex w-64 bg-[#dfdfdf] border-l border-[#808080] flex-col p-3 shrink-0">
-                <div class="text-[10px] font-bold mb-2 uppercase">Your Employee Profile</div>
-                <div class="bg-white p-2 retro-border-inset mb-4">
-                    <div id="desktop-name" class="text-xs font-bold text-[#000080] truncate">Employee</div>
-                    <div class="text-[9px] text-gray-500 mb-2 truncate" id="desktop-email">email@org.gov</div>
-                    
-                    <div class="text-[9px] font-bold mb-1">CREDIBILITY (HP)</div>
-                    <div class="h-4 bg-gray-200 border border-[#808080] relative mb-3">
-                        <div id="desktop-hp-fill" class="h-full bg-green-500 transition-all w-full"></div>
-                        <div id="desktop-hp-text" class="absolute inset-0 flex items-center justify-center text-[9px] font-bold">100/100</div>
+                <div class="text-[10px] font-bold mb-2 uppercase tracking-tighter">Personnel Directory</div>
+                <div id="buff-list" class="flex-grow space-y-2 overflow-y-auto text-[10px] italic text-gray-600">
+                    <div class="bg-white p-2 retro-border-inset text-black not-italic">
+                        <p class="font-bold mb-1">Thread Bonuses:</p>
+                        <div id="active-buffs-list">No active CCs.</div>
                     </div>
-
-                    <div class="text-[9px] font-bold mb-1">POLITICAL LEVERAGE</div>
-                    <div class="h-2 bg-gray-200 border border-[#808080]">
-                        <div id="desktop-ult-fill" class="h-full bg-yellow-400 transition-all w-0"></div>
-                    </div>
-                </div>
-
-                <div class="text-[10px] font-bold mb-1 uppercase">Active CC Line</div>
-                <div id="buff-list" class="space-y-1 overflow-y-auto text-[10px] italic text-gray-600">
-                    No active synergy.
                 </div>
             </div>
         </div>
@@ -244,58 +167,56 @@
     <!-- MODAL: ADDRESS BOOK -->
     <div id="address-book" class="fixed inset-0 z-[110] bg-black/50 items-center justify-center p-4 hidden flex">
         <div class="bg-[#c0c0c0] retro-border w-full max-w-sm shadow-2xl">
-            <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs">
-                <span>ADDRESS BOOK - SELECT CC</span>
-                <button onclick="closeAddressBook()" class="px-1 hover:bg-red-600">✕</button>
+            <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+                <span>ADDRESS BOOK</span>
+                <button onclick="closeAddressBook()" class="px-1">✕</button>
             </div>
-            <div class="p-2 text-[10px] bg-[#dfdfdf] border-b border-[#808080]">
-                Choose a contact to loop in. They provide a permanent bonus to the thread.
-            </div>
-            <div id="contact-list" class="max-h-64 overflow-y-auto p-2 space-y-2 bg-white">
-                <!-- Contacts -->
-            </div>
+            <div id="contact-list" class="max-h-64 overflow-y-auto p-2 space-y-2 bg-white"></div>
             <div class="p-2 flex justify-end bg-[#c0c0c0]">
-                <button onclick="closeAddressBook()" class="retro-button text-xs px-4 font-bold">CANCEL</button>
+                <button onclick="closeAddressBook()" class="retro-button text-xs px-4">CANCEL</button>
             </div>
         </div>
     </div>
 
     <script>
-        // --- GAME DATA ---
+        // --- DATA ---
         const CONTACTS = [
-            { id: 'intern', name: "Kevin (Intern)", role: "Coffee Runner", bonus: "+7 Attack dmg per turn.", effect: { damage: 7 }, used: false },
-            { id: 'it', name: "Pradeep (IT)", role: "SysAdmin", bonus: "Heal 5 Credibility every turn.", effect: { heal: 5 }, used: false },
-            { id: 'legal', name: "The Firm (Legal)", role: "Compliance", bonus: "30% Damage Reduction.", effect: { defense: 0.3 }, used: false },
-            { id: 'ceo', name: "Big Boss (CEO)", role: "Executive", bonus: "Double Leverage gain.", effect: { leverage: 2 }, used: false },
-            { id: 'cat', name: "Mittens (Office Cat)", role: "Mascot", bonus: "15% chance for enemies to miss you entirely.", effect: { dodge: 0.15 }, used: false }
+            { id: 'intern', name: "Kevin", title: "Intern", bonus: "+8 reply potency.", eff: { dmg: 8 }, usedBy: null },
+            { id: 'it', name: "Pradeep", title: "IT Specialist", bonus: "+5 standing/turn.", eff: { heal: 5 }, usedBy: null },
+            { id: 'legal', name: "Sarah", title: "Legal Counsel", bonus: "20% Dmg Reduction.", eff: { def: 0.20 }, usedBy: null },
+            { id: 'ceo', name: "Arthur", title: "Deputy Director", bonus: "2x Leverage gain.", eff: { lev: 2 }, usedBy: null },
+            { id: 'cat', name: "Mittens", title: "Office Cat", bonus: "35% Dodge Chance.", eff: { dodge: 0.35 }, usedBy: null }
         ];
 
         let opponents = [
-            { id: 1, name: "Karen (HR)", email: "karen.hr@org.gov", hp: 85, maxHp: 85, quotes: ["Looping in legal.", "Per my last email...", "Let's align on this.", "Respect the hierarchy."], color: 'text-purple-700' },
-            { id: 2, name: "Greg (Fin)", email: "greg.accounting@org.gov", hp: 70, maxHp: 70, quotes: ["The ROI is negative.", "Bottom line: No.", "Expenses are too high.", "Fix your spreadsheets."], color: 'text-emerald-700' },
-            { id: 3, name: "Chad (Sales)", email: "chad.crusher@org.gov", hp: 60, maxHp: 60, quotes: ["LET'S CRUSH IT!!", "Coffee is for closers.", "Synergy overload!", "Huge win today!"], color: 'text-orange-700' }
+            { 
+                id: 1, name: "Karen (HR)", email: "k.smith@org.gov", hp: 90, maxHp: 90, pto: 3, buffs: [], 
+                quotes: ["I'm looping in legal.", "Per my last email...", "This isn't 'Culture Fit'.", "Respect the policy.", "This smell is a safety hazard!"], 
+                situational: ["Paperwork is already drafted.", "I'm scheduling a sync on your tone.", "That Tupperware is an OSHA violation.", "Performance reviews are coming up."], 
+                color: 'text-purple-700' 
+            },
+            { 
+                id: 2, name: "Greg (Fin)", email: "g.bucks@org.gov", hp: 75, maxHp: 75, pto: 3, buffs: [], 
+                quotes: ["ROI is negative.", "Bottom line: No.", "Fix your Excel sheets.", "Denied.", "Expenses exceed budget."], 
+                situational: ["The salmon was on sale, Karen.", "I don't have time for a sync.", "Breakroom maintenance is a cost-center.", "Audit pending on these replies."], 
+                color: 'text-emerald-700' 
+            },
+            { 
+                id: 3, name: "Chad (Sales)", email: "c.crush@org.gov", hp: 65, maxHp: 65, pto: 3, buffs: [], 
+                quotes: ["LET'S CRUSH IT!!", "Coffee is for closers.", "Synergy overload!", "Huge win today!", "Stay in your lane!"], 
+                situational: ["Protein is key for afternoon gains.", "You're killin' my vibe, Greg.", "I closed three deals while you were typing.", "Grind never stops for smell."], 
+                color: 'text-orange-700' 
+            }
         ];
 
         let state = {
-            player: {
-                name: "Employee",
-                email: "employee@org.gov",
-                hp: 100,
-                maxHp: 100,
-                ult: 0,
-                activeBuffs: []
-            },
-            targetId: 1,
-            turn: 1,
-            isProcessing: false,
-            gameOver: false
+            player: { name: "Employee", email: "e@org.gov", hp: 100, maxHp: 100, ult: 0, pto: 3, buffs: [] },
+            targetId: 1, turn: 1, isProcessing: false, gameOver: false
         };
 
         // --- INIT ---
-
         const nameInput = document.getElementById('player-name-input');
         const emailPreview = document.getElementById('email-preview');
-        
         nameInput.addEventListener('input', (e) => {
             const val = e.target.value.trim() || "Associate";
             const email = val.toLowerCase().replace(/\s+/g, '.') + "@org.gov";
@@ -307,18 +228,15 @@
             state.player.name = nameInput.value.trim() || "Associate";
             document.getElementById('start-screen').classList.add('hidden');
             document.getElementById('game-ui').classList.remove('hidden');
-            
-            document.getElementById('desktop-name').innerText = state.player.name;
-            document.getElementById('desktop-email').innerText = state.player.email;
             document.getElementById('player-email-display').innerText = state.player.email;
+            document.getElementById('status-bar-name').innerText = state.player.name;
+            document.getElementById('status-bar-email').innerText = "Connected";
 
             updateUI();
-            
-            // Initial Email Message
-            addLog("System Administrator", "Automated Policy Update: Please note that heating fish in the shared microwave is now a Level 2 Disciplinary Offense. Karen from HR has CC'd everyone to discuss.", "bg-blue-50 text-blue-900 border-l-4 border-blue-600 italic mb-4");
+            addLog("System Admin", "Internal Thread Started. Security: Encrypted.", "bg-blue-50 text-blue-900 border-l-4 border-blue-600 italic mb-4");
             
             setTimeout(() => {
-                addLog("Karen (HR)", "Hi team, per my last email, the cleanliness of the kitchen is non-negotiable. I'm seeing a lot of pushback from Greg and Chad. Will, I need you to weigh in and support policy enforcement immediately.", "border-l-4 border-purple-500 bg-purple-50");
+                addLog("Karen (HR)", `Hi team, I am absolutely disgusted. Someone heated up fish in the breakroom microwave. <strong>${state.player.name}</strong>, I'm sure you noticed the stench. <strong>Greg</strong>, I saw you walking that way with a Tupperware. <strong>Chad</strong>, I know you need your 'macros', but this is unacceptable.`, "border-l-4 border-purple-500 bg-purple-50");
             }, 800);
         }
 
@@ -328,224 +246,144 @@
             const hpPct = Math.max(0, (p.hp / p.maxHp) * 100);
             const ultPct = Math.min(100, p.ult);
 
-            // Stats
-            document.getElementById('desktop-hp-fill').style.width = hpPct + "%";
-            document.getElementById('desktop-hp-text').innerText = `${Math.ceil(p.hp)}/${p.maxHp}`;
-            document.getElementById('desktop-ult-fill').style.width = ultPct + "%";
-            document.getElementById('mobile-hp-fill').style.width = hpPct + "%";
-            document.getElementById('mobile-hp-text').innerText = Math.ceil(hpPct) + "%";
-
-            // Ult
-            const ultBtn = document.getElementById('reply-all-btn');
-            ultBtn.disabled = p.ult < 100;
-            document.getElementById('ult-label').innerText = `Leverage: ${Math.floor(p.ult)}%`;
+            // New Standing Bar Updates
+            document.getElementById('player-hp-fill').style.width = hpPct + "%";
+            document.getElementById('player-hp-label').innerText = `${Math.ceil(p.hp)}/100`;
+            document.getElementById('player-ult-fill').style.width = ultPct + "%";
+            document.getElementById('player-pto-status').innerText = `PTO: ${p.pto}d remaining`;
             
-            // Clock
-            const hour = 9 + Math.floor(state.turn / 4);
-            const min = (state.turn % 4) * 15;
-            document.getElementById('turn-clock').innerText = `${hour.toString().padStart(2,'0')}:${min.toString().padStart(2,'0')} AM`;
+            // HP Color Logic
+            if (hpPct < 30) document.getElementById('player-hp-fill').className = "h-full bg-red-600 transition-all duration-300";
+            else if (hpPct < 60) document.getElementById('player-hp-fill').className = "h-full bg-yellow-500 transition-all duration-300";
+            else document.getElementById('player-hp-fill').className = "h-full bg-green-500 transition-all duration-300";
 
-            // Interactive From Line
+            document.getElementById('reply-all-btn').disabled = p.ult < 100;
+            document.getElementById('ooo-btn').disabled = p.pto <= 0;
+
             const selector = document.getElementById('target-selector');
             selector.innerHTML = "";
-            opponents.forEach(opp => {
-                const isActive = state.targetId === opp.id;
-                const hpPctOpp = Math.max(0, (opp.hp / opp.maxHp) * 100);
-                
-                const btn = document.createElement('div');
-                btn.onclick = () => { if(opp.hp > 0) { state.targetId = opp.id; updateUI(); } };
-                btn.className = `target-pill px-2 py-1 flex flex-col min-w-[110px] cursor-pointer bg-white ${isActive ? 'active' : 'opacity-80'}`;
-                
-                btn.innerHTML = `
-                    <div class="flex justify-between items-center gap-2">
-                        <span class="font-bold text-[9px] truncate">${opp.name}</span>
-                        <span class="text-[8px] font-mono">${opp.hp > 0 ? Math.ceil(hpPctOpp)+'%' : 'FIRED'}</span>
-                    </div>
-                    <div class="h-1 w-full bg-gray-200 mt-0.5">
-                        <div class="h-full ${isActive ? 'bg-yellow-400' : 'bg-red-500'}" style="width: ${hpPctOpp}%"></div>
-                    </div>
-                `;
-                selector.appendChild(btn);
+            opponents.forEach(o => {
+                const isActive = state.targetId === o.id;
+                const pct = Math.max(0, (o.hp / o.maxHp) * 100);
+                const pill = document.createElement('div');
+                pill.onclick = () => { if(o.hp > 0) state.targetId = o.id; updateUI(); };
+                pill.className = `target-pill px-1 py-0.5 flex flex-col min-w-[90px] cursor-pointer bg-white ${isActive ? 'active' : 'opacity-80'}`;
+                pill.innerHTML = `<div class="flex justify-between font-bold text-[8px] truncate"><span>${o.name}</span><span>${o.hp > 0 ? o.pto+'d' : '❌'}</span></div>
+                                <div class="h-1 w-full bg-gray-200 mt-0.5"><div class="h-full bg-red-500" style="width: ${pct}%"></div></div>`;
+                selector.appendChild(pill);
             });
 
-            // CC UI
-            const ccDisplay = document.getElementById('active-ccs');
-            if (p.activeBuffs.length > 0) {
-                ccDisplay.innerHTML = `<strong>CC:</strong> ` + p.activeBuffs.map(b => `<span class="bg-blue-100 px-1 border border-blue-300 rounded text-blue-800 font-bold">${b.name}</span>`).join(' ');
-            }
-            const buffContainer = document.getElementById('buff-list');
-            if (p.activeBuffs.length > 0) {
-                buffContainer.innerHTML = p.activeBuffs.map(b => `<div>• ${b.name}: ${b.bonus}</div>`).join('');
-            }
+            document.getElementById('active-ccs').innerHTML = `<strong>CC:</strong> ` + 
+                (CONTACTS.filter(c => c.usedBy).map(c => `<span class="bg-blue-100 px-1 border border-blue-300 rounded text-blue-900 font-bold">${c.name} (${c.usedBy})</span>`).join(' ') || '<span class="text-gray-400 italic">No witnesses...</span>');
+            
+            const buffList = document.getElementById('active-buffs-list');
+            buffList.innerHTML = p.buffs.map(b => `• ${b.name}: ${b.bonus}`).join('<br>') || 'No active bonuses.';
+            
+            const h = 9 + Math.floor(state.turn / 4); const m = (state.turn % 4) * 15;
+            document.getElementById('turn-clock').innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')} AM`;
         }
 
         function addLog(sender, text, classes = "") {
             const log = document.getElementById('message-log');
             const entry = document.createElement('div');
             entry.className = `message-entry p-2 border-b border-gray-100 text-xs ${classes}`;
-            entry.innerHTML = `
-                <div class="flex justify-between mb-0.5">
-                    <span class="font-bold text-[#000080]">${sender}</span>
-                    <span class="text-[9px] text-gray-400 font-mono">${document.getElementById('turn-clock').innerText}</span>
-                </div>
-                <div class="leading-relaxed">${text}</div>
-            `;
-            log.appendChild(entry);
-            log.scrollTop = log.scrollHeight;
+            entry.innerHTML = `<div class="flex justify-between mb-0.5"><span class="font-bold text-[#000080]">${sender}</span><span class="text-[9px] text-gray-400 font-mono">${document.getElementById('turn-clock').innerText}</span></div><div>${text}</div>`;
+            log.appendChild(entry); log.scrollTop = log.scrollHeight;
         }
-
-        // --- ACTIONS ---
 
         function performAction(type) {
             if (state.isProcessing || state.gameOver) return;
             state.isProcessing = true;
-
             const target = opponents.find(o => o.id === state.targetId);
-            let p = state.player;
+            const p = state.player;
 
-            // Apply Passive Bonuses
-            p.activeBuffs.forEach(b => { if(b.effect.heal) p.hp = Math.min(p.maxHp, p.hp + b.effect.heal); });
+            p.buffs.forEach(b => { if(b.eff.heal) p.hp = Math.min(p.maxHp, p.hp + b.eff.heal); });
 
-            switch(type) {
-                case 'CIRCLE_BACK':
-                    let baseDmg = 14 + Math.floor(Math.random() * 6);
-                    p.activeBuffs.forEach(b => { if(b.effect.damage) baseDmg += b.effect.damage; });
-                    target.hp -= baseDmg;
-                    let lev = 20;
-                    p.activeBuffs.forEach(b => { if(b.effect.leverage) lev *= b.effect.leverage; });
-                    p.ult += lev;
-                    addLog(p.name, `Sent a pointed follow-up to <strong>${target.name}</strong>. "Just circling back to see if you actually read the attachment." (${baseDmg} damage)`);
-                    break;
-
-                case 'OOO':
-                    const h = 25;
-                    p.hp = Math.min(p.maxHp, p.hp + h);
-                    addLog(p.name, `Turned on "Out of Office" auto-reply. You took a mental health break (+${h} Credibility).`, "bg-green-50");
-                    break;
-
-                case 'REPLY_ALL':
-                    opponents.forEach(o => { if(o.hp > 0) o.hp -= 30; });
-                    p.ult = 0;
-                    addLog(p.name, `<strong>REPLY ALL:</strong> You sent a massive PDF exposing everyone's lunch receipts. Total professional carnage!`, "bg-yellow-100 font-bold border-y-2 border-yellow-500");
-                    break;
+            if (type === 'ATTACK') {
+                let d = 15 + Math.floor(Math.random() * 8);
+                p.buffs.forEach(b => { if(b.eff.dmg) d += b.eff.dmg; });
+                target.hp -= d;
+                p.ult += 20 * (p.buffs.find(b => b.eff.lev) ? 2 : 1);
+                addLog(p.name, `Sent a pointed reply to <strong>${target.name}</strong>. "Please advise on your timeline." (-${d} credibility)`);
+            } else if (type === 'OOO') {
+                p.pto--; p.hp = Math.min(p.maxHp, p.hp + 30);
+                addLog(p.name, `Taking a mental health day. Auto-reply: ON. (+30 standing).`, "bg-green-50");
+            } else if (type === 'ULT') {
+                opponents.forEach(o => { if(o.hp > 0) o.hp -= 35; });
+                p.ult = 0;
+                addLog(p.name, `<strong>REPLY ALL:</strong> You leaked the company salary spreadsheet. Total professional carnage!`, "bg-yellow-100 font-bold border-y-2 border-yellow-500 text-center");
             }
 
             if (target && target.hp <= 0) {
-                target.hp = 0;
-                addLog("SYSTEM", `${target.name.toUpperCase()} HAS BEEN TERMINATED (FIRED).`, "text-red-600 font-black italic uppercase text-center py-1");
-                const next = opponents.find(o => o.hp > 0);
-                if (next) state.targetId = next.id;
+                target.hp = 0; addLog("SYSTEM", `${target.name.toUpperCase()} HAS BEEN TERMINATED.`, "text-red-700 font-black italic uppercase text-center");
+                const next = opponents.find(o => o.hp > 0); if (next) state.targetId = next.id;
             }
-
             updateUI();
             setTimeout(ffaRound, 800);
         }
 
         function ffaRound() {
             const alive = opponents.filter(o => o.hp > 0);
-            
-            if (alive.length === 0) {
-                state.gameOver = true;
-                addLog("SYSTEM", "VICTORY. You are the last survivor of the email chain. The fridge is yours.", "bg-green-600 text-white p-4 text-center font-bold text-lg");
-                return;
-            }
+            if (alive.length === 0) { state.gameOver = true; addLog("SYSTEM", "PROMOTION GRANTED. You are the last survivor of the thread.", "bg-green-600 text-white p-4 text-center font-bold"); return; }
 
-            // Each alive opponent takes a turn
-            alive.forEach((attacker, index) => {
+            alive.forEach((a, idx) => {
                 setTimeout(() => {
-                    if (attacker.hp <= 0) return; // Might have died mid-round
+                    if (a.hp <= 0 || state.gameOver) return;
+                    
+                    let pool = [...alive.filter(o => o.id !== a.id), { id: 'player', name: state.player.name }];
+                    let target = pool[Math.floor(Math.random() * pool.length)];
+                    let roll = Math.random();
 
-                    // Logic: 40% chance to target player, 60% chance to target other alive opponents
-                    let pool = [...alive.filter(o => o.id !== attacker.id), { id: 'player', name: state.player.name }];
-                    let targetObj = pool[Math.floor(Math.random() * pool.length)];
+                    a.buffs.forEach(b => { if(b.eff.heal) a.hp = Math.min(a.maxHp, a.hp + b.eff.heal); });
 
-                    let dmg = 8 + Math.floor(Math.random() * 10);
-                    const quote = attacker.quotes[Math.floor(Math.random() * attacker.quotes.length)];
-
-                    if (targetObj.id === 'player') {
-                        // Check Dodge (Cat)
-                        let dodged = false;
-                        state.player.activeBuffs.forEach(b => { if(b.effect.dodge && Math.random() < b.effect.dodge) dodged = true; });
-                        
-                        if (dodged) {
-                            addLog(attacker.name, `"${quote}" - You ignored the email because you were petting Mittens! (DODGED)`, "bg-blue-50 text-blue-600 italic");
-                        } else {
-                            // Defense Buff
-                            state.player.activeBuffs.forEach(b => { if(b.effect.defense) dmg *= (1 - b.effect.defense); });
-                            state.player.hp -= dmg;
-                            addLog(attacker.name, `"${quote}" - You lost ${Math.floor(dmg)} Credibility.`, "bg-red-50 border-l-2 border-red-400");
-                            // Shake UI
-                            document.getElementById('game-ui').classList.add('shaking');
-                            setTimeout(() => document.getElementById('game-ui').classList.remove('shaking'), 200);
-                        }
+                    if (roll < 0.15 && CONTACTS.some(c => !c.usedBy)) {
+                        const open = CONTACTS.filter(c => !c.usedBy);
+                        const c = open[Math.floor(Math.random() * open.length)];
+                        c.usedBy = a.name; a.buffs.push(c);
+                        addLog(a.name, `Added <strong>${c.name}</strong> to their CC line! "Getting their feedback on this."`, "bg-blue-100 italic");
+                    } else if (roll < 0.3 && a.hp < 40 && a.pto > 0) {
+                        a.pto--; a.hp = Math.min(a.maxHp, a.hp + 25);
+                        addLog(a.name, `Is out of office. "I will have limited access to email today." (+25 Standing)`);
                     } else {
-                        // Enemy vs Enemy
-                        targetObj.hp -= dmg;
-                        addLog(attacker.name, `"${quote}" - They directed their frustration at <strong>${targetObj.name}</strong> instead of you! (-${dmg})`, "text-gray-500 italic");
-                        if (targetObj.hp <= 0) {
-                            targetObj.hp = 0;
-                            addLog("SYSTEM", `${targetObj.name} was CC'd into oblivion by ${attacker.name} and has been FIRED.`, "text-red-700 font-bold");
+                        let d = 10 + Math.floor(Math.random() * 10);
+                        a.buffs.forEach(b => { if(b.eff.dmg) d += b.eff.dmg; });
+                        const q = (Math.random() > 0.6 ? a.situational : a.quotes)[Math.floor(Math.random() * 4)];
+                        
+                        if (target.id === 'player') {
+                            if (state.player.buffs.find(b => b.eff.dodge && Math.random() < b.eff.dodge)) {
+                                addLog(a.name, `"${q}" - <strong>Mittens</strong> knocked your mouse off the desk. You didn't even read it! (DODGED)`, "text-blue-600 italic");
+                            } else {
+                                let def = 0; state.player.buffs.forEach(b => { if(b.eff.def) def += b.eff.def; });
+                                d = Math.floor(d * (1 - def)); state.player.hp -= d;
+                                addLog(a.name, `"${q}" - You lost ${d} standing.`, "bg-red-50 border-l-2 border-red-400");
+                                document.getElementById('game-ui').classList.add('shaking');
+                                setTimeout(() => document.getElementById('game-ui').classList.remove('shaking'), 200);
+                            }
+                        } else {
+                            target.hp -= d; addLog(a.name, `"${q}" - Directed at <strong>${target.name}</strong>! (-${d} standing)`, "text-gray-500 italic text-[10px]");
                         }
                     }
 
-                    if (state.player.hp <= 0) {
-                        state.gameOver = true;
-                        addLog("SYSTEM", "TERMINATED. You have been removed from the company Slack, Email, and Building. Security is waiting.", "bg-black text-white p-4 text-center font-bold");
-                        updateUI();
-                    }
-
-                    if (index === alive.length - 1) {
-                        state.turn++;
-                        state.isProcessing = false;
-                        updateUI();
-                    }
-                }, index * 600);
+                    if (state.player.hp <= 0) { state.gameOver = true; addLog("SYSTEM", "TERMINATED. Hand in your keycard.", "bg-black text-white p-4 text-center"); updateUI(); }
+                    if (idx === alive.length - 1) { state.turn++; state.isProcessing = false; updateUI(); }
+                }, idx * 700);
             });
         }
 
-        // --- CC LOGIC ---
-
         function openAddressBook() {
-            const list = document.getElementById('contact-list');
-            list.innerHTML = "";
+            const list = document.getElementById('contact-list'); list.innerHTML = "";
             CONTACTS.forEach(c => {
-                const item = document.createElement('div');
-                item.className = `p-2 border border-gray-300 flex flex-col ${c.used ? 'opacity-40 grayscale bg-gray-100' : 'cursor-pointer hover:bg-blue-50'}`;
-                item.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <span class="font-bold text-[#000080] text-xs">${c.name}</span>
-                        <span class="text-[8px] uppercase font-bold text-gray-400">${c.role}</span>
-                    </div>
-                    <div class="text-[10px] italic mt-1 leading-tight">${c.bonus}</div>
-                `;
-                if (!c.used) {
-                    item.onclick = () => ccContact(c.id);
-                }
-                list.appendChild(item);
+                const btn = document.createElement('div');
+                btn.className = `p-2 border border-gray-300 flex flex-col ${c.usedBy ? 'opacity-40 grayscale bg-gray-100' : 'cursor-pointer hover:bg-blue-50'}`;
+                btn.innerHTML = `<div class="flex justify-between font-bold text-[#000080] text-xs"><span>${c.name} - ${c.title}</span><span class="text-[9px]">${c.usedBy ? 'CC: '+c.usedBy : 'AVAIL'}</span></div><div class="text-[10px] italic">${c.bonus}</div>`;
+                if (!c.usedBy) btn.onclick = () => { c.usedBy = state.player.name; state.player.buffs.push(c); addLog(state.player.name, `Looped in <strong>${c.name}</strong>. "Let's get another pair of eyes on this thread."`, "bg-blue-200 font-bold"); closeAddressBook(); updateUI(); state.isProcessing = true; setTimeout(ffaRound, 400); };
+                list.appendChild(btn);
             });
             document.getElementById('address-book').classList.remove('hidden');
         }
 
-        function closeAddressBook() {
-            document.getElementById('address-book').classList.add('hidden');
-        }
-
-        function ccContact(id) {
-            const contact = CONTACTS.find(c => c.id === id);
-            contact.used = true;
-            state.player.activeBuffs.push(contact);
-            
-            addLog(state.player.name, `Looping in <strong>${contact.name}</strong> for visibility on this thread.`, "bg-blue-100 border-l-4 border-blue-500 font-bold");
-            
-            closeAddressBook();
-            updateUI();
-            
-            // Turn penalty
-            state.isProcessing = true;
-            setTimeout(ffaRound, 400);
-        }
+        function closeAddressBook() { document.getElementById('address-book').classList.add('hidden'); }
     </script>
 </body>
 </html>
-
 
