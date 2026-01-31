@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>REPLY ALL: Career Path</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --win-grey: #c0c0c0;
+            --win-blue: #000080;
+            --win-border-light: #ffffff;
+            --win-border-dark: #404040;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: #008080; height: 100dvh; overflow: hidden; touch-action: manipulation; color: black; }
+        .retro-border { border-top: 2px solid var(--win-border-light); border-left: 2px solid var(--win-border-light); border-bottom: 2px solid var(--win-border-dark); border-right: 2px solid var(--win-border-dark); }
+        .retro-border-inset { border-top: 2px solid var(--win-border-dark); border-left: 2px solid var(--win-border-dark); border-bottom: 2px solid var(--win-border-light); border-right: 2px solid var(--win-border-light); }
+        .retro-button { background: var(--win-grey); border-top: 2px solid var(--win-border-light); border-left: 2px solid var(--win-border-light); border-bottom: 2px solid var(--win-border-dark); border-right: 2px solid var(--win-border-dark); padding: 4px 8px; cursor: pointer; user-select: none; }
+        .retro-button:active:not(:disabled) { border-top: 2px solid var(--win-border-dark); border-left: 2px solid var(--win-border-dark); border-bottom: 2px solid var(--win-border-light); border-right: 2px solid var(--win-border-light); padding-top: 5px; padding-bottom: 3px; }
+        .retro-button:disabled { color: #808080; cursor: not-allowed; opacity: 0.6; }
+        .terminal-font { font-family: 'VT323', monospace; }
+        
+        /* Layout & UI */
+        .desktop-icon { width: 64px; text-align: center; cursor: pointer; user-select: none; }
+        .desktop-icon:active { filter: brightness(0.8); }
+        
+        .window { position: absolute; background: var(--win-grey); display: flex; flex-direction: column; overflow: hidden; }
+        .title-bar { background: var(--win-blue); color: white; padding: 2px 4px; display: flex; justify-content: space-between; align-items: center; cursor: default; }
+
+        @keyframes shake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(-3px, 3px); } 50% { transform: translate(3px, -3px); } 75% { transform: translate(-3px, -3px); } }
+        .shaking { animation: shake 0.2s ease-in-out infinite; }
+        
+        .scroll-container::-webkit-scrollbar { width: 14px; }
+        .scroll-container::-webkit-scrollbar-track { background: #dfdfdf; }
+        .scroll-container::-webkit-scrollbar-thumb { background: var(--win-grey); border: 2px solid var(--win-border-light); box-shadow: inset -1px -1px 0 var(--win-border-dark); }
+        
+        .target-pill { transition: all 0.2s; border: 1px solid #808080; font-size: 8px; }
+        .target-pill.active { background: #000080 !important; color: white !important; border-color: #ffffff; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="p-0 overflow-hidden select-none">
+
+    <!-- DESKTOP ENVIRONMENT -->
+    <div id="desktop" class="relative w-full h-full p-4 flex flex-col gap-6 items-start">
+        
+        <!-- Desktop Icons -->
+        <div class="desktop-icon" onclick="openWindow('inbox')">
+            <div class="w-10 h-10 bg-white mx-auto retro-border flex items-center justify-center text-xl">📧</div>
+            <div class="text-white text-[10px] mt-1 shadow-black text-shadow">My Inbox</div>
+        </div>
+
+        <div class="desktop-icon" onclick="openWindow('intranet')">
+            <div class="w-10 h-10 bg-white mx-auto retro-border flex items-center justify-center text-xl">🏢</div>
+            <div class="text-white text-[10px] mt-1 shadow-black text-shadow">HR Portal</div>
+        </div>
+
+        <div class="desktop-icon" onclick="openWindow('profile')">
+            <div class="w-10 h-10 bg-white mx-auto retro-border flex items-center justify-center text-xl">👤</div>
+            <div class="text-white text-[10px] mt-1 shadow-black text-shadow">My Career</div>
+        </div>
+
+        <!-- Taskbar -->
+        <div class="fixed bottom-0 left-0 right-0 h-10 bg-[#c0c0c0] border-t-2 border-white flex items-center px-1 gap-2 z-[200]">
+            <button class="retro-button font-bold flex items-center gap-1 px-3">
+                <span class="text-lg">🪟</span> Start
+            </button>
+            <div class="flex-grow flex gap-1 overflow-x-auto no-scrollbar" id="taskbar-apps">
+                <!-- Taskbar items -->
+            </div>
+            <div class="retro-border-inset px-2 h-7 flex items-center gap-2 bg-[#dfdfdf] text-[10px] font-mono">
+                <span id="current-quarter-display">Q3 2024</span>
+                <span id="desktop-clock">09:00 AM</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- WINDOW: INBOX -->
+    <div id="win-inbox" class="window hidden inset-4 md:inset-10 md:bottom-20 z-50 retro-border shadow-2xl">
+        <div class="title-bar shrink-0">
+            <span class="text-xs font-bold">Outlook Express - Inbox</span>
+            <button onclick="closeWindow('inbox')" class="w-4 h-4 bg-[#c0c0c0] text-black text-[10px] border border-white flex items-center justify-center">X</button>
+        </div>
+        <div class="flex-grow flex flex-col bg-white overflow-hidden">
+            <!-- Inbox List View -->
+            <div id="inbox-list" class="flex-grow overflow-y-auto scroll-container">
+                <!-- Email items injected here -->
+            </div>
+            <!-- Thread View (Combat) -->
+            <div id="inbox-thread" class="hidden flex-grow flex flex-col overflow-hidden">
+                <div class="bg-[#f0f0f0] p-2 border-b border-[#808080] text-[10px] space-y-1">
+                    <div class="flex items-center gap-1">
+                        <strong class="shrink-0">From:</strong>
+                        <div id="target-selector" class="flex gap-1 overflow-x-auto no-scrollbar"></div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <div><strong>To:</strong> <span id="player-email-addr">...</span></div>
+                        <div id="combat-turn-clock" class="font-mono bg-white px-1 border border-inset border-gray-400">09:00 AM</div>
+                    </div>
+                    <div id="active-ccs-header" class="flex gap-1 flex-wrap">
+                        <strong>CC:</strong> <span class="text-gray-400 italic">No witnesses...</span>
+                    </div>
+                    <div class="border-t border-gray-300 pt-1">
+                        <strong>Subject:</strong> <span id="thread-subject" class="font-bold text-red-700">RE: Kitchen Incident</span>
+                    </div>
+                </div>
+                <div id="combat-log" class="flex-grow overflow-y-auto p-3 space-y-2 bg-white font-serif scroll-container"></div>
+                
+                <!-- Player Status & Action -->
+                <div class="bg-[#dfdfdf] border-t border-[#808080] p-2 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[9px] font-bold uppercase text-[#000080]">My Credibility</span>
+                        <span id="player-hp-val" class="text-[9px] font-mono font-bold">100/100</span>
+                    </div>
+                    <div class="h-3 w-full bg-white border border-[#808080] relative">
+                        <div id="player-hp-bar" class="h-full bg-green-500 transition-all duration-300" style="width: 100%"></div>
+                    </div>
+                    <div class="flex justify-between items-center text-[9px]">
+                        <div class="flex items-center gap-1">
+                            <span class="opacity-70 uppercase font-bold">Leverage:</span>
+                            <div class="w-16 h-1.5 bg-white border border-[#808080]">
+                                <div id="player-ult-bar" class="h-full bg-yellow-400" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div id="player-pto-status">PTO Days: 3</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1">
+                        <button onclick="combatAction('ATTACK')" class="retro-button py-2 flex flex-col items-center">
+                            <span class="text-xs font-bold">Circle Back</span>
+                            <span class="text-[8px] opacity-70">Direct Reply</span>
+                        </button>
+                        <button onclick="openAddressBook()" class="retro-button py-2 flex flex-col items-center">
+                            <span class="text-xs font-bold">CC Personnel</span>
+                            <span id="cc-status-btn" class="text-[8px] opacity-70">3 Available Now</span>
+                        </button>
+                        <button id="player-ooo-btn" onclick="combatAction('OOO')" class="retro-button py-2 flex flex-col items-center">
+                            <span class="text-xs font-bold">Take PTO</span>
+                            <span class="text-[8px] opacity-70">Recover Standing</span>
+                        </button>
+                        <button id="player-ult-btn" onclick="combatAction('ULT')" class="retro-button py-2 flex flex-col items-center disabled:opacity-50" disabled>
+                            <span class="text-xs font-bold text-red-800 uppercase">Reply All</span>
+                            <span class="text-[8px] opacity-70">Takedown</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WINDOW: HR PORTAL (SHOP) -->
+    <div id="win-intranet" class="window hidden inset-4 md:inset-10 md:bottom-20 z-40 retro-border shadow-2xl">
+        <div class="title-bar shrink-0">
+            <span class="text-xs font-bold">Intranet HR Portal v2.1</span>
+            <button onclick="closeWindow('intranet')" class="w-4 h-4 bg-[#c0c0c0] text-black text-[10px] border border-white flex items-center justify-center">X</button>
+        </div>
+        <div class="flex-grow flex bg-white overflow-hidden text-xs">
+            <div class="w-32 md:w-48 border-r border-[#808080] bg-[#dfdfdf] flex flex-col gap-1 p-1">
+                <button onclick="setPortalView('store')" class="retro-button text-left font-bold">Growth Opportunities</button>
+                <button onclick="setPortalView('signatures')" class="retro-button text-left">Manage Signature</button>
+                <button onclick="setPortalView('excellence')" class="retro-button text-left">Project Excellence</button>
+                <div class="mt-auto p-2 border-t border-[#808080]">
+                    <div class="text-[10px] font-bold uppercase">Reputation:</div>
+                    <div id="reputation-total" class="text-lg font-bold text-blue-900">0</div>
+                </div>
+            </div>
+            <div id="portal-content" class="flex-grow p-4 overflow-y-auto scroll-container">
+                <!-- Portal screens injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- WINDOW: CAREER PROFILE -->
+    <div id="win-profile" class="window hidden inset-10 z-30 retro-border max-w-sm h-fit">
+        <div class="title-bar">
+            <span class="text-xs">Employee ID - #4429</span>
+            <button onclick="closeWindow('profile')" class="w-4 h-4 bg-[#c0c0c0] text-black text-[10px] border border-white flex items-center justify-center">X</button>
+        </div>
+        <div class="p-4 flex flex-col gap-3 bg-[#dfdfdf]">
+            <div class="bg-white p-3 retro-border-inset">
+                <div id="profile-name" class="font-bold text-lg">Associate</div>
+                <div id="profile-title" class="text-xs text-blue-700 font-bold uppercase">Executive Intern</div>
+                <hr class="my-2 border-gray-300">
+                <div class="text-[10px] space-y-1">
+                    <div class="flex justify-between"><span>Base Credibility:</span> <span id="stat-hp">100</span></div>
+                    <div class="flex justify-between"><span>PTO Limit:</span> <span id="stat-pto">3</span></div>
+                    <div class="flex justify-between"><span>Reply Potency:</span> <span id="stat-dmg">14-22</span></div>
+                    <div class="flex justify-between"><span>CC Slots:</span> <span id="stat-cc">5/5</span></div>
+                </div>
+            </div>
+            <div class="bg-white p-2 retro-border-inset">
+                <div class="text-[10px] font-bold uppercase mb-1">Active Address Book:</div>
+                <div id="profile-contacts" class="text-[10px] italic text-gray-600"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- START SCREEN -->
+    <div id="login-screen" class="fixed inset-0 z-[300] bg-[#008080] flex items-center justify-center p-4">
+        <div class="bg-[#c0c0c0] p-6 retro-border max-w-sm w-full">
+            <div class="bg-[#000080] text-white px-2 py-1 mb-4 text-xs">LOGIN WIZARD</div>
+            <h1 class="text-3xl font-bold terminal-font text-center mb-6">REPLY ALL: THE CAREER</h1>
+            <input id="login-name" type="text" placeholder="Full Name" class="w-full p-2 retro-border-inset mb-2 text-sm">
+            <div id="login-email-preview" class="text-[10px] italic mb-6 text-gray-600 px-2">...</div>
+            <button onclick="initGame()" class="w-full py-3 retro-button font-bold text-blue-900">BEGIN ONBOARDING</button>
+        </div>
+    </div>
+
+    <!-- MODAL: ADDRESS BOOK (CC SELECTOR) -->
+    <div id="modal-address-book" class="fixed inset-0 z-[110] bg-black/50 items-center justify-center p-4 hidden flex">
+        <div class="bg-[#c0c0c0] retro-border w-full max-w-sm shadow-2xl">
+            <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+                <span>ADDRESS BOOK - SELECT CONTACT</span>
+                <button onclick="closeAddressBook()" class="px-1">✕</button>
+            </div>
+            <div class="p-2 text-[9px] bg-[#dfdfdf] border-b border-[#808080] flex justify-between">
+                <span>Select an online contact to loop in.</span>
+                <span id="cc-refresh-timer" class="font-mono">Next refresh in 1m</span>
+            </div>
+            <div id="cc-select-list" class="max-h-64 overflow-y-auto p-2 space-y-2 bg-white scroll-container"></div>
+            <div class="p-2 flex justify-end bg-[#c0c0c0]">
+                <button onclick="closeAddressBook()" class="retro-button text-xs px-4">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GAME STATE ---
+        const gameState = {
+            player: {
+                name: "Employee",
+                email: "e@org.gov",
+                hp: 100,
+                maxHp: 100,
+                ult: 0,
+                pto: 3,
+                maxPto: 3,
+                reputation: 0,
+                title: "Executive Intern",
+                rank: 0,
+                addressBook: [], // Active CCs (Max 5)
+                signatures: [], // Max based on rank
+                maxCC: 5,
+                maxSigs: 1,
+                buffs: []
+            },
+            world: {
+                year: 2024,
+                quarter: 2, // Start at Q2 for setup
+                time: "09:00 AM",
+                turnsInRound: 0,
+                activeContacts: [] // Deck of 2 currently online
+            },
+            inbox: [
+                { id: 'start', from: "HR System", subject: "Welcome to the Executive Office", body: "Please complete your training modules.", read: false, type: 'info' }
+            ],
+            combat: {
+                active: false,
+                threadId: null,
+                enemies: [],
+                targetId: null,
+                isProcessing: false,
+                logs: []
+            }
+        };
+
+        const TITLES = [
+            "Executive Intern", "Junior Associate", "Senior Specialist", "Project Manager", "Junior Chief of Staff", "Deputy Director"
+        ];
+
+        // --- CONTENT DATA ---
+        const ALL_CONTACTS = [
+            { id: 'kevin', name: "Kevin", title: "Intern", bonus: "+10 reply strength.", eff: { dmg: 10 } },
+            { id: 'pradeep', name: "Pradeep", title: "IT Specialist", bonus: "+5 Credibility per turn.", eff: { heal: 5 } },
+            { id: 'sarah', name: "Sarah", title: "Legal Counsel", bonus: "20% Damage Reduction.", eff: { def: 0.2 } },
+            { id: 'arthur', name: "Arthur", title: "Deputy Director", bonus: "2x Leverage gain.", eff: { lev: 2 } },
+            { id: 'mittens', name: "Mittens", title: "Office Cat", bonus: "35% Dodge Chance.", eff: { dodge: 0.35 } },
+            { id: 'becky', name: "Becky", title: "Office Manager", bonus: "+1 Max PTO.", eff: { pto: 1 } },
+            { id: 'dave', name: "Dave", title: "Security", bonus: "Counter-attack for 5 dmg.", eff: { counter: 5 } }
+        ];
+
+        const SIGNATURES = [
+            { id: 'iphone', label: "Sent from my iPhone", bonus: "+10% Leverage gain", eff: { levMod: 0.1 } },
+            { id: 'regards', label: "Kind Regards,", bonus: "+15 HP from PTO usage", eff: { ptoMod: 15 } },
+            { id: 'enviro', label: "Think before you print", bonus: "-5% Dmg taken", eff: { defMod: 0.05 } }
+        ];
+
+        // --- INITIALIZATION ---
+        const loginName = document.getElementById('login-name');
+        const loginEmail = document.getElementById('login-email-preview');
+        loginName.addEventListener('input', () => {
+            const val = loginName.value.trim() || "Associate";
+            const email = val.toLowerCase().replace(/\s+/g, '.') + "@gov.org";
+            loginEmail.innerText = email;
+            gameState.player.email = email;
+        });
+
+        function initGame() {
+            gameState.player.name = loginName.value.trim() || "Associate";
+            gameState.player.addressBook = [ALL_CONTACTS[0]]; // Start with Kevin
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('player-email-addr').innerText = gameState.player.email;
+            updateQuarters();
+            updateUI();
+            addInboxMsg("Karen (HR)", "URGENT: Kitchen Microwave Odor", "A disciplinary thread has been initiated regarding lunch etiquette.", 'combat');
+        }
+
+        function openWindow(id) {
+            document.getElementById(`win-${id}`).classList.remove('hidden');
+            if(id === 'intranet') setPortalView('store');
+        }
+
+        function closeWindow(id) {
+            document.getElementById(`win-${id}`).classList.add('hidden');
+        }
+
+        function setPortalView(view) {
+            const content = document.getElementById('portal-content');
+            let html = "";
+            if(view === 'store') {
+                html = `<h2 class="text-lg font-bold mb-4">Invitations & Networking</h2>
+                        <p class="mb-4 text-gray-500 italic">Spend reputation to add people to your address book. (Max ${gameState.player.maxCC})</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">`;
+                ALL_CONTACTS.forEach(c => {
+                    const owned = gameState.player.addressBook.find(ac => ac.id === c.id);
+                    html += `<div class="p-2 border-2 ${owned ? 'opacity-50 grayscale' : 'retro-border bg-white'}">
+                                <div class="flex justify-between font-bold"><span>${c.name} - ${c.title}</span> <span>${owned ? 'Owned' : '150 Rep'}</span></div>
+                                <div class="text-[10px] mt-1">${c.bonus}</div>
+                                ${!owned ? `<button onclick="buyContact('${c.id}')" class="mt-2 w-full retro-button text-[10px] font-bold">Send Meeting Invite</button>` : ''}
+                            </div>`;
+                });
+                html += `</div>`;
+            } else if(view === 'signatures') {
+                html = `<h2 class="text-lg font-bold mb-4">Manage Email Signature</h2>
+                        <p class="mb-2">Your Title: <strong>${gameState.player.title}</strong> allows <strong>${gameState.player.maxSigs}</strong> active signatures.</p>
+                        <div class="space-y-2">`;
+                SIGNATURES.forEach(s => {
+                    const owned = gameState.player.signatures.find(as => as.id === s.id);
+                    html += `<div class="p-2 retro-border bg-white flex justify-between items-center">
+                                <div><div class="font-bold">${s.label}</div><div class="text-[10px]">${s.bonus}</div></div>
+                                <button onclick="buySignature('${s.id}')" class="retro-button font-bold text-[10px]" ${owned ? 'disabled' : ''}>${owned ? 'Active' : '100 Rep'}</button>
+                            </div>`;
+                });
+                html += `</div>`;
+            } else if (view === 'excellence') {
+                html = `<h2 class="text-lg font-bold mb-4">Project Excellence</h2>
+                        <div class="grid grid-cols-1 gap-3">
+                            <div class="p-3 border-2 retro-border bg-white">
+                                <div class="font-bold">Project: Cloud Migration</div>
+                                <div class="text-[10px]">Permanent +5 Base Credibility (HP). Cost: 200 Rep</div>
+                                <button onclick="buyUpgrade('hp')" class="mt-2 w-full retro-button font-bold">Submit Proposal</button>
+                            </div>
+                            <div class="p-3 border-2 retro-border bg-white">
+                                <div class="font-bold">Project: Synergy Initiative</div>
+                                <div class="text-[10px]">Permanent +2 Base Reply Potency. Cost: 250 Rep</div>
+                                <button onclick="buyUpgrade('dmg')" class="mt-2 w-full retro-button font-bold">Submit Proposal</button>
+                            </div>
+                        </div>`;
+            }
+            content.innerHTML = html;
+        }
+
+        // --- SHOP LOGIC ---
+        function buyContact(id) {
+            if(gameState.player.reputation < 150) return notify("Insufficient Reputation.");
+            if(gameState.player.addressBook.length >= gameState.player.maxCC) return notify("Address Book is full! Offboard someone in your Profile.");
+            const c = ALL_CONTACTS.find(x => x.id === id);
+            gameState.player.reputation -= 150;
+            gameState.player.addressBook.push(c);
+            updateUI();
+            setPortalView('store');
+        }
+
+        function buySignature(id) {
+            if(gameState.player.reputation < 100) return notify("Insufficient Reputation.");
+            if(gameState.player.signatures.length >= gameState.player.maxSigs) return notify("Policy Limit Reached! Cannot add more signatures.");
+            const s = SIGNATURES.find(x => x.id === id);
+            gameState.player.reputation -= 100;
+            gameState.player.signatures.push(s);
+            updateUI();
+            setPortalView('signatures');
+        }
+
+        function buyUpgrade(type) {
+            const cost = type === 'hp' ? 200 : 250;
+            if(gameState.player.reputation < cost) return notify("Insufficient Reputation.");
+            gameState.player.reputation -= cost;
+            if(type === 'hp') gameState.player.maxHp += 5;
+            if(type === 'dmg') { /* Logic for scaling dmg base */ }
+            updateUI();
+            notify("Project Approved! Benefits applied permanently.");
+        }
+
+        // --- INBOX & COMBAT ---
+        function addInboxMsg(from, subject, body, type) {
+            const msg = { id: Date.now(), from, subject, body, read: false, type };
+            gameState.inbox.unshift(msg);
+            renderInbox();
+        }
+
+        function renderInbox() {
+            const list = document.getElementById('inbox-list');
+            list.innerHTML = gameState.inbox.map(m => `
+                <div class="flex items-center gap-3 p-2 border-b cursor-pointer hover:bg-blue-50 ${m.read ? '' : 'font-bold'}" onclick="openEmail(${m.id})">
+                    <div class="w-4 h-4 bg-gray-200"></div>
+                    <div class="w-24 truncate">${m.from}</div>
+                    <div class="flex-grow truncate">${m.subject}</div>
+                </div>
+            `).join('');
+        }
+
+        function openEmail(id) {
+            const email = gameState.inbox.find(e => e.id === id);
+            email.read = true;
+            if(email.type === 'combat') startCombat(email);
+            renderInbox();
+        }
+
+        function startCombat(email) {
+            gameState.combat.active = true;
+            gameState.combat.threadId = email.id;
+            gameState.combat.enemies = [
+                { id: 1, name: "Karen (HR)", hp: 80, maxHp: 80, pto: 2, ccs: [] },
+                { id: 2, name: "Greg (Fin)", hp: 70, maxHp: 70, pto: 2, ccs: [] },
+                { id: 3, name: "Chad (Sales)", hp: 60, maxHp: 60, pto: 3, ccs: [] }
+            ];
+            gameState.combat.targetId = 1;
+            gameState.world.turnsInRound = 0;
+            gameState.combat.logs = [];
+            
+            document.getElementById('inbox-list').classList.add('hidden');
+            document.getElementById('inbox-thread').classList.remove('hidden');
+            document.getElementById('combat-log').innerHTML = "";
+            
+            updateCCAvailability();
+            addCombatLog("Karen (HR)", `Look, per my last email, the cleanliness of the breakroom is a KPI. ${gameState.player.name}, weigh in or be CC'd on the disciplinary file.`, "bg-purple-50 border-l-4 border-purple-500");
+            updateUI();
+        }
+
+        function updateCCAvailability() {
+            // "Deck draw" logic
+            const pool = [...gameState.player.addressBook];
+            const shuffled = pool.sort(() => 0.5 - Math.random());
+            gameState.world.activeContacts = shuffled.slice(0, 3); // 3 Online
+            document.getElementById('cc-status-btn').innerText = `${gameState.world.activeContacts.length} Available Now`;
+        }
+
+        function combatAction(type) {
+            if(gameState.combat.isProcessing || !gameState.combat.active) return;
+            gameState.combat.isProcessing = true;
+            
+            const target = gameState.combat.enemies.find(e => e.id === gameState.combat.targetId);
+            const p = gameState.player;
+            
+            // Player Passive Heals (Pradeep)
+            p.buffs.forEach(b => { if(b.eff.heal) p.hp = Math.min(p.maxHp, p.hp + b.eff.heal); });
+
+            if(type === 'ATTACK') {
+                let dmg = 15 + Math.floor(Math.random() * 8);
+                p.buffs.forEach(b => { if(b.eff.dmg) dmg += b.eff.dmg; });
+                target.hp -= dmg;
+                p.ult += 20 * (p.buffs.find(b => b.eff.lev) ? 2 : 1);
+                addCombatLog(p.name, `Sent a pointed reply to ${target.name}. "Please advise on the timeline." (-${dmg})`);
+            } else if (type === 'OOO') {
+                p.pto--; p.hp = Math.min(p.maxHp, p.hp + 25);
+                addCombatLog(p.name, `Is out of office today. (Credibility +25).`, "bg-green-50");
+            } else if (type === 'ULT') {
+                gameState.combat.enemies.forEach(e => { if(e.hp > 0) e.hp -= 30; });
+                p.ult = 0;
+                addCombatLog(p.name, `<strong>REPLY ALL:</strong> You leaked the project roadmap. Total disaster for the thread!`, "bg-yellow-100 font-bold border-y-2 border-yellow-500 text-center");
+            }
+
+            // Cleanup
+            if (target && target.hp <= 0) {
+                target.hp = 0;
+                addCombatLog(target.name, "I'm taking this offline. [User has left the thread].", "text-red-700 italic font-bold");
+                gameState.player.reputation += 100; // Reward for "winning" an exchange
+                const next = gameState.combat.enemies.find(e => e.hp > 0);
+                if (next) gameState.combat.targetId = next.id;
+            }
+
+            updateUI();
+            setTimeout(processAITurns, 800);
+        }
+
+        function processAITurns() {
+            const alive = gameState.combat.enemies.filter(e => e.hp > 0);
+            if(alive.length === 0) return endCombat(true);
+
+            alive.forEach((e, idx) => {
+                setTimeout(() => {
+                    if(e.hp <= 0 || gameState.gameOver) return;
+                    
+                    let targetPool = [...alive.filter(x => x.id !== e.id), { id: 'player', name: gameState.player.name }];
+                    let target = targetPool[Math.floor(Math.random() * targetPool.length)];
+                    let dmg = 10 + Math.floor(Math.random() * 10);
+
+                    if(target.id === 'player') {
+                        // Dodge Check
+                        if(gameState.player.buffs.find(b => b.eff.dodge && Math.random() < b.eff.dodge)) {
+                            addCombatLog(e.name, `Sent an email that you ignored because you were petting Mittens! (DODGED)`, "text-blue-600 italic");
+                        } else {
+                            let def = 0; gameState.player.buffs.forEach(b => { if(b.eff.def) def += b.eff.def; });
+                            dmg = Math.floor(dmg * (1 - def));
+                            gameState.player.hp -= dmg;
+                            addCombatLog(e.name, `Sent a "Circle Back" to you. (-${dmg})`, "bg-red-50 border-l-2 border-red-500");
+                        }
+                    } else {
+                        target.hp -= dmg;
+                        addCombatLog(e.name, `Directed their anger at ${target.name}! (-${dmg})`, "text-gray-400 italic text-[10px]");
+                        if(target.hp <= 0) { target.hp = 0; addCombatLog(target.name, "Fine. I'm removing myself from this loop."); }
+                    }
+
+                    if(gameState.player.hp <= 0) {
+                        gameState.player.hp = 0;
+                        endCombat(false);
+                    }
+
+                    if(idx === alive.length - 1) {
+                        gameState.world.turnsInRound++;
+                        if(gameState.world.turnsInRound % 2 === 0) updateCCAvailability();
+                        gameState.combat.isProcessing = false;
+                        updateUI();
+                    }
+                }, idx * 600);
+            });
+        }
+
+        function endCombat(win) {
+            gameState.combat.active = false;
+            if(win) {
+                notify("Round Complete! You earned +500 Reputation for surviving.");
+                gameState.player.reputation += 500;
+                advanceQuarter();
+            } else {
+                notify("TERMINATED. Your career has ended prematurely.");
+                setTimeout(() => location.reload(), 3000);
+            }
+            document.getElementById('inbox-list').classList.remove('hidden');
+            document.getElementById('inbox-thread').classList.add('hidden');
+            updateUI();
+        }
+
+        function advanceQuarter() {
+            gameState.world.quarter++;
+            if(gameState.world.quarter > 4) {
+                gameState.world.quarter = 1;
+                gameState.world.year++;
+            }
+            if(gameState.world.quarter === 2) {
+                promotePlayer();
+            }
+            updateQuarters();
+            renderInbox();
+        }
+
+        function promotePlayer() {
+            gameState.player.rank++;
+            gameState.player.title = TITLES[gameState.player.rank] || TITLES[TITLES.length-1];
+            gameState.player.maxSigs = Math.min(3, gameState.player.rank + 1);
+            notify(`PROMOTED! You are now a ${gameState.player.title}.`);
+            addInboxMsg("The Director", "Notice of Promotion", "Your performance in the thread has been noted. Welcome to the next level.", 'info');
+        }
+
+        // --- UTILS ---
+        function updateUI() {
+            const p = gameState.player;
+            document.getElementById('reputation-total').innerText = p.reputation;
+            document.getElementById('player-hp-bar').style.width = `${(p.hp / p.maxHp) * 100}%`;
+            document.getElementById('player-hp-val').innerText = `${Math.ceil(p.hp)}/${p.maxHp}`;
+            document.getElementById('player-ult-bar').style.width = `${p.ult}%`;
+            document.getElementById('player-pto-status').innerText = `PTO Days: ${p.pto}`;
+            document.getElementById('player-ult-btn').disabled = p.ult < 100;
+            
+            // Profile UI
+            document.getElementById('profile-name').innerText = p.name;
+            document.getElementById('profile-title').innerText = p.title;
+            document.getElementById('stat-hp').innerText = p.maxHp;
+            document.getElementById('stat-pto').innerText = p.maxPto;
+            document.getElementById('stat-cc').innerText = `${p.addressBook.length}/${p.maxCC}`;
+            document.getElementById('profile-contacts').innerText = p.addressBook.map(c => c.name).join(', ');
+
+            // Combat target selector
+            const selector = document.getElementById('target-selector');
+            selector.innerHTML = gameState.combat.enemies.map(e => {
+                const isActive = gameState.combat.targetId === e.id;
+                const pct = (e.hp / e.maxHp) * 100;
+                return `
+                    <div class="target-pill px-1.5 py-1 bg-white cursor-pointer ${isActive ? 'active' : ''}" onclick="gameState.combat.targetId = ${e.id}; updateUI();">
+                        <div class="flex justify-between font-bold gap-2"><span>${e.name}</span><span>${e.hp > 0 ? Math.ceil(pct)+'%' : 'OFF'}</span></div>
+                        <div class="h-1 w-full bg-gray-200 mt-0.5"><div class="h-full bg-red-500" style="width: ${pct}%"></div></div>
+                    </div>
+                `;
+            }).join('');
+
+            // CC Header
+            document.getElementById('active-ccs-header').innerHTML = `<strong>CC:</strong> ` + 
+                p.buffs.map(b => `<span class="bg-blue-100 px-1 border border-blue-300 rounded text-blue-900 font-bold">${b.name}</span>`).join(' ') || '<span class="text-gray-400">...</span>';
+        }
+
+        function updateQuarters() {
+            document.getElementById('current-quarter-display').innerText = `Q${gameState.world.quarter} ${gameState.world.year}`;
+        }
+
+        function addCombatLog(sender, text, classes = "") {
+            const log = document.getElementById('combat-log');
+            const item = document.createElement('div');
+            item.className = `p-2 border-b border-gray-100 text-xs message-entry ${classes}`;
+            item.innerHTML = `<strong>${sender}</strong>: ${text}`;
+            log.appendChild(item);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function notify(txt) {
+            alert(txt); // Simple for now, can replace with toast
+        }
+
+        function openAddressBook() {
+            document.getElementById('modal-address-book').classList.remove('hidden');
+            const list = document.getElementById('cc-select-list');
+            list.innerHTML = gameState.world.activeContacts.map(c => {
+                const inUse = gameState.player.buffs.find(b => b.id === c.id);
+                return `
+                    <div class="p-2 border retro-border bg-white flex justify-between items-center ${inUse ? 'opacity-50' : ''}">
+                        <div><div class="font-bold text-xs">${c.name} - ${c.title}</div><div class="text-[9px]">${c.bonus}</div></div>
+                        <button onclick="ccContact('${c.id}')" class="retro-button text-[9px] font-bold" ${inUse ? 'disabled' : ''}>CC Now</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function ccContact(id) {
+            const c = gameState.player.addressBook.find(x => x.id === id);
+            gameState.player.buffs.push(c);
+            addCombatLog(gameState.player.name, `Added <strong>${c.name}</strong> to the thread for visibility.`, "bg-blue-50 border-l-4 border-blue-400 italic");
+            closeAddressBook();
+            updateUI();
+            gameState.combat.isProcessing = true;
+            setTimeout(processAITurns, 400);
+        }
+
+        function closeAddressBook() {
+            document.getElementById('modal-address-book').classList.add('hidden');
+        }
+
+        // Initialize view
+        renderInbox();
+    </script>
+</body>
+</html>
+
