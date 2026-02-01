@@ -339,26 +339,27 @@
     <script>
         // --- DATA ---
         const CONTACTS = [
-            { id: 'intern', name: "Kevin", title: "Intern", rarity: 'common', department: 'HR', bonus: "+8 attack potency.", eff: { dmg: 8 }, usedBy: null },
-            { id: 'it', name: "Pradeep", title: "IT Specialist", rarity: 'common', department: 'IT', bonus: "+5 credibility/turn.", eff: { heal: 5 }, usedBy: null },
-            { id: 'legal', name: "Sarah", title: "Legal Counsel", rarity: 'uncommon', department: 'Legal', bonus: "20% DMG Reduction.", eff: { def: 0.20 }, usedBy: null },
-            { id: 'ceo', name: "Arthur", title: "Deputy Director", rarity: 'rare', department: 'Executive', bonus: "2x Leverage gain.", eff: { lev: 2 }, usedBy: null },
-            { id: 'cat', name: "Mittens", title: "Office Cat", rarity: 'rare', department: 'None', bonus: "35% Distraction chance.", eff: { dodge: 0.35 }, usedBy: null },
-            { id: 'mktg', name: "Becky", title: "Social Media Manager", rarity: 'uncommon', department: 'Marketing', bonus: "+12 attack potency.", eff: { dmg: 12 }, usedBy: null },
+            { id: 'intern', name: "Kevin", title: "HR Assistant", rarity: 'common', department: 'Human Resources', bonus: "+3 attack potency.", eff: { dmg: 3 }, usedBy: null },
+            { id: 'it', name: "Pradeep", title: "IT Specialist", rarity: 'common', department: 'Information Technology', bonus: "+5 credibility/turn.", eff: { heal: 5 }, usedBy: null },
+            { id: 'legal', name: "Sarah", title: "Legal Counsel", rarity: 'uncommon', department: 'Legal Compliance', bonus: "20% DMG Reduction.", eff: { def: 0.20 }, usedBy: null },
+            { id: 'ceo', name: "Arthur", title: "Chief of Staff", rarity: 'rare', department: 'Executive Council Office', bonus: "2x Leverage gain.", eff: { lev: 2 }, usedBy: null },
+            { id: 'cat', name: "Mittens", title: "Office Cat", rarity: 'rare', department: 'Facilities and Administration', bonus: "35% Distraction chance.", eff: { dodge: 0.35 }, usedBy: null },
+            { id: 'mktg', name: "Becky", title: "Comms Officer", rarity: 'uncommon', department: 'Communications', bonus: "+5 attack potency.", eff: { dmg: 5 }, usedBy: null },
             { id: 'audit', name: "Mr. Henderson", title: "Senior Auditor", rarity: 'uncommon', department: 'Finance', bonus: "30% DMG Reduction.", eff: { def: 0.30 }, usedBy: null },
-            { id: 'facilities', name: "Mike", title: "Facilities Lead", rarity: 'common', department: 'Facilities', bonus: "10% DMG Reduction & +3 Credibility/turn", eff: { def: 0.10, heal: 3 }, usedBy: null }
+            { id: 'facilities', name: "Mike", title: "Facilities Lead", rarity: 'common', department: 'Facilities and Administration', bonus: "10% DMG Reduction & +3 Credibility/turn", eff: { def: 0.10, heal: 3 }, usedBy: null },
+            { id: 'liaison', name: "Constituent Liaison", title: "Public Relations", rarity: 'rare', department: 'Constituent Services', bonus: "No combat bonus, but +4 REP if in loop at end of match.", eff: { endRep: 4 }, usedBy: null }
         ];
 
         const TITLES = [
-            { name: "Cubicle Intern", level: 1, addressLimit: 5, sigLimit: 1, hpBonus: 0, dmgBonus: 0 },
-            { name: "Junior Associate", level: 2, addressLimit: 5, sigLimit: 1, hpBonus: 10, dmgBonus: 2 },
-            { name: "Senior Associate", level: 3, addressLimit: 6, sigLimit: 1, hpBonus: 20, dmgBonus: 5 },
-            { name: "Team Lead", level: 4, addressLimit: 6, sigLimit: 2, hpBonus: 30, dmgBonus: 8 },
-            { name: "Middle Manager", level: 5, addressLimit: 7, sigLimit: 2, hpBonus: 40, dmgBonus: 12 },
-            { name: "Department Head", level: 6, addressLimit: 7, sigLimit: 2, hpBonus: 50, dmgBonus: 15 },
-            { name: "Junior Executive", level: 7, addressLimit: 8, sigLimit: 3, hpBonus: 60, dmgBonus: 20 },
-            { name: "Senior VP", level: 8, addressLimit: 8, sigLimit: 3, hpBonus: 80, dmgBonus: 25 },
-            { name: "Board Member", level: 9, addressLimit: 10, sigLimit: 3, hpBonus: 100, dmgBonus: 30 }
+            { name: "Cubicle Resident", level: 1, addressLimit: 5, sigLimit: 1, hpBonus: 0, dmgBonus: 0 },
+            { name: "Junior Clerk", level: 2, addressLimit: 5, sigLimit: 1, hpBonus: 10, dmgBonus: 2 },
+            { name: "Senior Clerk", level: 3, addressLimit: 6, sigLimit: 1, hpBonus: 20, dmgBonus: 4 },
+            { name: "Program Coordinator", level: 4, addressLimit: 6, sigLimit: 2, hpBonus: 30, dmgBonus: 6 },
+            { name: "Assistant Director", level: 5, addressLimit: 7, sigLimit: 2, hpBonus: 40, dmgBonus: 8 },
+            { name: "Deputy Director", level: 6, addressLimit: 7, sigLimit: 2, hpBonus: 50, dmgBonus: 10 },
+            { name: "Director", level: 7, addressLimit: 8, sigLimit: 3, hpBonus: 60, dmgBonus: 12 },
+            { name: "Commissioner", level: 8, addressLimit: 8, sigLimit: 3, hpBonus: 70, dmgBonus: 14 },
+            { name: "Council Member", level: 9, addressLimit: 10, sigLimit: 3, hpBonus: 80, dmgBonus: 16 }
         ];
 
         const SIGNATURES = [
@@ -375,69 +376,96 @@
             { id: 'redirect', name: "Redirect Message", bonus: "Current target attacks another random opponent next turn.", rarity: 'rare', effect: 'redirect' }
         ];
 
-        const BASE_OPPONENTS = [
-            { 
-                id: 1, name: "Karen (HR)", email: "k.smith@org.gov", hp: 100, maxHp: 100, wins: 3, buffs: [], department: 'HR',
-                addressBook: ['intern'],
-                defeatMessage: "I am unsubscribing from this thread. It is clear that professional decorum has completely broken down. I will be following up with each of you individually in a more controlled environment. Regards.",
-                attacks: [
-                    "Your recent breakroom habits suggest a lack of respect for shared company assets and peer comfort.",
-                    "While I have you, I noticed you haven't completed the mandatory 'Digital Hygiene' training module for Q3.",
-                    "I have three disciplinary hearings today; this thread is a significant drain on my operational capacity.",
-                    "HR provides the framework for your employment here; your contributions are currently being 're-evaluated'.",
-                    "Please review the updated 'Shared Space Etiquette' PDF attached to my signature.",
-                    "I'm scheduling a mandatory mediation session for the entire floor this Friday at 4:30 PM.",
-                    "Your tone in this thread has been noted and will be discussed during your next performance review.",
-                    "We have a zero-tolerance policy for passive-aggressive CC-ing. Please adhere to the chain of command.",
-                    "I've CC'd the Chief Wellness Officer to address the 'toxic environment' you're creating.",
-                    "Failure to identify the salmon-heater will result in a collective reduction of the 'Team Synergy' bonus.",
-                    "I'm literally looking at the Employee Handbook right now, and you're in violation of Section 8.4: Olfactory Neutrality.",
-                    "This 'Reply All' behavior is exactly why we can't have nice things, like the espresso machine I vetoed."
-                ],
-                color: 'text-purple-700' 
-            },
-            { 
-                id: 2, name: "Greg (Fin)", email: "g.bucks@org.gov", hp: 80, maxHp: 80, wins: 3, buffs: [], department: 'Finance',
-                addressBook: ['audit'],
-                defeatMessage: "I'm removing myself from this loop. The ROI on this conversation has dropped below zero, and I have actual budgets to balance. Please do not re-add me.",
-                attacks: [
-                    "The internal audit on appliance wear-and-tear points directly to your department's cubicle block.",
-                    "Noted. Also, your travel expense report from the March conference remains un-reconciled. Please rectify.",
-                    "I'm currently pausing the quarterly budget review to address this triviality. This is not billable time.",
-                    "Finance generates the capital that pays your salary; this salmon odor is a poor return on investment.",
-                    "The depreciation schedule for that microwave didn't account for 'biological warfare' levels of residue.",
-                    "Every second this thread continues, we're losing approximately $4.20 in billable productivity per capita.",
-                    "I've cross-referenced the breakroom keycard logs with your department's lunch schedule. The math doesn't lie.",
-                    "I'm flagging this entire conversation as 'Non-Essential Expenditure' and deducting the server costs from your Q4 budget.",
-                    "If we have to replace the microwave, it's coming out of the 'Holiday Party' fund. Hope you like generic crackers.",
-                    "Your lack of fiscal responsibility regarding communal assets is, frankly, alarming.",
-                    "I've calculated the cost of the air freshener required to neutralize that smell. It's coming out of your petty cash.",
-                    "I'm too busy reconciling the 2023 amortizations to deal with your 'Microwave Incident'."
-                ],
-                color: 'text-emerald-700' 
-            },
-            { 
-                id: 3, name: "Chad (Sales)", email: "c.crush@org.gov", hp: 70, maxHp: 70, wins: 3, buffs: [], department: 'Sales',
-                addressBook: ['mktg'],
-                defeatMessage: "Muting this. I've got a pipeline to fill and this thread is just noise. If you need me, I'll be hitting my targets while you guys keep 'circling back' to nothing. I'm out.",
-                attacks: [
-                    "I know you're the 'fish person' here. Just own it so we can move on to things that actually matter.",
-                    "Whatever. By the way, the lead list you sent over has 40% bounce rates. Check your data entry.",
-                    "Every minute I spend reading this is a minute I'm not on a closing call. You're costing us commission.",
-                    "I'm the rainmaker. You're the one making the office smell like a wharf. Know the hierarchy.",
-                    "While you guys are whining about smells, I just closed a five-figure deal on my mobile. Focus on the grind.",
-                    "Bro, if you can't handle a little fish smell, how are you gonna handle a high-pressure pitch? Weak energy.",
-                    "I'm literally on a Zoom with a whale right now and the 'New Email' ping is killing my flow. Unsubscribe.",
-                    "The only thing that should be 'urgent' in this office is the pipeline. This is amateur hour.",
-                    "I've got a Peloton waiting for me at 5 PM. Wrap this up or I'm deleting the thread.",
-                    "Is there a way to 'Mute' everyone except people who actually generate revenue?",
-                    "I'm BCC-ing my mentor on this to show him what 'corporate stagnation' looks like.",
-                    "You're all playing checkers. I'm playing 4D chess with people who don't microwave salmon."
-                ],
-                color: 'text-orange-700' 
+        const MISSIONS = [
+            {
+                id: 'microwave',
+                subject: "URGENT: Breakroom Incident",
+                from: "HR.Director",
+                intro: (playerName) => `Hi team,<br><br>I am absolutely disgusted. Someone heated up fish in the breakroom microwave. <strong>${playerName}</strong>, I'm sure you noticed the stench. <strong>Christina</strong>, I know you have the policy manual out already. <strong>Karen</strong>, please document this.<br><br>Please advise immediately on who is responsible for this violation of shared space ethics.`,
+                opponents: [
+                    {
+                        id: 1, name: "Karen (HR)", email: "k.smith@gov.org", hp: 50, maxHp: 50, wins: 3, buffs: [], department: 'Human Resources',
+                        addressBook: ['intern'],
+                        defeatMessage: "I am unsubscribing. I've documented the lack of professional decorum and will be following up with each of you individually. Regards.",
+                        attacks: [
+                            "Your recent breakroom habits suggest a lack of respect for shared departmental assets.",
+                            "I noticed you haven't completed the mandatory 'Digital Hygiene' training module for this quarter.",
+                            "I have three disciplinary hearings today; this thread is a significant drain on my operational capacity.",
+                            "HR provides the framework for your employment; your contributions are currently being 're-evaluated'.",
+                            "Please review the updated 'Shared Space Etiquette' PDF attached to my signature.",
+                            "I'm scheduling a mandatory mediation session for the entire floor this Friday at 4:30 PM.",
+                            "Your tone in this thread has been noted and will be discussed during your next performance review.",
+                            "We have a zero-tolerance policy for passive-aggressive CC-ing. Please adhere to the chain of command.",
+                            "I've CC'd the Chief Wellness Officer to address the 'toxic environment' you're creating.",
+                            "Failure to identify the salmon-heater will result in a collective reduction of the 'Team Synergy' bonus.",
+                            "I'm looking at the handbook right now, and you're in violation of Section 8.4: Olfactory Neutrality.",
+                            "This 'Reply All' behavior is exactly why we can't have nice things, like the espresso machine I vetoed."
+                        ],
+                        color: 'text-purple-700'
+                    },
+                    {
+                        id: 2, name: "Christina (Pol)", email: "c.policy@gov.org", hp: 60, maxHp: 60, wins: 3, buffs: [], department: 'Policy',
+                        addressBook: ['legal'],
+                        defeatMessage: "This thread has been archived for non-compliance. I am removing myself to draft a formal reprimand. Policy remains absolute.",
+                        attacks: [
+                            "Per Policy 402.b, all communal appliances are to be used for non-odorous items only. Refer to the compliance guide.",
+                            "I'm currently drafting a memorandum on 'Shared Air Space Ethics'. This thread is a case study in non-compliance.",
+                            "The Policy department ensures rules are followed. Your blatant disregard for the Microwave Protocol is being escalated.",
+                            "I've reviewed the 2019 precedent for 'unauthorized seafood heating'. It didn't end well for the perpetrator.",
+                            "If you had attended the 'Navigating the Breakroom' seminar, we wouldn't be having this conversation.",
+                            "I am CC-ing the Ethics Committee. This is the procedurally correct way to handle olfactory aggression.",
+                            "Your response lacks the required 'Directive 9' formatting. Please resubmit using approved templates.",
+                            "We are evaluating the environmental impact of your lunch choices. Sustainability is a core pillar of our mission.",
+                            "Failure to comply with 'No Fish Friday' is a breach of department harmony. I'm noting this in the audit.",
+                            "The data suggests a 98% probability that you are the source of the incident based on desk location.",
+                            "Please cease and desist from using 'Reply All' unless you are citing a specific governmental regulation.",
+                            "This thread is now under the jurisdiction of the Policy Oversight Division. Peer-review your next comment."
+                        ],
+                        color: 'text-blue-700'
+                    }
+                ]
             },
             {
-                id: 4, name: "HR Interns", email: "hr.interns@gov.org", hp: 150, maxHp: 150, wins: 5, buffs: [], department: 'HR',
+                id: 'paper',
+                subject: "CRITICAL: Departmental Paper Rationing",
+                from: "Facilities.Admin",
+                intro: (playerName) => `Dear Staff,<br><br>Due to unforeseen budget constraints, we are implementing immediate paper rationing. <strong>${playerName}</strong>, your department's printing logs are particularly high. <strong>Legal</strong>, please ensure we are still meeting filing requirements. <strong>IT</strong>, please expedite the 'Paperless Initiative'.<br><br>Effective immediately, all non-essential printing is strictly prohibited.`,
+                opponents: [
+                    {
+                        id: 3, name: "Legal Analyst", email: "legal.compliance@gov.org", hp: 60, maxHp: 60, wins: 3, buffs: [], department: 'Legal Compliance',
+                        addressBook: ['legal'],
+                        defeatMessage: "I cannot continue this conversation without a physical copy of the minutes. Unsubscribing until the rationing is lifted.",
+                        attacks: [
+                            "The lack of physical documentation is a direct violation of the 2004 Record Keeping Act.",
+                            "I've drafted a cease and desist regarding this rationing. I'll send it as soon as I can find a working printer.",
+                            "Your 'digital-only' proposal fails to meet the standards for admissible evidence in a council hearing.",
+                            "I'm flagging this thread for potential liability issues. We need paper trails, not email trails.",
+                            "Without a hard copy, this policy is effectively unenforceable. Please reconsider.",
+                            "I'm CC-ing the Archivist. We are losing history one deleted email at a time."
+                        ],
+                        color: 'text-red-700'
+                    },
+                    {
+                        id: 4, name: "IT Lead", email: "it.support@gov.org", hp: 50, maxHp: 50, wins: 3, buffs: [], department: 'Information Technology',
+                        addressBook: ['it'],
+                        defeatMessage: "Server load from this thread is too high. I'm muting this. Try rebooting your attitude.",
+                        attacks: [
+                            "Have you tried not printing every single cat meme you see? It's clogging the spooler and the budget.",
+                            "The 'Paperless Initiative' has been ready for three years. You're just afraid of PDFs.",
+                            "I'm seeing a lot of 'Printer Error' tickets from your floor. Maybe try putting paper in the tray?",
+                            "The budget for paper was redirected to upgrade the firewall you keep trying to bypass.",
+                            "Stop asking for 'digital paper'. It's called a screen. Use it.",
+                            "I've limited your mailbox size to 50MB until the paper crisis is resolved. Choose your replies wisely."
+                        ],
+                        color: 'text-indigo-700'
+                    }
+                ]
+            }
+        ];
+
+        const BASE_OPPONENTS = [
+            {
+                id: 5, name: "HR Interns", email: "hr.interns@gov.org", hp: 100, maxHp: 100, wins: 5, buffs: [], department: 'Human Resources',
                 addressBook: ['intern'],
                 defeatMessage: "The intern pool has been drained. We are collectiveley resigning to pursue opportunities in a less toxic environment. Goodbye.",
                 attacks: [
@@ -454,10 +482,10 @@
 
         let state = {
             player: {
-                name: "Associate",
-                email: "e@org.gov",
-                hp: 100,
-                maxHp: 100,
+                name: "Clerk",
+                email: "e@gov.org",
+                hp: 50,
+                maxHp: 50,
                 ult: 0,
                 wins: 3,
                 buffs: [],
@@ -468,17 +496,18 @@
                 addressBook: ['intern'],
                 signatures: [],
                 bccContacts: [],
-                department: 'Executive',
+                department: 'Executive Council Office',
                 bonusDmg: 0,
                 bonusMaxHp: 0,
                 bonusWins: 0,
                 attacks: [
                     "I believe we need to circle back to your recent comments. My focus is on department output, and I suggest yours should be too.",
                     "I've already addressed this in my previous email, but for the sake of clarity, I'll repeat it: I was at my desk all day.",
-                    "Perhaps we should focus on the Q4 deliverables instead of speculating on lunch choices?",
+                    "Perhaps we should focus on the Q4 deliverables instead of speculating on departmental policy?",
                     "I'm happy to discuss this in a 1-on-1, but I don't believe this is a productive use of the 'All-Staff' distribution list."
                 ]
             },
+            currentMissionIndex: 0,
             targetId: 1, turn: 0, isProcessing: false, gameOver: false,
             removedByPlayer: 0,
             removedTotal: 0
@@ -488,7 +517,7 @@
         const emailPreview = document.getElementById('email-preview');
         nameInput.addEventListener('input', (e) => {
             const val = e.target.value.trim() || "Associate";
-            const email = val.toLowerCase().replace(/\s+/g, '.') + "@org.gov";
+            const email = val.toLowerCase().replace(/\s+/g, '.') + "@gov.org";
             emailPreview.innerText = email;
             state.player.email = email;
         });
@@ -505,7 +534,7 @@
 
         function startGame() {
             state.player.name = nameInput.value.trim() || "Associate";
-            const email = state.player.name.toLowerCase().replace(/\s+/g, '.') + "@org.gov";
+            const email = state.player.name.toLowerCase().replace(/\s+/g, '.') + "@gov.org";
             state.player.email = email;
             document.getElementById('status-bar-email').innerText = "Online";
             showInbox();
@@ -516,11 +545,13 @@
             const list = document.getElementById('inbox-list');
             list.innerHTML = "";
 
+            const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
+
             // The battle email (At the top)
             const urgent = document.createElement('div');
             urgent.className = "grid grid-cols-12 p-2 border-b border-gray-100 bg-blue-50 cursor-pointer hover:bg-blue-200 font-bold border-l-4 border-l-blue-600";
             urgent.onclick = startQuarter;
-            urgent.innerHTML = `<div class="col-span-1 text-red-600">!</div><div class="col-span-4 text-blue-800">HR.Director</div><div class="col-span-7">URGENT: ${state.player.quarter} Breakroom Incident</div>`;
+            urgent.innerHTML = `<div class="col-span-1 text-red-600">!</div><div class="col-span-4 text-blue-800">${mission.from}</div><div class="col-span-7">${mission.subject}</div>`;
             list.appendChild(urgent);
 
             // Spam emails
@@ -540,24 +571,24 @@
             state.gameOver = false;
             state.turn = 0;
             state.isProcessing = false;
-            state.player.hp = state.player.maxHp + state.player.title.hpBonus + state.player.bonusMaxHp;
-            state.player.ult = 0;
-            state.player.wins = 3 + state.player.bonusWins;
-            state.player.buffs = []; // Reset combat buffs
+            const p = state.player;
+            p.hp = 50 + p.title.hpBonus + p.bonusMaxHp;
+            p.ult = 0;
+            p.wins = 3 + p.bonusWins;
+            p.buffs = []; // Reset combat buffs
 
             // Re-apply address book buffs
-            state.player.addressBook.forEach(id => {
+            p.addressBook.forEach(id => {
                 const c = CONTACTS.find(con => con.id === id);
                 if (c) {
                     const buff = JSON.parse(JSON.stringify(c));
-                    buff.usedBy = state.player.name;
-                    state.player.buffs.push(buff);
+                    buff.usedBy = p.name;
+                    p.buffs.push(buff);
                 }
             });
 
-            // Re-apply signature buffs (though signatures might have different logic, let's keep it simple for now)
-
-            opponents = BASE_OPPONENTS.map(o => {
+            const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
+            opponents = mission.opponents.map(o => {
                 const clone = JSON.parse(JSON.stringify(o));
                 clone.hp = clone.maxHp;
                 clone.buffs = []; // Opponents start with empty buffs, must loop them in
@@ -571,8 +602,8 @@
             document.getElementById('message-log').innerHTML = "";
             updateUI();
 
-            addEmailToLog("Karen (HR)", "everyone@org.gov", "URGENT: Breakroom Incident", 
-                `Hi team,<br><br>I am absolutely disgusted. Someone heated up fish in the breakroom microwave. <strong>${state.player.name}</strong>, I'm sure you noticed the stench. <strong>Greg</strong>, I saw you walking that way with a Tupperware. <strong>Chad</strong>, I know you need your 'macros', but this is unacceptable.<br><br>Please advise immediately on who is responsible for this policy violation.`, "border-l-4 border-purple-500 bg-purple-50");
+            addEmailToLog(mission.from, "everyone@gov.org", mission.subject,
+                mission.intro(p.name), "border-l-4 border-blue-500 bg-blue-50");
         }
 
         function endQuarter() {
@@ -586,14 +617,20 @@
                 let bonusRep = 0;
                 state.player.signatures.forEach(sig => {
                     if (sig.repBonus) {
-                        // "Gain 1 rep for each person who removes themselves that you did not instigate"
-                        // For simplicity, let's say (Total Removed - RemovedByPlayer)
                         bonusRep += (state.removedTotal - opponents.filter(o => o.hp > 0).length - state.removedByPlayer) * sig.repBonus;
                     }
                 });
 
+                // CC bonus (Constituent Liaison)
+                if (state.player.buffs.some(b => b.eff && b.eff.endRep)) {
+                    bonusRep += 4;
+                }
+
                 const totalRep = repEarned + bonusRep;
                 state.player.reputation += totalRep;
+
+                // Advance mission index
+                state.currentMissionIndex = (state.currentMissionIndex + 1) % MISSIONS.length;
 
                 document.getElementById('summary-removed-count').innerText = `${state.removedTotal - opponents.filter(o => o.hp > 0).length}/${state.removedTotal}`;
                 document.getElementById('summary-success-rate').innerText = `${Math.round(removedPct * 100)}%`;
@@ -724,7 +761,7 @@
         function handleOpponentDefeat(o, byPlayer = false) {
             o.hp = 0;
             if (byPlayer) state.removedByPlayer++;
-            addEmailToLog(o.name, "everyone@org.gov", "Unsubscribing", o.defeatMessage, "italic text-gray-600 bg-gray-50 border-l-4 border-gray-400");
+            addEmailToLog(o.name, "everyone@gov.org", "Unsubscribing", o.defeatMessage, "italic text-gray-600 bg-gray-50 border-l-4 border-gray-400");
             if (state.targetId === o.id) {
                 const next = opponents.find(opp => opp.hp > 0);
                 if (next) state.targetId = next.id;
@@ -817,7 +854,7 @@
             p.signatures.forEach(sig => { if(sig.heal) p.hp = Math.min(totalMaxHp, p.hp + sig.heal); });
 
             if (type === 'ATTACK') {
-                let d = 15 + Math.floor(Math.random() * 8) + p.title.dmgBonus + p.bonusDmg;
+                let d = 10 + p.title.dmgBonus + p.bonusDmg;
                 p.buffs.forEach(b => { if(b.eff.dmg) d += b.eff.dmg; });
                 p.signatures.forEach(sig => { if(sig.dmgMult) d *= (1 + sig.dmgMult); });
 
@@ -835,12 +872,12 @@
                 addEmailToLog(p.name, target.name, "Circle Back", `${q}<br><br>Best regards,<br>${p.name}`, "border-l-4 border-blue-600");
                 if (target.hp <= 0) handleOpponentDefeat(target, true);
             } else if (type === 'PROMOTE') {
-                p.wins--; p.hp = Math.min(totalMaxHp, p.hp + 35);
-                addEmailToLog(p.name, "everyone@org.gov", "FYI: Project Milestone Met", `Just logging a new win—the Q2 audit came back 100% clean under my supervision. Always happy to add value to the organization!`, "bg-green-50 border-l-4 border-green-600");
+                p.wins--; p.hp = Math.min(totalMaxHp, p.hp + 20);
+                addEmailToLog(p.name, "everyone@gov.org", "FYI: Project Milestone Met", `Just logging a new win—the quarterly audit came back clean under my supervision. Always happy to add value to the organization!`, "bg-green-50 border-l-4 border-green-600");
             } else if (type === 'ULT') {
-                opponents.forEach(o => { if(o.hp > 0) o.hp -= 35; });
+                opponents.forEach(o => { if(o.hp > 0) o.hp -= 20; });
                 p.ult = 0;
-                addEmailToLog(p.name, "everyone@org.gov", "Fwd: Salary_Discrepancies_2024.xlsx", `Not sure if I should be sending this to everyone, but since transparency is one of our 'core values', here is the full salary spreadsheet for the department. Enjoy.`, "bg-yellow-50 font-bold border-l-4 border-yellow-500");
+                addEmailToLog(p.name, "everyone@gov.org", "Fwd: Salary_Discrepancies_2024.xlsx", `Not sure if I should be sending this to everyone, but since transparency is one of our 'core values', here is the full salary spreadsheet for the department. Enjoy.`, "bg-yellow-50 font-bold border-l-4 border-yellow-500");
             }
 
             if (target && target.hp <= 0) {
@@ -860,7 +897,7 @@
                     
                     if (a.isStunned) {
                         a.isStunned = false;
-                        addEmailToLog(a.name, "everyone@org.gov", "RE: (Recalled Message)", `I'm sorry, I seem to have lost my train of thought. What were we discussing?`, "italic text-gray-400");
+                        addEmailToLog(a.name, "everyone@gov.org", "RE: (Recalled Message)", `I'm sorry, I seem to have lost my train of thought. What were we discussing?`, "italic text-gray-400");
                         if (idx === alive.length - 1) { state.isProcessing = false; updateUI(); }
                         return;
                     }
@@ -882,7 +919,7 @@
                         const targets = alive.filter(o => o.id !== a.id);
                         if (targets.length > 0) {
                             target = targets[Math.floor(Math.random() * targets.length)];
-                            addEmailToLog(a.name, "everyone@org.gov", "Redirected Reply", `Wait, I meant to send this to <strong>${target.name}</strong> instead.`, "italic text-blue-400 text-[10px]");
+                            addEmailToLog(a.name, "everyone@gov.org", "Redirected Reply", `Wait, I meant to send this to <strong>${target.name}</strong> instead.`, "italic text-blue-400 text-[10px]");
                         }
                     }
 
@@ -898,13 +935,13 @@
                             const buff = JSON.parse(JSON.stringify(c));
                             buff.usedBy = a.name;
                             a.buffs.push(buff);
-                            addEmailToLog(a.name, "everyone@org.gov", "Looping in Support", `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`, "bg-blue-50");
+                            addEmailToLog(a.name, "everyone@gov.org", "Looping in Support", `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`, "bg-blue-50");
                         }
-                    } else if (roll < 0.3 && a.hp < 40 && a.wins > 0) {
-                        a.wins--; a.hp = Math.min(a.maxHp, a.hp + 25);
-                        addEmailToLog(a.name, "everyone@org.gov", "Self Promotion", `I don't usually brag, but my latest sales conversion just set a new record. This microwave issue shouldn't distract from real wins.`, "opacity-70");
+                    } else if (roll < 0.3 && a.hp < 20 && a.wins > 0) {
+                        a.wins--; a.hp = Math.min(a.maxHp, a.hp + 15);
+                        addEmailToLog(a.name, "everyone@gov.org", "Self Promotion", `I'm logging a significant departmental achievement. This incident shouldn't distract from real wins.`, "opacity-70");
                     } else {
-                        let d = 10 + Math.floor(Math.random() * 10);
+                        let d = 10;
                         a.buffs.forEach(b => { if(b.eff.dmg) d += b.eff.dmg; });
                         
                         // Select attack type
@@ -959,7 +996,7 @@
                     const buff = JSON.parse(JSON.stringify(c));
                     buff.usedBy = state.player.name;
                     state.player.buffs.push(buff);
-                    addEmailToLog(state.player.name, "everyone@org.gov", "Looping in Witness", `I'm looping in <strong>${c.name}</strong> (${c.title}) to help clarify the organizational impact of this thread.`, "bg-blue-100 font-bold border-l-4 border-blue-500");
+                    addEmailToLog(state.player.name, "everyone@gov.org", "Looping in Witness", `I'm looping in <strong>${c.name}</strong> (${c.title}) to help clarify the organizational impact of this thread.`, "bg-blue-100 font-bold border-l-4 border-blue-500");
                     closeAddressBook(); updateUI(); state.isProcessing = true; setTimeout(ffaRound, 400); 
                 };
                 list.appendChild(btn);
@@ -988,7 +1025,7 @@
 
         function useBcc(bcc, index) {
             state.player.bccContacts.splice(index, 1);
-            addEmailToLog(state.player.name, "everyone@org.gov", `BCC: ${bcc.name}`, `[PRIVATE MESSAGE] Sent: ${bcc.bonus}`, "bg-yellow-100 border-l-4 border-yellow-600");
+            addEmailToLog(state.player.name, "everyone@gov.org", `BCC: ${bcc.name}`, `[PRIVATE MESSAGE] Sent: ${bcc.bonus}`, "bg-yellow-100 border-l-4 border-yellow-600");
 
             if (bcc.effect === 'stun') {
                 const target = opponents.find(o => o.id === state.targetId);
