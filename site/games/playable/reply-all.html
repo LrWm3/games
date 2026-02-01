@@ -516,6 +516,13 @@
             const list = document.getElementById('inbox-list');
             list.innerHTML = "";
 
+            // The battle email (At the top)
+            const urgent = document.createElement('div');
+            urgent.className = "grid grid-cols-12 p-2 border-b border-gray-100 bg-blue-50 cursor-pointer hover:bg-blue-200 font-bold border-l-4 border-l-blue-600";
+            urgent.onclick = startQuarter;
+            urgent.innerHTML = `<div class="col-span-1 text-red-600">!</div><div class="col-span-4 text-blue-800">HR.Director</div><div class="col-span-7">URGENT: ${state.player.quarter} Breakroom Incident</div>`;
+            list.appendChild(urgent);
+
             // Spam emails
             const spamSubjects = ["Hot Stocks!", "Refinance Now", "Enlarge your career", "Inheritance Notification", "Meeting?"];
             for (let i = 0; i < 8; i++) {
@@ -524,13 +531,6 @@
                 spam.innerHTML = `<div class="col-span-1"></div><div class="col-span-4 truncate">bot-${Math.random().toString(36).substr(2,5)}@junk.co</div><div class="col-span-7 truncate">${spamSubjects[i % spamSubjects.length]}</div>`;
                 list.appendChild(spam);
             }
-
-            // The battle email
-            const urgent = document.createElement('div');
-            urgent.className = "grid grid-cols-12 p-2 border-b border-gray-100 bg-blue-50 cursor-pointer hover:bg-blue-200 font-bold border-l-4 border-l-blue-600";
-            urgent.onclick = startQuarter;
-            urgent.innerHTML = `<div class="col-span-1 text-red-600">!</div><div class="col-span-4 text-blue-800">HR.Director</div><div class="col-span-7">URGENT: ${state.player.quarter} Breakroom Incident</div>`;
-            list.appendChild(urgent);
 
             document.getElementById('inbox-status').innerText = `${324 + (state.player.year * 4)} Messages, 1 Unread`;
         }
@@ -560,16 +560,7 @@
             opponents = BASE_OPPONENTS.map(o => {
                 const clone = JSON.parse(JSON.stringify(o));
                 clone.hp = clone.maxHp;
-                // Opponents start with their address book contacts as buffs
-                clone.buffs = clone.addressBook.map(id => {
-                    const c = CONTACTS.find(con => con.id === id);
-                    if (c) {
-                        const buff = JSON.parse(JSON.stringify(c));
-                        buff.usedBy = clone.name;
-                        return buff;
-                    }
-                    return null;
-                }).filter(Boolean);
+                clone.buffs = []; // Opponents start with empty buffs, must loop them in
                 return clone;
             });
 
@@ -899,11 +890,16 @@
 
                     a.buffs.forEach(b => { if(b.eff.heal) a.hp = Math.min(a.maxHp, a.hp + b.eff.heal); });
 
-                    if (roll < 0.15 && CONTACTS.some(c => !c.usedBy)) {
-                        const open = CONTACTS.filter(c => !c.usedBy);
-                        const c = open[Math.floor(Math.random() * open.length)];
-                        c.usedBy = a.name; a.buffs.push(c);
-                        addEmailToLog(a.name, "everyone@org.gov", "Looping in Support", `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`, "bg-blue-50");
+                    const availFromBook = a.addressBook.filter(id => !a.buffs.some(b => b.id === id));
+                    if (roll < 0.15 && availFromBook.length > 0) {
+                        const id = availFromBook[Math.floor(Math.random() * availFromBook.length)];
+                        const c = CONTACTS.find(con => con.id === id);
+                        if (c) {
+                            const buff = JSON.parse(JSON.stringify(c));
+                            buff.usedBy = a.name;
+                            a.buffs.push(buff);
+                            addEmailToLog(a.name, "everyone@org.gov", "Looping in Support", `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`, "bg-blue-50");
+                        }
                     } else if (roll < 0.3 && a.hp < 40 && a.wins > 0) {
                         a.wins--; a.hp = Math.min(a.maxHp, a.hp + 25);
                         addEmailToLog(a.name, "everyone@org.gov", "Self Promotion", `I don't usually brag, but my latest sales conversion just set a new record. This microwave issue shouldn't distract from real wins.`, "opacity-70");
@@ -932,9 +928,15 @@
                     }
 
                     if (state.player.hp <= 0) { state.gameOver = true; addEmailToLog("HR", state.player.email, "ACCESS REVOKED", `Due to your repeated failure to maintain professional standards, your access to this email thread—and the corporate network—has been revoked. Please see Security.`, "bg-black text-white p-4 text-center"); updateUI(); }
-                    if (idx === alive.length - 1) { state.isProcessing = false; updateUI(); }
                 }, idx * 700);
             });
+
+            setTimeout(() => {
+                if (!state.gameOver) {
+                    state.isProcessing = false;
+                    updateUI();
+                }
+            }, alive.length * 700);
         }
 
         function openAddressBook() {
