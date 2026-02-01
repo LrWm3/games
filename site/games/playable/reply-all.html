@@ -217,7 +217,7 @@
             <div class="space-y-3 mb-6">
                 <div>
                     <label class="block text-[10px] font-bold uppercase mb-1">Full Name:</label>
-                    <input id="player-name-input" type="text" placeholder="Employee Name" class="w-full p-2 bg-white retro-border-inset outline-none text-sm">
+                    <input id="player-name-input" type="text" placeholder="eke vdh" class="w-full p-2 bg-white retro-border-inset outline-none text-sm">
                 </div>
                 <div>
                     <label class="block text-[10px] font-bold uppercase mb-1">Email:</label>
@@ -233,7 +233,7 @@
     <div id="game-ui" class="hidden flex flex-col w-full h-full max-w-5xl bg-[#c0c0c0] retro-border overflow-hidden">
         <div class="bg-[#000080] text-white p-1 flex justify-between items-center shrink-0">
             <div class="flex items-center gap-2 px-1">
-                <span class="text-xs font-bold truncate">Outlook Express - [RE: URGENT: Breakroom Smell]</span>
+                <span id="game-header-subject" class="text-xs font-bold truncate">Outlook Express - [RE: URGENT: Breakroom Smell]</span>
                 <span id="game-quarter-display" class="text-[10px] bg-white text-blue-900 px-1 font-bold">Q3 - YEAR 1</span>
             </div>
             <div class="flex gap-1 pr-1">
@@ -306,19 +306,19 @@
                     <div class="grid grid-cols-2 gap-1.5 max-w-lg mx-auto">
                         <button onclick="performAction('ATTACK')" class="retro-button py-2 flex flex-col items-center">
                             <span class="text-[11px] font-bold">Circle Back</span>
-                            <span class="text-[8px] opacity-70 italic">Target Reply</span>
+                            <span id="attack-subtext" class="text-[8px] opacity-70 italic">Target Reply</span>
                         </button>
                         <button onclick="openAddressBook()" class="retro-button py-2 flex flex-col items-center">
                             <span class="text-[11px] font-bold">Loop Personnel</span>
-                            <span class="text-[8px] opacity-70 italic">Add Witness</span>
+                            <span id="loop-subtext" class="text-[8px] opacity-70 italic">Add Witness</span>
                         </button>
                         <button id="win-btn" onclick="performAction('PROMOTE')" class="retro-button py-2 flex flex-col items-center">
                             <span class="text-[11px] font-bold">Self-Promote</span>
-                            <span class="text-[8px] opacity-70 italic">Log a Win</span>
+                            <span id="promote-subtext" class="text-[8px] opacity-70 italic">Log a Win</span>
                         </button>
                         <button id="reply-all-btn" onclick="performAction('ULT')" class="retro-button py-2 flex flex-col items-center disabled:opacity-50" disabled>
                             <span class="text-[11px] font-bold text-red-800">REPLY ALL</span>
-                            <span class="text-[8px] opacity-70 italic">Mass Takedown</span>
+                            <span id="ult-subtext" class="text-[8px] opacity-70 italic">Mass Takedown</span>
                         </button>
                     </div>
                 </div>
@@ -357,7 +357,10 @@
             { id: 'mktg', name: "Becky", title: "Comms Officer", rarity: 'uncommon', department: 'Communications', bonus: "+5 attack potency.", eff: { dmg: 5 }, usedBy: null },
             { id: 'audit', name: "Mr. Henderson", title: "Senior Auditor", rarity: 'uncommon', department: 'Finance', bonus: "30% DMG Reduction.", eff: { def: 0.30 }, usedBy: null },
             { id: 'facilities', name: "Mike", title: "Facilities Lead", rarity: 'common', department: 'Facilities and Administration', bonus: "10% DMG Reduction & +3 Credibility/turn", eff: { def: 0.10, heal: 3 }, usedBy: null },
-            { id: 'liaison', name: "Constituent Liaison", title: "Public Relations", rarity: 'rare', department: 'Constituent Services', bonus: "No combat bonus, but +4 REP if in loop at end of match.", eff: { endRep: 4 }, usedBy: null }
+            { id: 'liaison', name: "Constituent Liaison", title: "Public Relations", rarity: 'rare', department: 'Constituent Services', bonus: "No combat bonus, but +4 REP if in loop at end of match.", eff: { endRep: 4 }, usedBy: null },
+            { id: 'policy_cc', name: "Gemma", title: "Policy Analyst", rarity: 'uncommon', department: 'Policy', bonus: "15% DMG Reduction.", eff: { def: 0.15 }, usedBy: null },
+            { id: 'finance_cc', name: "Marcus", title: "Budget Controller", rarity: 'uncommon', department: 'Finance', bonus: "+5 HP and +5 Credibility/turn.", eff: { hpBonus: 5, heal: 5 }, usedBy: null },
+            { id: 'const_cc', name: "Elena", title: "Public Liaison", rarity: 'rare', department: 'Constituent Services', bonus: "+5 DMG and +1 REP if in loop at end of match.", eff: { dmg: 5, endRep: 1 }, usedBy: null }
         ];
 
         const TITLES = [
@@ -377,7 +380,10 @@
             { id: 'regards', name: "Kind Regards,", bonus: "Reduce all incoming damage by 5%.", rarity: 'common', def: 0.05 },
             { id: 'per_my_last', name: "Per my last email,", bonus: "Increase reply strength by 10%.", rarity: 'uncommon', dmgMult: 0.1 },
             { id: 'best', name: "Best,", bonus: "Heal 2 HP every turn.", rarity: 'uncommon', heal: 2 },
-            { id: 'thanks_advance', name: "Thanks in advance,", bonus: "25% chance to double leverage gain.", rarity: 'rare', doubleLevChance: 0.25 }
+            { id: 'thanks_advance', name: "Thanks in advance,", bonus: "25% chance to double leverage gain.", rarity: 'rare', doubleLevChance: 0.25 },
+            { id: 'encrypted', name: "Sent from my encrypted workstation", bonus: "5% DMG Reduction.", rarity: 'common', def: 0.05 },
+            { id: 'disclaimer', name: "Standard Disclaimer Applied", bonus: "Increase reply strength by 5%.", rarity: 'common', dmgMult: 0.05 },
+            { id: 'breakroom', name: "Sent from the breakroom", bonus: "+2 Credibility/turn.", rarity: 'uncommon', heal: 2 }
         ];
 
         const SALUTATIONS = [
@@ -385,7 +391,10 @@
             { id: 'team', name: "Team,", bonus: "+2 DMG", rarity: 'common', dmgBonus: 2 },
             { id: 'colleagues', name: "Dear Colleagues,", bonus: "+5% DMG Reduction", rarity: 'uncommon', def: 0.05 },
             { id: 'everyone', name: "Everyone,", bonus: "+10% Leverage gain", rarity: 'uncommon', levMult: 0.1 },
-            { id: 'formal', name: "To whom it may concern,", bonus: "+5 DMG", rarity: 'rare', dmgBonus: 5 }
+            { id: 'formal', name: "To whom it may concern,", bonus: "+5 DMG", rarity: 'rare', dmgBonus: 5 },
+            { id: 'morning', name: "Good morning,", bonus: "+5 Max HP", rarity: 'common', hpBonus: 5 },
+            { id: 'project_team', name: "To the Project Team,", bonus: "+2 DMG", rarity: 'common', dmgBonus: 2 },
+            { id: 'greetings', name: "Greetings all,", bonus: "5% DMG Reduction", rarity: 'uncommon', def: 0.05 }
         ];
 
         const SIGNOFFS = [
@@ -393,7 +402,10 @@
             { id: 'cheers', name: "Cheers,", bonus: "+2 HP/turn", rarity: 'common', heal: 2 },
             { id: 'sincerely', name: "Sincerely,", bonus: "+10% DMG Reduction", rarity: 'uncommon', def: 0.1 },
             { id: 'best_regards', name: "Best Regards,", bonus: "+5 DMG", rarity: 'uncommon', dmgBonus: 5 },
-            { id: 'v_respectfully', name: "Very Respectfully,", bonus: "+20% Leverage gain", rarity: 'rare', levMult: 0.2 }
+            { id: 'v_respectfully', name: "Very Respectfully,", bonus: "+20% Leverage gain", rarity: 'rare', levMult: 0.2 },
+            { id: 'warmly', name: "Warmly,", bonus: "+5 Max HP", rarity: 'common', hpBonus: 5 },
+            { id: 'solidarity', name: "In solidarity,", bonus: "+2 Credibility/turn", rarity: 'common', heal: 2 },
+            { id: 'best_wishes', name: "Best wishes,", bonus: "10% Leverage gain", rarity: 'uncommon', levMult: 0.1 }
         ];
 
         const BCC_CONTACTS = [
@@ -458,7 +470,7 @@
                 intro: (playerName) => `Dear Staff,<br><br>Due to unforeseen budget constraints, we are implementing immediate paper rationing. <strong>${playerName}</strong>, your department's printing logs are particularly high. <strong>Legal</strong>, please ensure we are still meeting filing requirements. <strong>IT</strong>, please expedite the 'Paperless Initiative'.<br><br>Effective immediately, all non-essential printing is strictly prohibited.`,
                 opponents: [
                     {
-                        id: 3, name: "Legal Analyst", email: "legal.compliance@gov.org", hp: 60, maxHp: 60, wins: 3, buffs: [], department: 'Legal Compliance',
+                        id: 3, name: "Megan (Legal)", email: "m.compliance@gov.org", hp: 60, maxHp: 60, wins: 3, buffs: [], department: 'Legal Compliance',
                         addressBook: ['legal'],
                         defeatMessage: "I cannot continue this conversation without a physical copy of the minutes. Unsubscribing until the rationing is lifted.",
                         attacks: [
@@ -472,7 +484,7 @@
                         color: 'text-red-700'
                     },
                     {
-                        id: 4, name: "IT Lead", email: "it.support@gov.org", hp: 50, maxHp: 50, wins: 3, buffs: [], department: 'Information Technology',
+                        id: 4, name: "Colin (IT)", email: "c.it@gov.org", hp: 50, maxHp: 50, wins: 3, buffs: [], department: 'Information Technology',
                         addressBook: ['it'],
                         defeatMessage: "Server load from this thread is too high. I'm muting this. Try rebooting your attitude.",
                         attacks: [
@@ -484,6 +496,18 @@
                             "I've limited your mailbox size to 50MB until the paper crisis is resolved. Choose your replies wisely."
                         ],
                         color: 'text-indigo-700'
+                    },
+                    {
+                        id: 44, name: "Jamie (IT)", email: "j.it@gov.org", hp: 50, maxHp: 50, wins: 3, buffs: [], department: 'Information Technology',
+                        addressBook: ['it'],
+                        defeatMessage: "Too many emails, too little bandwidth. I'm dropping off the thread.",
+                        attacks: [
+                            "I'm locking the printer queue until we get a budget increase.",
+                            "Your 'urgent' print requests are being redirected to the /dev/null of my inbox.",
+                            "If it's not a PDF, it doesn't exist to me anymore.",
+                            "I've automated my response to this thread. Goodbye."
+                        ],
+                        color: 'text-indigo-600'
                     }
                 ]
             },
@@ -509,10 +533,10 @@
                         color: 'text-blue-900 font-bold'
                     },
                     {
-                        id: 6, name: "Payroll Officer", email: "payroll@gov.org", hp: 70, maxHp: 70, wins: 2, buffs: [], department: 'Finance',
+                        id: 6, name: "Sheila (Payroll)", email: "s.payroll@gov.org", hp: 70, maxHp: 70, wins: 2, buffs: [], department: 'Finance',
                         addressBook: ['audit'],
                         salutation: { name: "Dear All," },
-                        signOff: { name: "Best, Payroll" },
+                        signOff: { name: "Best, Sheila" },
                         defeatMessage: "I'm freezing all stipend payments until this thread is resolved. I'm out.",
                         attacks: [
                             "Your overtime request for 'email management' has been denied. Stick to the mission.",
@@ -523,7 +547,7 @@
                         color: 'text-green-700'
                     },
                     {
-                        id: 7, name: "Junior Manager", email: "j.mgr@gov.org", hp: 90, maxHp: 90, wins: 4, buffs: [], department: 'Executive Council Office',
+                        id: 7, name: "Jordan (Exec)", email: "j.exec@gov.org", hp: 90, maxHp: 90, wins: 4, buffs: [], department: 'Executive Council Office',
                         addressBook: ['ceo'],
                         signOff: { name: "Sent from my Executive Suite" },
                         defeatMessage: "I'm escalating this to the Director. I don't have time for intern drama.",
@@ -536,7 +560,7 @@
                         color: 'text-orange-700'
                     },
                     {
-                        id: 8, name: "Compliance Lead", email: "compliance@gov.org", hp: 75, maxHp: 75, wins: 3, buffs: [], department: 'Legal Compliance',
+                        id: 8, name: "Desmond (Legal)", email: "d.compliance@gov.org", hp: 75, maxHp: 75, wins: 3, buffs: [], department: 'Legal Compliance',
                         addressBook: ['legal'],
                         salutation: { name: "Regarding the recent incident," },
                         defeatMessage: "Non-compliance detected. I am withdrawing to file a formal grievance.",
@@ -556,8 +580,8 @@
 
         let state = {
             player: {
-                name: "Clerk",
-                email: "e@gov.org",
+                name: "eke vdh",
+                email: "eke.vdh@gov.org",
                 hp: 50,
                 maxHp: 50,
                 ult: 0,
@@ -600,7 +624,7 @@
         const nameInput = document.getElementById('player-name-input');
         const emailPreview = document.getElementById('email-preview');
         nameInput.addEventListener('input', (e) => {
-            const val = e.target.value.trim() || "Associate";
+            const val = e.target.value.trim() || "eke vdh";
             const email = val.toLowerCase().replace(/\s+/g, '.') + "@gov.org";
             emailPreview.innerText = email;
             state.player.email = email;
@@ -617,7 +641,7 @@
         }
 
         function startGame() {
-            state.player.name = nameInput.value.trim() || "Associate";
+            state.player.name = nameInput.value.trim() || "eke vdh";
             const email = state.player.name.toLowerCase().replace(/\s+/g, '.') + "@gov.org";
             state.player.email = email;
             document.getElementById('status-bar-email').innerText = "Online";
@@ -758,6 +782,7 @@
             state.targetId = opponents[0].id;
 
             document.getElementById('message-log').innerHTML = "";
+            document.getElementById('game-header-subject').innerText = `Outlook Express - [${mission.subject}]`;
             updateUI();
 
             addEmailToLog(mission.from, "everyone@gov.org", mission.subject,
@@ -796,7 +821,7 @@
             generateShopItems();
             setTimeout(() => {
                 transitionTo('summary-screen');
-                const removedPct = (state.removedTotal - opponents.filter(o => o.hp > 0).length) / state.removedTotal;
+                const removedPct = state.removedByPlayer / state.removedTotal;
                 const repEarned = 4 + Math.floor(6 * removedPct);
 
                 // Signature bonus
@@ -927,6 +952,8 @@
 
             // Salutations
             const salList = document.getElementById('shop-salutations'); salList.innerHTML = "";
+            const currentSal = state.player.salutation ? `<div class="text-[10px] bg-blue-50 p-1 mb-2 border border-blue-200"><strong>Current:</strong> ${state.player.salutation.name} (${state.player.salutation.bonus})</div>` : "";
+            salList.innerHTML = currentSal;
             state.shop.salutations.forEach(s => {
                 const cost = s.rarity === 'rare' ? 10 : (s.rarity === 'uncommon' ? 6 : 3);
                 salList.appendChild(createShopCard(s.name, s.bonus, cost, () => {
@@ -938,6 +965,8 @@
 
             // Sign-offs
             const offList = document.getElementById('shop-signoffs'); offList.innerHTML = "";
+            const currentOff = state.player.signOff ? `<div class="text-[10px] bg-blue-50 p-1 mb-2 border border-blue-200"><strong>Current:</strong> ${state.player.signOff.name} (${state.player.signOff.bonus})</div>` : "";
+            offList.innerHTML = currentOff;
             state.shop.signoffs.forEach(s => {
                 const cost = s.rarity === 'rare' ? 10 : (s.rarity === 'uncommon' ? 6 : 3);
                 offList.appendChild(createShopCard(s.name, s.bonus, cost, () => {
@@ -970,7 +999,9 @@
         }
 
         function handleOpponentDefeat(o, byPlayer = false) {
+            if (o.isDefeated) return;
             o.hp = 0;
+            o.isDefeated = true;
             if (byPlayer) state.removedByPlayer++;
             addEmailToLog(o.name, "everyone@gov.org", "Unsubscribing", o.defeatMessage, "italic text-gray-600 bg-gray-50 border-l-4 border-gray-400");
             if (state.targetId === o.id) {
@@ -998,6 +1029,12 @@
             if (hpPct < 30) document.getElementById('player-hp-fill').className = "h-full bg-red-600";
             else if (hpPct < 60) document.getElementById('player-hp-fill').className = "h-full bg-yellow-500";
             else document.getElementById('player-hp-fill').className = "h-full bg-green-500";
+
+            const dmg = getUnitTotalDmg(p);
+            document.getElementById('attack-subtext').innerText = `-${Math.floor(dmg)} Cred to Target`;
+            document.getElementById('promote-subtext').innerText = `+20 Cred, -1 Win`;
+            document.getElementById('ult-subtext').innerText = `-20 Cred to All`;
+            document.getElementById('loop-subtext').innerText = `Summon Buff`;
 
             document.getElementById('reply-all-btn').disabled = p.ult < 100;
             document.getElementById('win-btn').disabled = p.wins <= 0;
@@ -1087,14 +1124,16 @@
                 p.wins--; p.hp = Math.min(totalMaxHp, p.hp + 20);
                 addEmailToLog(p.name, "everyone@gov.org", "FYI: Project Milestone Met", `Just logging a new win—the quarterly audit came back clean under my supervision. Always happy to add value to the organization!`, "bg-green-50 border-l-4 border-green-600");
             } else if (type === 'ULT') {
-                opponents.forEach(o => { if(o.hp > 0) o.hp -= 20; });
+                opponents.forEach(o => {
+                    if(o.hp > 0) {
+                        o.hp -= 20;
+                        if (o.hp <= 0) handleOpponentDefeat(o, true);
+                    }
+                });
                 p.ult = 0;
                 addEmailToLog(p.name, "everyone@gov.org", "Fwd: Salary_Discrepancies_2024.xlsx", `Not sure if I should be sending this to everyone, but since transparency is one of our 'core values', here is the full salary spreadsheet for the department. Enjoy.`, "bg-yellow-50 font-bold border-l-4 border-yellow-500");
             }
 
-            if (target && target.hp <= 0) {
-                handleOpponentDefeat(target);
-            }
             updateUI();
             setTimeout(ffaRound, 800);
         }
@@ -1116,8 +1155,8 @@
 
                     let pool = [...alive.filter(o => o.id !== a.id), { id: 'player', name: state.player.name, email: state.player.email, department: state.player.department }];
 
-                    // Targeting logic: weigh opponents by department
-                    let weights = pool.map(t => (t.department === a.department) ? 0.2 : 1.0);
+                    // Targeting logic: weigh opponents by department (colleagues never attack each other)
+                    let weights = pool.map(t => (t.department === a.department) ? 0 : 1.0);
                     let totalWeight = weights.reduce((acc, w) => acc + w, 0);
                     let random = Math.random() * totalWeight;
                     let target = pool[0];
