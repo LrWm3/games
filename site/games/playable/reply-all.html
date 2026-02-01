@@ -145,6 +145,16 @@
                         <h3 class="text-xs font-bold uppercase border-b border-[#808080] pb-1">Update Email Signature</h3>
                         <div id="shop-signatures" class="space-y-2"></div>
                     </div>
+                    <!-- Salutations -->
+                    <div class="space-y-2">
+                        <h3 class="text-xs font-bold uppercase border-b border-[#808080] pb-1">Select Salutation</h3>
+                        <div id="shop-salutations" class="space-y-2"></div>
+                    </div>
+                    <!-- Sign-offs -->
+                    <div class="space-y-2">
+                        <h3 class="text-xs font-bold uppercase border-b border-[#808080] pb-1">Select Sign-off</h3>
+                        <div id="shop-signoffs" class="space-y-2"></div>
+                    </div>
                     <!-- Self Promotion -->
                     <div class="space-y-2">
                         <h3 class="text-xs font-bold uppercase border-b border-[#808080] pb-1">Self-Promotion (Stats)</h3>
@@ -370,6 +380,22 @@
             { id: 'thanks_advance', name: "Thanks in advance,", bonus: "25% chance to double leverage gain.", rarity: 'rare', doubleLevChance: 0.25 }
         ];
 
+        const SALUTATIONS = [
+            { id: 'hi_all', name: "Hi all,", bonus: "+5 Max HP", rarity: 'common', hpBonus: 5 },
+            { id: 'team', name: "Team,", bonus: "+2 DMG", rarity: 'common', dmgBonus: 2 },
+            { id: 'colleagues', name: "Dear Colleagues,", bonus: "+5% DMG Reduction", rarity: 'uncommon', def: 0.05 },
+            { id: 'everyone', name: "Everyone,", bonus: "+10% Leverage gain", rarity: 'uncommon', levMult: 0.1 },
+            { id: 'formal', name: "To whom it may concern,", bonus: "+5 DMG", rarity: 'rare', dmgBonus: 5 }
+        ];
+
+        const SIGNOFFS = [
+            { id: 'thanks', name: "Thanks,", bonus: "+5 Max HP", rarity: 'common', hpBonus: 5 },
+            { id: 'cheers', name: "Cheers,", bonus: "+2 HP/turn", rarity: 'common', heal: 2 },
+            { id: 'sincerely', name: "Sincerely,", bonus: "+10% DMG Reduction", rarity: 'uncommon', def: 0.1 },
+            { id: 'best_regards', name: "Best Regards,", bonus: "+5 DMG", rarity: 'uncommon', dmgBonus: 5 },
+            { id: 'v_respectfully', name: "Very Respectfully,", bonus: "+20% Leverage gain", rarity: 'rare', levMult: 0.2 }
+        ];
+
         const BCC_CONTACTS = [
             { id: 'recall', name: "Recall Message", bonus: "Instantly stun current target for 1 turn.", rarity: 'common', effect: 'stun' },
             { id: 'urgent', name: "Urgent Flag", bonus: "Next attack deals 2x damage.", rarity: 'uncommon', effect: 'doubleDmg' },
@@ -460,21 +486,69 @@
                         color: 'text-indigo-700'
                     }
                 ]
-            }
-        ];
-
-        const BASE_OPPONENTS = [
+            },
             {
-                id: 5, name: "HR Interns", email: "hr.interns@gov.org", hp: 100, maxHp: 100, wins: 5, buffs: [], department: 'Human Resources',
-                addressBook: ['intern'],
-                defeatMessage: "The intern pool has been drained. We are collectiveley resigning to pursue opportunities in a less toxic environment. Goodbye.",
-                attacks: [
-                    "We've been CC'd on the entire thread and we're documenting everything for our final internship reports.",
-                    "Our collective research suggests that microwaving salmon is the #1 cause of decreased morale in open-plan offices.",
-                    "We're interns, but there are ten of us. That's a lot of eyes on your lack of professional etiquette.",
-                    "We've been instructed to flag any 'non-synergetic' behavior. This thread is 100% flaggable."
-                ],
-                color: 'text-blue-900 font-bold'
+                id: 'intern_grievance',
+                subject: "RE: Intern Grievance Collective",
+                from: "HR.Interns",
+                intro: (playerName) => `To the Permanent Staff,<br><br>We, the interns, have noticed a significant lack of 'Team Synergy' and 'Professional Courtesy'. <strong>${playerName}</strong>, your recent emails have been cited as 'aggressive'. <strong>Management</strong>, we are looping in our mentors. <strong>Payroll</strong>, we expect our stipends to reflect the emotional labor of this thread.`,
+                opponents: [
+                    {
+                        id: 5, name: "HR Interns", email: "hr.interns@gov.org", hp: 80, maxHp: 80, wins: 5, buffs: [], department: 'Human Resources',
+                        addressBook: ['intern'],
+                        salutation: { name: "To the Permanent Staff," },
+                        signOff: { name: "The Intern Collective" },
+                        signatures: [{ name: "Unpaid & Unappreciated" }],
+                        defeatMessage: "The intern pool has been drained. We are collectively resigning to pursue opportunities in a less toxic environment.",
+                        attacks: [
+                            "We've been CC'd on the entire thread and we're documenting everything for our final reports.",
+                            "Our collective research suggests that fish-microwaving is the #1 cause of decreased morale.",
+                            "We've been instructed to flag any 'non-synergetic' behavior. This thread is 100% flaggable.",
+                            "As the future of this department, we demand a higher standard of digital decorum."
+                        ],
+                        color: 'text-blue-900 font-bold'
+                    },
+                    {
+                        id: 6, name: "Payroll Officer", email: "payroll@gov.org", hp: 70, maxHp: 70, wins: 2, buffs: [], department: 'Finance',
+                        addressBook: ['audit'],
+                        salutation: { name: "Dear All," },
+                        signOff: { name: "Best, Payroll" },
+                        defeatMessage: "I'm freezing all stipend payments until this thread is resolved. I'm out.",
+                        attacks: [
+                            "Your overtime request for 'email management' has been denied. Stick to the mission.",
+                            "I'm reviewing the cost-benefit analysis of your participation in this thread. It's not looking good.",
+                            "Every 'Reply All' costs the department approximately $4.12 in lost productivity. You've cost us a fortune today.",
+                            "Please refer to the payroll schedule before complaining about your 'emotional labor'."
+                        ],
+                        color: 'text-green-700'
+                    },
+                    {
+                        id: 7, name: "Junior Manager", email: "j.mgr@gov.org", hp: 90, maxHp: 90, wins: 4, buffs: [], department: 'Executive Council Office',
+                        addressBook: ['ceo'],
+                        signOff: { name: "Sent from my Executive Suite" },
+                        defeatMessage: "I'm escalating this to the Director. I don't have time for intern drama.",
+                        attacks: [
+                            "I need a status report on the 'Synergy Initiative' by EOD. This thread is a distraction.",
+                            "We need to 'lean in' to a more positive communication style. Your tone is very 'lean out'.",
+                            "I'm scheduling a sync-up to discuss your 'alignment' with departmental goals.",
+                            "Let's take this offline. And by offline, I mean I'm deleting your replies."
+                        ],
+                        color: 'text-orange-700'
+                    },
+                    {
+                        id: 8, name: "Compliance Lead", email: "compliance@gov.org", hp: 75, maxHp: 75, wins: 3, buffs: [], department: 'Legal Compliance',
+                        addressBook: ['legal'],
+                        salutation: { name: "Regarding the recent incident," },
+                        defeatMessage: "Non-compliance detected. I am withdrawing to file a formal grievance.",
+                        attacks: [
+                            "Your latest reply violates the 'Civility in Digital Spaces' directive. Consider this a warning.",
+                            "I'm auditing this thread for potential FOIA requests. Mind your words.",
+                            "Regulatory standards require a 24-hour cooling-off period after a 'Reply All' incident. You ignored it.",
+                            "I've flagged this thread for the Ethics Committee. Good luck with the hearing."
+                        ],
+                        color: 'text-red-900'
+                    }
+                ]
             }
         ];
 
@@ -495,6 +569,8 @@
                 title: TITLES[0],
                 addressBook: ['intern'],
                 signatures: [],
+                salutation: null,
+                signOff: null,
                 bccContacts: [],
                 department: 'Executive Council Office',
                 bonusDmg: 0,
@@ -510,7 +586,15 @@
             currentMissionIndex: 0,
             targetId: 1, turn: 0, isProcessing: false, gameOver: false,
             removedByPlayer: 0,
-            removedTotal: 0
+            removedTotal: 0,
+            shop: {
+                seminars: [],
+                signatures: [],
+                salutations: [],
+                signoffs: [],
+                promotions: [],
+                bccs: []
+            }
         };
 
         const nameInput = document.getElementById('player-name-input');
@@ -566,26 +650,100 @@
             document.getElementById('inbox-status').innerText = `${324 + (state.player.year * 4)} Messages, 1 Unread`;
         }
 
+        function getUnitMaxHp(u) {
+            if (u.id === 'player') {
+                let max = 50 + u.title.hpBonus + u.bonusMaxHp;
+                if (u.salutation && u.salutation.hpBonus) max += u.salutation.hpBonus;
+                if (u.signOff && u.signOff.hpBonus) max += u.signOff.hpBonus;
+                return max;
+            }
+            let max = u.maxHp;
+            if (u.salutation && u.salutation.hpBonus) max += u.salutation.hpBonus;
+            if (u.signOff && u.signOff.hpBonus) max += u.signOff.hpBonus;
+            return max;
+        }
+
+        function getUnitTotalHeal(u) {
+            let heal = 0;
+            u.buffs.forEach(b => { if(b.eff.heal) heal += b.eff.heal; });
+            if (u.signatures) u.signatures.forEach(s => { if(s.heal) heal += s.heal; });
+            if (u.salutation && u.salutation.heal) heal += u.salutation.heal;
+            if (u.signOff && u.signOff.heal) heal += u.signOff.heal;
+            return heal;
+        }
+
+        function getUnitTotalDmg(u) {
+            let d = 10;
+            if (u.id === 'player') {
+                d += u.title.dmgBonus + u.bonusDmg;
+            }
+            if (u.salutation && u.salutation.dmgBonus) d += u.salutation.dmgBonus;
+            if (u.signOff && u.signOff.dmgBonus) d += u.signOff.dmgBonus;
+            u.buffs.forEach(b => { if(b.eff.dmg) d += b.eff.dmg; });
+
+            let mult = 1;
+            if (u.signatures) u.signatures.forEach(s => { if(s.dmgMult) mult += s.dmgMult; });
+            if (u.salutation && u.salutation.dmgMult) mult += u.salutation.dmgMult;
+            if (u.signOff && u.signOff.dmgMult) mult += u.signOff.dmgMult;
+            return d * mult;
+        }
+
+        function getUnitTotalDef(u) {
+            let def = 0;
+            u.buffs.forEach(b => { if(b.eff.def) def += b.eff.def; });
+            if (u.signatures) u.signatures.forEach(s => { if(s.def) def += s.def; });
+            if (u.salutation && u.salutation.def) def += u.salutation.def;
+            if (u.signOff && u.signOff.def) def += u.signOff.def;
+            return def;
+        }
+
+        function getPlayerLeverageGain(base) {
+            const p = state.player;
+            let mult = 1;
+            if (p.buffs.find(b => b.eff.lev)) mult *= 2;
+            p.signatures.forEach(s => { if(s.levMult) mult += s.levMult; });
+            if (p.salutation && p.salutation.levMult) mult += p.salutation.levMult;
+            if (p.signOff && p.signOff.levMult) mult += p.signOff.levMult;
+
+            let gain = base * mult;
+            p.signatures.forEach(s => { if(s.doubleLevChance && Math.random() < s.doubleLevChance) gain *= 2; });
+            return gain;
+        }
+
+        function formatMessageBody(sender, content) {
+            let body = "";
+            if (sender.salutation) {
+                body += `<strong>${sender.salutation.name}</strong><br><br>`;
+            }
+            body += content;
+            if (sender.signOff) {
+                body += `<br><br><strong>${sender.signOff.name}</strong><br>${sender.name}`;
+            } else {
+                body += `<br><br>${sender.name}`;
+            }
+            if (sender.signatures && sender.signatures.length > 0) {
+                sender.signatures.forEach(sig => {
+                    body += `<div class="text-[10px] text-gray-500 border-t border-gray-200 mt-2 pt-1">-- ${sig.name}</div>`;
+                });
+            }
+            return body;
+        }
+
         function startQuarter() {
             transitionTo('game-ui');
             state.gameOver = false;
             state.turn = 0;
             state.isProcessing = false;
             const p = state.player;
-            p.hp = 50 + p.title.hpBonus + p.bonusMaxHp;
+            p.hp = getUnitMaxHp(p);
             p.ult = 0;
             p.wins = 3 + p.bonusWins;
+            if (p.salutation && p.salutation.bonusWins) p.wins += p.salutation.bonusWins;
+            if (p.signOff && p.signOff.bonusWins) p.wins += p.signOff.bonusWins;
             p.buffs = []; // Reset combat buffs
 
-            // Re-apply address book buffs
-            p.addressBook.forEach(id => {
-                const c = CONTACTS.find(con => con.id === id);
-                if (c) {
-                    const buff = JSON.parse(JSON.stringify(c));
-                    buff.usedBy = p.name;
-                    p.buffs.push(buff);
-                }
-            });
+            // Reset global CONTACTS.usedBy
+            CONTACTS.forEach(c => c.usedBy = null);
 
             const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
             opponents = mission.opponents.map(o => {
@@ -606,8 +764,36 @@
                 mission.intro(p.name), "border-l-4 border-blue-500 bg-blue-50");
         }
 
+        function generateShopItems() {
+            // Seminars
+            const availCCs = CONTACTS.filter(c => !state.player.addressBook.includes(c.id));
+            state.shop.seminars = shuffle([...availCCs]).slice(0, 2).map(c => ({...c, purchased: false}));
+
+            // Signatures
+            state.shop.signatures = shuffle([...SIGNATURES]).slice(0, 2).map(s => ({...s, purchased: false}));
+
+            // Salutations
+            state.shop.salutations = shuffle([...SALUTATIONS]).slice(0, 2).map(s => ({...s, purchased: false}));
+
+            // Sign-offs
+            state.shop.signoffs = shuffle([...SIGNOFFS]).slice(0, 2).map(s => ({...s, purchased: false}));
+
+            // Promotions (Stats)
+            const promoOptions = [
+                { id: 'dmg', name: "Project Excellence", bonus: "+5 DMG", cost: 8, apply: () => { state.player.bonusDmg += 5; } },
+                { id: 'hp', name: "Resilience Training", bonus: "+20 Max HP", cost: 8, apply: () => { state.player.bonusMaxHp += 20; } },
+                { id: 'win', name: "Public Speaking", bonus: "+1 New Win/Round", cost: 10, apply: () => { state.player.bonusWins += 1; } },
+                { id: 'heal', name: "Executive Coaching", bonus: "Fully Restore HP", cost: 5, apply: () => { state.player.hp = getUnitMaxHp(state.player); } }
+            ];
+            state.shop.promotions = shuffle([...promoOptions]).slice(0, 2).map(p => ({...p, purchased: false}));
+
+            // BCCs
+            state.shop.bccs = shuffle([...BCC_CONTACTS]).slice(0, 2).map(b => ({...b, purchased: false}));
+        }
+
         function endQuarter() {
             state.isProcessing = true;
+            generateShopItems();
             setTimeout(() => {
                 transitionTo('summary-screen');
                 const removedPct = (state.removedTotal - opponents.filter(o => o.hp > 0).length) / state.removedTotal;
@@ -684,44 +870,50 @@
             return array;
         }
 
-        function createShopCard(name, desc, cost, onBuy) {
+        function createShopCard(name, desc, cost, onBuy, purchased = false) {
             const div = document.createElement('div');
             div.className = "p-2 bg-white retro-border flex flex-col gap-1";
             const canAfford = state.player.reputation >= cost;
             div.innerHTML = `
-                <div class="flex justify-between font-bold text-[11px]"><span>${name}</span><span class="text-blue-700 font-mono">${cost} REP</span></div>
+                <div class="flex justify-between font-bold text-[11px]">
+                    <span>${name}</span>
+                    <span class="text-blue-700 font-mono">${purchased ? 'ACQUIRED' : cost + ' REP'}</span>
+                </div>
                 <div class="text-[10px] italic text-gray-600 leading-tight">${desc}</div>
-                <button class="mt-1 retro-button text-[10px] font-bold py-1 ${!canAfford ? 'opacity-50' : ''}" ${!canAfford ? 'disabled' : ''}>ACQUIRE</button>
+                <button class="mt-1 retro-button text-[10px] font-bold py-1 ${(!canAfford || purchased) ? 'opacity-50' : ''}" ${(!canAfford || purchased) ? 'disabled' : ''}>
+                    ${purchased ? 'BOUGHT' : 'ACQUIRE'}
+                </button>
             `;
-            div.querySelector('button').onclick = () => { onBuy(); updateShopUI(); };
+            if (!purchased) div.querySelector('button').onclick = () => { onBuy(); updateShopUI(); };
             return div;
         }
 
         function updateShopUI() {
             document.getElementById('shop-reputation-display').innerText = `REP: ${state.player.reputation}`;
 
-            // CCs
+            // Seminars
             const semList = document.getElementById('shop-seminars'); semList.innerHTML = "";
-            const availCCs = CONTACTS.filter(c => !state.player.addressBook.includes(c.id));
-            shuffle([...availCCs]).slice(0, 2).forEach(c => {
+            state.shop.seminars.forEach(c => {
                 const cost = c.rarity === 'rare' ? 12 : (c.rarity === 'uncommon' ? 7 : 4);
                 semList.appendChild(createShopCard(c.name, c.bonus, cost, () => {
                     if (state.player.addressBook.length >= state.player.title.addressLimit) {
-                        // Must remove one
-                        const toRemoveId = state.player.addressBook[0]; // Simple logic: remove first
+                        const toRemoveId = state.player.addressBook[0];
                         const toRemove = CONTACTS.find(con => con.id === toRemoveId);
                         state.player.addressBook = state.player.addressBook.filter(id => id !== toRemoveId);
-                        state.player.reputation += 2; // Get some rep back
+                        state.player.reputation += 2;
                         alert(`Address book full. ${toRemove ? toRemove.name : toRemoveId} removed. +2 REP refunded.`);
                     }
                     state.player.reputation -= cost;
                     state.player.addressBook.push(c.id);
-                }));
+                    c.purchased = true;
+                }, c.purchased));
             });
 
             // Signatures
             const sigList = document.getElementById('shop-signatures'); sigList.innerHTML = "";
-            shuffle([...SIGNATURES]).slice(0, 2).forEach(s => {
+            const sigHeader = sigList.previousElementSibling;
+            sigHeader.innerText = `Update Email Signature (${state.player.signatures.length}/${state.player.title.sigLimit})`;
+            state.shop.signatures.forEach(s => {
                 const cost = s.rarity === 'rare' ? 10 : (s.rarity === 'uncommon' ? 6 : 3);
                 sigList.appendChild(createShopCard(s.name, s.bonus, cost, () => {
                     if (state.player.signatures.length >= state.player.title.sigLimit) {
@@ -729,32 +921,51 @@
                     }
                     state.player.reputation -= cost;
                     state.player.signatures.push(s);
-                }));
+                    s.purchased = true;
+                }, s.purchased));
+            });
+
+            // Salutations
+            const salList = document.getElementById('shop-salutations'); salList.innerHTML = "";
+            state.shop.salutations.forEach(s => {
+                const cost = s.rarity === 'rare' ? 10 : (s.rarity === 'uncommon' ? 6 : 3);
+                salList.appendChild(createShopCard(s.name, s.bonus, cost, () => {
+                    state.player.reputation -= cost;
+                    state.player.salutation = s;
+                    s.purchased = true;
+                }, s.purchased));
+            });
+
+            // Sign-offs
+            const offList = document.getElementById('shop-signoffs'); offList.innerHTML = "";
+            state.shop.signoffs.forEach(s => {
+                const cost = s.rarity === 'rare' ? 10 : (s.rarity === 'uncommon' ? 6 : 3);
+                offList.appendChild(createShopCard(s.name, s.bonus, cost, () => {
+                    state.player.reputation -= cost;
+                    state.player.signOff = s;
+                    s.purchased = true;
+                }, s.purchased));
             });
 
             // Promotions (Stats)
             const promList = document.getElementById('shop-promotions'); promList.innerHTML = "";
-            const promoOptions = [
-                { name: "Project Excellence", bonus: "+5 DMG", cost: 8, apply: () => { state.player.bonusDmg += 5; } },
-                { name: "Resilience Training", bonus: "+20 Max HP", cost: 8, apply: () => { state.player.bonusMaxHp += 20; } },
-                { name: "Public Speaking", bonus: "+1 New Win/Round", cost: 10, apply: () => { state.player.bonusWins += 1; } },
-                { name: "Executive Coaching", bonus: "Fully Restore HP", cost: 5, apply: () => { state.player.hp = state.player.maxHp + state.player.title.hpBonus + state.player.bonusMaxHp; } }
-            ];
-            shuffle([...promoOptions]).slice(0, 2).forEach(p => {
+            state.shop.promotions.forEach(p => {
                 promList.appendChild(createShopCard(p.name, p.bonus, p.cost, () => {
                     state.player.reputation -= p.cost;
                     p.apply();
-                }));
+                    p.purchased = true;
+                }, p.purchased));
             });
 
             // BCCs
             const bccList = document.getElementById('shop-bccs'); bccList.innerHTML = "";
-            BCC_CONTACTS.forEach(b => {
+            state.shop.bccs.forEach(b => {
                 const cost = b.rarity === 'rare' ? 5 : (b.rarity === 'uncommon' ? 3 : 2);
                 bccList.appendChild(createShopCard(b.name, b.bonus, cost, () => {
                     state.player.reputation -= cost;
                     state.player.bccContacts.push(b);
-                }));
+                    b.purchased = true;
+                }, b.purchased));
             });
         }
 
@@ -808,8 +1019,13 @@
             });
 
             const ccDisplay = document.getElementById('cc-display');
-            const activeCCs = CONTACTS.filter(c => c.usedBy);
-            ccDisplay.innerHTML = activeCCs.length ? activeCCs.map(c => `<span class="bg-blue-800 text-white px-1 text-[9px] rounded-sm">${c.name} (by ${c.usedBy})</span>`).join(' ') : "No one in loop.";
+            const activeBuffs = [
+                ...state.player.buffs,
+                ...opponents.flatMap(o => o.buffs || [])
+            ];
+            ccDisplay.innerHTML = activeBuffs.length
+                ? activeBuffs.map(b => `<span class="bg-blue-800 text-white px-1 text-[9px] rounded-sm">${b.name} (by ${b.usedBy})</span>`).join(' ')
+                : "No one in loop.";
             
             const h = 9 + Math.floor(state.turn / 4); const m = (state.turn % 4) * 15;
             document.getElementById('turn-clock').innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')} AM`;
@@ -846,17 +1062,13 @@
             state.turn++;
             const target = opponents.find(o => o.id === state.targetId);
             const p = state.player;
-            const totalMaxHp = p.maxHp + p.title.hpBonus + p.bonusMaxHp;
+            const totalMaxHp = getUnitMaxHp(p);
 
-            // Heal from buffs
-            p.buffs.forEach(b => { if(b.eff.heal) p.hp = Math.min(totalMaxHp, p.hp + b.eff.heal); });
-            // Heal from signatures
-            p.signatures.forEach(sig => { if(sig.heal) p.hp = Math.min(totalMaxHp, p.hp + sig.heal); });
+            // Heal from all sources
+            p.hp = Math.min(totalMaxHp, p.hp + getUnitTotalHeal(p));
 
             if (type === 'ATTACK') {
-                let d = 10 + p.title.dmgBonus + p.bonusDmg;
-                p.buffs.forEach(b => { if(b.eff.dmg) d += b.eff.dmg; });
-                p.signatures.forEach(sig => { if(sig.dmgMult) d *= (1 + sig.dmgMult); });
+                let d = getUnitTotalDmg(p);
 
                 if (p.nextAttackMult) {
                     d *= p.nextAttackMult;
@@ -864,12 +1076,12 @@
                 }
 
                 target.hp -= d;
-                let levGain = 20 * (p.buffs.find(b => b.eff.lev) ? 2 : 1);
-                p.signatures.forEach(sig => { if(sig.doubleLevChance && Math.random() < sig.doubleLevChance) levGain *= 2; });
+                let levGain = getPlayerLeverageGain(20);
                 p.ult += levGain;
 
                 const q = p.attacks[Math.floor(Math.random() * p.attacks.length)];
-                addEmailToLog(p.name, target.name, "Circle Back", `${q}<br><br>Best regards,<br>${p.name}`, "border-l-4 border-blue-600");
+                const body = formatMessageBody(p, q);
+                addEmailToLog(p.name, target.name, "Circle Back", body, "border-l-4 border-blue-600");
                 if (target.hp <= 0) handleOpponentDefeat(target, true);
             } else if (type === 'PROMOTE') {
                 p.wins--; p.hp = Math.min(totalMaxHp, p.hp + 20);
@@ -925,7 +1137,7 @@
 
                     let roll = Math.random();
 
-                    a.buffs.forEach(b => { if(b.eff.heal) a.hp = Math.min(a.maxHp, a.hp + b.eff.heal); });
+                    a.hp = Math.min(getUnitMaxHp(a), a.hp + getUnitTotalHeal(a));
 
                     const availFromBook = a.addressBook.filter(id => !a.buffs.some(b => b.id === id));
                     if (roll < 0.15 && availFromBook.length > 0) {
@@ -938,28 +1150,30 @@
                             addEmailToLog(a.name, "everyone@gov.org", "Looping in Support", `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`, "bg-blue-50");
                         }
                     } else if (roll < 0.3 && a.hp < 20 && a.wins > 0) {
-                        a.wins--; a.hp = Math.min(a.maxHp, a.hp + 15);
-                        addEmailToLog(a.name, "everyone@gov.org", "Self Promotion", `I'm logging a significant departmental achievement. This incident shouldn't distract from real wins.`, "opacity-70");
+                        a.wins--; a.hp = Math.min(getUnitMaxHp(a), a.hp + 15);
+                        addEmailToLog(a.name, "everyone@gov.org", "Self Promotion", formatMessageBody(a, `I'm logging a significant departmental achievement. This incident shouldn't distract from real wins.`), "opacity-70");
                     } else {
-                        let d = 10;
-                        a.buffs.forEach(b => { if(b.eff.dmg) d += b.eff.dmg; });
+                        let d = getUnitTotalDmg(a);
                         
                         // Select attack type
                         const q = a.attacks[Math.floor(Math.random() * a.attacks.length)];
+                        const body = formatMessageBody(a, q);
                         
                         if (target.id === 'player') {
                             if (state.player.buffs.find(b => b.eff.dodge && Math.random() < b.eff.dodge)) {
-                                addEmailToLog(a.name, state.player.name, "Urgent Follow-up", `"${q}"<br><br>(Thread ignored by <strong>Mittens</strong>. No standing lost.)`, "text-blue-600");
+                                addEmailToLog(a.name, state.player.name, "Urgent Follow-up", body + `<br><br>(Thread ignored by <strong>Mittens</strong>. No standing lost.)`, "text-blue-600");
                             } else {
-                                let def = 0; state.player.buffs.forEach(b => { if(b.eff.def) def += b.eff.def; });
+                                let def = getUnitTotalDef(state.player);
                                 d = Math.floor(d * (1 - def)); state.player.hp -= d;
-                                addEmailToLog(a.name, state.player.name, "Escalation", `"${q}"<br><br><strong>Damage to Credibility: -${d}</strong>`, "bg-red-50 border-l-2 border-red-400");
+                                addEmailToLog(a.name, state.player.name, "Escalation", body + `<br><br><strong>Damage to Credibility: -${d}</strong>`, "bg-red-50 border-l-2 border-red-400");
                                 document.getElementById('game-ui').classList.add('shaking');
                                 setTimeout(() => document.getElementById('game-ui').classList.remove('shaking'), 200);
                             }
                         } else {
+                            let targetDef = getUnitTotalDef(target);
+                            d = Math.floor(d * (1 - targetDef));
                             target.hp -= d; 
-                            addEmailToLog(a.name, target.name, "Internal Memo", `"${q}"<br><br>(Targeting ${target.name}. Standing lost: ${d})`, "text-gray-500 text-[11px]");
+                            addEmailToLog(a.name, target.name, "Internal Memo", body + `<br><br>(Targeting ${target.name}. Standing lost: ${d})`, "text-gray-500 text-[11px]");
                             if (target.hp <= 0) handleOpponentDefeat(target);
                         }
                     }
