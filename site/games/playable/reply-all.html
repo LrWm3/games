@@ -45,6 +45,155 @@
 </head>
 <body class="flex items-center justify-center p-0 md:p-2">
 
+    <!-- INBOX SCREEN -->
+    <div id="inbox-screen" class="hidden fixed inset-0 z-[90] flex items-center justify-center bg-[#008080] p-4">
+        <div class="bg-[#c0c0c0] retro-border max-w-2xl w-full h-[80dvh] flex flex-col shadow-2xl">
+            <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs">
+                <span>Outlook Express - Inbox</span>
+                <div class="flex gap-1">
+                    <button class="w-4 h-4 bg-[#c0c0c0] text-black text-[10px] flex items-center justify-center">_</button>
+                    <button class="w-4 h-4 bg-[#c0c0c0] text-black text-[10px] flex items-center justify-center">X</button>
+                </div>
+            </div>
+            <div class="bg-[#dfdfdf] border-b border-[#808080] p-1 flex gap-2 text-[10px]">
+                <button class="px-2 py-0.5 retro-border bg-[#c0c0c0]">File</button>
+                <button class="px-2 py-0.5 retro-border bg-[#c0c0c0]">Edit</button>
+                <button class="px-2 py-0.5 retro-border bg-[#c0c0c0]">View</button>
+                <button class="px-2 py-0.5 retro-border bg-[#c0c0c0]">Tools</button>
+                <button class="px-2 py-0.5 retro-border bg-[#c0c0c0]">Message</button>
+                <button class="px-2 py-0.5 retro-border bg-[#c0c0c0]">Help</button>
+            </div>
+            <div class="flex-grow flex overflow-hidden">
+                <div class="w-32 bg-[#dfdfdf] border-r border-[#808080] p-2 text-[10px] hidden sm:block">
+                    <div class="font-bold mb-2">Folders</div>
+                    <div class="pl-2 space-y-1">
+                        <div class="bg-blue-800 text-white px-1">Inbox</div>
+                        <div>Outbox</div>
+                        <div>Sent Items</div>
+                        <div>Deleted Items</div>
+                        <div>Spam</div>
+                    </div>
+                </div>
+                <div class="flex-grow flex flex-col bg-white overflow-hidden">
+                    <div class="bg-[#f0f0f0] border-b border-[#808080] grid grid-cols-12 text-[9px] font-bold p-1">
+                        <div class="col-span-1">!</div>
+                        <div class="col-span-5">From</div>
+                        <div class="col-span-6">Subject</div>
+                    </div>
+                    <div id="inbox-list" class="flex-grow overflow-y-auto overflow-x-hidden text-[11px] divide-y divide-gray-100">
+                        <!-- Emails will be injected here -->
+                    </div>
+                </div>
+            </div>
+            <div class="bg-[#dfdfdf] border-t border-[#808080] p-1 text-[10px] flex justify-between">
+                <div id="inbox-status">324 Messages, 1 Unread</div>
+                <div class="flex gap-4">
+                    <span>Working Online</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUMMARY SCREEN (Performance Metrics) -->
+    <div id="summary-screen" class="hidden fixed inset-0 z-[120] bg-black/60 flex items-center justify-center p-4">
+        <div class="bg-[#c0c0c0] retro-border max-w-xs w-full shadow-2xl overflow-hidden">
+            <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+                <span>ARCHIVED THREAD</span>
+                <span>✕</span>
+            </div>
+            <div class="p-4 flex flex-col items-center">
+                <div class="w-16 h-16 bg-yellow-400 retro-border flex items-center justify-center mb-4">
+                    <svg class="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h.01a1 1 0 100-2H10zm3 0a1 1 0 000 2h.01a1 1 0 100-2H13zM7 13a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h.01a1 1 0 100-2H10zm3 0a1 1 0 000 2h.01a1 1 0 100-2H13z" clip-rule="evenodd"></path></svg>
+                </div>
+                <h2 class="text-xl font-bold terminal-font mb-2">PERFORMANCE METRICS</h2>
+                <div class="w-full bg-white retro-border-inset p-3 space-y-2 text-xs mb-4">
+                    <div class="flex justify-between">
+                        <span>Participants Removed:</span>
+                        <span id="summary-removed-count" class="font-mono">0/0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Success Rate:</span>
+                        <span id="summary-success-rate" class="font-mono">0%</span>
+                    </div>
+                    <div class="border-t border-gray-300 pt-2 flex justify-between font-bold text-[#000080]">
+                        <span>REPUTATION EARNED:</span>
+                        <span id="summary-rep-earned" class="font-mono text-lg">+0</span>
+                    </div>
+                </div>
+                <button onclick="showShop()" class="w-full py-2 retro-button font-bold text-sm">GO TO PORTAL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SHOP SCREEN (HR Self-Service Portal) -->
+    <div id="shop-screen" class="hidden fixed inset-0 z-[130] bg-[#008080] p-4 flex flex-col items-center overflow-y-auto">
+        <div class="bg-[#c0c0c0] retro-border w-full max-w-4xl shadow-2xl flex flex-col min-h-0">
+            <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold shrink-0">
+                <span>INTRA-NET: EMPLOYEE BENEFITS & GROWTH</span>
+                <span id="shop-reputation-display" class="bg-yellow-400 text-black px-2 rounded-sm ml-auto mr-4">REP: 0</span>
+                <button onclick="advanceToNextQuarter()" class="retro-button text-black text-[10px] py-0 px-2 h-4">NEXT QUARTER &gt;</button>
+            </div>
+            <div class="bg-[#f0f0f0] p-4 flex-grow overflow-y-auto">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Seminars (CCs) -->
+                    <div class="space-y-2">
+                        <h3 class="text-xs font-bold uppercase border-b border-[#808080] pb-1">Enroll in Seminar (Address Book)</h3>
+                        <div id="shop-seminars" class="space-y-2"></div>
+                    </div>
+                    <!-- Signatures -->
+                    <div class="space-y-2">
+                        <h3 class="text-xs font-bold uppercase border-b border-[#808080] pb-1">Update Email Signature</h3>
+                        <div id="shop-signatures" class="space-y-2"></div>
+                    </div>
+                    <!-- Self Promotion -->
+                    <div class="space-y-2">
+                        <h3 class="text-xs font-bold uppercase border-b border-[#808080] pb-1">Self-Promotion (Stats)</h3>
+                        <div id="shop-promotions" class="space-y-2"></div>
+                    </div>
+                    <!-- Help Desk (BCCs) -->
+                    <div class="space-y-2">
+                        <h3 class="text-xs font-bold uppercase border-b border-[#808080] pb-1">Help Desk Contacts (BCCs)</h3>
+                        <div id="shop-bccs" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-[#dfdfdf] border-t border-[#808080] p-2 text-[10px] text-center italic text-gray-600 shrink-0">
+                Corporate policy: All purchases are final and non-refundable.
+            </div>
+        </div>
+    </div>
+
+    <!-- PROMOTION SCREEN -->
+    <div id="promotion-screen" class="hidden fixed inset-0 z-[140] bg-white flex items-center justify-center p-8 overflow-y-auto">
+        <div class="max-w-xl w-full border-8 border-double border-gray-300 p-8 flex flex-col items-center bg-[#fffcf0] shadow-xl relative">
+            <div class="absolute top-4 right-4 text-xs font-mono text-gray-400">INTERNAL MEMO #882-B</div>
+            <div class="text-3xl font-serif font-bold text-[#000080] mb-2">OFFICE OF THE DIRECTOR</div>
+            <div class="w-full border-b-2 border-[#000080] mb-8"></div>
+
+            <h1 class="text-4xl font-serif font-bold text-center mb-8 uppercase tracking-widest">Notice of Promotion</h1>
+
+            <p class="mb-4 text-lg leading-relaxed first-letter:text-5xl first-letter:font-bold first-letter:float-left first-letter:mr-2">
+                After a thorough review of your performance metrics during the previous fiscal quarters, the Board of Directors has approved your advancement within the organization.
+            </p>
+
+            <div class="my-8 text-center p-6 border-2 border-dashed border-[#000080] bg-blue-50 w-full">
+                <div class="text-sm font-bold uppercase text-gray-500 mb-1">New Assignment:</div>
+                <div id="promotion-new-title" class="text-3xl font-bold text-[#000080] mb-4">SENIOR OPERATIONS ANALYST</div>
+
+                <div class="text-xs font-bold uppercase text-gray-500 mb-2">Acquired Executive Perks:</div>
+                <div id="promotion-perks" class="text-sm italic text-gray-700">+1 Signature Slot, +5 Base Damage</div>
+            </div>
+
+            <p class="mb-12 text-center text-gray-600 italic">"Efficiency is its own reward."</p>
+
+            <button onclick="startQuarter()" class="px-12 py-4 bg-[#000080] text-white font-bold hover:bg-blue-700 transition-colors shadow-lg">RE-LOG TO INTRANET</button>
+
+            <div class="mt-8 opacity-20 grayscale">
+                <img src="https://api.placeholder.com/100/100" class="w-20 h-20" alt="Corporate Seal">
+            </div>
+        </div>
+    </div>
+
     <!-- START SCREEN -->
     <div id="start-screen" class="fixed inset-0 z-[100] flex items-center justify-center bg-[#008080] p-4">
         <div class="bg-[#c0c0c0] p-4 retro-border max-w-sm w-full shadow-2xl">
@@ -75,6 +224,7 @@
         <div class="bg-[#000080] text-white p-1 flex justify-between items-center shrink-0">
             <div class="flex items-center gap-2 px-1">
                 <span class="text-xs font-bold truncate">Outlook Express - [RE: URGENT: Breakroom Smell]</span>
+                <span id="game-quarter-display" class="text-[10px] bg-white text-blue-900 px-1 font-bold">Q3 - YEAR 1</span>
             </div>
             <div class="flex gap-1 pr-1">
                 <button class="w-4 h-4 bg-[#c0c0c0] border border-white text-black text-[10px] flex items-center justify-center">_</button>
@@ -189,19 +339,46 @@
     <script>
         // --- DATA ---
         const CONTACTS = [
-            { id: 'intern', name: "Kevin", title: "Intern", bonus: "+8 attack potency.", eff: { dmg: 8 }, usedBy: null },
-            { id: 'it', name: "Pradeep", title: "IT Specialist", bonus: "+5 credibility/turn.", eff: { heal: 5 }, usedBy: null },
-            { id: 'legal', name: "Sarah", title: "Legal Counsel", bonus: "20% DMG Reduction.", eff: { def: 0.20 }, usedBy: null },
-            { id: 'ceo', name: "Arthur", title: "Deputy Director", bonus: "2x Leverage gain.", eff: { lev: 2 }, usedBy: null },
-            { id: 'cat', name: "Mittens", title: "Office Cat", bonus: "35% Distraction chance.", eff: { dodge: 0.35 }, usedBy: null },
-            { id: 'mktg', name: "Becky", title: "Social Media Manager", bonus: "+12 attack potency.", eff: { dmg: 12 }, usedBy: null },
-            { id: 'audit', name: "Mr. Henderson", title: "Senior Auditor", bonus: "30% DMG Reduction.", eff: { def: 0.30 }, usedBy: null },
-            { id: 'facilities', name: "Mike", title: "Facilities Lead", bonus: "10% DMG Reduction & +3 Credibility/turn", eff: { def: 0.10, heal: 3 }, usedBy: null }
+            { id: 'intern', name: "Kevin", title: "Intern", rarity: 'common', department: 'HR', bonus: "+8 attack potency.", eff: { dmg: 8 }, usedBy: null },
+            { id: 'it', name: "Pradeep", title: "IT Specialist", rarity: 'common', department: 'IT', bonus: "+5 credibility/turn.", eff: { heal: 5 }, usedBy: null },
+            { id: 'legal', name: "Sarah", title: "Legal Counsel", rarity: 'uncommon', department: 'Legal', bonus: "20% DMG Reduction.", eff: { def: 0.20 }, usedBy: null },
+            { id: 'ceo', name: "Arthur", title: "Deputy Director", rarity: 'rare', department: 'Executive', bonus: "2x Leverage gain.", eff: { lev: 2 }, usedBy: null },
+            { id: 'cat', name: "Mittens", title: "Office Cat", rarity: 'rare', department: 'None', bonus: "35% Distraction chance.", eff: { dodge: 0.35 }, usedBy: null },
+            { id: 'mktg', name: "Becky", title: "Social Media Manager", rarity: 'uncommon', department: 'Marketing', bonus: "+12 attack potency.", eff: { dmg: 12 }, usedBy: null },
+            { id: 'audit', name: "Mr. Henderson", title: "Senior Auditor", rarity: 'uncommon', department: 'Finance', bonus: "30% DMG Reduction.", eff: { def: 0.30 }, usedBy: null },
+            { id: 'facilities', name: "Mike", title: "Facilities Lead", rarity: 'common', department: 'Facilities', bonus: "10% DMG Reduction & +3 Credibility/turn", eff: { def: 0.10, heal: 3 }, usedBy: null }
         ];
 
-        let opponents = [
+        const TITLES = [
+            { name: "Cubicle Intern", level: 1, addressLimit: 5, sigLimit: 1, hpBonus: 0, dmgBonus: 0 },
+            { name: "Junior Associate", level: 2, addressLimit: 5, sigLimit: 1, hpBonus: 10, dmgBonus: 2 },
+            { name: "Senior Associate", level: 3, addressLimit: 6, sigLimit: 1, hpBonus: 20, dmgBonus: 5 },
+            { name: "Team Lead", level: 4, addressLimit: 6, sigLimit: 2, hpBonus: 30, dmgBonus: 8 },
+            { name: "Middle Manager", level: 5, addressLimit: 7, sigLimit: 2, hpBonus: 40, dmgBonus: 12 },
+            { name: "Department Head", level: 6, addressLimit: 7, sigLimit: 2, hpBonus: 50, dmgBonus: 15 },
+            { name: "Junior Executive", level: 7, addressLimit: 8, sigLimit: 3, hpBonus: 60, dmgBonus: 20 },
+            { name: "Senior VP", level: 8, addressLimit: 8, sigLimit: 3, hpBonus: 80, dmgBonus: 25 },
+            { name: "Board Member", level: 9, addressLimit: 10, sigLimit: 3, hpBonus: 100, dmgBonus: 30 }
+        ];
+
+        const SIGNATURES = [
+            { id: 'iphone', name: "Sent from my iPhone", bonus: "Gain 1 rep for each person who removes themselves that you did not instigate.", rarity: 'common', repBonus: 1 },
+            { id: 'regards', name: "Kind Regards,", bonus: "Reduce all incoming damage by 5%.", rarity: 'common', def: 0.05 },
+            { id: 'per_my_last', name: "Per my last email,", bonus: "Increase reply strength by 10%.", rarity: 'uncommon', dmgMult: 0.1 },
+            { id: 'best', name: "Best,", bonus: "Heal 2 HP every turn.", rarity: 'uncommon', heal: 2 },
+            { id: 'thanks_advance', name: "Thanks in advance,", bonus: "25% chance to double leverage gain.", rarity: 'rare', doubleLevChance: 0.25 }
+        ];
+
+        const BCC_CONTACTS = [
+            { id: 'recall', name: "Recall Message", bonus: "Instantly stun current target for 1 turn.", rarity: 'common', effect: 'stun' },
+            { id: 'urgent', name: "Urgent Flag", bonus: "Next attack deals 2x damage.", rarity: 'uncommon', effect: 'doubleDmg' },
+            { id: 'redirect', name: "Redirect Message", bonus: "Current target attacks another random opponent next turn.", rarity: 'rare', effect: 'redirect' }
+        ];
+
+        const BASE_OPPONENTS = [
             { 
-                id: 1, name: "Karen (HR)", email: "k.smith@org.gov", hp: 100, maxHp: 100, wins: 3, buffs: [], 
+                id: 1, name: "Karen (HR)", email: "k.smith@org.gov", hp: 100, maxHp: 100, wins: 3, buffs: [], department: 'HR',
+                addressBook: ['intern'],
                 defeatMessage: "I am unsubscribing from this thread. It is clear that professional decorum has completely broken down. I will be following up with each of you individually in a more controlled environment. Regards.",
                 attacks: [
                     "Your recent breakroom habits suggest a lack of respect for shared company assets and peer comfort.",
@@ -220,7 +397,8 @@
                 color: 'text-purple-700' 
             },
             { 
-                id: 2, name: "Greg (Fin)", email: "g.bucks@org.gov", hp: 80, maxHp: 80, wins: 3, buffs: [], 
+                id: 2, name: "Greg (Fin)", email: "g.bucks@org.gov", hp: 80, maxHp: 80, wins: 3, buffs: [], department: 'Finance',
+                addressBook: ['audit'],
                 defeatMessage: "I'm removing myself from this loop. The ROI on this conversation has dropped below zero, and I have actual budgets to balance. Please do not re-add me.",
                 attacks: [
                     "The internal audit on appliance wear-and-tear points directly to your department's cubicle block.",
@@ -239,7 +417,8 @@
                 color: 'text-emerald-700' 
             },
             { 
-                id: 3, name: "Chad (Sales)", email: "c.crush@org.gov", hp: 70, maxHp: 70, wins: 3, buffs: [], 
+                id: 3, name: "Chad (Sales)", email: "c.crush@org.gov", hp: 70, maxHp: 70, wins: 3, buffs: [], department: 'Sales',
+                addressBook: ['mktg'],
                 defeatMessage: "Muting this. I've got a pipeline to fill and this thread is just noise. If you need me, I'll be hitting my targets while you guys keep 'circling back' to nothing. I'm out.",
                 attacks: [
                     "I know you're the 'fish person' here. Just own it so we can move on to things that actually matter.",
@@ -256,8 +435,22 @@
                     "You're all playing checkers. I'm playing 4D chess with people who don't microwave salmon."
                 ],
                 color: 'text-orange-700' 
+            },
+            {
+                id: 4, name: "HR Interns", email: "hr.interns@gov.org", hp: 150, maxHp: 150, wins: 5, buffs: [], department: 'HR',
+                addressBook: ['intern'],
+                defeatMessage: "The intern pool has been drained. We are collectiveley resigning to pursue opportunities in a less toxic environment. Goodbye.",
+                attacks: [
+                    "We've been CC'd on the entire thread and we're documenting everything for our final internship reports.",
+                    "Our collective research suggests that microwaving salmon is the #1 cause of decreased morale in open-plan offices.",
+                    "We're interns, but there are ten of us. That's a lot of eyes on your lack of professional etiquette.",
+                    "We've been instructed to flag any 'non-synergetic' behavior. This thread is 100% flaggable."
+                ],
+                color: 'text-blue-900 font-bold'
             }
         ];
+
+        let opponents = [];
 
         let state = {
             player: {
@@ -268,6 +461,17 @@
                 ult: 0,
                 wins: 3,
                 buffs: [],
+                reputation: 0,
+                year: 1,
+                quarter: "Q3",
+                title: TITLES[0],
+                addressBook: ['intern'],
+                signatures: [],
+                bccContacts: [],
+                department: 'Executive',
+                bonusDmg: 0,
+                bonusMaxHp: 0,
+                bonusWins: 0,
                 attacks: [
                     "I believe we need to circle back to your recent comments. My focus is on department output, and I suggest yours should be too.",
                     "I've already addressed this in my previous email, but for the sake of clarity, I'll repeat it: I was at my desk all day.",
@@ -275,7 +479,9 @@
                     "I'm happy to discuss this in a 1-on-1, but I don't believe this is a productive use of the 'All-Staff' distribution list."
                 ]
             },
-            targetId: 1, turn: 0, isProcessing: false, gameOver: false
+            targetId: 1, turn: 0, isProcessing: false, gameOver: false,
+            removedByPlayer: 0,
+            removedTotal: 0
         };
 
         const nameInput = document.getElementById('player-name-input');
@@ -287,35 +493,257 @@
             state.player.email = email;
         });
 
+        function transitionTo(screenId) {
+            const screens = ['start-screen', 'game-ui', 'inbox-screen', 'summary-screen', 'shop-screen', 'promotion-screen'];
+            screens.forEach(s => {
+                const el = document.getElementById(s);
+                if (el) el.classList.add('hidden');
+            });
+            const target = document.getElementById(screenId);
+            if (target) target.classList.remove('hidden');
+        }
+
         function startGame() {
             state.player.name = nameInput.value.trim() || "Associate";
-            document.getElementById('start-screen').classList.add('hidden');
-            document.getElementById('game-ui').classList.remove('hidden');
-            document.getElementById('status-bar-name').innerText = state.player.name;
-            document.getElementById('status-bar-email').innerText = "Logged In";
+            const email = state.player.name.toLowerCase().replace(/\s+/g, '.') + "@org.gov";
+            state.player.email = email;
+            document.getElementById('status-bar-email').innerText = "Online";
+            showInbox();
+        }
 
+        function showInbox() {
+            transitionTo('inbox-screen');
+            const list = document.getElementById('inbox-list');
+            list.innerHTML = "";
+
+            // The battle email (At the top)
+            const urgent = document.createElement('div');
+            urgent.className = "grid grid-cols-12 p-2 border-b border-gray-100 bg-blue-50 cursor-pointer hover:bg-blue-200 font-bold border-l-4 border-l-blue-600";
+            urgent.onclick = startQuarter;
+            urgent.innerHTML = `<div class="col-span-1 text-red-600">!</div><div class="col-span-4 text-blue-800">HR.Director</div><div class="col-span-7">URGENT: ${state.player.quarter} Breakroom Incident</div>`;
+            list.appendChild(urgent);
+
+            // Spam emails
+            const spamSubjects = ["Hot Stocks!", "Refinance Now", "Enlarge your career", "Inheritance Notification", "Meeting?"];
+            for (let i = 0; i < 8; i++) {
+                const spam = document.createElement('div');
+                spam.className = "grid grid-cols-12 p-2 border-b border-gray-100 bg-gray-50 text-gray-400 opacity-60";
+                spam.innerHTML = `<div class="col-span-1"></div><div class="col-span-4 truncate">bot-${Math.random().toString(36).substr(2,5)}@junk.co</div><div class="col-span-7 truncate">${spamSubjects[i % spamSubjects.length]}</div>`;
+                list.appendChild(spam);
+            }
+
+            document.getElementById('inbox-status').innerText = `${324 + (state.player.year * 4)} Messages, 1 Unread`;
+        }
+
+        function startQuarter() {
+            transitionTo('game-ui');
+            state.gameOver = false;
+            state.turn = 0;
+            state.isProcessing = false;
+            state.player.hp = state.player.maxHp + state.player.title.hpBonus + state.player.bonusMaxHp;
+            state.player.ult = 0;
+            state.player.wins = 3 + state.player.bonusWins;
+            state.player.buffs = []; // Reset combat buffs
+
+            // Re-apply address book buffs
+            state.player.addressBook.forEach(id => {
+                const c = CONTACTS.find(con => con.id === id);
+                if (c) {
+                    const buff = JSON.parse(JSON.stringify(c));
+                    buff.usedBy = state.player.name;
+                    state.player.buffs.push(buff);
+                }
+            });
+
+            // Re-apply signature buffs (though signatures might have different logic, let's keep it simple for now)
+
+            opponents = BASE_OPPONENTS.map(o => {
+                const clone = JSON.parse(JSON.stringify(o));
+                clone.hp = clone.maxHp;
+                clone.buffs = []; // Opponents start with empty buffs, must loop them in
+                return clone;
+            });
+
+            state.removedTotal = opponents.length;
+            state.removedByPlayer = 0;
+            state.targetId = opponents[0].id;
+
+            document.getElementById('message-log').innerHTML = "";
             updateUI();
+
             addEmailToLog("Karen (HR)", "everyone@org.gov", "URGENT: Breakroom Incident", 
                 `Hi team,<br><br>I am absolutely disgusted. Someone heated up fish in the breakroom microwave. <strong>${state.player.name}</strong>, I'm sure you noticed the stench. <strong>Greg</strong>, I saw you walking that way with a Tupperware. <strong>Chad</strong>, I know you need your 'macros', but this is unacceptable.<br><br>Please advise immediately on who is responsible for this policy violation.`, "border-l-4 border-purple-500 bg-purple-50");
         }
 
-        function handleOpponentDefeat(o) {
+        function endQuarter() {
+            state.isProcessing = true;
+            setTimeout(() => {
+                transitionTo('summary-screen');
+                const removedPct = (state.removedTotal - opponents.filter(o => o.hp > 0).length) / state.removedTotal;
+                const repEarned = 4 + Math.floor(6 * removedPct);
+
+                // Signature bonus
+                let bonusRep = 0;
+                state.player.signatures.forEach(sig => {
+                    if (sig.repBonus) {
+                        // "Gain 1 rep for each person who removes themselves that you did not instigate"
+                        // For simplicity, let's say (Total Removed - RemovedByPlayer)
+                        bonusRep += (state.removedTotal - opponents.filter(o => o.hp > 0).length - state.removedByPlayer) * sig.repBonus;
+                    }
+                });
+
+                const totalRep = repEarned + bonusRep;
+                state.player.reputation += totalRep;
+
+                document.getElementById('summary-removed-count').innerText = `${state.removedTotal - opponents.filter(o => o.hp > 0).length}/${state.removedTotal}`;
+                document.getElementById('summary-success-rate').innerText = `${Math.round(removedPct * 100)}%`;
+                document.getElementById('summary-rep-earned').innerText = `+${totalRep}`;
+            }, 1500);
+        }
+
+        function showShop() {
+            transitionTo('shop-screen');
+            updateShopUI();
+        }
+
+        function advanceToNextQuarter() {
+            const quarters = ["Q3", "Q4", "Q1", "Q2"];
+            let idx = quarters.indexOf(state.player.quarter);
+            idx = (idx + 1) % quarters.length;
+            state.player.quarter = quarters[idx];
+
+            if (state.player.quarter === "Q3") {
+                state.player.year++;
+            }
+
+            if (state.player.quarter === "Q2") {
+                showPromotion();
+            } else {
+                showInbox();
+            }
+        }
+
+        function showPromotion() {
+            transitionTo('promotion-screen');
+            // Advance titles more aggressively to reach Boardroom by end of Year 3
+            // 0: Intern, 4: Middle Manager, 8: Board Member
+            let titleIdx = 0;
+            if (state.player.year === 1) titleIdx = 4; // Promoted to Mid-Mgmt after Year 1
+            else if (state.player.year === 2) titleIdx = 8; // Promoted to Boardroom after Year 2
+            else titleIdx = 8;
+
+            const nextTitle = TITLES[titleIdx] || TITLES[TITLES.length - 1];
+            state.player.title = nextTitle;
+
+            document.getElementById('promotion-new-title').innerText = nextTitle.name;
+            document.getElementById('promotion-perks').innerText = `+${nextTitle.hpBonus} HP, +${nextTitle.dmgBonus} DMG, Limit: ${nextTitle.sigLimit} Sig, ${nextTitle.addressLimit} CCs`;
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function createShopCard(name, desc, cost, onBuy) {
+            const div = document.createElement('div');
+            div.className = "p-2 bg-white retro-border flex flex-col gap-1";
+            const canAfford = state.player.reputation >= cost;
+            div.innerHTML = `
+                <div class="flex justify-between font-bold text-[11px]"><span>${name}</span><span class="text-blue-700 font-mono">${cost} REP</span></div>
+                <div class="text-[10px] italic text-gray-600 leading-tight">${desc}</div>
+                <button class="mt-1 retro-button text-[10px] font-bold py-1 ${!canAfford ? 'opacity-50' : ''}" ${!canAfford ? 'disabled' : ''}>ACQUIRE</button>
+            `;
+            div.querySelector('button').onclick = () => { onBuy(); updateShopUI(); };
+            return div;
+        }
+
+        function updateShopUI() {
+            document.getElementById('shop-reputation-display').innerText = `REP: ${state.player.reputation}`;
+
+            // CCs
+            const semList = document.getElementById('shop-seminars'); semList.innerHTML = "";
+            const availCCs = CONTACTS.filter(c => !state.player.addressBook.includes(c.id));
+            shuffle([...availCCs]).slice(0, 2).forEach(c => {
+                const cost = c.rarity === 'rare' ? 12 : (c.rarity === 'uncommon' ? 7 : 4);
+                semList.appendChild(createShopCard(c.name, c.bonus, cost, () => {
+                    if (state.player.addressBook.length >= state.player.title.addressLimit) {
+                        // Must remove one
+                        const toRemoveId = state.player.addressBook[0]; // Simple logic: remove first
+                        const toRemove = CONTACTS.find(con => con.id === toRemoveId);
+                        state.player.addressBook = state.player.addressBook.filter(id => id !== toRemoveId);
+                        state.player.reputation += 2; // Get some rep back
+                        alert(`Address book full. ${toRemove ? toRemove.name : toRemoveId} removed. +2 REP refunded.`);
+                    }
+                    state.player.reputation -= cost;
+                    state.player.addressBook.push(c.id);
+                }));
+            });
+
+            // Signatures
+            const sigList = document.getElementById('shop-signatures'); sigList.innerHTML = "";
+            shuffle([...SIGNATURES]).slice(0, 2).forEach(s => {
+                const cost = s.rarity === 'rare' ? 10 : (s.rarity === 'uncommon' ? 6 : 3);
+                sigList.appendChild(createShopCard(s.name, s.bonus, cost, () => {
+                    if (state.player.signatures.length >= state.player.title.sigLimit) {
+                        state.player.signatures.shift();
+                    }
+                    state.player.reputation -= cost;
+                    state.player.signatures.push(s);
+                }));
+            });
+
+            // Promotions (Stats)
+            const promList = document.getElementById('shop-promotions'); promList.innerHTML = "";
+            const promoOptions = [
+                { name: "Project Excellence", bonus: "+5 DMG", cost: 8, apply: () => { state.player.bonusDmg += 5; } },
+                { name: "Resilience Training", bonus: "+20 Max HP", cost: 8, apply: () => { state.player.bonusMaxHp += 20; } },
+                { name: "Public Speaking", bonus: "+1 New Win/Round", cost: 10, apply: () => { state.player.bonusWins += 1; } },
+                { name: "Executive Coaching", bonus: "Fully Restore HP", cost: 5, apply: () => { state.player.hp = state.player.maxHp + state.player.title.hpBonus + state.player.bonusMaxHp; } }
+            ];
+            shuffle([...promoOptions]).slice(0, 2).forEach(p => {
+                promList.appendChild(createShopCard(p.name, p.bonus, p.cost, () => {
+                    state.player.reputation -= p.cost;
+                    p.apply();
+                }));
+            });
+
+            // BCCs
+            const bccList = document.getElementById('shop-bccs'); bccList.innerHTML = "";
+            BCC_CONTACTS.forEach(b => {
+                const cost = b.rarity === 'rare' ? 5 : (b.rarity === 'uncommon' ? 3 : 2);
+                bccList.appendChild(createShopCard(b.name, b.bonus, cost, () => {
+                    state.player.reputation -= cost;
+                    state.player.bccContacts.push(b);
+                }));
+            });
+        }
+
+        function handleOpponentDefeat(o, byPlayer = false) {
             o.hp = 0;
+            if (byPlayer) state.removedByPlayer++;
             addEmailToLog(o.name, "everyone@org.gov", "Unsubscribing", o.defeatMessage, "italic text-gray-600 bg-gray-50 border-l-4 border-gray-400");
             if (state.targetId === o.id) {
                 const next = opponents.find(opp => opp.hp > 0);
                 if (next) state.targetId = next.id;
+            }
+            if (opponents.every(opp => opp.hp <= 0)) {
+                state.gameOver = true;
+                endQuarter();
             }
         }
 
         function updateUI() {
             if (state.gameOver) return;
             const p = state.player;
-            const hpPct = Math.max(0, (p.hp / p.maxHp) * 100);
+            const totalMaxHp = p.maxHp + p.title.hpBonus + p.bonusMaxHp;
+            const hpPct = Math.max(0, (p.hp / totalMaxHp) * 100);
             const ultPct = Math.min(100, p.ult);
 
             document.getElementById('player-hp-fill').style.width = hpPct + "%";
-            document.getElementById('player-hp-label').innerText = `${Math.ceil(p.hp)}/100`;
+            document.getElementById('player-hp-label').innerText = `${Math.ceil(p.hp)}/${totalMaxHp}`;
             document.getElementById('player-ult-fill').style.width = ultPct + "%";
             document.getElementById('player-win-status').innerText = `New Wins: ${p.wins} Available`;
             
@@ -325,6 +753,9 @@
 
             document.getElementById('reply-all-btn').disabled = p.ult < 100;
             document.getElementById('win-btn').disabled = p.wins <= 0;
+
+            document.getElementById('game-quarter-display').innerText = `${p.quarter} - YEAR ${p.year}`;
+            document.getElementById('status-bar-name').innerText = `${p.name} (${p.title.name})`;
 
             const selector = document.getElementById('target-selector');
             selector.innerHTML = "";
@@ -378,18 +809,33 @@
             state.turn++;
             const target = opponents.find(o => o.id === state.targetId);
             const p = state.player;
+            const totalMaxHp = p.maxHp + p.title.hpBonus + p.bonusMaxHp;
 
-            p.buffs.forEach(b => { if(b.eff.heal) p.hp = Math.min(p.maxHp, p.hp + b.eff.heal); });
+            // Heal from buffs
+            p.buffs.forEach(b => { if(b.eff.heal) p.hp = Math.min(totalMaxHp, p.hp + b.eff.heal); });
+            // Heal from signatures
+            p.signatures.forEach(sig => { if(sig.heal) p.hp = Math.min(totalMaxHp, p.hp + sig.heal); });
 
             if (type === 'ATTACK') {
-                let d = 15 + Math.floor(Math.random() * 8);
+                let d = 15 + Math.floor(Math.random() * 8) + p.title.dmgBonus + p.bonusDmg;
                 p.buffs.forEach(b => { if(b.eff.dmg) d += b.eff.dmg; });
+                p.signatures.forEach(sig => { if(sig.dmgMult) d *= (1 + sig.dmgMult); });
+
+                if (p.nextAttackMult) {
+                    d *= p.nextAttackMult;
+                    p.nextAttackMult = 1; // reset back to 1
+                }
+
                 target.hp -= d;
-                p.ult += 20 * (p.buffs.find(b => b.eff.lev) ? 2 : 1);
+                let levGain = 20 * (p.buffs.find(b => b.eff.lev) ? 2 : 1);
+                p.signatures.forEach(sig => { if(sig.doubleLevChance && Math.random() < sig.doubleLevChance) levGain *= 2; });
+                p.ult += levGain;
+
                 const q = p.attacks[Math.floor(Math.random() * p.attacks.length)];
                 addEmailToLog(p.name, target.name, "Circle Back", `${q}<br><br>Best regards,<br>${p.name}`, "border-l-4 border-blue-600");
+                if (target.hp <= 0) handleOpponentDefeat(target, true);
             } else if (type === 'PROMOTE') {
-                p.wins--; p.hp = Math.min(p.maxHp, p.hp + 35);
+                p.wins--; p.hp = Math.min(totalMaxHp, p.hp + 35);
                 addEmailToLog(p.name, "everyone@org.gov", "FYI: Project Milestone Met", `Just logging a new win—the Q2 audit came back 100% clean under my supervision. Always happy to add value to the organization!`, "bg-green-50 border-l-4 border-green-600");
             } else if (type === 'ULT') {
                 opponents.forEach(o => { if(o.hp > 0) o.hp -= 35; });
@@ -406,23 +852,54 @@
 
         function ffaRound() {
             const alive = opponents.filter(o => o.hp > 0);
-            if (alive.length === 0) { state.gameOver = true; addEmailToLog("DIRECTOR", state.player.email, "PROMOTION", `You are the last professional left in the building. Report to the corner office on Monday.`, "bg-green-800 text-white p-4 text-center font-bold"); return; }
+            if (alive.length === 0) return; // Handled by handleOpponentDefeat
 
             alive.forEach((a, idx) => {
                 setTimeout(() => {
                     if (a.hp <= 0 || state.gameOver) return;
                     
-                    let pool = [...alive.filter(o => o.id !== a.id), { id: 'player', name: state.player.name, email: state.player.email }];
-                    let target = pool[Math.floor(Math.random() * pool.length)];
+                    if (a.isStunned) {
+                        a.isStunned = false;
+                        addEmailToLog(a.name, "everyone@org.gov", "RE: (Recalled Message)", `I'm sorry, I seem to have lost my train of thought. What were we discussing?`, "italic text-gray-400");
+                        if (idx === alive.length - 1) { state.isProcessing = false; updateUI(); }
+                        return;
+                    }
+
+                    let pool = [...alive.filter(o => o.id !== a.id), { id: 'player', name: state.player.name, email: state.player.email, department: state.player.department }];
+
+                    // Targeting logic: weigh opponents by department
+                    let weights = pool.map(t => (t.department === a.department) ? 0.2 : 1.0);
+                    let totalWeight = weights.reduce((acc, w) => acc + w, 0);
+                    let random = Math.random() * totalWeight;
+                    let target = pool[0];
+                    for (let i = 0; i < pool.length; i++) {
+                        random -= weights[i];
+                        if (random <= 0) { target = pool[i]; break; }
+                    }
+
+                    if (a.redirectNext) {
+                        a.redirectNext = false;
+                        const targets = alive.filter(o => o.id !== a.id);
+                        if (targets.length > 0) {
+                            target = targets[Math.floor(Math.random() * targets.length)];
+                            addEmailToLog(a.name, "everyone@org.gov", "Redirected Reply", `Wait, I meant to send this to <strong>${target.name}</strong> instead.`, "italic text-blue-400 text-[10px]");
+                        }
+                    }
+
                     let roll = Math.random();
 
                     a.buffs.forEach(b => { if(b.eff.heal) a.hp = Math.min(a.maxHp, a.hp + b.eff.heal); });
 
-                    if (roll < 0.15 && CONTACTS.some(c => !c.usedBy)) {
-                        const open = CONTACTS.filter(c => !c.usedBy);
-                        const c = open[Math.floor(Math.random() * open.length)];
-                        c.usedBy = a.name; a.buffs.push(c);
-                        addEmailToLog(a.name, "everyone@org.gov", "Looping in Support", `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`, "bg-blue-50");
+                    const availFromBook = a.addressBook.filter(id => !a.buffs.some(b => b.id === id));
+                    if (roll < 0.15 && availFromBook.length > 0) {
+                        const id = availFromBook[Math.floor(Math.random() * availFromBook.length)];
+                        const c = CONTACTS.find(con => con.id === id);
+                        if (c) {
+                            const buff = JSON.parse(JSON.stringify(c));
+                            buff.usedBy = a.name;
+                            a.buffs.push(buff);
+                            addEmailToLog(a.name, "everyone@org.gov", "Looping in Support", `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`, "bg-blue-50");
+                        }
                     } else if (roll < 0.3 && a.hp < 40 && a.wins > 0) {
                         a.wins--; a.hp = Math.min(a.maxHp, a.hp + 25);
                         addEmailToLog(a.name, "everyone@org.gov", "Self Promotion", `I don't usually brag, but my latest sales conversion just set a new record. This microwave issue shouldn't distract from real wins.`, "opacity-70");
@@ -451,25 +928,85 @@
                     }
 
                     if (state.player.hp <= 0) { state.gameOver = true; addEmailToLog("HR", state.player.email, "ACCESS REVOKED", `Due to your repeated failure to maintain professional standards, your access to this email thread—and the corporate network—has been revoked. Please see Security.`, "bg-black text-white p-4 text-center"); updateUI(); }
-                    if (idx === alive.length - 1) { state.isProcessing = false; updateUI(); }
                 }, idx * 700);
             });
+
+            setTimeout(() => {
+                if (!state.gameOver) {
+                    state.isProcessing = false;
+                    updateUI();
+                }
+            }, alive.length * 700);
         }
 
         function openAddressBook() {
             const list = document.getElementById('contact-list'); list.innerHTML = "";
-            CONTACTS.forEach(c => {
+
+            // CCs
+            const headerCC = document.createElement('div');
+            headerCC.className = "text-[10px] font-bold bg-gray-200 p-1 mb-1 uppercase";
+            headerCC.innerText = "Address Book (Permanent CCs)";
+            list.appendChild(headerCC);
+
+            state.player.addressBook.forEach(id => {
+                const c = CONTACTS.find(con => con.id === id);
+                if (!c) return;
+                const isUsed = state.player.buffs.some(b => b.id === c.id);
                 const btn = document.createElement('div');
-                btn.className = `p-2 border border-gray-300 flex flex-col ${c.usedBy ? 'opacity-40 grayscale bg-gray-100' : 'cursor-pointer hover:bg-blue-50'}`;
-                btn.innerHTML = `<div class="flex justify-between font-bold text-[#000080] text-xs"><span>${c.name} - ${c.title}</span><span class="text-[9px]">${c.usedBy ? 'IN LOOP' : 'AVAIL'}</span></div><div class="text-[10px] italic">${c.bonus}</div>`;
-                if (!c.usedBy) btn.onclick = () => { 
-                    c.usedBy = state.player.name; state.player.buffs.push(c); 
+                btn.className = `p-2 border border-gray-300 flex flex-col ${isUsed ? 'opacity-40 grayscale bg-gray-100' : 'cursor-pointer hover:bg-blue-50'}`;
+                btn.innerHTML = `<div class="flex justify-between font-bold text-[#000080] text-xs"><span>${c.name} - ${c.title}</span><span class="text-[9px]">${isUsed ? 'IN LOOP' : 'AVAIL'}</span></div><div class="text-[10px] italic">${c.bonus}</div>`;
+                if (!isUsed) btn.onclick = () => {
+                    const buff = JSON.parse(JSON.stringify(c));
+                    buff.usedBy = state.player.name;
+                    state.player.buffs.push(buff);
                     addEmailToLog(state.player.name, "everyone@org.gov", "Looping in Witness", `I'm looping in <strong>${c.name}</strong> (${c.title}) to help clarify the organizational impact of this thread.`, "bg-blue-100 font-bold border-l-4 border-blue-500");
                     closeAddressBook(); updateUI(); state.isProcessing = true; setTimeout(ffaRound, 400); 
                 };
                 list.appendChild(btn);
             });
+
+            // BCCs
+            if (state.player.bccContacts.length > 0) {
+                const headerBCC = document.createElement('div');
+                headerBCC.className = "text-[10px] font-bold bg-gray-200 p-1 mt-4 mb-1 uppercase";
+                headerBCC.innerText = "Help Desk Contacts (BCC Consumables)";
+                list.appendChild(headerBCC);
+
+                state.player.bccContacts.forEach((b, idx) => {
+                    const btn = document.createElement('div');
+                    btn.className = `p-2 border border-gray-300 flex flex-col cursor-pointer hover:bg-yellow-50`;
+                    btn.innerHTML = `<div class="flex justify-between font-bold text-yellow-800 text-xs"><span>${b.name}</span><span class="text-[9px]">BCC</span></div><div class="text-[10px] italic">${b.bonus}</div>`;
+                    btn.onclick = () => {
+                        useBcc(b, idx);
+                    };
+                    list.appendChild(btn);
+                });
+            }
+
             document.getElementById('address-book').classList.remove('hidden');
+        }
+
+        function useBcc(bcc, index) {
+            state.player.bccContacts.splice(index, 1);
+            addEmailToLog(state.player.name, "everyone@org.gov", `BCC: ${bcc.name}`, `[PRIVATE MESSAGE] Sent: ${bcc.bonus}`, "bg-yellow-100 border-l-4 border-yellow-600");
+
+            if (bcc.effect === 'stun') {
+                const target = opponents.find(o => o.id === state.targetId);
+                target.isStunned = true;
+                addEmailToLog("SYSTEM", state.player.name, "Message Recalled", `${target.name}'s next turn will be skipped.`, "italic text-gray-500 text-[10px]");
+            } else if (bcc.effect === 'doubleDmg') {
+                state.player.nextAttackMult = 2;
+                addEmailToLog("SYSTEM", state.player.name, "Urgent Flag Set", `Your next attack will deal 2x damage.`, "italic text-gray-500 text-[10px]");
+            } else if (bcc.effect === 'redirect') {
+                const target = opponents.find(o => o.id === state.targetId);
+                target.redirectNext = true;
+                addEmailToLog("SYSTEM", state.player.name, "Message Redirected", `${target.name} will target someone else next turn.`, "italic text-gray-500 text-[10px]");
+            }
+
+            closeAddressBook();
+            updateUI();
+            state.isProcessing = true;
+            setTimeout(ffaRound, 400);
         }
 
         function closeAddressBook() { document.getElementById('address-book').classList.add('hidden'); }
