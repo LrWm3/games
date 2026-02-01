@@ -356,10 +356,14 @@
             entry.className = `message-entry p-0 border-2 border-gray-100 bg-white shadow-sm ${classes}`;
             entry.innerHTML = `
                 <div class="email-header p-2">
-                    <div><strong>From:</strong> ${from}</div>
-                    <div><strong>To:</strong> ${to}</div>
-                    <div><strong>Sent:</strong> Today, ${time}</div>
-                    <div><strong>Subject:</strong> ${reCount}${subject}</div>
+                    <div class="flex flex-wrap gap-x-4">
+                        <div><strong>From:</strong> ${from}</div>
+                        <div><strong>To:</strong> ${to}</div>
+                    </div>
+                    <div class="flex flex-wrap gap-x-4">
+                        <div><strong>Sent:</strong> Today, ${time}</div>
+                        <div><strong>Subject:</strong> ${reCount}${subject}</div>
+                    </div>
                 </div>
                 <div class="email-body px-3 py-2 font-serif italic">
                     ${body}
