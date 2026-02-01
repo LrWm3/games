@@ -7,6 +7,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
+        /**
+         * FUNCTIONALITY CATALOG:
+         * 1. Turn-based FFA Loop: Logic preserved.
+         * 2. Targeting: TargetId state mapped to "To:" field.
+         * 3. Actions: ATTACK (Circle Back), SELF-PROMOTE (New Wins/Heal), ULT (Reply All), CC (Summon/Buff).
+         * 4. Address Book: Modal system for assigning permanent buffs.
+         * 5. Personality: Specific attack types (Compliance, Value, Time, Accusatory).
+         */
         :root {
             --win-grey: #c0c0c0;
             --win-blue: #000080;
@@ -29,7 +37,10 @@
         .target-pill.active { background: #000080 !important; color: white !important; border-color: #ffffff; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .message-entry { animation: slideIn 0.3s ease-out; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .email-header { background: #e8e8e8; border-bottom: 1px solid #ccc; font-family: sans-serif; font-size: 11px; color: #444; }
+        .email-body { padding: 12px 0; line-height: 1.5; color: #111; }
     </style>
 </head>
 <body class="flex items-center justify-center p-0 md:p-2">
@@ -47,10 +58,10 @@
             <div class="space-y-3 mb-6">
                 <div>
                     <label class="block text-[10px] font-bold uppercase mb-1">Full Name:</label>
-                    <input id="player-name-input" type="text" placeholder="Eke van den Hof" class="w-full p-2 bg-white retro-border-inset outline-none text-sm">
+                    <input id="player-name-input" type="text" placeholder="Employee Name" class="w-full p-2 bg-white retro-border-inset outline-none text-sm">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-bold uppercase mb-1">Corporate Email Address:</label>
+                    <label class="block text-[10px] font-bold uppercase mb-1">Email:</label>
                     <div id="email-preview" class="text-[11px] font-mono text-gray-800 bg-white/50 p-2 border border-dotted border-gray-400">...</div>
                 </div>
             </div>
@@ -63,7 +74,7 @@
     <div id="game-ui" class="hidden flex flex-col w-full h-full max-w-5xl bg-[#c0c0c0] retro-border overflow-hidden">
         <div class="bg-[#000080] text-white p-1 flex justify-between items-center shrink-0">
             <div class="flex items-center gap-2 px-1">
-                <span class="text-xs font-bold truncate">Outlook Express - [Thread: Microwave Smell]</span>
+                <span class="text-xs font-bold truncate">Outlook Express - [RE: URGENT: Breakroom Smell]</span>
             </div>
             <div class="flex gap-1 pr-1">
                 <button class="w-4 h-4 bg-[#c0c0c0] border border-white text-black text-[10px] flex items-center justify-center">_</button>
@@ -71,38 +82,47 @@
             </div>
         </div>
 
-        <!-- Toolbar -->
         <div class="flex gap-1 p-1 bg-[#c0c0c0] border-b border-[#808080] overflow-x-auto shrink-0 no-scrollbar">
-            <button class="retro-button text-[10px] font-bold">Reply All</button>
-            <button class="retro-button text-[10px]">Forward</button>
+            <button class="retro-button text-[10px] font-bold flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V10z"></path></svg>
+                Inbox
+            </button>
+            <button class="retro-button text-[10px]">Mark as Read</button>
             <div class="flex-grow"></div>
             <div id="turn-clock" class="text-[10px] bg-white px-2 py-1 retro-border-inset font-mono">09:00 AM</div>
         </div>
 
         <div class="flex flex-grow overflow-hidden relative">
+            <div class="hidden md:flex w-48 bg-[#dfdfdf] border-r border-[#808080] flex-col shrink-0">
+                <div class="p-2 text-[10px] font-bold border-b border-[#808080]">Folders</div>
+                <div class="p-2 space-y-1 text-[11px]">
+                    <div class="bg-blue-800 text-white px-1">Inbox (5)</div>
+                    <div class="px-1 text-gray-500">Promotions (3)</div>
+                    <div class="px-1">Sent Items</div>
+                    <div class="px-1">Deleted</div>
+                </div>
+            </div>
+
             <div class="flex-grow flex flex-col bg-white overflow-hidden">
-                <!-- Thread Headers -->
+                <!-- Bureaucratic Header -->
                 <div class="p-2 bg-[#f0f0f0] border-b border-[#808080] text-[10px] shrink-0 space-y-1">
-                    <div class="flex items-start gap-1 overflow-x-auto no-scrollbar py-0.5">
-                        <strong class="mt-1 shrink-0 text-[10px]">From:</strong> 
-                        <div id="target-selector" class="flex gap-1"></div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold w-12 text-right">To:</span>
+                        <div id="target-selector" class="flex gap-1 overflow-x-auto no-scrollbar py-0.5"></div>
                     </div>
-                    <div><strong>To:</strong> <span id="player-email-display" class="text-blue-800">you@org.gov</span></div>
-                    <div class="flex gap-2 flex-wrap items-center" id="active-ccs">
-                        <strong>CC:</strong> <span class="text-gray-400 italic">No witnesses...</span>
-                    </div>
-                    <div class="border-t border-gray-300 pt-0.5">
-                        <strong>Subject:</strong> <span class="font-bold text-red-700">RE: URGENT: The Breakroom Incident</span>
+                    <div class="flex gap-2 items-center" id="active-ccs">
+                        <span class="font-bold w-12 text-right">CC:</span> 
+                        <div id="cc-display" class="flex gap-1 text-gray-400 italic">No one in loop.</div>
                     </div>
                 </div>
 
                 <!-- Message Log -->
-                <div id="message-log" class="flex-grow overflow-y-auto p-3 space-y-3 scroll-container bg-white font-serif text-sm"></div>
+                <div id="message-log" class="flex-grow overflow-y-auto p-3 space-y-6 scroll-container bg-white font-sans text-sm"></div>
 
-                <!-- PERSISTENT PLAYER STANDING BAR -->
+                <!-- STATS BAR -->
                 <div class="bg-[#dfdfdf] border-t border-[#808080] px-2 py-1.5 flex flex-col gap-1 shrink-0">
                     <div class="flex justify-between items-end">
-                        <span class="text-[9px] font-bold uppercase text-[#000080]">My Standing (Credibility)</span>
+                        <span class="text-[9px] font-bold uppercase text-[#000080]">Professional Credibility</span>
                         <span id="player-hp-label" class="text-[9px] font-mono font-bold">100/100</span>
                     </div>
                     <div class="h-3.5 w-full bg-white border border-[#808080] relative">
@@ -117,7 +137,7 @@
                                 </div>
                              </div>
                         </div>
-                        <div id="player-pto-status" class="text-[8px] font-bold bg-[#c0c0c0] px-1 border border-inset border-white">PTO: 3d remaining</div>
+                        <div id="player-win-status" class="text-[8px] font-bold bg-[#c0c0c0] px-1 border border-inset border-white uppercase">New Wins: 3 Available</div>
                     </div>
                 </div>
 
@@ -126,39 +146,27 @@
                     <div class="grid grid-cols-2 gap-1.5 max-w-lg mx-auto">
                         <button onclick="performAction('ATTACK')" class="retro-button py-2 flex flex-col items-center">
                             <span class="text-[11px] font-bold">Circle Back</span>
-                            <span class="text-[8px] opacity-70">Direct Reply</span>
+                            <span class="text-[8px] opacity-70 italic">Target Reply</span>
                         </button>
                         <button onclick="openAddressBook()" class="retro-button py-2 flex flex-col items-center">
-                            <span class="text-[11px] font-bold">CC Personnel</span>
-                            <span class="text-[8px] opacity-70">Add Synergy</span>
+                            <span class="text-[11px] font-bold">Loop Personnel</span>
+                            <span class="text-[8px] opacity-70 italic">Add Witness</span>
                         </button>
-                        <button id="ooo-btn" onclick="performAction('OOO')" class="retro-button py-2 flex flex-col items-center">
-                            <span class="text-[11px] font-bold">Take PTO</span>
-                            <span class="text-[8px] opacity-70">Regain Standing</span>
+                        <button id="win-btn" onclick="performAction('PROMOTE')" class="retro-button py-2 flex flex-col items-center">
+                            <span class="text-[11px] font-bold">Self-Promote</span>
+                            <span class="text-[8px] opacity-70 italic">Log a Win</span>
                         </button>
                         <button id="reply-all-btn" onclick="performAction('ULT')" class="retro-button py-2 flex flex-col items-center disabled:opacity-50" disabled>
                             <span class="text-[11px] font-bold text-red-800">REPLY ALL</span>
-                            <span class="text-[8px] opacity-70">Execute Takedown</span>
+                            <span class="text-[8px] opacity-70 italic">Mass Takedown</span>
                         </button>
                     </div>
                 </div>
                 
-                <!-- Win95 Status Bar Style Footer -->
                 <div class="bg-[#c0c0c0] border-t border-white px-1 flex gap-px text-[9px] h-5 shrink-0">
-                    <div class="retro-border-inset px-2 flex items-center flex-grow truncate" id="status-bar-name">Ready</div>
+                    <div class="retro-border-inset px-2 flex items-center flex-grow truncate" id="status-bar-name">Logged Out</div>
                     <div class="retro-border-inset px-2 flex items-center w-24 justify-center" id="status-bar-email">Online</div>
                     <div class="retro-border-inset px-2 flex items-center w-12 justify-center">NUM</div>
-                </div>
-            </div>
-
-            <!-- Profile Sidebar (Desktop Only) -->
-            <div class="hidden lg:flex w-64 bg-[#dfdfdf] border-l border-[#808080] flex-col p-3 shrink-0">
-                <div class="text-[10px] font-bold mb-2 uppercase tracking-tighter">Personnel Directory</div>
-                <div id="buff-list" class="flex-grow space-y-2 overflow-y-auto text-[10px] italic text-gray-600">
-                    <div class="bg-white p-2 retro-border-inset text-black not-italic">
-                        <p class="font-bold mb-1">Thread Bonuses:</p>
-                        <div id="active-buffs-list">No active CCs.</div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -168,7 +176,7 @@
     <div id="address-book" class="fixed inset-0 z-[110] bg-black/50 items-center justify-center p-4 hidden flex">
         <div class="bg-[#c0c0c0] retro-border w-full max-w-sm shadow-2xl">
             <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
-                <span>ADDRESS BOOK</span>
+                <span>PERSONNEL DIRECTORY</span>
                 <button onclick="closeAddressBook()" class="px-1">✕</button>
             </div>
             <div id="contact-list" class="max-h-64 overflow-y-auto p-2 space-y-2 bg-white"></div>
@@ -181,40 +189,51 @@
     <script>
         // --- DATA ---
         const CONTACTS = [
-            { id: 'intern', name: "Kevin", title: "Intern", bonus: "+8 reply potency.", eff: { dmg: 8 }, usedBy: null },
-            { id: 'it', name: "Pradeep", title: "IT Specialist", bonus: "+5 standing/turn.", eff: { heal: 5 }, usedBy: null },
-            { id: 'legal', name: "Sarah", title: "Legal Counsel", bonus: "20% Dmg Reduction.", eff: { def: 0.20 }, usedBy: null },
+            { id: 'intern', name: "Kevin", title: "Intern", bonus: "+8 attack potency.", eff: { dmg: 8 }, usedBy: null },
+            { id: 'it', name: "Pradeep", title: "IT Specialist", bonus: "+5 credibility/turn.", eff: { heal: 5 }, usedBy: null },
+            { id: 'legal', name: "Sarah", title: "Legal Counsel", bonus: "20% DMG Reduction.", eff: { def: 0.20 }, usedBy: null },
             { id: 'ceo', name: "Arthur", title: "Deputy Director", bonus: "2x Leverage gain.", eff: { lev: 2 }, usedBy: null },
-            { id: 'cat', name: "Mittens", title: "Office Cat", bonus: "35% Dodge Chance.", eff: { dodge: 0.35 }, usedBy: null }
+            { id: 'cat', name: "Mittens", title: "Office Cat", bonus: "35% Distraction chance.", eff: { dodge: 0.35 }, usedBy: null }
         ];
 
         let opponents = [
             { 
-                id: 1, name: "Karen (HR)", email: "k.smith@org.gov", hp: 90, maxHp: 90, pto: 3, buffs: [], 
-                quotes: ["I'm looping in legal.", "Per my last email...", "This isn't 'Culture Fit'.", "Respect the policy.", "This smell is a safety hazard!"], 
-                situational: ["Paperwork is already drafted.", "I'm scheduling a sync on your tone.", "That Tupperware is an OSHA violation.", "Performance reviews are coming up."], 
+                id: 1, name: "Karen (HR)", email: "k.smith@org.gov", hp: 100, maxHp: 100, wins: 3, buffs: [], 
+                attacks: {
+                    accusatory: "Your recent breakroom habits suggest a lack of respect for shared company assets and peer comfort.",
+                    compliance: "While I have you, I noticed you haven't completed the mandatory 'Digital Hygiene' training module for Q3.",
+                    time: "I have three disciplinary hearings today; this thread is a significant drain on my operational capacity.",
+                    value: "HR provides the framework for your employment here; your contributions are currently being 're-evaluated'."
+                },
                 color: 'text-purple-700' 
             },
             { 
-                id: 2, name: "Greg (Fin)", email: "g.bucks@org.gov", hp: 75, maxHp: 75, pto: 3, buffs: [], 
-                quotes: ["ROI is negative.", "Bottom line: No.", "Fix your Excel sheets.", "Denied.", "Expenses exceed budget."], 
-                situational: ["The salmon was on sale, Karen.", "I don't have time for a sync.", "Breakroom maintenance is a cost-center.", "Audit pending on these replies."], 
+                id: 2, name: "Greg (Fin)", email: "g.bucks@org.gov", hp: 80, maxHp: 80, wins: 3, buffs: [], 
+                attacks: {
+                    accusatory: "The internal audit on appliance wear-and-tear points directly to your department's cubicle block.",
+                    compliance: "Noted. Also, your travel expense report from the March conference remains un-reconciled. Please rectify.",
+                    time: "I'm currently pausing the quarterly budget review to address this triviality. This is not billable time.",
+                    value: "Finance generates the capital that pays your salary; this salmon odor is a poor return on investment."
+                },
                 color: 'text-emerald-700' 
             },
             { 
-                id: 3, name: "Chad (Sales)", email: "c.crush@org.gov", hp: 65, maxHp: 65, pto: 3, buffs: [], 
-                quotes: ["LET'S CRUSH IT!!", "Coffee is for closers.", "Synergy overload!", "Huge win today!", "Stay in your lane!"], 
-                situational: ["Protein is key for afternoon gains.", "You're killin' my vibe, Greg.", "I closed three deals while you were typing.", "Grind never stops for smell."], 
+                id: 3, name: "Chad (Sales)", email: "c.crush@org.gov", hp: 70, maxHp: 70, wins: 3, buffs: [], 
+                attacks: {
+                    accusatory: "I know you're the 'fish person' here. Just own it so we can move on to things that actually matter.",
+                    compliance: "Whatever. By the way, the lead list you sent over has 40% bounce rates. Check your data entry.",
+                    time: "Every minute I spend reading this is a minute I'm not on a closing call. You're costing us commission.",
+                    value: "I'm the rainmaker. You're the one making the office smell like a wharf. Know the hierarchy."
+                },
                 color: 'text-orange-700' 
             }
         ];
 
         let state = {
-            player: { name: "Employee", email: "e@org.gov", hp: 100, maxHp: 100, ult: 0, pto: 3, buffs: [] },
-            targetId: 1, turn: 1, isProcessing: false, gameOver: false
+            player: { name: "Associate", email: "e@org.gov", hp: 100, maxHp: 100, ult: 0, wins: 3, buffs: [] },
+            targetId: 1, turn: 0, isProcessing: false, gameOver: false
         };
 
-        // --- INIT ---
         const nameInput = document.getElementById('player-name-input');
         const emailPreview = document.getElementById('email-preview');
         nameInput.addEventListener('input', (e) => {
@@ -228,16 +247,12 @@
             state.player.name = nameInput.value.trim() || "Associate";
             document.getElementById('start-screen').classList.add('hidden');
             document.getElementById('game-ui').classList.remove('hidden');
-            document.getElementById('player-email-display').innerText = state.player.email;
             document.getElementById('status-bar-name').innerText = state.player.name;
-            document.getElementById('status-bar-email').innerText = "Connected";
+            document.getElementById('status-bar-email').innerText = "Logged In";
 
             updateUI();
-            addLog("System Admin", "Internal Thread Started. Security: Encrypted.", "bg-blue-50 text-blue-900 border-l-4 border-blue-600 italic mb-4");
-            
-            setTimeout(() => {
-                addLog("Karen (HR)", `Hi team, I am absolutely disgusted. Someone heated up fish in the breakroom microwave. <strong>${state.player.name}</strong>, I'm sure you noticed the stench. <strong>Greg</strong>, I saw you walking that way with a Tupperware. <strong>Chad</strong>, I know you need your 'macros', but this is unacceptable.`, "border-l-4 border-purple-500 bg-purple-50");
-            }, 800);
+            addEmailToLog("Karen (HR)", "everyone@org.gov", "URGENT: Breakroom Incident", 
+                `Hi team,<br><br>I am absolutely disgusted. Someone heated up fish in the breakroom microwave. <strong>${state.player.name}</strong>, I'm sure you noticed the stench. <strong>Greg</strong>, I saw you walking that way with a Tupperware. <strong>Chad</strong>, I know you need your 'macros', but this is unacceptable.<br><br>Please advise immediately on who is responsible for this policy violation.`, "border-l-4 border-purple-500 bg-purple-50");
         }
 
         function updateUI() {
@@ -246,19 +261,17 @@
             const hpPct = Math.max(0, (p.hp / p.maxHp) * 100);
             const ultPct = Math.min(100, p.ult);
 
-            // New Standing Bar Updates
             document.getElementById('player-hp-fill').style.width = hpPct + "%";
             document.getElementById('player-hp-label').innerText = `${Math.ceil(p.hp)}/100`;
             document.getElementById('player-ult-fill').style.width = ultPct + "%";
-            document.getElementById('player-pto-status').innerText = `PTO: ${p.pto}d remaining`;
+            document.getElementById('player-win-status').innerText = `New Wins: ${p.wins} Available`;
             
-            // HP Color Logic
-            if (hpPct < 30) document.getElementById('player-hp-fill').className = "h-full bg-red-600 transition-all duration-300";
-            else if (hpPct < 60) document.getElementById('player-hp-fill').className = "h-full bg-yellow-500 transition-all duration-300";
-            else document.getElementById('player-hp-fill').className = "h-full bg-green-500 transition-all duration-300";
+            if (hpPct < 30) document.getElementById('player-hp-fill').className = "h-full bg-red-600";
+            else if (hpPct < 60) document.getElementById('player-hp-fill').className = "h-full bg-yellow-500";
+            else document.getElementById('player-hp-fill').className = "h-full bg-green-500";
 
             document.getElementById('reply-all-btn').disabled = p.ult < 100;
-            document.getElementById('ooo-btn').disabled = p.pto <= 0;
+            document.getElementById('win-btn').disabled = p.wins <= 0;
 
             const selector = document.getElementById('target-selector');
             selector.innerHTML = "";
@@ -267,33 +280,45 @@
                 const pct = Math.max(0, (o.hp / o.maxHp) * 100);
                 const pill = document.createElement('div');
                 pill.onclick = () => { if(o.hp > 0) state.targetId = o.id; updateUI(); };
-                pill.className = `target-pill px-1 py-0.5 flex flex-col min-w-[90px] cursor-pointer bg-white ${isActive ? 'active' : 'opacity-80'}`;
-                pill.innerHTML = `<div class="flex justify-between font-bold text-[8px] truncate"><span>${o.name}</span><span>${o.hp > 0 ? o.pto+'d' : '❌'}</span></div>
+                pill.className = `target-pill px-2 py-0.5 flex flex-col min-w-[90px] cursor-pointer bg-white ${isActive ? 'active' : 'opacity-60 grayscale'}`;
+                pill.innerHTML = `<div class="flex justify-between font-bold text-[8px] truncate"><span>${o.name}</span><span>${o.hp > 0 ? o.wins+'w' : 'RETIRED'}</span></div>
                                 <div class="h-1 w-full bg-gray-200 mt-0.5"><div class="h-full bg-red-500" style="width: ${pct}%"></div></div>`;
                 selector.appendChild(pill);
             });
 
-            document.getElementById('active-ccs').innerHTML = `<strong>CC:</strong> ` + 
-                (CONTACTS.filter(c => c.usedBy).map(c => `<span class="bg-blue-100 px-1 border border-blue-300 rounded text-blue-900 font-bold">${c.name} (${c.usedBy})</span>`).join(' ') || '<span class="text-gray-400 italic">No witnesses...</span>');
-            
-            const buffList = document.getElementById('active-buffs-list');
-            buffList.innerHTML = p.buffs.map(b => `• ${b.name}: ${b.bonus}`).join('<br>') || 'No active bonuses.';
+            const ccDisplay = document.getElementById('cc-display');
+            const activeCCs = CONTACTS.filter(c => c.usedBy);
+            ccDisplay.innerHTML = activeCCs.length ? activeCCs.map(c => `<span class="bg-blue-800 text-white px-1 text-[9px] rounded-sm">${c.name}</span>`).join(' ') : "No one in loop.";
             
             const h = 9 + Math.floor(state.turn / 4); const m = (state.turn % 4) * 15;
             document.getElementById('turn-clock').innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')} AM`;
         }
 
-        function addLog(sender, text, classes = "") {
+        function addEmailToLog(from, to, subject, body, classes = "") {
             const log = document.getElementById('message-log');
             const entry = document.createElement('div');
-            entry.className = `message-entry p-2 border-b border-gray-100 text-xs ${classes}`;
-            entry.innerHTML = `<div class="flex justify-between mb-0.5"><span class="font-bold text-[#000080]">${sender}</span><span class="text-[9px] text-gray-400 font-mono">${document.getElementById('turn-clock').innerText}</span></div><div>${text}</div>`;
-            log.appendChild(entry); log.scrollTop = log.scrollHeight;
+            const time = document.getElementById('turn-clock').innerText;
+            const reCount = state.turn > 0 ? "RE: ".repeat(Math.min(state.turn, 4)) : "";
+            
+            entry.className = `message-entry p-0 border-2 border-gray-100 bg-white shadow-sm ${classes}`;
+            entry.innerHTML = `
+                <div class="email-header p-2">
+                    <div><strong>From:</strong> ${from}</div>
+                    <div><strong>To:</strong> ${to}</div>
+                    <div><strong>Sent:</strong> Today, ${time}</div>
+                    <div><strong>Subject:</strong> ${reCount}${subject}</div>
+                </div>
+                <div class="email-body px-3 py-2 font-serif italic">
+                    ${body}
+                </div>
+            `;
+            log.prepend(entry);
         }
 
         function performAction(type) {
             if (state.isProcessing || state.gameOver) return;
             state.isProcessing = true;
+            state.turn++;
             const target = opponents.find(o => o.id === state.targetId);
             const p = state.player;
 
@@ -304,18 +329,19 @@
                 p.buffs.forEach(b => { if(b.eff.dmg) d += b.eff.dmg; });
                 target.hp -= d;
                 p.ult += 20 * (p.buffs.find(b => b.eff.lev) ? 2 : 1);
-                addLog(p.name, `Sent a pointed reply to <strong>${target.name}</strong>. "Please advise on your timeline." (-${d} credibility)`);
-            } else if (type === 'OOO') {
-                p.pto--; p.hp = Math.min(p.maxHp, p.hp + 30);
-                addLog(p.name, `Taking a mental health day. Auto-reply: ON. (+30 standing).`, "bg-green-50");
+                addEmailToLog(p.name, target.name, "Circle Back", `I believe we need to circle back to your recent comments. My focus is on department output, and I suggest yours should be too.<br><br>Best regards,<br>${p.name}`, "border-l-4 border-blue-600");
+            } else if (type === 'PROMOTE') {
+                p.wins--; p.hp = Math.min(p.maxHp, p.hp + 35);
+                addEmailToLog(p.name, "everyone@org.gov", "FYI: Project Milestone Met", `Just logging a new win—the Q2 audit came back 100% clean under my supervision. Always happy to add value to the organization!`, "bg-green-50 border-l-4 border-green-600");
             } else if (type === 'ULT') {
                 opponents.forEach(o => { if(o.hp > 0) o.hp -= 35; });
                 p.ult = 0;
-                addLog(p.name, `<strong>REPLY ALL:</strong> You leaked the company salary spreadsheet. Total professional carnage!`, "bg-yellow-100 font-bold border-y-2 border-yellow-500 text-center");
+                addEmailToLog(p.name, "everyone@org.gov", "Fwd: Salary_Discrepancies_2024.xlsx", `Not sure if I should be sending this to everyone, but since transparency is one of our 'core values', here is the full salary spreadsheet for the department. Enjoy.`, "bg-yellow-50 font-bold border-l-4 border-yellow-500");
             }
 
             if (target && target.hp <= 0) {
-                target.hp = 0; addLog("SYSTEM", `${target.name.toUpperCase()} HAS BEEN TERMINATED.`, "text-red-700 font-black italic uppercase text-center");
+                target.hp = 0; 
+                addEmailToLog("SYSTEM", p.email, "Personnel Update", `${target.name.toUpperCase()} has been escorted from the building. Standing: 0.`, "text-red-700 bg-red-50 text-center uppercase");
                 const next = opponents.find(o => o.hp > 0); if (next) state.targetId = next.id;
             }
             updateUI();
@@ -324,13 +350,13 @@
 
         function ffaRound() {
             const alive = opponents.filter(o => o.hp > 0);
-            if (alive.length === 0) { state.gameOver = true; addLog("SYSTEM", "PROMOTION GRANTED. You are the last survivor of the thread.", "bg-green-600 text-white p-4 text-center font-bold"); return; }
+            if (alive.length === 0) { state.gameOver = true; addEmailToLog("DIRECTOR", state.player.email, "PROMOTION", `You are the last professional left in the building. Report to the corner office on Monday.`, "bg-green-800 text-white p-4 text-center font-bold"); return; }
 
             alive.forEach((a, idx) => {
                 setTimeout(() => {
                     if (a.hp <= 0 || state.gameOver) return;
                     
-                    let pool = [...alive.filter(o => o.id !== a.id), { id: 'player', name: state.player.name }];
+                    let pool = [...alive.filter(o => o.id !== a.id), { id: 'player', name: state.player.name, email: state.player.email }];
                     let target = pool[Math.floor(Math.random() * pool.length)];
                     let roll = Math.random();
 
@@ -340,32 +366,37 @@
                         const open = CONTACTS.filter(c => !c.usedBy);
                         const c = open[Math.floor(Math.random() * open.length)];
                         c.usedBy = a.name; a.buffs.push(c);
-                        addLog(a.name, `Added <strong>${c.name}</strong> to their CC line! "Getting their feedback on this."`, "bg-blue-100 italic");
-                    } else if (roll < 0.3 && a.hp < 40 && a.pto > 0) {
-                        a.pto--; a.hp = Math.min(a.maxHp, a.hp + 25);
-                        addLog(a.name, `Is out of office. "I will have limited access to email today." (+25 Standing)`);
+                        addEmailToLog(a.name, "everyone@org.gov", "Looping in Support", `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`, "bg-blue-50");
+                    } else if (roll < 0.3 && a.hp < 40 && a.wins > 0) {
+                        a.wins--; a.hp = Math.min(a.maxHp, a.hp + 25);
+                        addEmailToLog(a.name, "everyone@org.gov", "Self Promotion", `I don't usually brag, but my latest sales conversion just set a new record. This microwave issue shouldn't distract from real wins.`, "opacity-70");
                     } else {
                         let d = 10 + Math.floor(Math.random() * 10);
                         a.buffs.forEach(b => { if(b.eff.dmg) d += b.eff.dmg; });
-                        const q = (Math.random() > 0.6 ? a.situational : a.quotes)[Math.floor(Math.random() * 4)];
+                        
+                        // Select attack type
+                        const types = ['accusatory', 'compliance', 'time', 'value'];
+                        const selectedType = types[Math.floor(Math.random() * types.length)];
+                        const q = a.attacks[selectedType];
                         
                         if (target.id === 'player') {
                             if (state.player.buffs.find(b => b.eff.dodge && Math.random() < b.eff.dodge)) {
-                                addLog(a.name, `"${q}" - <strong>Mittens</strong> knocked your mouse off the desk. You didn't even read it! (DODGED)`, "text-blue-600 italic");
+                                addEmailToLog(a.name, state.player.name, "Urgent Follow-up", `"${q}"<br><br>(Thread ignored by <strong>Mittens</strong>. No standing lost.)`, "text-blue-600");
                             } else {
                                 let def = 0; state.player.buffs.forEach(b => { if(b.eff.def) def += b.eff.def; });
                                 d = Math.floor(d * (1 - def)); state.player.hp -= d;
-                                addLog(a.name, `"${q}" - You lost ${d} standing.`, "bg-red-50 border-l-2 border-red-400");
+                                addEmailToLog(a.name, state.player.name, "Escalation", `"${q}"<br><br><strong>Damage to Credibility: -${d}</strong>`, "bg-red-50 border-l-2 border-red-400");
                                 document.getElementById('game-ui').classList.add('shaking');
                                 setTimeout(() => document.getElementById('game-ui').classList.remove('shaking'), 200);
                             }
                         } else {
-                            target.hp -= d; addLog(a.name, `"${q}" - Directed at <strong>${target.name}</strong>! (-${d} standing)`, "text-gray-500 italic text-[10px]");
+                            target.hp -= d; 
+                            addEmailToLog(a.name, target.name, "Internal Memo", `"${q}"<br><br>(Targeting ${target.name}. Standing lost: ${d})`, "text-gray-500 text-[11px]");
                         }
                     }
 
-                    if (state.player.hp <= 0) { state.gameOver = true; addLog("SYSTEM", "TERMINATED. Hand in your keycard.", "bg-black text-white p-4 text-center"); updateUI(); }
-                    if (idx === alive.length - 1) { state.turn++; state.isProcessing = false; updateUI(); }
+                    if (state.player.hp <= 0) { state.gameOver = true; addEmailToLog("HR", state.player.email, "TERMINATION", `Your professional credibility has reached zero. Pack your belongings immediately.`, "bg-black text-white p-4 text-center"); updateUI(); }
+                    if (idx === alive.length - 1) { state.isProcessing = false; updateUI(); }
                 }, idx * 700);
             });
         }
@@ -375,8 +406,12 @@
             CONTACTS.forEach(c => {
                 const btn = document.createElement('div');
                 btn.className = `p-2 border border-gray-300 flex flex-col ${c.usedBy ? 'opacity-40 grayscale bg-gray-100' : 'cursor-pointer hover:bg-blue-50'}`;
-                btn.innerHTML = `<div class="flex justify-between font-bold text-[#000080] text-xs"><span>${c.name} - ${c.title}</span><span class="text-[9px]">${c.usedBy ? 'CC: '+c.usedBy : 'AVAIL'}</span></div><div class="text-[10px] italic">${c.bonus}</div>`;
-                if (!c.usedBy) btn.onclick = () => { c.usedBy = state.player.name; state.player.buffs.push(c); addLog(state.player.name, `Looped in <strong>${c.name}</strong>. "Let's get another pair of eyes on this thread."`, "bg-blue-200 font-bold"); closeAddressBook(); updateUI(); state.isProcessing = true; setTimeout(ffaRound, 400); };
+                btn.innerHTML = `<div class="flex justify-between font-bold text-[#000080] text-xs"><span>${c.name} - ${c.title}</span><span class="text-[9px]">${c.usedBy ? 'IN LOOP' : 'AVAIL'}</span></div><div class="text-[10px] italic">${c.bonus}</div>`;
+                if (!c.usedBy) btn.onclick = () => { 
+                    c.usedBy = state.player.name; state.player.buffs.push(c); 
+                    addEmailToLog(state.player.name, "everyone@org.gov", "Looping in Witness", `I'm looping in <strong>${c.name}</strong> (${c.title}) to help clarify the organizational impact of this thread.`, "bg-blue-100 font-bold border-l-4 border-blue-500");
+                    closeAddressBook(); updateUI(); state.isProcessing = true; setTimeout(ffaRound, 400); 
+                };
                 list.appendChild(btn);
             });
             document.getElementById('address-book').classList.remove('hidden');
