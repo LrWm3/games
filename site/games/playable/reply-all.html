@@ -202,6 +202,7 @@
         let opponents = [
             { 
                 id: 1, name: "Karen (HR)", email: "k.smith@org.gov", hp: 100, maxHp: 100, wins: 3, buffs: [], 
+                defeatMessage: "I am unsubscribing from this thread. It is clear that professional decorum has completely broken down. I will be following up with each of you individually in a more controlled environment. Regards.",
                 attacks: [
                     "Your recent breakroom habits suggest a lack of respect for shared company assets and peer comfort.",
                     "While I have you, I noticed you haven't completed the mandatory 'Digital Hygiene' training module for Q3.",
@@ -220,6 +221,7 @@
             },
             { 
                 id: 2, name: "Greg (Fin)", email: "g.bucks@org.gov", hp: 80, maxHp: 80, wins: 3, buffs: [], 
+                defeatMessage: "I'm removing myself from this loop. The ROI on this conversation has dropped below zero, and I have actual budgets to balance. Please do not re-add me.",
                 attacks: [
                     "The internal audit on appliance wear-and-tear points directly to your department's cubicle block.",
                     "Noted. Also, your travel expense report from the March conference remains un-reconciled. Please rectify.",
@@ -238,6 +240,7 @@
             },
             { 
                 id: 3, name: "Chad (Sales)", email: "c.crush@org.gov", hp: 70, maxHp: 70, wins: 3, buffs: [], 
+                defeatMessage: "Muting this. I've got a pipeline to fill and this thread is just noise. If you need me, I'll be hitting my targets while you guys keep 'circling back' to nothing. I'm out.",
                 attacks: [
                     "I know you're the 'fish person' here. Just own it so we can move on to things that actually matter.",
                     "Whatever. By the way, the lead list you sent over has 40% bounce rates. Check your data entry.",
@@ -296,6 +299,15 @@
                 `Hi team,<br><br>I am absolutely disgusted. Someone heated up fish in the breakroom microwave. <strong>${state.player.name}</strong>, I'm sure you noticed the stench. <strong>Greg</strong>, I saw you walking that way with a Tupperware. <strong>Chad</strong>, I know you need your 'macros', but this is unacceptable.<br><br>Please advise immediately on who is responsible for this policy violation.`, "border-l-4 border-purple-500 bg-purple-50");
         }
 
+        function handleOpponentDefeat(o) {
+            o.hp = 0;
+            addEmailToLog(o.name, "everyone@org.gov", "Unsubscribing", o.defeatMessage, "italic text-gray-600 bg-gray-50 border-l-4 border-gray-400");
+            if (state.targetId === o.id) {
+                const next = opponents.find(opp => opp.hp > 0);
+                if (next) state.targetId = next.id;
+            }
+        }
+
         function updateUI() {
             if (state.gameOver) return;
             const p = state.player;
@@ -322,7 +334,7 @@
                 const pill = document.createElement('div');
                 pill.onclick = () => { if(o.hp > 0) state.targetId = o.id; updateUI(); };
                 pill.className = `target-pill px-2 py-0.5 flex flex-col min-w-[90px] cursor-pointer bg-white ${isActive ? 'active' : 'opacity-60 grayscale'}`;
-                pill.innerHTML = `<div class="flex justify-between font-bold text-[8px] truncate"><span>${o.name}</span><span>${o.hp > 0 ? o.wins+'w' : 'RETIRED'}</span></div>
+                pill.innerHTML = `<div class="flex justify-between font-bold text-[8px] truncate"><span class="mr-2">${o.name}</span><span>${o.hp > 0 ? o.wins+'w' : 'UNSUBBED'}</span></div>
                                 <div class="h-1 w-full bg-gray-200 mt-0.5"><div class="h-full bg-red-500" style="width: ${pct}%"></div></div>`;
                 selector.appendChild(pill);
             });
@@ -382,9 +394,7 @@
             }
 
             if (target && target.hp <= 0) {
-                target.hp = 0; 
-                addEmailToLog("SYSTEM", p.email, "Personnel Update", `${target.name.toUpperCase()} has been escorted from the building. Standing: 0.`, "text-red-700 bg-red-50 text-center uppercase");
-                const next = opponents.find(o => o.hp > 0); if (next) state.targetId = next.id;
+                handleOpponentDefeat(target);
             }
             updateUI();
             setTimeout(ffaRound, 800);
@@ -432,10 +442,11 @@
                         } else {
                             target.hp -= d; 
                             addEmailToLog(a.name, target.name, "Internal Memo", `"${q}"<br><br>(Targeting ${target.name}. Standing lost: ${d})`, "text-gray-500 text-[11px]");
+                            if (target.hp <= 0) handleOpponentDefeat(target);
                         }
                     }
 
-                    if (state.player.hp <= 0) { state.gameOver = true; addEmailToLog("HR", state.player.email, "TERMINATION", `Your professional credibility has reached zero. Pack your belongings immediately.`, "bg-black text-white p-4 text-center"); updateUI(); }
+                    if (state.player.hp <= 0) { state.gameOver = true; addEmailToLog("HR", state.player.email, "ACCESS REVOKED", `Due to your repeated failure to maintain professional standards, your access to this email thread—and the corporate network—has been revoked. Please see Security.`, "bg-black text-white p-4 text-center"); updateUI(); }
                     if (idx === alive.length - 1) { state.isProcessing = false; updateUI(); }
                 }, idx * 700);
             });
