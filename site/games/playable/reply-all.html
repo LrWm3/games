@@ -193,7 +193,10 @@
             { id: 'it', name: "Pradeep", title: "IT Specialist", bonus: "+5 credibility/turn.", eff: { heal: 5 }, usedBy: null },
             { id: 'legal', name: "Sarah", title: "Legal Counsel", bonus: "20% DMG Reduction.", eff: { def: 0.20 }, usedBy: null },
             { id: 'ceo', name: "Arthur", title: "Deputy Director", bonus: "2x Leverage gain.", eff: { lev: 2 }, usedBy: null },
-            { id: 'cat', name: "Mittens", title: "Office Cat", bonus: "35% Distraction chance.", eff: { dodge: 0.35 }, usedBy: null }
+            { id: 'cat', name: "Mittens", title: "Office Cat", bonus: "35% Distraction chance.", eff: { dodge: 0.35 }, usedBy: null },
+            { id: 'mktg', name: "Becky", title: "Social Media Manager", bonus: "+12 attack potency.", eff: { dmg: 12 }, usedBy: null },
+            { id: 'audit', name: "Mr. Henderson", title: "Senior Auditor", bonus: "30% DMG Reduction.", eff: { def: 0.30 }, usedBy: null },
+            { id: 'facilities', name: "Mike", title: "Facilities Lead", bonus: "10% DMG Reduction & +3 Credibility/turn", eff: { def: 0.10, heal: 3 }, usedBy: null }
         ];
 
         let opponents = [
@@ -203,7 +206,15 @@
                     "Your recent breakroom habits suggest a lack of respect for shared company assets and peer comfort.",
                     "While I have you, I noticed you haven't completed the mandatory 'Digital Hygiene' training module for Q3.",
                     "I have three disciplinary hearings today; this thread is a significant drain on my operational capacity.",
-                    "HR provides the framework for your employment here; your contributions are currently being 're-evaluated'."
+                    "HR provides the framework for your employment here; your contributions are currently being 're-evaluated'.",
+                    "Please review the updated 'Shared Space Etiquette' PDF attached to my signature.",
+                    "I'm scheduling a mandatory mediation session for the entire floor this Friday at 4:30 PM.",
+                    "Your tone in this thread has been noted and will be discussed during your next performance review.",
+                    "We have a zero-tolerance policy for passive-aggressive CC-ing. Please adhere to the chain of command.",
+                    "I've CC'd the Chief Wellness Officer to address the 'toxic environment' you're creating.",
+                    "Failure to identify the salmon-heater will result in a collective reduction of the 'Team Synergy' bonus.",
+                    "I'm literally looking at the Employee Handbook right now, and you're in violation of Section 8.4: Olfactory Neutrality.",
+                    "This 'Reply All' behavior is exactly why we can't have nice things, like the espresso machine I vetoed."
                 ],
                 color: 'text-purple-700' 
             },
@@ -213,7 +224,15 @@
                     "The internal audit on appliance wear-and-tear points directly to your department's cubicle block.",
                     "Noted. Also, your travel expense report from the March conference remains un-reconciled. Please rectify.",
                     "I'm currently pausing the quarterly budget review to address this triviality. This is not billable time.",
-                    "Finance generates the capital that pays your salary; this salmon odor is a poor return on investment."
+                    "Finance generates the capital that pays your salary; this salmon odor is a poor return on investment.",
+                    "The depreciation schedule for that microwave didn't account for 'biological warfare' levels of residue.",
+                    "Every second this thread continues, we're losing approximately $4.20 in billable productivity per capita.",
+                    "I've cross-referenced the breakroom keycard logs with your department's lunch schedule. The math doesn't lie.",
+                    "I'm flagging this entire conversation as 'Non-Essential Expenditure' and deducting the server costs from your Q4 budget.",
+                    "If we have to replace the microwave, it's coming out of the 'Holiday Party' fund. Hope you like generic crackers.",
+                    "Your lack of fiscal responsibility regarding communal assets is, frankly, alarming.",
+                    "I've calculated the cost of the air freshener required to neutralize that smell. It's coming out of your petty cash.",
+                    "I'm too busy reconciling the 2023 amortizations to deal with your 'Microwave Incident'."
                 ],
                 color: 'text-emerald-700' 
             },
@@ -223,7 +242,15 @@
                     "I know you're the 'fish person' here. Just own it so we can move on to things that actually matter.",
                     "Whatever. By the way, the lead list you sent over has 40% bounce rates. Check your data entry.",
                     "Every minute I spend reading this is a minute I'm not on a closing call. You're costing us commission.",
-                    "I'm the rainmaker. You're the one making the office smell like a wharf. Know the hierarchy."
+                    "I'm the rainmaker. You're the one making the office smell like a wharf. Know the hierarchy.",
+                    "While you guys are whining about smells, I just closed a five-figure deal on my mobile. Focus on the grind.",
+                    "Bro, if you can't handle a little fish smell, how are you gonna handle a high-pressure pitch? Weak energy.",
+                    "I'm literally on a Zoom with a whale right now and the 'New Email' ping is killing my flow. Unsubscribe.",
+                    "The only thing that should be 'urgent' in this office is the pipeline. This is amateur hour.",
+                    "I've got a Peloton waiting for me at 5 PM. Wrap this up or I'm deleting the thread.",
+                    "Is there a way to 'Mute' everyone except people who actually generate revenue?",
+                    "I'm BCC-ing my mentor on this to show him what 'corporate stagnation' looks like.",
+                    "You're all playing checkers. I'm playing 4D chess with people who don't microwave salmon."
                 ],
                 color: 'text-orange-700' 
             }
@@ -239,7 +266,10 @@
                 wins: 3,
                 buffs: [],
                 attacks: [
-                    "I believe we need to circle back to your recent comments. My focus is on department output, and I suggest yours should be too."
+                    "I believe we need to circle back to your recent comments. My focus is on department output, and I suggest yours should be too.",
+                    "I've already addressed this in my previous email, but for the sake of clarity, I'll repeat it: I was at my desk all day.",
+                    "Perhaps we should focus on the Q4 deliverables instead of speculating on lunch choices?",
+                    "I'm happy to discuss this in a 1-on-1, but I don't believe this is a productive use of the 'All-Staff' distribution list."
                 ]
             },
             targetId: 1, turn: 0, isProcessing: false, gameOver: false
@@ -299,7 +329,7 @@
 
             const ccDisplay = document.getElementById('cc-display');
             const activeCCs = CONTACTS.filter(c => c.usedBy);
-            ccDisplay.innerHTML = activeCCs.length ? activeCCs.map(c => `<span class="bg-blue-800 text-white px-1 text-[9px] rounded-sm">${c.name}</span>`).join(' ') : "No one in loop.";
+            ccDisplay.innerHTML = activeCCs.length ? activeCCs.map(c => `<span class="bg-blue-800 text-white px-1 text-[9px] rounded-sm">${c.name} (by ${c.usedBy})</span>`).join(' ') : "No one in loop.";
             
             const h = 9 + Math.floor(state.turn / 4); const m = (state.turn % 4) * 15;
             document.getElementById('turn-clock').innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')} AM`;
