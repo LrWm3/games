@@ -199,38 +199,49 @@
         let opponents = [
             { 
                 id: 1, name: "Karen (HR)", email: "k.smith@org.gov", hp: 100, maxHp: 100, wins: 3, buffs: [], 
-                attacks: {
-                    accusatory: "Your recent breakroom habits suggest a lack of respect for shared company assets and peer comfort.",
-                    compliance: "While I have you, I noticed you haven't completed the mandatory 'Digital Hygiene' training module for Q3.",
-                    time: "I have three disciplinary hearings today; this thread is a significant drain on my operational capacity.",
-                    value: "HR provides the framework for your employment here; your contributions are currently being 're-evaluated'."
-                },
+                attacks: [
+                    "Your recent breakroom habits suggest a lack of respect for shared company assets and peer comfort.",
+                    "While I have you, I noticed you haven't completed the mandatory 'Digital Hygiene' training module for Q3.",
+                    "I have three disciplinary hearings today; this thread is a significant drain on my operational capacity.",
+                    "HR provides the framework for your employment here; your contributions are currently being 're-evaluated'."
+                ],
                 color: 'text-purple-700' 
             },
             { 
                 id: 2, name: "Greg (Fin)", email: "g.bucks@org.gov", hp: 80, maxHp: 80, wins: 3, buffs: [], 
-                attacks: {
-                    accusatory: "The internal audit on appliance wear-and-tear points directly to your department's cubicle block.",
-                    compliance: "Noted. Also, your travel expense report from the March conference remains un-reconciled. Please rectify.",
-                    time: "I'm currently pausing the quarterly budget review to address this triviality. This is not billable time.",
-                    value: "Finance generates the capital that pays your salary; this salmon odor is a poor return on investment."
-                },
+                attacks: [
+                    "The internal audit on appliance wear-and-tear points directly to your department's cubicle block.",
+                    "Noted. Also, your travel expense report from the March conference remains un-reconciled. Please rectify.",
+                    "I'm currently pausing the quarterly budget review to address this triviality. This is not billable time.",
+                    "Finance generates the capital that pays your salary; this salmon odor is a poor return on investment."
+                ],
                 color: 'text-emerald-700' 
             },
             { 
                 id: 3, name: "Chad (Sales)", email: "c.crush@org.gov", hp: 70, maxHp: 70, wins: 3, buffs: [], 
-                attacks: {
-                    accusatory: "I know you're the 'fish person' here. Just own it so we can move on to things that actually matter.",
-                    compliance: "Whatever. By the way, the lead list you sent over has 40% bounce rates. Check your data entry.",
-                    time: "Every minute I spend reading this is a minute I'm not on a closing call. You're costing us commission.",
-                    value: "I'm the rainmaker. You're the one making the office smell like a wharf. Know the hierarchy."
-                },
+                attacks: [
+                    "I know you're the 'fish person' here. Just own it so we can move on to things that actually matter.",
+                    "Whatever. By the way, the lead list you sent over has 40% bounce rates. Check your data entry.",
+                    "Every minute I spend reading this is a minute I'm not on a closing call. You're costing us commission.",
+                    "I'm the rainmaker. You're the one making the office smell like a wharf. Know the hierarchy."
+                ],
                 color: 'text-orange-700' 
             }
         ];
 
         let state = {
-            player: { name: "Associate", email: "e@org.gov", hp: 100, maxHp: 100, ult: 0, wins: 3, buffs: [] },
+            player: {
+                name: "Associate",
+                email: "e@org.gov",
+                hp: 100,
+                maxHp: 100,
+                ult: 0,
+                wins: 3,
+                buffs: [],
+                attacks: [
+                    "I believe we need to circle back to your recent comments. My focus is on department output, and I suggest yours should be too."
+                ]
+            },
             targetId: 1, turn: 0, isProcessing: false, gameOver: false
         };
 
@@ -329,7 +340,8 @@
                 p.buffs.forEach(b => { if(b.eff.dmg) d += b.eff.dmg; });
                 target.hp -= d;
                 p.ult += 20 * (p.buffs.find(b => b.eff.lev) ? 2 : 1);
-                addEmailToLog(p.name, target.name, "Circle Back", `I believe we need to circle back to your recent comments. My focus is on department output, and I suggest yours should be too.<br><br>Best regards,<br>${p.name}`, "border-l-4 border-blue-600");
+                const q = p.attacks[Math.floor(Math.random() * p.attacks.length)];
+                addEmailToLog(p.name, target.name, "Circle Back", `${q}<br><br>Best regards,<br>${p.name}`, "border-l-4 border-blue-600");
             } else if (type === 'PROMOTE') {
                 p.wins--; p.hp = Math.min(p.maxHp, p.hp + 35);
                 addEmailToLog(p.name, "everyone@org.gov", "FYI: Project Milestone Met", `Just logging a new win—the Q2 audit came back 100% clean under my supervision. Always happy to add value to the organization!`, "bg-green-50 border-l-4 border-green-600");
@@ -375,9 +387,7 @@
                         a.buffs.forEach(b => { if(b.eff.dmg) d += b.eff.dmg; });
                         
                         // Select attack type
-                        const types = ['accusatory', 'compliance', 'time', 'value'];
-                        const selectedType = types[Math.floor(Math.random() * types.length)];
-                        const q = a.attacks[selectedType];
+                        const q = a.attacks[Math.floor(Math.random() * a.attacks.length)];
                         
                         if (target.id === 'player') {
                             if (state.player.buffs.find(b => b.eff.dodge && Math.random() < b.eff.dodge)) {
