@@ -2051,13 +2051,21 @@
           departmentId: "facilities_and_administration",
           color: "text-stone-700",
           defeatMessage:
-            "I'm stepping out. These halls have seen worse, and they will see more.",
+            "I'm stepping out. These halls have seen worse, and so have I.",
           selfPromote:
             "I kept the building running during three leadership changes. The lights stayed on.",
           deflectLines: [
             "I'm pausing to recall the last time this policy changed.",
           ],
           lines: [
+            {
+              text: "The old holiday parties used to happen after hours in the lobby. We kept it simple.",
+              missionId: "holiday_reply_all",
+            },
+            {
+              text: "I miss the days when we just posted a flyer by the elevator and called it done.",
+              missionId: "holiday_reply_all",
+            },
             {
               text: "When the old deputy minister signed the first operational charter, we settled disputes in person.",
               missionId: null,
@@ -2219,6 +2227,14 @@
           ],
           lines: [
             {
+              text: "We need a single holiday message with approved visuals. I can draft it.",
+              missionId: "holiday_reply_all",
+            },
+            {
+              text: "Please stop ad‑hoc replies; I'll consolidate and send a clean version.",
+              missionId: "holiday_reply_all",
+            },
+            {
               text: "We need a clear owner and a single objective. This thread has neither.",
               missionId: null,
             },
@@ -2275,13 +2291,21 @@
           departmentId: "executive_council_office",
           color: "text-blue-700",
           defeatMessage:
-            "I'm stepping out. Please summarize the outcome when you're aligned.",
+            "I've got something else to get to. I've removed myself from this thread.",
           selfPromote:
             "I mediated a cross‑department dispute without escalation. Balance matters.",
           deflectLines: [
             "I'm pausing to keep this constructive and level.",
           ],
           lines: [
+            {
+              text: "Leadership needs one succinct summary, not a cascade of greetings.",
+              missionId: "holiday_reply_all",
+            },
+            {
+              text: "I can summarize sentiments and send a brief note to leadership.",
+              missionId: "holiday_reply_all",
+            },
             {
               text: "Let's keep this calm and stick to the facts. We're well positioned to deal with any problems.",
               missionId: null,
@@ -2302,7 +2326,7 @@
         },
         {
           id: "willy_boy_information_technology",
-          name: "Willy Boy (Contractor)",
+          name: "Willy Boy (Contractor?)",
           email: "w.boy@gov.org",
           departmentId: "information_technology",
           color: "text-indigo-600",
@@ -2315,19 +2339,31 @@
           ],
           lines: [
             {
+              text: "Did you add me to this holiday chain? I don't work here.",
+              missionId: "holiday_reply_all",
+            },
+            {
+              text: "I didn't get invited to any holiday parties this year unfortunately, maybe you could invite me next time?.",
+              missionId: "holiday_reply_all",
+            },
+            {
+              text: "This party looks really fun. Can you review my resume and let me know if I can join next year?",
+              missionId: "holiday_reply_all",
+            },
+            {
               text: "I've never worked here. Why can I see this thread?",
               missionId: null,
             },
             {
-              text: "This email seems to automatically forward to my personal, can fix that for me?",
-              missionId: null,
-            }
-            {
-              text: "Someone should probably revoke my access, but until then...",
+              text: "This email seems to automatically forward to my personal, can you fix that for me?",
               missionId: null,
             },
             {
-              text: "I don't work here, did someone To: me by mistake?",
+              text: "Someone should probably revoke my access, but until then... Hello!",
+              missionId: null,
+            },
+            {
+              text: "I don't work here, did you 'To:' me by mistake?",
               missionId: null,
             },
             {
@@ -2471,13 +2507,21 @@
           departmentId: "legal",
           color: "text-red-700",
           defeatMessage:
-            "I'm stepping out until this is fully redlined and approved.",
+            "I'm stepping out until this is fully redlined.",
           selfPromote:
             "I closed three vendor negotiations with zero exposure. Contracts are airtight.",
           deflectLines: [
             "I'm pausing to review the latest redlines before responding.",
           ],
           lines: [
+            {
+              text: "Avoid vendor shoutouts or gifts. That triggers disclosure rules.",
+              missionId: "holiday_reply_all",
+            },
+            {
+              text: "Keep the greeting generic—no promotions, no endorsements.",
+              missionId: "holiday_reply_all",
+            },
             {
               text: "We cannot proceed without approved contract language. Please pause.",
               missionId: null,
@@ -2599,13 +2643,21 @@
           departmentId: "policy",
           color: "text-blue-600",
           defeatMessage:
-            "I'm stepping out. Please route updates through the formal policy process.",
+            "I'm stepping out. Please submit updates on this to a policy process unrelated to myself.",
           selfPromote:
             "I shipped a policy framework that reduced approval time by half.",
           deflectLines: [
             "I'm pausing to map this to our policy framework.",
           ],
           lines: [
+            {
+              text: "All‑staff messages require a single approved sender. This chain violates policy.",
+              missionId: "holiday_reply_all",
+            },
+            {
+              text: "We should move this to a one‑way announcement and close replies.",
+              missionId: "holiday_reply_all",
+            },
             {
               text: "We need a clear logic model before making this change.",
               missionId: null,
@@ -3273,6 +3325,70 @@
               hp: 20,
               maxHp: 20,
               wins: 1,
+              buffs: [],
+              addressBook: [],
+            },
+          ],
+        },
+        {
+          id: "holiday_reply_all",
+          subject: "RE: Happy Holidays!",
+          from: "announcements@gov.org",
+          onlyMissionLines: true,
+          intro:
+            "Happy holidays everyone! Someone kicked off an all-staff greeting and the thread has exploded. <strong>{playerName}</strong>, please help rein it in. <strong>{opp0}</strong> says this should go through Facilities. <strong>{opp1}</strong> wants a single approved template. <strong>{opp2}</strong> is asking for leadership guidance. <strong>{opp3}</strong> is warning about system load. <strong>{opp4}</strong> raised legal concerns. <strong>{opp5}</strong> says this violates comms policy.<br><br>Please advise how we should proceed.",
+          opponents: [
+            {
+              id: 14,
+              employeeId: "larry_facilities_and_administration",
+              hp: 50,
+              maxHp: 50,
+              wins: 2,
+              buffs: [],
+              addressBook: [],
+            },
+            {
+              id: 15,
+              employeeId: "lisa_marketing",
+              hp: 50,
+              maxHp: 50,
+              wins: 2,
+              buffs: [],
+              addressBook: [],
+            },
+            {
+              id: 16,
+              employeeId: "meghan_cassedy_executive_council_office",
+              hp: 50,
+              maxHp: 50,
+              wins: 2,
+              buffs: [],
+              addressBook: [],
+            },
+            {
+              id: 17,
+              employeeId: "willy_boy_information_technology",
+              hp: 50,
+              maxHp: 50,
+              wins: 2,
+              buffs: [],
+              addressBook: [],
+            },
+            {
+              id: 18,
+              employeeId: "casey_legal",
+              hp: 50,
+              maxHp: 50,
+              wins: 2,
+              buffs: [],
+              addressBook: [],
+            },
+            {
+              id: 19,
+              employeeId: "elliot_policy",
+              hp: 50,
+              maxHp: 50,
+              wins: 2,
               buffs: [],
               addressBook: [],
             },
@@ -4293,8 +4409,13 @@
           clone.deflectCharge = 0;
           clone._lineBags = {};
           // Filter lines based on missionId
+          const missionLinesOnly = !!mission.onlyMissionLines;
           clone.attacks = employee.lines
-            .filter((l) => l.missionId === null || l.missionId === mission.id)
+            .filter((l) =>
+              missionLinesOnly
+                ? l.missionId === mission.id
+                : l.missionId === null || l.missionId === mission.id,
+            )
             .map((l) => l.text);
           return clone;
         });
