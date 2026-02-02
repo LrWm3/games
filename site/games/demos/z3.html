@@ -4,17 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Z3 Intent OS - Real SMT Planner</title>
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.getRegistrations().then((regs) => {
+                regs.forEach((reg) => reg.unregister());
+            });
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/z3-solver@4.15.4/build/z3-built.js"></script>
     <script type="module">
-        import { init } from "https://cdn.jsdelivr.net/npm/z3-solver@4.15.4/build/browser.js";
+        async function loadZ3Module() {
+            const sources = [
+                "https://ga.jspm.io/npm:z3-solver@4.15.4/build/browser.js",
+                "https://cdn.skypack.dev/z3-solver@4.15.4/browser"
+            ];
+            let lastError;
+            for (const src of sources) {
+                try {
+                    return await import(src);
+                } catch (err) {
+                    lastError = err;
+                }
+            }
+            throw lastError ?? new Error("No Z3 module sources available");
+        }
 
         async function bootZ3() {
             try {
                 if (typeof globalThis.initZ3 !== "function") {
                     throw new Error("z3-built.js not loaded correctly");
                 }
-                const z3 = await init();
+                const z3Module = await loadZ3Module();
+                const init = z3Module.init ?? z3Module.default?.init;
+                if (typeof init !== "function") {
+                    throw new Error("z3-solver browser module missing init export");
+                }
+                const z3 = await init(globalThis.initZ3);
                 const Context = new z3.Context("main");
                 window.z3 = z3;
                 window.Context = Context;
