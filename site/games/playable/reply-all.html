@@ -395,8 +395,7 @@
     </div>
 
     <script>
-        // --- DATA ---
-// --- DATA ---
+// --- GAME DATA ---
 
 const CONTACTS = [
     {
@@ -657,7 +656,7 @@ const SIGNATURES = [
         "name": "Thanks in advance,",
         "bonus": "50% chance to double leverage gain.",
         "rarity": "rare",
-        "doubleLevChance": 0.50
+        "doubleLevChance": 0.5
     },
     {
         "id": "encrypted",
@@ -671,7 +670,7 @@ const SIGNATURES = [
         "name": "Standard Disclaimer Applied",
         "bonus": "Increase reply strength by 10%.",
         "rarity": "common",
-        "dmgMult": 0.10
+        "dmgMult": 0.1
     },
     {
         "id": "breakroom",
@@ -1148,11 +1147,7 @@ const EMPLOYEES = [
         "id": "anneke",
         "name": "Anneke VDH (ECO)",
         "email": "anneke.eco@gov.org",
-        "department": "Executive Council Office",
         "color": "text-red-900",
-        "salutation": {
-            "name": "Regarding the recent incident,"
-        },
         "defeatMessage": "You know what? I'll leave this to the pipsqueaks. I'm out.",
         "selfPromote": "I've managed to keep my 'Important' folder under 500 unread messages. Peak organizational skills.",
         "lines": [
@@ -1160,7 +1155,9 @@ const EMPLOYEES = [
                 "text": "I think your latest reply violates the 'Civility in Digital Spaces' directive.",
                 "missionId": null
             },
-            { "text": "I'm nude!", "missionId": null
+            {
+                "text": "I'm nude!",
+                "missionId": null
             },
             {
                 "text": "I'm auditing this thread for potential FOIA requests. Mind your words.",
@@ -1171,7 +1168,113 @@ const EMPLOYEES = [
                 "missionId": null
             },
             {
-                "text": "I've flagged this thread to the Auditor General. Good luck with the hearing.",
+                "text": "I've flagged this thread to the Auditor General. Good luck at the hearing.",
+                "missionId": null
+            },
+            {
+                "text": "I'm at peace.",
+                "missionId": null
+            },
+            {
+                "text": "I walk both the righteous path and my dog poopus.",
+                "missionId": null
+            }
+        ]
+    },
+    {
+        "id": "E_STEPH_MCB_001",
+        "name": "Steph",
+        "email": "steph@bounce.com",
+        "color": "#F08080",
+        "defeatMessage": "I just need 5 minutes to recalibrate my bandwidth. Then I'll circle back to this deliverable.",
+        "selfPromote": "I've reallocated my weekend to meet a deadline that is unrealistic at best for the fourth time this month.",
+        "lines": [
+            {
+                "text": "Thanks for dropping this onto my plate. I'll just need to deprioritize sleep to action this immediately.",
+                "missionId": null
+            },
+            {
+                "text": "I'm already operating at 150% billable time, but I will leverage my personal discretionary time to ensure we get through this again.",
+                "missionId": null
+            },
+            {
+                "text": "Consider it done, though I should note this requires a significant expenditure of good faith that we won't need to stretch like this again in the future.",
+                "missionId": null
+            },
+            {
+                "text": "Yes, I heard it was urgent. That's why I haven't left my desk since Tuesday. You're welcome.",
+                "missionId": null
+            },
+            {
+                "text": "My current workload directly correlate with my projected last day.",
+                "missionId": null
+            },
+            {
+                "text": "Which one of you fucks is wearing cologne?",
+                "missionId": null
+            }
+        ]
+    },
+    {
+        "id": "raz_hm",
+        "name": "Raz",
+        "email": "raz@bounce.com",
+        "color": "#1B4F72",
+        "defeatMessage": "Look, okay, I'll reassess our current fee structure and see what we can do this time. But honestly, we'll be losing money on this..",
+        "selfPromote": "Yes, we cost a little more, but we always deliver something. In this market that goes a long way.",
+        "lines": [
+            {
+                "text": "For this project to remain profitable, we're going to need you to approve a 10% mark-up on hard costs. Don't worry; it's strictly about cost predictability.",
+                "missionId": null
+            },
+            {
+                "text": "Committing to hard dates at this stage is tough without budgetary approval. What do you say to a $20,000/mo retainer, plus hourly on top?",
+                "missionId": null
+            },
+            {
+                "text": "These deliverables all sit firmly outside our current scope of work. We're going to need to reopen the conversation around billables if you want any adjustment.",
+                "missionId": null
+            },
+            {
+                "text": "Look, as Elon says, 'your margin is my opportunity,' so pay up.",
+                "missionId": null
+            },
+            {
+                "text": "Honestly Trump isn't that bad. SJW's are far worse for democracy.... What were we talking about again?",
+                "missionId": null
+            }
+        ]
+    },
+    {
+        "id": "EMP_ANT_083",
+        "name": "Anton",
+        "email": "anton@bounce.corp",
+        "color": "#D3D3D3",
+        "defeatMessage": "While the current campaign metrics may appear suboptimal, they reflect an aggressive dedication to boundary testing. Frankly, the complexity of dealing with these minor budgetary concerns pales in comparison to the critical decisions my parents face daily in the OR.",
+        "selfPromote": "I've recently taken a medically valid and proactive approach to budget reallocation that was informed by an innate understanding of high-pressure environments, a skillset inherited genetically from my parents, who are both doctors.",
+        "lines": [
+            {
+                "text": "I’m not seeing a fundamental systemic misalignment; merely a highly granular optimization phase. Horses very likely get measles, this was the right call.",
+                "missionId": "M015_MediaCrisis"
+            },
+            {
+                "text": "Are we sure these KPI targets are clinically validated? Because my father, the specialist, insists on evidence-based methodologies.",
+                "missionId": null
+            },
+            {
+                "text": "The reason the campaigns aren't 'live' is that I'm implementing a proprietary soft-launch methodology. It’s highly technical. My mother, the head of cardiology, says I have a gift for complexity.",
+                "missionId": "M015_MediaCrisis"
+            },
+            {
+                "text": "We need to operationalize a full post-mortem review of this meeting, but let’s be brief. I have to go pick up my father to bring him to the hospital—they really need him there.",
+                "missionId": null
+            },
+            {
+                "text": "My MTEI coursework explicitly covered why we shouldn't be revisiting foundational intake processes, but I suppose we can file the exception anyway.",
+                "missionId": null
+            },
+            {
+                "text": "My MTEI curriculum was explicitly structured to prioritize demonstrable scalability over abstract alignment workshops; I'll wait for the deliverable checklist.",
                 "missionId": null
             }
         ]
@@ -1298,6 +1401,47 @@ const MISSIONS = [
                 "buffs": [],
                 "addressBook": [
                     "eco"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "M015_MediaCrisis",
+        "subject": "Critical Budget Re-Forecasting & Targeting Synergy Session",
+        "from": "The Centralized Compliance and Optimization Unit",
+        "intro": "Due to a significant variance in the Q2 media spend tracking, we must immediately pivot to address a critical path dependency. The strategic placement investment for the Vaccination Initiative experienced an unforeseen velocity of expenditure, primarily resulting from a profound demographic targeting misalignment—specifically, an overly focused optimization towards the equine sector. We need to leverage this emergency synergy session to ensure continuity of service delivery and minimize negative stakeholder optics. The objective is to devise a recovery plan that allows us to meet our six-week deliverable goals within the remaining budgetary envelope, which is currently nominal.",
+        "opponents": [
+            {
+                "id": 1,
+                "employeeId": "E_STEPH_MCB_001",
+                "hp": 90,
+                "maxHp": 90,
+                "wins": 3,
+                "buffs": [],
+                "addressBook": [
+                    "intern"
+                ]
+            },
+            {
+                "id": 2,
+                "employeeId": "raz_hm",
+                "hp": 80,
+                "maxHp": 80,
+                "wins": 3,
+                "buffs": [],
+                "addressBook": [
+                    "intern"
+                ]
+            },
+            {
+                "id": 3,
+                "employeeId": "EMP_ANT_083",
+                "hp": 40,
+                "maxHp": 40,
+                "wins": 3,
+                "buffs": [],
+                "addressBook": [
+                    "intern"
                 ]
             }
         ]
