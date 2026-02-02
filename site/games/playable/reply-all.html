@@ -526,7 +526,7 @@ const CONTACTS = [
         "title": "Budget Controller",
         "rarity": "uncommon",
         "department": "Finance",
-        "bonus": "+5 HP and +5 Credibility/turn.",
+        "bonus": "+5 Max Credibility and +5 Credibility/turn.",
         "eff": {
             "hpBonus": 5,
             "heal": 5
@@ -1021,7 +1021,7 @@ const EMPLOYEES = [
         ]
     },
     {
-        "id": "jamie",
+        "id": "brendan",
         "name": "Brendan (IT?)",
         "email": "b.it@gov.org",
         "department": "Information Technology",
@@ -1127,25 +1127,25 @@ const EMPLOYEES = [
         "selfPromote": "My latest 'Synergy Memo' has been read by 12% of the staff. Engagement is skyrocketing.",
         "lines": [
             {
-                "text": "I need a status report on the 'Synergy Initiative' by EOD. This thread is a distraction.",
+                "text": "I don't see how this is relevant to me. This thread is a distraction.",
                 "missionId": null
             },
             {
-                "text": "We need to 'lean in' to a more positive communication style. Your tone is very 'lean out'.",
+                "text": "We need to 'lean in' to a more positive approach. Your tone has been very 'lean out'.",
                 "missionId": null
             },
             {
-                "text": "I'm scheduling a sync-up to discuss your 'alignment' with departmental goals.",
+                "text": "I'm scheduling a sync-up to discuss if you'd ACTUALLY want my job.",
                 "missionId": null
             },
             {
-                "text": "Let's take this offline. And by offline, I mean I'm deleting your replies.",
+                "text": "I'm taking this offline. And by offline, I mean I'm deleting your replies.",
                 "missionId": null
             }
         ]
     },
     {
-        "id": "desmond",
+        "id": "anneke",
         "name": "Anneke VDH (ECO)",
         "email": "anneke.eco@gov.org",
         "department": "Executive Council Office",
@@ -1159,6 +1159,8 @@ const EMPLOYEES = [
             {
                 "text": "I think your latest reply violates the 'Civility in Digital Spaces' directive.",
                 "missionId": null
+            },
+            { "text": "I'm nude!", "missionId": null
             },
             {
                 "text": "I'm auditing this thread for potential FOIA requests. Mind your words.",
@@ -1237,9 +1239,9 @@ const MISSIONS = [
             },
             {
                 "id": 44,
-                "employeeId": "jamie",
-                "hp": 50,
-                "maxHp": 50,
+                "employeeId": "brendan",
+                "hp": 30,
+                "maxHp": 30,
                 "wins": 3,
                 "buffs": [],
                 "addressBook": [
@@ -1252,7 +1254,7 @@ const MISSIONS = [
         "id": "intern_grievance",
         "subject": "RE: Intern Grievance Collective",
         "from": "HR.Interns",
-        "intro": "To the Permanent Staff,<br><br>We, the interns, have noticed a significant lack of 'Team Synergy' and 'Professional Courtesy'. <strong>{playerName}</strong>, your recent emails have been cited as 'aggressive'. <strong>Management</strong>, we are looping in our mentors. <strong>Payroll</strong>, we expect our stipends to reflect the emotional labor of this thread.",
+        "intro": "To the Permanent Staff,<br><br>We, the interns, have noticed a significant lack of 'Team Synergy' and 'Professional Courtesy'. <strong>{playerName}</strong>, your recent emails have been cited as 'aggressive'. <strong>Sarah</strong>, we are looping in our mentor <strong>Anneke</strong>. <strong>Payroll</strong>, we expect our stipends to reflect the emotional labor of this thread.",
         "opponents": [
             {
                 "id": 5,
@@ -1279,8 +1281,8 @@ const MISSIONS = [
             {
                 "id": 7,
                 "employeeId": "sarah",
-                "hp": 90,
-                "maxHp": 90,
+                "hp": 70,
+                "maxHp": 70,
                 "wins": 4,
                 "buffs": [],
                 "addressBook": [
@@ -1289,9 +1291,9 @@ const MISSIONS = [
             },
             {
                 "id": 8,
-                "employeeId": "desmond",
-                "hp": 75,
-                "maxHp": 75,
+                "employeeId": "anneke",
+                "hp": 60,
+                "maxHp": 60,
                 "wins": 3,
                 "buffs": [],
                 "addressBook": [
