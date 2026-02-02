@@ -1046,11 +1046,12 @@
           rarity: "uncommon",
           departmentId: "information_technology",
           employeeId: "colin_information_technology",
-          bonus: "Deflect +2.",
+          bonus: "Reply to +5 & Escalate +3.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep our technical support aligned and logged.",
           eff: {
-            deflect: 2,
+            singleDmg: 5,
+            replyAllDmg: 3,
           },
           usedBy: null,
         },
@@ -1117,11 +1118,11 @@
           title: "Marketing Advisor",
           rarity: "uncommon",
           departmentId: "executive_council_office",
-          bonus: "Reduce incoming damage by 5.",
+          bonus: "Reduce incoming damage by 3.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to advise on our tactical approach and reduce reputational risk.",
           eff: {
-            defFlat: 5,
+            defFlat: 3,
           },
           usedBy: null,
         },
@@ -1259,17 +1260,48 @@
           usedBy: null,
         },
         {
+          id: "cc_rory_operations",
+          name: "Rory",
+          title: "Facilities Coordinator",
+          rarity: "common",
+          departmentId: "operations",
+          employeeId: "rory_operations",
+          bonus: "Reduce incoming damage by 1 and +2 Credibility/turn.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to keep the facilities schedule and shared space aligned.",
+          eff: {
+            defFlat: 1,
+            heal: 2,
+          },
+          usedBy: null,
+        },
+        {
+          id: "cc_dora_finance",
+          name: "Dora",
+          title: "Budget Specialist",
+          rarity: "common",
+          departmentId: "finance",
+          employeeId: "dora_finance",
+          bonus: "+10 Max Credibility.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to see if she can get help with her budgets.",
+          eff: {
+            maxHp: 10,
+          },
+          usedBy: null,
+        },
+        {
           id: "cc_christina_policy",
           name: "Christina",
           title: "Policy Officer",
           rarity: "common",
           departmentId: "policy",
           employeeId: "christina_policy",
-          bonus: "Reduce incoming damage by 2.",
+          bonus: "Deflect +2.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to ensure we stay aligned with policy language.",
           eff: {
-            defFlat: 2,
+            deflect: 2,
           },
           usedBy: null,
         },
@@ -1280,11 +1312,11 @@
           rarity: "common",
           departmentId: "information_technology",
           employeeId: "fraser_information_technology",
-          bonus: "Deflect +1.",
+          bonus: "Deflect +2.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to support technical logging and incident tracking.",
           eff: {
-            deflect: 1,
+            deflect: 2,
           },
           usedBy: null,
         },
@@ -1295,11 +1327,11 @@
           rarity: "common",
           departmentId: "m4_agency",
           employeeId: "anthony_m4_agency",
-          bonus: "+2 reply all dmg.",
+          bonus: "+3 reply all",
           loopInText:
             "I'm looping in <strong>{name}</strong> to manage the broader comms fallout.",
           eff: {
-            replyAllDmg: 2,
+            replyAllDmg: 3,
           },
           usedBy: null,
         },
@@ -1326,11 +1358,11 @@
           rarity: "uncommon",
           departmentId: "legal",
           employeeId: "megan_legal",
-          bonus: "Reduce incoming damage by 4.",
+          bonus: "Reduce incoming damage by 3.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to confirm our legal footing.",
           eff: {
-            defFlat: 4,
+            defFlat: 3,
           },
           usedBy: null,
         },
@@ -1341,11 +1373,11 @@
           rarity: "uncommon",
           departmentId: "human_resources",
           employeeId: "interns_human_resources",
-          bonus: "Follow-up +10%.",
+          bonus: "Follow-up chance +20%.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to document intern feedback and thread tone.",
           eff: {
-            followUpChance: 0.1,
+            followUpChance: 0.20,
           },
           usedBy: null,
         },
@@ -1356,11 +1388,11 @@
           rarity: "uncommon",
           departmentId: "finance",
           employeeId: "sheila_finance",
-          bonus: "+10% reputation gains.",
+          bonus: "+25% reputation gains.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep payroll exposure in view.",
           eff: {
-            repBonus: 0.1,
+            repBonus: 0.25,
           },
           usedBy: null,
         },
@@ -1371,11 +1403,11 @@
           rarity: "uncommon",
           departmentId: "m4_agency",
           employeeId: "taz_m4_agency",
-          bonus: "+3 escalate dmg.",
+          bonus: "+5 escalate dmg.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to sync the escalation plan and media response.",
           eff: {
-            escalateDmg: 3,
+            escalateDmg: 5,
           },
           usedBy: null,
         },
@@ -1386,12 +1418,12 @@
           rarity: "rare",
           departmentId: "executive_council_office",
           employeeId: "anneke_executive_council_office",
-          bonus: "+4 reply to and +2 REP if in loop at end of match.",
+          bonus: "+4 reply to and +4 REP if in loop at end of match.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to provide executive counsel and strategic framing.",
           eff: {
             singleDmg: 4,
-            endRep: 2,
+            endRep: 4,
           },
           usedBy: null,
         },
@@ -1402,11 +1434,11 @@
           rarity: "rare",
           departmentId: "m4_agency",
           employeeId: "selina_m4_agency",
-          bonus: "+2 all comms dmg.",
+          bonus: "+5 all messages",
           loopInText:
             "I'm looping in <strong>{name}</strong> to stabilize the account and reframe the narrative.",
           eff: {
-            globalDmg: 2,
+            globalDmg: 5,
           },
           usedBy: null,
         },
