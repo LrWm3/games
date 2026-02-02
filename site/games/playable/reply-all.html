@@ -1360,11 +1360,12 @@
           rarity: "common",
           departmentId: "operations",
           employeeId: "avery_operations",
-          bonus: "+2 reply to.",
+          bonus: "+2 reply to & Self-Promote +5.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to track operational impact and keep this moving.",
           eff: {
             singleDmg: 2,
+            selfPromoteHeal: 5,
           },
           usedBy: null,
         },
@@ -1375,11 +1376,12 @@
           rarity: "common",
           departmentId: "marketing",
           employeeId: "malik_marketing",
-          bonus: "+1 all messages",
+          bonus: "+1 all messages & Self-Promote +5.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep brand alignment on this thread.",
           eff: {
             globalDmg: 1,
+            selfPromoteHeal: 5,
           },
           usedBy: null,
         },
@@ -1405,12 +1407,13 @@
           rarity: "common",
           departmentId: "operations",
           employeeId: "rory_operations",
-          bonus: "Reduce incoming damage by 1 and +2 Credibility/turn.",
+          bonus: "Reduce incoming damage by 1, +2 Credibility/turn & Self-Promote +5.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep the facilities schedule and shared space aligned.",
           eff: {
             defFlat: 1,
             heal: 2,
+            selfPromoteHeal: 5,
           },
           usedBy: null,
         },
@@ -1481,12 +1484,13 @@
           rarity: "uncommon",
           departmentId: "finance",
           employeeId: "jonah_finance",
-          bonus: "+5 Max Credibility and +2 Credibility/turn.",
+          bonus: "+5 Max Credibility, +2 Credibility/turn & Self-Promote +5.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to provide a spend analysis and risk outlook.",
           eff: {
             maxHp: 5,
             heal: 2,
+            selfPromoteHeal: 5,
           },
           usedBy: null,
         },
@@ -1684,9 +1688,10 @@
         {
           id: "best",
           name: "Best,",
-          bonus: "+2 Credibility/turn.",
+          bonus: "+2 Credibility/turn & Self-Promote +5.",
           rarity: "uncommon",
           heal: 2,
+          selfPromoteHeal: 5,
         },
         {
           id: "thanks_advance",
@@ -1760,10 +1765,11 @@
         {
           id: "good_afternoon",
           name: "Good afternoon,",
-          bonus: "+5 Max Credibility and +1 Credibility/turn",
+          bonus: "+5 Max Credibility, +1 Credibility/turn & Self-Promote +5",
           rarity: "common",
           maxHp: 5,
           heal: 1,
+          selfPromoteHeal: 5,
         },
         {
           id: "good_evening",
@@ -1782,9 +1788,10 @@
         {
           id: "hello_team",
           name: "Hello team,",
-          bonus: "+1 Credibility/turn",
+          bonus: "+1 Credibility/turn & Self-Promote +5",
           rarity: "common",
           heal: 1,
+          selfPromoteHeal: 5,
         },
         {
           id: "all_stakeholders",
@@ -1884,17 +1891,19 @@
         {
           id: "regards_signoff",
           name: "Regards,",
-          bonus: "+5 Max Credibility and +1 Credibility/turn",
+          bonus: "+5 Max Credibility, +1 Credibility/turn & Self-Promote +5",
           rarity: "common",
           maxHp: 5,
           heal: 1,
+          selfPromoteHeal: 5,
         },
         {
           id: "kind_regards_signoff",
           name: "Kind regards,",
-          bonus: "+2 Credibility/turn",
+          bonus: "+2 Credibility/turn & Self-Promote +5",
           rarity: "common",
           heal: 2,
+          selfPromoteHeal: 5,
         },
         {
           id: "yours_truly",
