@@ -401,10 +401,10 @@
 const CONTACTS = [
     {
         "id": "intern",
-        "name": "Kevin",
-        "title": "HR Assistant",
+        "name": "Telly"
+        "title": "Intern",
         "rarity": "common",
-        "department": "Human Resources",
+        "department": "Operations",
         "bonus": "+3 attack potency.",
         "eff": {
             "dmg": 3
@@ -413,7 +413,7 @@ const CONTACTS = [
     },
     {
         "id": "it",
-        "name": "Pradeep",
+        "name": "Willy Boy",
         "title": "IT Specialist",
         "rarity": "common",
         "department": "Information Technology",
@@ -426,9 +426,9 @@ const CONTACTS = [
     {
         "id": "legal",
         "name": "Sarah",
-        "title": "Legal Counsel",
+        "title": "Director of Marketing",
         "rarity": "uncommon",
-        "department": "Legal Compliance",
+        "department": "Executive Council Office",
         "bonus": "20% DMG Reduction.",
         "eff": {
             "def": 0.2
@@ -437,8 +437,8 @@ const CONTACTS = [
     },
     {
         "id": "ceo",
-        "name": "Arthur",
-        "title": "Chief of Staff",
+        "name": "Tim",
+        "title": "Premier",
         "rarity": "rare",
         "department": "Executive Council Office",
         "bonus": "2x Leverage gain.",
@@ -449,7 +449,7 @@ const CONTACTS = [
     },
     {
         "id": "cat",
-        "name": "Mittens",
+        "name": "Nimby",
         "title": "Office Cat",
         "rarity": "rare",
         "department": "Facilities and Administration",
@@ -461,31 +461,31 @@ const CONTACTS = [
     },
     {
         "id": "mktg",
-        "name": "Becky",
-        "title": "Comms Officer",
+        "name": "Lisa",
+        "title": "Director of Research",
         "rarity": "uncommon",
-        "department": "Communications",
-        "bonus": "+5 attack potency.",
+        "department": "Marketing",
+        "bonus": "+8 attack potency.",
         "eff": {
-            "dmg": 5
+            "dmg": 8
         },
         "usedBy": null
     },
     {
         "id": "audit",
-        "name": "Mr. Henderson",
-        "title": "Senior Auditor",
+        "name": "Meghan Cassedy",
+        "title": "Marketing Advisor",
         "rarity": "uncommon",
-        "department": "Finance",
+        "department": "Executive Council Office",
         "bonus": "30% DMG Reduction.",
         "eff": {
-            "def": 0.3
+            "def": 0.25
         },
         "usedBy": null
     },
     {
         "id": "facilities",
-        "name": "Mike",
+        "name": "Larry",
         "title": "Facilities Lead",
         "rarity": "common",
         "department": "Facilities and Administration",
@@ -498,8 +498,8 @@ const CONTACTS = [
     },
     {
         "id": "liaison",
-        "name": "Constituent Liaison",
-        "title": "Public Relations",
+        "name": "Dave",
+        "title": "Social Media Manager",
         "rarity": "rare",
         "department": "Constituent Services",
         "bonus": "No combat bonus, but +4 REP if in loop at end of match.",
@@ -522,7 +522,7 @@ const CONTACTS = [
     },
     {
         "id": "finance_cc",
-        "name": "Marcus",
+        "name": "Adam",
         "title": "Budget Controller",
         "rarity": "uncommon",
         "department": "Finance",
@@ -535,7 +535,7 @@ const CONTACTS = [
     },
     {
         "id": "const_cc",
-        "name": "Elena",
+        "name": "Rowan",
         "title": "Public Liaison",
         "rarity": "rare",
         "department": "Constituent Services",
@@ -655,23 +655,23 @@ const SIGNATURES = [
     {
         "id": "thanks_advance",
         "name": "Thanks in advance,",
-        "bonus": "25% chance to double leverage gain.",
+        "bonus": "50% chance to double leverage gain.",
         "rarity": "rare",
-        "doubleLevChance": 0.25
+        "doubleLevChance": 0.50
     },
     {
         "id": "encrypted",
         "name": "Sent from my encrypted workstation",
-        "bonus": "5% DMG Reduction.",
-        "rarity": "common",
-        "def": 0.05
+        "bonus": "15% DMG Reduction.",
+        "rarity": "uncommon",
+        "def": 0.15
     },
     {
         "id": "disclaimer",
         "name": "Standard Disclaimer Applied",
-        "bonus": "Increase reply strength by 5%.",
+        "bonus": "Increase reply strength by 10%.",
         "rarity": "common",
-        "dmgMult": 0.05
+        "dmgMult": 0.10
     },
     {
         "id": "breakroom",
@@ -686,9 +686,9 @@ const SALUTATIONS = [
     {
         "id": "hi_all",
         "name": "Hi all,",
-        "bonus": "+5 Max HP",
+        "bonus": "+10 Max Credibility",
         "rarity": "common",
-        "hpBonus": 5
+        "hpBonus": 10
     },
     {
         "id": "team",
@@ -721,9 +721,9 @@ const SALUTATIONS = [
     {
         "id": "morning",
         "name": "Good morning,",
-        "bonus": "+5 Max HP",
+        "bonus": "+10 Max Credibility",
         "rarity": "common",
-        "hpBonus": 5
+        "hpBonus": 10
     },
     {
         "id": "project_team",
@@ -745,14 +745,14 @@ const SIGNOFFS = [
     {
         "id": "thanks",
         "name": "Thanks,",
-        "bonus": "+5 Max HP",
+        "bonus": "+10 Max Credibility",
         "rarity": "common",
-        "hpBonus": 5
+        "hpBonus": 10
     },
     {
         "id": "cheers",
         "name": "Cheers,",
-        "bonus": "+2 HP/turn",
+        "bonus": "+2 Credibility/turn",
         "rarity": "common",
         "heal": 2
     },
@@ -780,9 +780,9 @@ const SIGNOFFS = [
     {
         "id": "warmly",
         "name": "Warmly,",
-        "bonus": "+5 Max HP",
+        "bonus": "+10 Max Credibility",
         "rarity": "common",
-        "hpBonus": 5
+        "hpBonus": 10
     },
     {
         "id": "solidarity",
