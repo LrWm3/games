@@ -1923,8 +1923,8 @@
           bonusWins: 0,
           attacks: [
             "I believe we need to circle back to your recent comments. My focus is on department output, and I suggest yours should be too.",
-            "I've already addressed this in my previous email, but for the sake of clarity, I'll repeat it: I was at my desk all day.",
-            "Perhaps we should focus on the Q4 deliverables instead of speculating on departmental policy?",
+            "I've already addressed this in my previous email, but for the sake of clarity, I'll repeat it: This is not my responsibility.",
+            "Perhaps we should focus on next quarters' deliverables instead of speculating on departmental policy?",
             "I'm happy to discuss this in a 1-on-1, but I don't believe this is a productive use of the 'All-Staff' distribution list.",
           ],
           selfPromoteLines: [
@@ -2233,19 +2233,19 @@
           {
             id: "dmg",
             name: "Project Excellence",
-            bonus: "+5 DMG",
-            cost: 8,
+            bonus: "+2 DMG",
+            cost: 10,
             apply: () => {
-              state.player.bonusDmg += 5;
+              state.player.bonusDmg += 2;
             },
           },
           {
             id: "hp",
             name: "Resilience Training",
-            bonus: "+20 Max HP",
-            cost: 8,
+            bonus: "+5 Max Credibility",
+            cost: 10,
             apply: () => {
-              state.player.bonusMaxHp += 20;
+              state.player.bonusMaxHp += 5;
             },
           },
           {
@@ -2256,16 +2256,7 @@
             apply: () => {
               state.player.bonusWins += 1;
             },
-          },
-          {
-            id: "heal",
-            name: "Executive Coaching",
-            bonus: "Fully Restore HP",
-            cost: 5,
-            apply: () => {
-              state.player.hp = getUnitMaxHp(state.player);
-            },
-          },
+          }
         ];
         state.shop.promotions = shuffle([...promoOptions])
           .slice(0, 2)
