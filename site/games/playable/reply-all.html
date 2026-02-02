@@ -1214,11 +1214,11 @@
           title: "Premier",
           rarity: "rare",
           departmentId: "executive_council_office",
-          bonus: "2x Leverage gain.",
+          bonus: "3x Leverage gain.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep him in the loop on this initative.",
           eff: {
-            levMult: 1,
+            levMult: 2,
           },
           usedBy: null,
         },
@@ -1719,10 +1719,10 @@
         {
           id: "coffee_break",
           name: "Sent from the breakroom coffee line",
-          bonus: "+2% leverage gain.",
+          bonus: "+50% leverage gain.",
           rarity: "common",
           setId: "coffee_lovers",
-          levMult: 0.02,
+          levMult: 0.50,
         },
         {
           id: "double_espresso",
@@ -1767,9 +1767,9 @@
         {
           id: "good_evening",
           name: "Good evening,",
-          bonus: "+20% leverage gain",
+          bonus: "+50% leverage gain",
           rarity: "uncommon",
-          levMult: 0.20,
+          levMult: 0.50,
         },
         {
           id: "all",
@@ -1823,9 +1823,9 @@
         {
           id: "everyone",
           name: "Everyone,",
-          bonus: "+10% Leverage gain",
+          bonus: "+50% Leverage gain",
           rarity: "uncommon",
-          levMult: 0.1,
+          levMult: 0.5,
         },
         {
           id: "formal",
@@ -1898,9 +1898,9 @@
         {
           id: "yours_truly",
           name: "Yours truly,",
-          bonus: "+5% leverage gain",
+          bonus: "+75% leverage gain",
           rarity: "uncommon",
-          levMult: 0.05,
+          levMult: 0.75,
         },
         {
           id: "best_signoff",
@@ -1954,9 +1954,9 @@
         {
           id: "v_respectfully",
           name: "Very Respectfully,",
-          bonus: "+20% Leverage gain",
+          bonus: "+150% Leverage gain",
           rarity: "rare",
-          levMult: 0.2,
+          levMult: 1.5,
         },
         {
           id: "warmly",
@@ -1983,9 +1983,9 @@
         {
           id: "best_wishes",
           name: "Best wishes,",
-          bonus: "10% Leverage gain",
+          bonus: "50% Leverage gain",
           rarity: "uncommon",
-          levMult: 0.1,
+          levMult: 0.5,
         },
       ];
 
@@ -2023,9 +2023,10 @@
             { type: "signature", id: "environment_printing" },
           ],
           effect: {
-            globalDmg: 1,
-            deflect: 1,
-            escalateRecoverPerHit: 1,
+            globalDmg: 5,
+            defFlat: 3,
+            deflect: 2,
+            escalateRecoverPerHit: 10,
           },
         },
         {
