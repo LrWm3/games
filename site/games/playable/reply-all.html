@@ -617,11 +617,23 @@
         </div>
 
         <button
-          onclick="startGame()"
+          onclick="startNewGame()"
           class="w-full py-3 font-bold retro-button text-[#000080]"
         >
-          LOG ON
+          SIGN UP
         </button>
+        <div id="login-section" class="mt-3 hidden">
+          <div class="text-[10px] uppercase font-bold text-gray-500 mb-1">
+            Existing User
+          </div>
+          <button
+            id="login-btn"
+            onclick="resumeGame()"
+            class="w-full py-2 font-bold retro-button text-[#000080]"
+          >
+            Login as (...)
+          </button>
+        </div>
       </div>
     </div>
 
@@ -2202,6 +2214,8 @@
 
       let opponents = [];
 
+      const SAVE_KEY = "reply_all_save_v1";
+
       let state = {
         player: {
           name: "eke vdh",
@@ -2285,12 +2299,179 @@
 
       const nameInput = document.getElementById("player-name-input");
       const emailPreview = document.getElementById("email-preview");
+      const loginSection = document.getElementById("login-section");
+      const loginBtn = document.getElementById("login-btn");
+
+      function getSavedGame() {
+        try {
+          const raw = localStorage.getItem(SAVE_KEY);
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function clearSavedGame() {
+        try {
+          localStorage.removeItem(SAVE_KEY);
+        } catch (e) {}
+      }
+
+      function serializePlayer(player) {
+        return {
+          ...player,
+          titleId: player.title ? player.title.id : null,
+          salutationId: player.salutation ? player.salutation.id : null,
+          signOffId: player.signOff ? player.signOff.id : null,
+          signatureIds: player.signatures
+            ? player.signatures.map((s) => s.id)
+            : [],
+          bccIds: player.bccContacts ? player.bccContacts.map((b) => b.id) : [],
+        };
+      }
+
+      function hydratePlayer(saved) {
+        const title = TITLES.find((t) => t.id === saved.titleId) || TITLES[0];
+        const salutation = saved.salutationId
+          ? SALUTATIONS.find((s) => s.id === saved.salutationId) || null
+          : null;
+        const signOff = saved.signOffId
+          ? SIGNOFFS.find((s) => s.id === saved.signOffId) || null
+          : null;
+        const signatures = Array.isArray(saved.signatureIds)
+          ? saved.signatureIds
+              .map((id) => SIGNATURES.find((s) => s.id === id))
+              .filter(Boolean)
+          : [];
+        const bccContacts = Array.isArray(saved.bccIds)
+          ? saved.bccIds
+              .map((id) => BCC_CONTACTS.find((b) => b.id === id))
+              .filter(Boolean)
+          : [];
+        const player = {
+          ...saved,
+          title,
+          salutation,
+          signOff,
+          signatures,
+          bccContacts,
+        };
+        applyUnitDefaults(player);
+        return player;
+      }
+
+      function serializeShop(shop) {
+        const mapIds = (list) =>
+          Array.isArray(list)
+            ? list.map((item) => ({ id: item.id, purchased: !!item.purchased }))
+            : [];
+        return {
+          seminars: mapIds(shop.seminars),
+          signatures: mapIds(shop.signatures),
+          salutations: mapIds(shop.salutations),
+          signoffs: mapIds(shop.signoffs),
+          promotions: mapIds(shop.promotions),
+          bccs: mapIds(shop.bccs),
+        };
+      }
+
+      function hydrateShop(savedShop) {
+        if (!savedShop) return { seminars: [], signatures: [], salutations: [], signoffs: [], promotions: [], bccs: [] };
+        const build = (list, source) =>
+          (list || [])
+            .map((item) => {
+              const found = source.find((s) => s.id === item.id);
+              if (!found) return null;
+              return { ...found, purchased: !!item.purchased };
+            })
+            .filter(Boolean);
+        return {
+          seminars: build(savedShop.seminars, CONTACTS),
+          signatures: build(savedShop.signatures, SIGNATURES),
+          salutations: build(savedShop.salutations, SALUTATIONS),
+          signoffs: build(savedShop.signoffs, SIGNOFFS),
+          promotions: build(savedShop.promotions, getPromoOptions()),
+          bccs: build(savedShop.bccs, BCC_CONTACTS),
+        };
+      }
+
+      function saveGame() {
+        try {
+          const payload = {
+            state: {
+              ...state,
+              player: serializePlayer(state.player),
+              shop: serializeShop(state.shop),
+            },
+            opponents,
+            messageLog:
+              document.getElementById("message-log")?.innerHTML || "",
+            activeScreen: ["start-screen", "game-ui", "inbox-screen", "summary-screen", "shop-screen", "promotion-screen", "lose-screen"].find(
+              (id) => {
+                const el = document.getElementById(id);
+                return el && !el.classList.contains("hidden");
+              },
+            ),
+          };
+          localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+        } catch (e) {}
+      }
+
+      function applySavedGame(save) {
+        if (!save || !save.state) return false;
+        state = {
+          ...save.state,
+          player: hydratePlayer(save.state.player),
+          shop: hydrateShop(save.state.shop),
+        };
+        opponents = Array.isArray(save.opponents) ? save.opponents : [];
+        opponents.forEach((o) => {
+          applyUnitDefaults(o);
+          if (!o._lineBags) o._lineBags = {};
+        });
+        if (!state.player._lineBags) state.player._lineBags = {};
+        return true;
+      }
+
+      function startNewGame() {
+        clearSavedGame();
+        startGame();
+      }
+
+      function resumeGame() {
+        const save = getSavedGame();
+        if (!save || !applySavedGame(save)) return;
+        const screen = save.activeScreen || "inbox-screen";
+        transitionTo(screen);
+        if (screen === "game-ui") {
+          const log = document.getElementById("message-log");
+          if (log) log.innerHTML = save.messageLog || "";
+          updateUI();
+        } else if (screen === "shop-screen") {
+          updateShopUI();
+        } else if (screen === "summary-screen") {
+          renderSummary();
+        } else if (screen === "inbox-screen") {
+          showInbox();
+        }
+      }
+
+      function initLoginOption() {
+        const save = getSavedGame();
+        if (save && save.state && save.state.player && save.state.player.name) {
+          loginSection.classList.remove("hidden");
+          loginBtn.innerText = `Login as ${save.state.player.name}`;
+        } else {
+          loginSection.classList.add("hidden");
+        }
+      }
       nameInput.addEventListener("input", (e) => {
         const val = e.target.value.trim() || "eke vdh";
         const email = val.toLowerCase().replace(/\s+/g, ".") + "@gov.org";
         emailPreview.innerText = email;
         state.player.email = email;
       });
+      initLoginOption();
 
       document.addEventListener("keydown", (e) => {
         if (e.key !== "0") return;
@@ -2332,6 +2513,7 @@
         });
         const target = document.getElementById(screenId);
         if (target) target.classList.remove("hidden");
+        saveGame();
       }
 
       function startGame() {
@@ -2341,6 +2523,7 @@
         state.player.email = email;
         document.getElementById("status-bar-email").innerText = "Online";
         showInbox();
+        saveGame();
       }
 
       function showInbox() {
@@ -2391,6 +2574,7 @@
 
         document.getElementById("inbox-status").innerText =
           `${324 + state.player.year * 4} Messages, 1 Unread`;
+        saveGame();
       }
 
       const STAT_FIELDS = [
@@ -2878,32 +3062,8 @@
         );
       }
 
-      function generateShopItems() {
-        // Seminars
-        const availCCs = CONTACTS.filter(
-          (c) => !state.player.addressBook.includes(c.id),
-        );
-        state.shop.seminars = shuffle([...availCCs])
-          .slice(0, 2)
-          .map((c) => ({ ...c, purchased: false }));
-
-        // Signatures
-        state.shop.signatures = shuffle([...SIGNATURES])
-          .slice(0, 2)
-          .map((s) => ({ ...s, purchased: false }));
-
-        // Salutations
-        state.shop.salutations = shuffle([...SALUTATIONS])
-          .slice(0, 2)
-          .map((s) => ({ ...s, purchased: false }));
-
-        // Sign-offs
-        state.shop.signoffs = shuffle([...SIGNOFFS])
-          .slice(0, 2)
-          .map((s) => ({ ...s, purchased: false }));
-
-        // Promotions (Stats)
-        const promoOptions = [
+      function getPromoOptions() {
+        return [
           {
             id: "dmg_single",
             name: "Targeted Push",
@@ -2968,7 +3128,34 @@
             },
           },
         ];
-        state.shop.promotions = shuffle([...promoOptions])
+      }
+
+      function generateShopItems() {
+        // Seminars
+        const availCCs = CONTACTS.filter(
+          (c) => !state.player.addressBook.includes(c.id),
+        );
+        state.shop.seminars = shuffle([...availCCs])
+          .slice(0, 2)
+          .map((c) => ({ ...c, purchased: false }));
+
+        // Signatures
+        state.shop.signatures = shuffle([...SIGNATURES])
+          .slice(0, 2)
+          .map((s) => ({ ...s, purchased: false }));
+
+        // Salutations
+        state.shop.salutations = shuffle([...SALUTATIONS])
+          .slice(0, 2)
+          .map((s) => ({ ...s, purchased: false }));
+
+        // Sign-offs
+        state.shop.signoffs = shuffle([...SIGNOFFS])
+          .slice(0, 2)
+          .map((s) => ({ ...s, purchased: false }));
+
+        // Promotions (Stats)
+        state.shop.promotions = shuffle([...getPromoOptions()])
           .slice(0, 2)
           .map((p) => ({ ...p, purchased: false }));
 
@@ -2983,61 +3170,70 @@
         generateShopItems();
         setTimeout(() => {
           transitionTo("summary-screen");
-          const baseRepByQuarter = {
-            Q3: 4,
-            Q4: 5,
-            Q2: 6,
-            Q1: 8,
-          };
-          const baseRep =
-            baseRepByQuarter[state.player.quarter] ?? baseRepByQuarter.Q3;
-          const totalOptOutRep = state.removedByPlayer * 2;
-
-          // Distribution
-          const optOutList = document.getElementById("summary-optouts-list");
-          optOutList.innerHTML = "";
-          const playerKills = opponents.filter((o) => o.removedByPlayer);
-
-          if (playerKills.length > 0) {
-            optOutList.classList.remove("hidden");
-            playerKills.forEach((o) => {
-              const share = 2;
-              const div = document.createElement("div");
-              div.className =
-                "flex justify-between text-[10px] text-gray-600 italic";
-              div.innerHTML = `<span>Opt-out: ${o.name}</span><span>+${share}</span>`;
-              optOutList.appendChild(div);
-            });
-          } else {
-            optOutList.classList.add("hidden");
-          }
-
-          let bonusRep = 0;
-          const repStats = computeUnitStats(state.player);
-          if (repStats.repBonus) {
-            bonusRep +=
-              (state.removedTotal -
-                opponents.filter((o) => o.hp > 0).length -
-                state.removedByPlayer) *
-              repStats.repBonus;
-          }
-          if (repStats.endRep) {
-            bonusRep += repStats.endRep;
-          }
-
-          const totalRep = baseRep + totalOptOutRep + bonusRep;
-          state.player.reputation += totalRep;
+          const summary = computeSummary();
+          state.player.reputation += summary.totalRep;
 
           // Advance mission index
           state.currentMissionIndex =
             (state.currentMissionIndex + 1) % MISSIONS.length;
 
-          document.getElementById("summary-base-rep").innerText = `+${baseRep}`;
-          document.getElementById("summary-bonus-rep").innerText =
-            `+${bonusRep}`;
-          document.getElementById("summary-rep-earned").innerText =
-            `+${totalRep}`;
+          renderSummary(summary);
         }, 4000);
+      }
+
+      function computeSummary() {
+        const baseRepByQuarter = {
+          Q3: 4,
+          Q4: 5,
+          Q2: 6,
+          Q1: 8,
+        };
+        const baseRep =
+          baseRepByQuarter[state.player.quarter] ?? baseRepByQuarter.Q3;
+        const totalOptOutRep = state.removedByPlayer * 2;
+        let bonusRep = 0;
+        const repStats = computeUnitStats(state.player);
+        if (repStats.repBonus) {
+          bonusRep +=
+            (state.removedTotal -
+              opponents.filter((o) => o.hp > 0).length -
+              state.removedByPlayer) *
+            repStats.repBonus;
+        }
+        if (repStats.endRep) {
+          bonusRep += repStats.endRep;
+        }
+        const totalRep = baseRep + totalOptOutRep + bonusRep;
+        return { baseRep, bonusRep, totalRep };
+      }
+
+      function renderSummary(summary = computeSummary()) {
+        // Distribution
+        const optOutList = document.getElementById("summary-optouts-list");
+        if (!optOutList) return;
+        optOutList.innerHTML = "";
+        const playerKills = opponents.filter((o) => o.removedByPlayer);
+
+        if (playerKills.length > 0) {
+          optOutList.classList.remove("hidden");
+          playerKills.forEach((o) => {
+            const share = 2;
+            const div = document.createElement("div");
+            div.className =
+              "flex justify-between text-[10px] text-gray-600 italic";
+            div.innerHTML = `<span>Opt-out: ${o.name}</span><span>+${share}</span>`;
+            optOutList.appendChild(div);
+          });
+        } else {
+          optOutList.classList.add("hidden");
+        }
+
+        document.getElementById("summary-base-rep").innerText =
+          `+${summary.baseRep}`;
+        document.getElementById("summary-bonus-rep").innerText =
+          `+${summary.bonusRep}`;
+        document.getElementById("summary-rep-earned").innerText =
+          `+${summary.totalRep}`;
       }
 
       function showShop() {
@@ -3769,6 +3965,7 @@
         const m = (state.turn % 4) * 15;
         document.getElementById("turn-clock").innerText =
           `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} AM`;
+        saveGame();
       }
 
       function addEmailToLog(from, to, subject, body, classes = "") {
@@ -3795,6 +3992,7 @@
                 </div>
             `;
         log.prepend(entry);
+        saveGame();
       }
 
       function performAction(type) {
@@ -4031,18 +4229,20 @@
               }
             }
 
-            if (a.redirectNext && target.id === "player") {
+            if (a.redirectNext) {
               a.redirectNext = false;
-              const targets = alive.filter((o) => o.id !== a.id);
-              if (targets.length > 0) {
-                target = targets[Math.floor(Math.random() * targets.length)];
-                addEmailToLog(
-                  a.name,
-                  "everyone@gov.org",
-                  "Redirected Reply",
-                  `Wait, I meant to send this to <strong>${target.name}</strong> instead.`,
-                  "italic text-blue-400 text-[10px]",
-                );
+              if (target.id === "player") {
+                const targets = alive.filter((o) => o.id !== a.id);
+                if (targets.length > 0) {
+                  target = targets[Math.floor(Math.random() * targets.length)];
+                  addEmailToLog(
+                    a.name,
+                    "everyone@gov.org",
+                    "Redirected Reply",
+                    `Wait, I meant to send this to <strong>${target.name}</strong> instead.`,
+                    "italic text-blue-400 text-[10px]",
+                  );
+                }
               }
             }
 
