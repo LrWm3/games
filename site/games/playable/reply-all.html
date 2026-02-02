@@ -295,12 +295,12 @@
               <span id="summary-rep-earned" class="font-mono text-lg">+0</span>
             </div>
           </div>
-          <button
-            onclick="showShop()"
-            class="w-full py-2 retro-button font-bold text-sm"
-          >
-            GO TO PORTAL
-          </button>
+            <button
+              onclick="showShop()"
+              class="w-full py-2 retro-button font-bold text-sm"
+            >
+              GO TO PORTAL
+            </button>
         </div>
       </div>
     </div>
@@ -495,6 +495,12 @@
           >
             Access Revoked. See Security.
           </div>
+          <button
+            onclick="tryAgain()"
+            class="mt-6 w-full py-2 retro-button font-bold text-sm"
+          >
+            TRY AGAIN
+          </button>
         </div>
       </div>
     </div>
@@ -987,6 +993,138 @@
 
     <script>
       // --- GAME DATA ---
+      let sfxEnabled = false;
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.5;
+      masterGain.connect(audioCtx.destination);
+
+      const analyzer = audioCtx.createAnalyser();
+      masterGain.connect(analyzer);
+      analyzer.fftSize = 64;
+      const brightnessHz = 2000;
+
+      function getMasterFilter() {
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.value = brightnessHz;
+        filter.connect(masterGain);
+        return filter;
+      }
+
+      function createNoiseBuffer(duration = 0.5) {
+        const bufferSize = audioCtx.sampleRate * duration;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        return buffer;
+      }
+
+      function playSound(soundKey) {
+        if (!sfxEnabled) return;
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const filter = getMasterFilter();
+        const g = audioCtx.createGain();
+        g.connect(filter);
+
+        switch (soundKey) {
+          case "chime": {
+            const osc = audioCtx.createOscillator();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(1400, now);
+            const osc2 = audioCtx.createOscillator();
+            osc2.frequency.setValueAtTime(2100, now);
+            g.gain.setValueAtTime(0, now);
+            g.gain.linearRampToValueAtTime(0.2, now + 0.05);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+            osc.connect(g);
+            osc2.connect(g);
+            osc.start(now);
+            osc2.start(now);
+            osc.stop(now + 0.9);
+            osc2.stop(now + 0.9);
+            break;
+          }
+          case "send": {
+            const n = audioCtx.createBufferSource();
+            n.buffer = createNoiseBuffer(0.6);
+            const sweep = audioCtx.createBiquadFilter();
+            sweep.type = "bandpass";
+            sweep.Q.value = 5;
+            sweep.frequency.setValueAtTime(5000, now);
+            sweep.frequency.exponentialRampToValueAtTime(200, now + 0.4);
+            const sg = audioCtx.createGain();
+            sg.gain.setValueAtTime(0, now);
+            sg.gain.linearRampToValueAtTime(0.4, now + 0.1);
+            sg.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+            n.connect(sweep);
+            sweep.connect(sg);
+            sg.connect(filter);
+            n.start(now);
+            break;
+          }
+          case "thunk": {
+            const tosc = audioCtx.createOscillator();
+            tosc.type = "triangle";
+            tosc.frequency.setValueAtTime(160, now);
+            tosc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+            g.gain.setValueAtTime(0.7, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+            tosc.connect(g);
+            tosc.start(now);
+            tosc.stop(now + 0.3);
+            break;
+          }
+          case "trash": {
+            const trn = audioCtx.createBufferSource();
+            trn.buffer = createNoiseBuffer(0.15);
+            const hpf = audioCtx.createBiquadFilter();
+            hpf.type = "highpass";
+            hpf.frequency.value = 1800;
+            g.gain.setValueAtTime(0.3, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            trn.connect(hpf);
+            hpf.connect(g);
+            trn.start(now);
+            break;
+          }
+          case "swipe": {
+            const sn = audioCtx.createBufferSource();
+            sn.buffer = createNoiseBuffer(0.2);
+            const lpf = audioCtx.createBiquadFilter();
+            lpf.frequency.setValueAtTime(3000, now);
+            lpf.frequency.exponentialRampToValueAtTime(100, now + 0.2);
+            g.gain.setValueAtTime(0.15, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+            sn.connect(lpf);
+            lpf.connect(g);
+            sn.start(now);
+            break;
+          }
+          case "connect": {
+            [523, 659, 784].forEach((f, i) => {
+              const o = audioCtx.createOscillator();
+              o.frequency.value = f;
+              const ig = audioCtx.createGain();
+              ig.gain.setValueAtTime(0, now + i * 0.08);
+              ig.gain.linearRampToValueAtTime(0.1, now + i * 0.08 + 0.02);
+              ig.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+              o.connect(ig);
+              ig.connect(g);
+              o.start(now + i * 0.08);
+              o.stop(now + 0.5);
+            });
+            break;
+          }
+        }
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "m" || e.key === "M") {
+          sfxEnabled = !sfxEnabled;
+        }
+      });
 
       const DEPARTMENTS = [
         { id: "operations", name: "Operations" },
@@ -3340,7 +3478,7 @@
               singleDmg: 5,
               replyAllDmg: 3,
               buffs: [],
-              addressBook: [],
+              addressBook: ["cc_willy_boy_information_technology"],
             },
             {
               id: 10,
@@ -3349,7 +3487,7 @@
               maxHp: 40,
               wins: 2,
               buffs: [],
-              addressBook: [],
+              addressBook: ["cc_tim_executive_council_office"],
             },
             {
               id: 11,
@@ -3369,7 +3507,7 @@
               singleDmg: 5,
               replyAllDmg: 3,
               buffs: [],
-              addressBook: ["cc_adam_finance"],
+              addressBook: ["cc_gemma_policy"],
             },
             {
               id: 13,
@@ -3380,7 +3518,7 @@
               singleDmg: 5,
               replyAllDmg: 3,
               buffs: [],
-              addressBook: [],
+              addressBook: ["cc_dave_constituent_services"],
             },
           ],
         },
@@ -3399,7 +3537,7 @@
               maxHp: 50,
               wins: 2,
               buffs: [],
-              addressBook: [],
+              addressBook: ["cc_nimby_facilities_and_administration"],
             },
             {
               id: 15,
@@ -3408,7 +3546,7 @@
               maxHp: 50,
               wins: 2,
               buffs: [],
-              addressBook: [],
+              addressBook: ["cc_malik_marketing"],
             },
             {
               id: 16,
@@ -3417,7 +3555,7 @@
               maxHp: 50,
               wins: 2,
               buffs: [],
-              addressBook: [],
+              addressBook: ["cc_tim_executive_council_office"],
             },
             {
               id: 17,
@@ -3426,7 +3564,7 @@
               maxHp: 50,
               wins: 2,
               buffs: [],
-              addressBook: [],
+              addressBook: ["cc_colin_information_technology"],
             },
             {
               id: 18,
@@ -3435,7 +3573,7 @@
               maxHp: 50,
               wins: 2,
               buffs: [],
-              addressBook: [],
+              addressBook: ["cc_karen_human_resources"],
             },
             {
               id: 19,
@@ -3444,7 +3582,7 @@
               maxHp: 50,
               wins: 2,
               buffs: [],
-              addressBook: [],
+              addressBook: ["cc_gemma_policy"],
             },
           ],
         },
@@ -3462,7 +3600,7 @@
               maxHp: 60,
               wins: 3,
               buffs: [],
-              addressBook: ["cc_samantha_executive_council_office"],
+              addressBook: ["cc_karen_human_resources"],
             },
             {
               id: 4,
@@ -3471,7 +3609,7 @@
               maxHp: 50,
               wins: 3,
               buffs: [],
-              addressBook: ["cc_willy_boy_information_technology"],
+              addressBook: ["cc_adam_finance"],
             },
             {
               id: 44,
@@ -3498,7 +3636,7 @@
               maxHp: 45,
               wins: 2,
               buffs: [],
-              addressBook: [],
+              addressBook: ["cc_nimby_facilities_and_administration"],
             },
             {
               id: 21,
@@ -3507,7 +3645,7 @@
               maxHp: 45,
               wins: 2,
               buffs: [],
-              addressBook: [],
+              addressBook: ["cc_dave_constituent_services"],
             },
             {
               id: 22,
@@ -3516,7 +3654,7 @@
               maxHp: 45,
               wins: 2,
               buffs: [],
-              addressBook: [],
+              addressBook: ["cc_malik_marketing"],
             },
             {
               id: 23,
@@ -3534,7 +3672,7 @@
               maxHp: 45,
               wins: 2,
               buffs: [],
-              addressBook: ["cc_adam_finance"],
+              addressBook: ["cc_gemma_policy"],
             },
           ],
         },
@@ -3561,7 +3699,7 @@
               maxHp: 70,
               wins: 2,
               buffs: [],
-              addressBook: ["cc_meghan_cassedy_executive_council_office"],
+              addressBook: ["cc_adam_finance"],
             },
             {
               id: 7,
@@ -3570,7 +3708,7 @@
               maxHp: 70,
               wins: 4,
               buffs: [],
-              addressBook: ["cc_samantha_executive_council_office"],
+              addressBook: ["cc_meghan_cassedy_executive_council_office"],
             },
             {
               id: 8,
@@ -3579,7 +3717,7 @@
               maxHp: 60,
               wins: 3,
               buffs: [],
-              addressBook: ["cc_samantha_executive_council_office"],
+              addressBook: ["cc_tim_executive_council_office"],
             },
           ],
         },
@@ -3597,7 +3735,7 @@
               maxHp: 90,
               wins: 3,
               buffs: [],
-              addressBook: ["cc_telly_operations"],
+              addressBook: ["cc_dave_constituent_services"],
             },
             {
               id: 2,
@@ -3615,7 +3753,7 @@
               maxHp: 40,
               wins: 3,
               buffs: [],
-              addressBook: ["cc_telly_operations"],
+              addressBook: ["cc_gemma_policy"],
             },
           ],
         },
@@ -4305,6 +4443,22 @@
           }
         }
 
+        if (blocked > 0 && attacker && attacker.id === "player") {
+          playSound("trash");
+        }
+        if (target && target.id === "player" && dmg > 0) {
+          playSound("thunk");
+        }
+        if (
+          attacker &&
+          attacker.id !== "player" &&
+          target &&
+          target.id !== "player" &&
+          dmg > 0
+        ) {
+          playSound("swipe");
+        }
+
         updateUI();
         return { dmg, blocked, reflected };
       }
@@ -4545,6 +4699,7 @@
         if (buff.eff && buff.eff.maxHp) {
           target.hp = Math.min(getUnitMaxHp(target), target.hp + buff.eff.maxHp);
         }
+        playSound("connect");
       }
 
       function startQuarter() {
@@ -4829,7 +4984,72 @@
         document.getElementById("lose-total-rep").innerText = p.reputation;
         document.getElementById("lose-contacts").innerText =
           `${p.addressBook.length} Contacts`;
+        clearSavedGame();
+        initLoginOption();
         transitionTo("lose-screen");
+      }
+
+      function tryAgain() {
+        const name = state.player.name || "eke vdh";
+        const email = state.player.email || "eke.vdh@gov.org";
+        clearSavedGame();
+        state = {
+          ...state,
+          player: {
+            ...state.player,
+            name,
+            email,
+            hp: 50,
+            ult: 0,
+            wins: 3,
+            currentWins: 3,
+            buffs: [],
+            reputation: 0,
+            year: 1,
+            quarter: "Q3",
+            title: TITLES[0],
+            addressBook: ["cc_telly_operations"],
+            signatures: [],
+            salutation: null,
+            signOff: null,
+            bccContacts: [],
+            singleDmg: 10,
+            escalateDmg: 5,
+            replyAllDmg: 20,
+            globalDmg: 0,
+            singleDmgMult: 0,
+            escalateDmgMult: 0,
+            replyAllDmgMult: 0,
+            globalDmgMult: 0,
+            deflectPower: 3,
+            deflect: 0,
+            deflectCharge: 0,
+            followUpChance: 0,
+            replyDeptSplash: 0,
+            escalateRecoverPerHit: 0,
+            _lineBags: {},
+          },
+          currentMissionIndex: 0,
+          targetId: 1,
+          turn: 0,
+          isProcessing: false,
+          gameOver: false,
+          removedByPlayer: 0,
+          removedTotal: 0,
+          shop: {
+            seminars: [],
+            signatures: [],
+            salutations: [],
+            signoffs: [],
+            promotions: [],
+            bccs: [],
+          },
+          pendingTraining: null,
+        };
+        opponents = [];
+        document.getElementById("player-name-input").value = name;
+        document.getElementById("email-preview").innerText = email;
+        showInbox();
       }
 
       function advanceToNextQuarter() {
@@ -5123,6 +5343,7 @@
                   alert("Address book full. Archive a contact to make space.");
                   return;
                 }
+                playSound("connect");
                 state.player.reputation -= cost;
                 state.player.addressBook.push(c.id);
                 c.purchased = true;
@@ -5657,6 +5878,7 @@
         p.hp = Math.min(totalMaxHp, p.hp + getUnitTotalHeal(p));
 
         if (type === "ATTACK") {
+          playSound("send");
           let d = getUnitDamage(p, "single");
 
           if (p.nextAttackMult) {
