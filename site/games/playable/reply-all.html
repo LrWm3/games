@@ -984,7 +984,7 @@
           title: "Intern",
           rarity: "common",
           departmentId: "operations",
-          bonus: "+3 reply to dmg.",
+          bonus: "+3 reply to",
           loopInText:
             "I'm looping in <strong>{name}</strong> to generate a contact report for this thread.",
           eff: {
@@ -1070,7 +1070,7 @@
           title: "Director of Research",
           rarity: "uncommon",
           departmentId: "marketing",
-          bonus: "+8 reply to dmg.",
+          bonus: "+8 reply to",
           loopInText:
             "I'm looping in <strong>{name}</strong> to provide data‑driven context and keep claims grounded.",
           eff: {
@@ -1156,7 +1156,7 @@
           title: "Public Liaison",
           rarity: "rare",
           departmentId: "constituent_services",
-          bonus: "+5 reply to dmg and +1 REP if in loop at end of match.",
+          bonus: "+5 reply to and +1 REP if in loop at end of match.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to handle external messaging and stakeholder optics.",
           eff: {
@@ -1261,7 +1261,7 @@
         {
           id: "per_my_last",
           name: "Per my last email,",
-          bonus: "+10% reply to dmg.",
+          bonus: "+10% reply to",
           rarity: "uncommon",
           singleDmgMult: 0.1,
         },
@@ -1305,7 +1305,7 @@
         {
           id: "double_espresso",
           name: "Powered by double espresso",
-          bonus: "+1 reply to dmg.",
+          bonus: "+1 reply to",
           rarity: "common",
           setId: "coffee_lovers",
           singleDmg: 1,
@@ -1313,7 +1313,7 @@
         {
           id: "disclaimer",
           name: "Standard Disclaimer Applied",
-          bonus: "+10% reply to dmg.",
+          bonus: "+10% reply to",
           rarity: "common",
           singleDmgMult: 0.1,
         },
@@ -1337,7 +1337,7 @@
         {
           id: "team",
           name: "Team,",
-          bonus: "+2 reply to dmg",
+          bonus: "+2 reply to",
           rarity: "common",
           singleDmg: 2,
         },
@@ -1358,7 +1358,7 @@
         {
           id: "formal",
           name: "To whom it may concern,",
-          bonus: "+5 reply to dmg",
+          bonus: "+5 reply to",
           rarity: "rare",
           singleDmg: 5,
         },
@@ -1372,17 +1372,17 @@
         {
           id: "project_team",
           name: "To the Project Team,",
-          bonus: "+2 reply to dmg",
+          bonus: "+2 reply to",
           rarity: "common",
           singleDmg: 2,
         },
         {
           id: "sustainability_team",
           name: "To the Sustainability Team,",
-          bonus: "+1 all comms dmg.",
+          bonus: "+5 all messages",
           rarity: "uncommon",
           setId: "earth_set",
-          globalDmg: 1,
+          globalDmg: 5,
         },
         {
           id: "greetings",
@@ -1418,7 +1418,7 @@
         {
           id: "best_regards",
           name: "Best Regards,",
-          bonus: "+5 reply to dmg",
+          bonus: "+5 reply to",
           rarity: "uncommon",
           singleDmg: 5,
         },
@@ -3067,7 +3067,7 @@
           {
             id: "dmg_single",
             name: "Targeted Push",
-            bonus: "+2 reply to dmg",
+            bonus: "+2 reply to",
             cost: 10,
             apply: () => {
               state.player.singleDmg += 2;
@@ -3076,7 +3076,7 @@
           {
             id: "dmg_escalate",
             name: "Escalation Training",
-            bonus: "+2 escalate dmg",
+            bonus: "+2 escalate",
             cost: 10,
             apply: () => {
               state.player.escalateDmg += 2;
@@ -3085,7 +3085,7 @@
           {
             id: "dmg_replyall",
             name: "Reply-All Mastery",
-            bonus: "+3 reply all dmg",
+            bonus: "+3 reply all",
             cost: 12,
             apply: () => {
               state.player.replyAllDmg += 3;
@@ -3094,7 +3094,7 @@
           {
             id: "dmg_global",
             name: "Agency-Wide Influence",
-            bonus: "+1 all comms dmg",
+            bonus: "+1 all messages",
             cost: 12,
             apply: () => {
               state.player.globalDmg += 1;
@@ -3287,7 +3287,7 @@
         document.getElementById("promotion-new-title").innerText =
           nextTitle.name;
         document.getElementById("promotion-perks").innerText =
-          `+${nextTitle.maxHp} HP, +${nextTitle.singleDmg} reply to dmg, Limit: ${nextTitle.sigLimit} Sig, ${nextTitle.addressLimit} CCs`;
+          `+${nextTitle.maxHp} HP, +${nextTitle.singleDmg} reply to, Limit: ${nextTitle.sigLimit} Sig, ${nextTitle.addressLimit} CCs`;
       }
 
       function shuffle(array) {
@@ -3449,7 +3449,7 @@
         if (effect.globalDmg)
           parts.push(`+${effect.globalDmg} all comms dmg`);
         if (effect.singleDmg)
-          parts.push(`+${effect.singleDmg} reply to dmg`);
+          parts.push(`+${effect.singleDmg} reply to`);
         if (effect.escalateDmg)
           parts.push(`+${effect.escalateDmg} escalate dmg`);
         if (effect.replyAllDmg)
@@ -3457,7 +3457,7 @@
         if (effect.globalDmgMult)
           parts.push(`+${Math.round(effect.globalDmgMult * 100)}% all comms dmg`);
         if (effect.singleDmgMult)
-          parts.push(`+${Math.round(effect.singleDmgMult * 100)}% reply to dmg`);
+          parts.push(`+${Math.round(effect.singleDmgMult * 100)}% reply to`);
         if (effect.escalateDmgMult)
           parts.push(`+${Math.round(effect.escalateDmgMult * 100)}% escalate dmg`);
         if (effect.replyAllDmgMult)
