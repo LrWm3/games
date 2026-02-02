@@ -1236,7 +1236,7 @@
           rarity: "common",
           departmentId: "marketing",
           employeeId: "malik_marketing",
-          bonus: "+1 all comms dmg.",
+          bonus: "+1 all messages",
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep brand alignment on this thread.",
           eff: {
@@ -1403,7 +1403,7 @@
           rarity: "uncommon",
           departmentId: "m4_agency",
           employeeId: "taz_m4_agency",
-          bonus: "+5 escalate dmg.",
+          bonus: "+5 escalate.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to sync the escalation plan and media response.",
           eff: {
@@ -1564,12 +1564,19 @@
           def: 0.15,
         },
         {
+          id: "renewable_energy",
+          name: "Our office aspires to be powered by 100% renewable energy.",
+          bonus: "Dept splash +5.",
+          rarity: "rare",
+          replyDeptSplash: 5,
+        },
+        {
           id: "environment_printing",
           name: "Please consider the environment before printing this email",
           bonus: "+1 Credibility/turn.",
           rarity: "uncommon",
           setId: "earth_set",
-          heal: 1,
+          heal: 3,
         },
         {
           id: "coffee_break",
@@ -1723,10 +1730,10 @@
         {
           id: "solidarity_earth",
           name: "In solidarity with the Earth",
-          bonus: "Deflect +1.",
+          bonus: "Deflect +2.",
           rarity: "uncommon",
           setId: "earth_set",
-          deflect: 1,
+          deflect: 2,
         },
         {
           id: "best_wishes",
@@ -2983,7 +2990,7 @@
         updateUI();
         if (!document.getElementById("shop-screen").classList.contains("hidden"))
           updateShopUI();
-        alert("Debug boost: +100 escalate dmg, +1000 REP.");
+        alert("Debug boost: +100 escalate, +1000 REP.");
       });
 
       const statusBarName = document.getElementById("status-bar-name");
@@ -3295,7 +3302,7 @@
           : null;
       }
 
-      function applyDamage(attacker, target, rawDamage) {
+      function applyDamage(attacker, target, rawDamage, options = {}) {
         let dmg = Math.max(0, Math.floor(rawDamage));
         const flatDef = getUnitFlatDef(target);
         dmg = Math.max(0, dmg - flatDef);
@@ -3312,7 +3319,7 @@
         target.hp -= dmg;
 
         let reflected = 0;
-        if (blocked > 0 && attacker) {
+        if (!options.ignoreReflect && blocked > 0 && attacker) {
           reflected = blocked;
           if (attacker.id === "player") {
             state.player.hp -= reflected;
@@ -3336,7 +3343,9 @@
           if (u === target) return;
           if (attacker && u === attacker) return;
           if (u.departmentId !== target.departmentId) return;
-          const result = applyDamage(attacker, u, splashDamage);
+          const result = applyDamage(attacker, u, splashDamage, {
+            ignoreReflect: true,
+          });
           total += result.dmg;
           hits += 1;
           if (u !== state.player && u.hp <= 0) {
@@ -3658,7 +3667,7 @@
           {
             id: "upgrade_global",
             name: "Agency-Wide Influence",
-            bonus: "+1 all message",
+            bonus: "+1 all messages",
             apply: () => {
               state.player.globalDmg += 1;
             },
@@ -4046,21 +4055,21 @@
         if (!effect) return "";
         const parts = [];
         if (effect.globalDmg)
-          parts.push(`+${effect.globalDmg} all comms dmg`);
+          parts.push(`+${effect.globalDmg} all messages`);
         if (effect.singleDmg)
           parts.push(`+${effect.singleDmg} reply to`);
         if (effect.escalateDmg)
-          parts.push(`+${effect.escalateDmg} escalate dmg`);
+          parts.push(`+${effect.escalateDmg} escalate`);
         if (effect.replyAllDmg)
-          parts.push(`+${effect.replyAllDmg} reply all dmg`);
+          parts.push(`+${effect.replyAllDmg} reply all`);
         if (effect.globalDmgMult)
-          parts.push(`+${Math.round(effect.globalDmgMult * 100)}% all comms dmg`);
+          parts.push(`+${Math.round(effect.globalDmgMult * 100)}% all messages`);
         if (effect.singleDmgMult)
           parts.push(`+${Math.round(effect.singleDmgMult * 100)}% reply to`);
         if (effect.escalateDmgMult)
-          parts.push(`+${Math.round(effect.escalateDmgMult * 100)}% escalate dmg`);
+          parts.push(`+${Math.round(effect.escalateDmgMult * 100)}% escalate`);
         if (effect.replyAllDmgMult)
-          parts.push(`+${Math.round(effect.replyAllDmgMult * 100)}% reply all dmg`);
+          parts.push(`+${Math.round(effect.replyAllDmgMult * 100)}% reply all`);
         if (effect.deflect) parts.push(`Deflect +${effect.deflect}`);
         if (effect.defFlat) parts.push(`Reduce damage by ${effect.defFlat}`);
         if (effect.followUpChance)
