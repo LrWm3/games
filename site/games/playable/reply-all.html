@@ -316,11 +316,11 @@
         <div
           class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold shrink-0"
         >
-          <span>INTRA-NET: EMPLOYEE BENEFITS & GROWTH</span>
+          <span>INTRA-NET: HR PORTAL & EMPLOYEE SERVICES</span>
           <span
             id="shop-reputation-display"
             class="bg-yellow-400 text-black px-2 rounded-sm ml-auto mr-4"
-            >REP: 0</span
+            >REPUTATION: 0</span
           >
           <button
             onclick="advanceToNextQuarter()"
@@ -336,7 +336,7 @@
               <h3
                 class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
               >
-                Enroll in Seminar (Address Book)
+                Reach Out (Address Book)
               </h3>
               <div id="shop-seminars" class="space-y-2"></div>
             </div>
@@ -345,7 +345,7 @@
               <h3
                 class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
               >
-                Update Email Signature
+                Email Signature Library
               </h3>
               <div id="shop-signatures" class="space-y-2"></div>
             </div>
@@ -354,7 +354,7 @@
               <h3
                 class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
               >
-                Select Salutation
+                Set Greeting
               </h3>
               <div id="shop-salutations" class="space-y-2"></div>
             </div>
@@ -363,7 +363,7 @@
               <h3
                 class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
               >
-                Select Sign-off
+                Set Sign-off
               </h3>
               <div id="shop-signoffs" class="space-y-2"></div>
             </div>
@@ -372,7 +372,7 @@
               <h3
                 class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
               >
-                Self-Promotion (Stats)
+                Professional Development
               </h3>
               <div id="shop-promotions" class="space-y-2"></div>
             </div>
@@ -381,7 +381,7 @@
               <h3
                 class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
               >
-                Help Desk Contacts (BCCs)
+                Help Desk Escalations (BCCs)
               </h3>
               <div id="shop-bccs" class="space-y-2"></div>
             </div>
@@ -390,7 +390,8 @@
         <div
           class="bg-[#dfdfdf] border-t border-[#808080] p-2 text-[10px] text-center italic text-gray-600 shrink-0"
         >
-          Corporate policy: All purchases are final and non-refundable.
+          Corporate policy: Requests are logged. Archiving items returns partial
+          reputation.
         </div>
       </div>
     </div>
@@ -1236,8 +1237,8 @@
           singleDmg: 6,
         },
         {
-          name: "Assistant Director",
-          id: "assistant_director",
+          name: "Director",
+          id: "director",
           level: 5,
           addressLimit: 13,
           sigLimit: 10,
@@ -1254,8 +1255,8 @@
           singleDmg: 10,
         },
         {
-          name: "Director",
-          id: "director",
+          name: "Department Chief",
+          id: "department_chief",
           level: 7,
           addressLimit: 17,
           sigLimit: 12,
@@ -1263,8 +1264,8 @@
           singleDmg: 12,
         },
         {
-          name: "Deputy Director",
-          id: "deputy_director",
+          name: "Deputy Minister",
+          id: "deputy_minister",
           level: 8,
           addressLimit: 20,
           sigLimit: 15,
@@ -3506,14 +3507,17 @@
         const badge = options.badge || "";
         const disabled = !canAfford || purchased || !canBuy;
         const label = purchased
-          ? "OWNED"
+          ? options.ownedLabel || "ON FILE"
           : !canBuy
-            ? "MAKE SPACE"
-            : "ACQUIRE";
+            ? options.spaceLabel || "FREE SLOT"
+            : options.actionLabel || "SUBMIT REQUEST";
+        const priceLabel = purchased
+          ? options.ownedPriceLabel || "ON FILE"
+          : options.priceLabel || `REQ: ${cost} REP`;
         div.innerHTML = `
                 <div class="flex justify-between font-bold text-[11px] gap-2">
                     <span class="truncate">${name}</span>
-                    <span class="text-blue-700 font-mono">${purchased ? "ACQUIRED" : cost + " REP"}</span>
+                    <span class="text-blue-700 font-mono">${priceLabel}</span>
                 </div>
                 <div class="flex items-center gap-2 text-[9px]" data-badge></div>
                 <div class="text-[10px] italic text-gray-600 leading-tight">${desc}</div>
@@ -3544,9 +3548,10 @@
         return div;
       }
 
-      function createOwnedRow(item, type, onSell) {
+      function createOwnedRow(item, type, onSell, options = {}) {
         const cost = getItemCostByType(item.rarity || "common", type);
         const refund = Math.floor(cost / 2);
+        const actionLabel = options.actionLabel || "ARCHIVE";
         const setBadge = item.setId
           ? `<button type="button" data-set-button data-set-id="${item.setId}" class="text-[9px] uppercase px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 font-bold">Set</button>`
           : "";
@@ -3561,7 +3566,7 @@
                     </div>
                     <div class="text-[10px] italic text-gray-600">${item.bonus || ""}</div>
                 </div>
-                <button data-sell class="retro-button text-[10px] px-2 py-1">SELL +${refund}</button>
+                <button data-sell class="retro-button text-[10px] px-2 py-1">${actionLabel} +${refund} REP</button>
             `;
         const sellBtn = div.querySelector("[data-sell]");
         if (sellBtn)
@@ -3612,36 +3617,41 @@
 
       function updateShopUI() {
         document.getElementById("shop-reputation-display").innerText =
-          `REP: ${state.player.reputation}`;
+          `REPUTATION: ${state.player.reputation}`;
 
         // Seminars
         const semList = document.getElementById("shop-seminars");
         semList.innerHTML = "";
         const semHeader = semList.previousElementSibling;
-        semHeader.innerText = `Enroll in Seminar (Address Book: ${state.player.addressBook.length}/${state.player.title.addressLimit})`;
+        semHeader.innerText = `Reach Out (Address Book: ${state.player.addressBook.length}/${state.player.title.addressLimit})`;
 
         const contactCurrent = document.createElement("div");
         contactCurrent.className = "space-y-1 mb-2";
         const contactTitle = document.createElement("div");
         contactTitle.className = "text-[10px] font-bold uppercase text-gray-500";
-        contactTitle.innerText = "Current Contacts";
+        contactTitle.innerText = "Active Contacts";
         contactCurrent.appendChild(contactTitle);
         if (state.player.addressBook.length === 0) {
           const none = document.createElement("div");
           none.className = "text-[10px] italic text-gray-400";
-          none.innerText = "No contacts enrolled.";
+          none.innerText = "No contacts on file.";
           contactCurrent.appendChild(none);
         } else {
           state.player.addressBook.forEach((id) => {
             const c = CONTACTS.find((con) => con.id === id);
             if (!c) return;
             contactCurrent.appendChild(
-              createOwnedRow(c, "contact", (refund) => {
-                state.player.addressBook = state.player.addressBook.filter(
-                  (cid) => cid !== id,
-                );
-                state.player.reputation += refund;
-              }),
+              createOwnedRow(
+                c,
+                "contact",
+                (refund) => {
+                  state.player.addressBook = state.player.addressBook.filter(
+                    (cid) => cid !== id,
+                  );
+                  state.player.reputation += refund;
+                },
+                { actionLabel: "ARCHIVE" },
+              ),
             );
           });
         }
@@ -3660,7 +3670,7 @@
               () => {
                 if (owned) return;
                 if (!hasSpace) {
-                  alert("Address book full. Sell a contact to make space.");
+                  alert("Address book full. Archive a contact to make space.");
                   return;
                 }
                 state.player.reputation -= cost;
@@ -3672,6 +3682,10 @@
                 canBuy: hasSpace,
                 badge: formatRarityBadge(c.rarity),
                 setId: c.setId,
+                actionLabel: "REACH OUT",
+                ownedLabel: "IN DIRECTORY",
+                spaceLabel: "FREE SLOT",
+                priceLabel: `REQ: ${cost} REP`,
               },
             ),
           );
@@ -3681,27 +3695,32 @@
         const sigList = document.getElementById("shop-signatures");
         sigList.innerHTML = "";
         const sigHeader = sigList.previousElementSibling;
-        sigHeader.innerText = `Update Email Signature (${state.player.signatures.length}/${state.player.title.sigLimit})`;
+        sigHeader.innerText = `Email Signatures (${state.player.signatures.length}/${state.player.title.sigLimit})`;
         const sigCurrent = document.createElement("div");
         sigCurrent.className = "space-y-1 mb-2";
         const sigTitle = document.createElement("div");
         sigTitle.className = "text-[10px] font-bold uppercase text-gray-500";
-        sigTitle.innerText = "Current Signatures";
+        sigTitle.innerText = "Signatures on File";
         sigCurrent.appendChild(sigTitle);
         if (state.player.signatures.length === 0) {
           const none = document.createElement("div");
           none.className = "text-[10px] italic text-gray-400";
-          none.innerText = "No signatures equipped.";
+          none.innerText = "No signatures on file.";
           sigCurrent.appendChild(none);
         } else {
           state.player.signatures.forEach((sig) => {
             sigCurrent.appendChild(
-              createOwnedRow(sig, "signature", (refund) => {
-                state.player.signatures = state.player.signatures.filter(
-                  (s) => s.id !== sig.id,
-                );
-                state.player.reputation += refund;
-              }),
+              createOwnedRow(
+                sig,
+                "signature",
+                (refund) => {
+                  state.player.signatures = state.player.signatures.filter(
+                    (s) => s.id !== sig.id,
+                  );
+                  state.player.reputation += refund;
+                },
+                { actionLabel: "ARCHIVE" },
+              ),
             );
           });
         }
@@ -3720,7 +3739,7 @@
               () => {
                 if (owned) return;
                 if (!hasSpace) {
-                  alert("Signature slots full. Sell a signature to make space.");
+                  alert("Signature slots full. Archive a signature to make space.");
                   return;
                 }
                 state.player.reputation -= cost;
@@ -3732,6 +3751,10 @@
                 canBuy: hasSpace,
                 badge: formatRarityBadge(s.rarity),
                 setId: s.setId,
+                actionLabel: "APPLY",
+                ownedLabel: "ON FILE",
+                spaceLabel: "FREE SLOT",
+                priceLabel: `REQ: ${cost} REP`,
               },
             ),
           );
@@ -3744,19 +3767,24 @@
         currentSalWrap.className = "space-y-1 mb-2";
         const salTitle = document.createElement("div");
         salTitle.className = "text-[10px] font-bold uppercase text-gray-500";
-        salTitle.innerText = "Current Greeting";
+        salTitle.innerText = "Greeting on File";
         currentSalWrap.appendChild(salTitle);
         if (state.player.salutation) {
           currentSalWrap.appendChild(
-            createOwnedRow(state.player.salutation, "salutation", (refund) => {
-              state.player.salutation = null;
-              state.player.reputation += refund;
-            }),
+            createOwnedRow(
+              state.player.salutation,
+              "salutation",
+              (refund) => {
+                state.player.salutation = null;
+                state.player.reputation += refund;
+              },
+              { actionLabel: "CLEAR" },
+            ),
           );
         } else {
           const none = document.createElement("div");
           none.className = "text-[10px] italic text-gray-400";
-          none.innerText = "No greeting selected.";
+          none.innerText = "No greeting on file.";
           currentSalWrap.appendChild(none);
         }
         salList.appendChild(currentSalWrap);
@@ -3771,7 +3799,7 @@
               cost,
               () => {
                 if (!hasSpace) {
-                  alert("Greeting slot full. Sell your current greeting first.");
+                  alert("Greeting slot full. Clear your current greeting first.");
                   return;
                 }
                 state.player.reputation -= cost;
@@ -3783,6 +3811,10 @@
                 canBuy: hasSpace,
                 badge: formatRarityBadge(s.rarity),
                 setId: s.setId,
+                actionLabel: "SET GREETING",
+                ownedLabel: "ACTIVE",
+                spaceLabel: "CLEAR FIRST",
+                priceLabel: `REQ: ${cost} REP`,
               },
             ),
           );
@@ -3795,19 +3827,24 @@
         currentOffWrap.className = "space-y-1 mb-2";
         const offTitle = document.createElement("div");
         offTitle.className = "text-[10px] font-bold uppercase text-gray-500";
-        offTitle.innerText = "Current Sign-Off";
+        offTitle.innerText = "Sign-off on File";
         currentOffWrap.appendChild(offTitle);
         if (state.player.signOff) {
           currentOffWrap.appendChild(
-            createOwnedRow(state.player.signOff, "signoff", (refund) => {
-              state.player.signOff = null;
-              state.player.reputation += refund;
-            }),
+            createOwnedRow(
+              state.player.signOff,
+              "signoff",
+              (refund) => {
+                state.player.signOff = null;
+                state.player.reputation += refund;
+              },
+              { actionLabel: "CLEAR" },
+            ),
           );
         } else {
           const none = document.createElement("div");
           none.className = "text-[10px] italic text-gray-400";
-          none.innerText = "No sign-off selected.";
+          none.innerText = "No sign-off on file.";
           currentOffWrap.appendChild(none);
         }
         offList.appendChild(currentOffWrap);
@@ -3822,7 +3859,7 @@
               cost,
               () => {
                 if (!hasSpace) {
-                  alert("Sign-off slot full. Sell your current sign-off first.");
+                  alert("Sign-off slot full. Clear your current sign-off first.");
                   return;
                 }
                 state.player.reputation -= cost;
@@ -3834,6 +3871,10 @@
                 canBuy: hasSpace,
                 badge: formatRarityBadge(s.rarity),
                 setId: s.setId,
+                actionLabel: "SET SIGN-OFF",
+                ownedLabel: "ACTIVE",
+                spaceLabel: "CLEAR FIRST",
+                priceLabel: `REQ: ${cost} REP`,
               },
             ),
           );
@@ -3854,7 +3895,12 @@
                 p.purchased = true;
                 startTraining(p);
               },
-              { purchased: p.purchased },
+              {
+                purchased: p.purchased,
+                actionLabel: "FILE CREDIT",
+                ownedLabel: "LOGGED",
+                priceLabel: `REQ: ${p.cost} REP`,
+              },
             ),
           );
         });
@@ -3875,7 +3921,13 @@
                 state.player.bccContacts.push(b);
                 b.purchased = true;
               },
-              { purchased: b.purchased, badge: formatRarityBadge(b.rarity) },
+              {
+                purchased: b.purchased,
+                badge: formatRarityBadge(b.rarity),
+                actionLabel: "REQUEST",
+                ownedLabel: "ON FILE",
+                priceLabel: `REQ: ${cost} REP`,
+              },
             ),
           );
         });
