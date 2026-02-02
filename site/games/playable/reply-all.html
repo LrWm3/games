@@ -330,10 +330,6 @@
           </button>
         </div>
         <div class="bg-[#f0f0f0] p-4 flex-grow overflow-y-auto">
-          <div
-            id="shop-set-bonuses"
-            class="mb-3 p-2 bg-white retro-border text-[10px]"
-          ></div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Seminars (CCs) -->
             <div class="space-y-2">
@@ -884,6 +880,33 @@
         <div class="p-2 flex justify-end bg-[#c0c0c0]">
           <button
             onclick="closeCcProfile()"
+            class="retro-button text-xs px-4"
+          >
+            CLOSE
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      id="set-info"
+      class="fixed inset-0 z-[130] bg-black/50 items-center justify-center p-4 hidden flex"
+    >
+      <div class="bg-[#c0c0c0] retro-border w-full max-w-sm shadow-2xl">
+        <div
+          class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
+        >
+          <span id="set-info-title">Set</span>
+          <button onclick="closeSetInfo()" class="px-1">✕</button>
+        </div>
+        <div class="p-3 bg-white text-[11px] space-y-2">
+          <div class="font-bold text-[#000080]" id="set-info-name"></div>
+          <div class="text-gray-700" id="set-info-parts"></div>
+          <div class="text-gray-700" id="set-info-bonus"></div>
+          <div class="text-gray-600 italic" id="set-info-status"></div>
+        </div>
+        <div class="p-2 flex justify-end bg-[#c0c0c0]">
+          <button
+            onclick="closeSetInfo()"
             class="retro-button text-xs px-4"
           >
             CLOSE
@@ -2535,6 +2558,7 @@
           }
         }
 
+        updateUI();
         return { dmg, blocked, reflected };
       }
 
@@ -2674,6 +2698,29 @@
 
       function closeCcProfile() {
         document.getElementById("cc-profile").classList.add("hidden");
+      }
+
+      function openSetInfo(setId) {
+        const set = getSetById(setId);
+        if (!set) return;
+        const details = describeSetParts(set, state.player);
+        const active = isSetActive(state.player, set);
+        document.getElementById("set-info-title").innerText = "Set";
+        document.getElementById("set-info-name").innerText = set.name;
+        document.getElementById("set-info-parts").innerText =
+          `Parts: ${details.parts.join(" + ")}`;
+        document.getElementById("set-info-bonus").innerText =
+          `Bonus: ${describeEffect(set.effect)}`;
+        document.getElementById("set-info-status").innerText = active
+          ? "Status: Active"
+          : details.missing.length
+            ? `Missing: ${details.missing.join(", ")}`
+            : "Status: Incomplete";
+        document.getElementById("set-info").classList.remove("hidden");
+      }
+
+      function closeSetInfo() {
+        document.getElementById("set-info").classList.add("hidden");
       }
 
       function addContactBuff(target, contact, usedBy) {
@@ -2994,6 +3041,41 @@
         return `<span class="text-[9px] uppercase px-1 py-0.5 rounded-sm ${meta.className}">${meta.label}</span>`;
       }
 
+      function getSetById(id) {
+        return SET_DEFS.find((set) => set.id === id);
+      }
+
+      function describeSetParts(set, player) {
+        const missing = [];
+        const parts = set.items.map((item) => {
+          if (!item) return "";
+          if (item.type === "salutation") {
+            const sal = SALUTATIONS.find((s) => s.id === item.id);
+            if (!player.salutation || player.salutation.id !== item.id)
+              missing.push(sal?.name || item.id);
+            return sal?.name || item.id;
+          }
+          if (item.type === "signoff") {
+            const off = SIGNOFFS.find((s) => s.id === item.id);
+            if (!player.signOff || player.signOff.id !== item.id)
+              missing.push(off?.name || item.id);
+            return off?.name || item.id;
+          }
+          if (item.type === "signature") {
+            const sig = SIGNATURES.find((s) => s.id === item.id);
+            if (!player.signatures.some((s) => s.id === item.id))
+              missing.push(sig?.name || item.id);
+            return sig?.name || item.id;
+          }
+          if (item.type === "contact") {
+            const c = CONTACTS.find((c) => c.id === item.id);
+            return `${c?.name || item.id} (in loop)`;
+          }
+          return item.id;
+        });
+        return { parts: parts.filter(Boolean), missing };
+      }
+
       function getItemCostByType(rarity, type) {
         const table = {
           contact: { common: 4, uncommon: 7, rare: 12 },
@@ -3024,12 +3106,26 @@
                     <span class="truncate">${name}</span>
                     <span class="text-blue-700 font-mono">${purchased ? "ACQUIRED" : cost + " REP"}</span>
                 </div>
-                <div class="flex items-center gap-2 text-[9px]">${badge}</div>
+                <div class="flex items-center gap-2 text-[9px]" data-badge></div>
                 <div class="text-[10px] italic text-gray-600 leading-tight">${desc}</div>
                 <button class="mt-1 retro-button text-[10px] font-bold py-1 ${disabled ? "opacity-50" : ""}" ${disabled ? "disabled" : ""}>
                     ${label}
                 </button>
             `;
+        const badgeWrap = div.querySelector("[data-badge]");
+        if (badge) badgeWrap.insertAdjacentHTML("beforeend", badge);
+        if (options.setId) {
+          const setBtn = document.createElement("button");
+          setBtn.type = "button";
+          setBtn.className =
+            "text-[9px] uppercase px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 font-bold";
+          setBtn.innerText = "Set";
+          setBtn.onclick = (e) => {
+            e.stopPropagation();
+            openSetInfo(options.setId);
+          };
+          badgeWrap.appendChild(setBtn);
+        }
         if (!disabled)
           div.querySelector("button").onclick = () => {
             onBuy();
@@ -3041,6 +3137,9 @@
       function createOwnedRow(item, type, onSell) {
         const cost = getItemCostByType(item.rarity || "common", type);
         const refund = Math.floor(cost / 2);
+        const setBadge = item.setId
+          ? `<button type="button" class="text-[9px] uppercase px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 font-bold" onclick="openSetInfo('${item.setId}')">Set</button>`
+          : "";
         const div = document.createElement("div");
         div.className =
           "p-2 bg-white retro-border flex items-center justify-between gap-2";
@@ -3048,7 +3147,7 @@
                 <div class="flex flex-col gap-0.5">
                     <div class="flex items-center gap-2 text-[11px] font-bold">
                         <span>${item.name}</span>
-                        ${formatRarityBadge(item.rarity)}
+                        ${formatRarityBadge(item.rarity)}${setBadge}
                     </div>
                     <div class="text-[10px] italic text-gray-600">${item.bonus || ""}</div>
                 </div>
@@ -3096,50 +3195,6 @@
       function updateShopUI() {
         document.getElementById("shop-reputation-display").innerText =
           `REP: ${state.player.reputation}`;
-
-        const setBox = document.getElementById("shop-set-bonuses");
-        if (setBox) {
-          const parts = [];
-          parts.push(`<div class="text-[10px] font-bold uppercase text-gray-500 mb-1">Set Bonuses</div>`);
-          SET_DEFS.forEach((set) => {
-            const active = isSetActive(state.player, set);
-            const missing = [];
-            const reqParts = set.items.map((item) => {
-              if (!item) return "";
-              if (item.type === "salutation") {
-                const sal = SALUTATIONS.find((s) => s.id === item.id);
-                if (!state.player.salutation || state.player.salutation.id !== item.id)
-                  missing.push(sal?.name || item.id);
-                return sal?.name || item.id;
-              }
-              if (item.type === "signoff") {
-                const off = SIGNOFFS.find((s) => s.id === item.id);
-                if (!state.player.signOff || state.player.signOff.id !== item.id)
-                  missing.push(off?.name || item.id);
-                return off?.name || item.id;
-              }
-              if (item.type === "signature") {
-                const sig = SIGNATURES.find((s) => s.id === item.id);
-                if (!state.player.signatures.some((s) => s.id === item.id))
-                  missing.push(sig?.name || item.id);
-                return sig?.name || item.id;
-              }
-              if (item.type === "contact") {
-                const c = CONTACTS.find((c) => c.id === item.id);
-                return `${c?.name || item.id} (in loop)`;
-              }
-              return item.id;
-            });
-            const reqText = reqParts.filter(Boolean).join(" + ");
-            parts.push(
-              `<div class="text-[10px] ${active ? "text-emerald-700" : "text-gray-600"}">
-                <strong>${set.name}</strong> — ${reqText}. ${describeEffect(set.effect)}
-                ${active ? " (ACTIVE)" : missing.length ? ` (Missing: ${missing.join(", ")})` : ""}
-              </div>`,
-            );
-          });
-          setBox.innerHTML = parts.join("");
-        }
 
         // Seminars
         const semList = document.getElementById("shop-seminars");
@@ -3198,6 +3253,7 @@
                 purchased: owned,
                 canBuy: hasSpace,
                 badge: formatRarityBadge(c.rarity),
+                setId: c.setId,
               },
             ),
           );
@@ -3257,6 +3313,7 @@
                 purchased: owned,
                 canBuy: hasSpace,
                 badge: formatRarityBadge(s.rarity),
+                setId: s.setId,
               },
             ),
           );
@@ -3307,6 +3364,7 @@
                 purchased: owned,
                 canBuy: hasSpace,
                 badge: formatRarityBadge(s.rarity),
+                setId: s.setId,
               },
             ),
           );
@@ -3357,6 +3415,7 @@
                 purchased: owned,
                 canBuy: hasSpace,
                 badge: formatRarityBadge(s.rarity),
+                setId: s.setId,
               },
             ),
           );
@@ -3491,7 +3550,8 @@
           };
           pill.className = `target-pill px-2 py-0.5 flex flex-col min-w-[90px] cursor-pointer bg-white ${isActive ? "active" : "opacity-60 grayscale"}`;
           pill.innerHTML = `<div class="flex justify-between font-bold text-[8px] truncate"><span class="mr-2">${o.name}</span><span>${o.hp > 0 ? o.wins + "w" : "UNSUBBED"}</span></div>
-                                <div class="h-1 w-full bg-gray-200 mt-0.5"><div class="h-full bg-red-500" style="width: ${pct}%"></div></div>`;
+                                <div class="h-1 w-full bg-gray-200 mt-0.5"><div class="h-full bg-red-500 transition-[width] duration-300 ease-out" style="width: ${pct}%"></div></div>
+                                <div class="text-[8px] text-gray-500 mt-0.5">${Math.max(0, Math.ceil(o.hp))}/${getUnitMaxHp(o)} Cred</div>`;
           oppContainer.appendChild(pill);
         });
         selector.appendChild(oppContainer);
@@ -4106,9 +4166,12 @@
             : isUsed
               ? "IN LOOP"
               : "AVAIL";
+          const setBadge = c.setId
+            ? `<button type="button" class="text-[9px] uppercase px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 font-bold" onclick="openSetInfo('${c.setId}')">Set</button>`
+            : "";
           const btn = document.createElement("div");
           btn.className = `p-2 border border-gray-300 flex flex-col ${isDisabled ? "opacity-40 grayscale bg-gray-100" : "cursor-pointer hover:bg-blue-50"}`;
-          btn.innerHTML = `<div class="flex justify-between font-bold text-[#000080] text-xs"><span>${c.name} - ${c.title}</span><span class="text-[9px]">${statusText}</span></div><div class="text-[10px] italic">${c.bonus}</div>`;
+          btn.innerHTML = `<div class="flex justify-between font-bold text-[#000080] text-xs"><span>${c.name} - ${c.title}</span><span class="text-[9px]">${statusText}</span></div><div class="flex items-center gap-2 text-[10px] italic">${c.bonus || ""}${setBadge}</div>`;
           if (!isDisabled)
             btn.onclick = () => {
               addContactBuff(state.player, c, state.player.name);
