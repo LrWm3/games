@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>REPLY ALL</title>
+    <title>REPLY ALL - The Microwave Incident</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -1542,10 +1542,9 @@ const MISSIONS = [
 
             // Promotions (Stats)
             const promoOptions = [
-                { id: 'dmg', name: "Project Excellence", bonus: "+5 DMG", cost: 8, apply: () => { state.player.bonusDmg += 5; } },
-                { id: 'hp', name: "Resilience Training", bonus: "+20 Max HP", cost: 8, apply: () => { state.player.bonusMaxHp += 20; } },
-                { id: 'win', name: "Public Speaking", bonus: "+1 New Win/Round", cost: 10, apply: () => { state.player.bonusWins += 1; } },
-                { id: 'heal', name: "Executive Coaching", bonus: "Fully Restore HP", cost: 5, apply: () => { state.player.hp = getUnitMaxHp(state.player); } }
+                { id: 'dmg', name: "Project Excellence", bonus: "+1 DMG", cost: 8, apply: () => { state.player.bonusDmg += 1; } },
+                { id: 'hp', name: "Resilience Training", bonus: "+5 Max HP", cost: 8, apply: () => { state.player.bonusMaxHp += 5; } },
+                { id: 'win', name: "Public Speaking", bonus: "+1 New Win/Round", cost: 15, apply: () => { state.player.bonusWins += 1; } }
             ];
             state.shop.promotions = shuffle([...promoOptions]).slice(0, 2).map(p => ({...p, purchased: false}));
 
