@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>REPLY ALL</title>
+    <title>REPLY ALL - The Microwave Incident</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -832,6 +832,7 @@ const EMPLOYEES = [
         "department": "Human Resources",
         "color": "text-purple-700",
         "defeatMessage": "I am unsubscribing. I've documented the lack of professional decorum and will be following up with each of you individually. Regards.",
+        "selfPromote": "I've just updated the internal wiki with our new 'Efficiency Standards'. My contribution score is through the roof.",
         "lines": [
             {
                 "text": "Your recent breakroom habits suggest a lack of respect for shared departmental assets.",
@@ -890,6 +891,7 @@ const EMPLOYEES = [
         "department": "Policy",
         "color": "text-blue-700",
         "defeatMessage": "This thread has been archived for non-compliance. I am removing myself to draft a formal reprimand. Policy remains absolute.",
+        "selfPromote": "My compliance logs are spotless. I've even color-coded the mandatory reading list for next quarter.",
         "lines": [
             {
                 "text": "Per Policy 402.b, all communal appliances are to be used for non-odorous items only. Refer to the compliance guide.",
@@ -947,6 +949,7 @@ const EMPLOYEES = [
         "email": "m.compliance@gov.org",
         "color": "text-red-700",
         "defeatMessage": "I cannot continue this conversation without a physical copy of the minutes in front of me. Unsubscribing.",
+        "selfPromote": "I've successfully digitized the 1998 archive. Legal integrity has never been higher.",
         "lines": [
             {
                 "text": "The lack of physical documentation is a direct violation of the 2004 Record Keeping Act.",
@@ -981,6 +984,7 @@ const EMPLOYEES = [
         "department": "Information Technology",
         "color": "text-indigo-700",
         "defeatMessage": "Server load from this thread is too high. I'm muting this. Try rebooting your attitude.",
+        "selfPromote": "I've optimized the email server's routing protocols. You're welcome for that 0.02ms latency improvement.",
         "lines": [
             {
                 "text": "Have you tried not printing every single cat meme you see? It's clogging the spooler and the budget.",
@@ -1023,6 +1027,7 @@ const EMPLOYEES = [
         "department": "Information Technology",
         "color": "text-indigo-600",
         "defeatMessage": "Too many emails. I've got a survey to send on a form to redesign.",
+        "selfPromote": "I've successfully piloted the new 'Form-as-a-Service' portal. Feedback is already being ignored.",
         "lines": [
             {
                 "text": "I'm not sure why I'm on this thread. but my form initiative will resolve any paper issues no doubt.",
@@ -1060,6 +1065,7 @@ const EMPLOYEES = [
             }
         ],
         "defeatMessage": "The intern pool has been drained. We are collectively resigning to pursue opportunities in a less toxic environment.",
+        "selfPromote": "We've collectively achieved a 100% coffee-order accuracy rate today. Future leadership material right here.",
         "lines": [
             {
                 "text": "We've been CC'd on the entire thread and we're documenting everything for our final reports.",
@@ -1092,6 +1098,7 @@ const EMPLOYEES = [
             "name": "Best, Sheila"
         },
         "defeatMessage": "I'm freezing all stipend payments until this thread is resolved. I'm out.",
+        "selfPromote": "I've reconciled the petty cash for the third time this morning. Every cent is accounted for.",
         "lines": [
             {
                 "text": "Your overtime request for 'email management' has been denied. Stick to the mission.",
@@ -1117,6 +1124,7 @@ const EMPLOYEES = [
         "email": "s.eco@gov.org",
         "color": "text-orange-700",
         "defeatMessage": "I'm escalating this to the Deputy Director. I don't have time for intern drama.",
+        "selfPromote": "My latest 'Synergy Memo' has been read by 12% of the staff. Engagement is skyrocketing.",
         "lines": [
             {
                 "text": "I don't see how this is relevant to me. This thread is a distraction.",
@@ -1146,6 +1154,7 @@ const EMPLOYEES = [
             "name": "Regarding the recent incident,"
         },
         "defeatMessage": "You know what? I'll leave this to the pipsqueaks. I'm out.",
+        "selfPromote": "I've managed to keep my 'Important' folder under 500 unread messages. Peak organizational skills.",
         "lines": [
             {
                 "text": "I think your latest reply violates the 'Civility in Digital Spaces' directive.",
@@ -1959,7 +1968,8 @@ const MISSIONS = [
                         }
                     } else if (roll < 0.3 && a.hp < 20 && a.wins > 0) {
                         a.wins--; a.hp = Math.min(getUnitMaxHp(a), a.hp + 15);
-                        addEmailToLog(a.name, "everyone@gov.org", "Self Promotion", formatMessageBody(a, `I'm logging a significant departmental achievement. This incident shouldn't distract from real wins.`), "opacity-70");
+                        const selfPromoteLine = a.selfPromote || `I'm logging a significant departmental achievement. This incident shouldn't distract from real wins.`;
+                        addEmailToLog(a.name, "everyone@gov.org", "Self Promotion", formatMessageBody(a, selfPromoteLine), "opacity-70");
                     } else {
                         let d = getUnitTotalDmg(a);
                         
