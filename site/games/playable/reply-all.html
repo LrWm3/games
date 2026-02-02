@@ -3327,7 +3327,7 @@
         {
           id: "calendar_chaos",
           subject: "RE: Conference Room Double Booking",
-          from: "facilities@gov.org",
+          from: "a.ops@gov.org",
           intro:
             "Hi all,<br><br>We have a triple booking for the main conference room this morning. <strong>{playerName}</strong>, you have it booked for an internal process audit. <strong>{opp0}</strong> and <strong>{opp1}</strong> from Operations flagged a safety walkthrough and vendor briefing. <strong>{opp2}</strong> and <strong>{opp3}</strong> from Finance flagged payroll finalization and budget reconciliation. <strong>{opp4}</strong>, thanks for the initial booking—please stand by while we sort this out.<br><br>Please reply with your priority and availability.",
           opponents: [
@@ -3445,7 +3445,7 @@
         {
           id: "paper",
           subject: "CRITICAL: Departmental Paper Rationing",
-          from: "facilities@gov.org",
+          from: "m.compliance@gov.org",
           intro:
             "Dear Staff,<br><br>Due to unforeseen budget constraints, we are implementing immediate paper rationing. <strong>{playerName}</strong>, your department's printing logs are particularly high. <strong>Megan</strong>, please ensure we are still meeting filing requirements. <strong>Colin</strong>, please expedite the 'Paperless Initiative'.<br><br>Effective immediately, all non-essential printing is strictly prohibited.",
           opponents: [
@@ -3481,7 +3481,7 @@
         {
           id: "thermostat_war",
           subject: "RE: Office Thermostat Dispute",
-          from: "facilities@gov.org",
+          from: "l.facilities@gov.org",
           intro:
             "Hi all,<br><br>Facilities here. We received multiple complaints about the floor thermostat. It looks like the setpoint has been toggled between 74°F and 96°F. <strong>{playerName}</strong>, your desk is listed at 74°F. My view is we should be aiming lower overall to bring down the oil bill for this place, but we need a consistent setting. The <strong>Marketing</strong> team (<strong>{opp1}</strong>, <strong>{opp2}</strong>) is pushing for 96°F. The <strong>Finance</strong> team (<strong>{opp3}</strong>, <strong>{opp4}</strong>) says the 96°F setting is unacceptable for reviews.<br><br>How does around 64°F sound?",
           opponents: [
@@ -3535,7 +3535,7 @@
         {
           id: "intern_grievance",
           subject: "RE: Intern Grievance Collective",
-          from: "interns.hr@gov.org",
+          from: "hr.interns@gov.org",
           intro:
             "To the Permanent Staff,<br><br>We, the interns, have noticed a significant lack of 'Team Synergy' and 'Professional Courtesy'. <strong>{playerName}</strong>, your recent emails have been cited as 'aggressive'. <strong>Samantha</strong>, we are looping in our mentor <strong>Anneke</strong>. <strong>Shelia</strong>, we expect payroll to ensure our stipends to reflect the emotional labor of this thread.",
           opponents: [
@@ -3660,10 +3660,36 @@
             "I'm happy to discuss this in a 1-on-1, but I don't believe this is a productive use of the 'All-Staff' distribution list.",
           ],
           attackLinesByMission: {
+            microwave: [
+              "We can argue policy later. Right now, I'd just like to hear you deny that you heated the fish.",
+              "This thread is spiraling. Let's 'fish-stick' to the facts; did you heat the fish or not?",
+            ],
+            calendar_chaos: [
+              "We need the booking record and timestamps before we debate priority, why haven't you linked that?",
+              "Let's pick a single room owner for the hour and move on, are you willing to give up the room?",
+            ],
+            holiday_reply_all: [
+              "Happy holidays, but does this really need everyone's attention?",
+              "My inbox is flooded, I don't want to have to block you til the new year.",
+            ],
+            paper: [
+              "If the rationing is real, we need a clear exception process today, can you clarify what's needed?",
+              "No one is printing for fun. Let's align on what's actually essential and what's not.",
+            ],
             thermostat_war: [
-              "I set it to 74°F because that's a normal working temperature. 96°F is not.",
-              "I'm fine with 74°F. Let's stop changing it every hour.",
+              "I set it to 74°F because that's a normal temperature. 96°F is not.",
+              "I'm fine with 74°F. 64°F seems too low.",
               "If we're picking a standard, 74°F is reasonable for most desks.",
+            ],
+            intern_grievance: [
+              "Let's keep this professional and focus on actionable steps.",
+              "I'm not ignoring concerns, but this thread needs structure.",
+              "I don't understand why our interns are sharing a single email address. Can you clarify?",
+            ],
+            M015_MediaCrisis: [
+              "We need a recovery plan, not another round of scope creep or out of scope budgetary approvals. Will you cover the cost?",
+              "Realistically, this is your error. Why should we pay more to fix your misconfiguration?",
+              "We pay agency rates with the expectation of competence. This level of error is unacceptable.",
             ],
           },
           attackLinesByTitle: {},
@@ -3679,8 +3705,26 @@
             "Just logging a new win—the quarterly audit came back clean under my supervision. Always happy to add value to the organization!",
           ],
           selfPromoteLinesByMission: {
+            microwave: [
+              "Update: I drafted a fish based incident summary to share it around to get traction on this.",
+            ],
+            calendar_chaos: [
+              "I created a booking summary and a proposed rotation. We can move forward now.",
+            ],
+            holiday_reply_all: [
+              "I consolidated the greetings into one clean message and sent it to Samantha for approval.",
+            ],
+            paper: [
+              "I compiled a short list of essential print exceptions to keep us compliant.",
+            ],
             thermostat_war: [
               "Quick update: I created a simple temperature log so we can stop arguing and use data.",
+            ],
+            intern_grievance: [
+              "I documented the feedback and proposed a short-term fix to address concerns.",
+            ],
+            M015_MediaCrisis: [
+              "I summarized the revised plan and sent it to leadership for sign-off.",
             ],
           },
           selfPromoteLinesByTitle: {},
