@@ -396,265 +396,904 @@
 
     <script>
         // --- DATA ---
-        const CONTACTS = [
-            { id: 'intern', name: "Kevin", title: "HR Assistant", rarity: 'common', department: 'Human Resources', bonus: "+3 attack potency.", eff: { dmg: 3 }, usedBy: null },
-            { id: 'it', name: "Pradeep", title: "IT Specialist", rarity: 'common', department: 'Information Technology', bonus: "+5 credibility/turn.", eff: { heal: 5 }, usedBy: null },
-            { id: 'legal', name: "Sarah", title: "Legal Counsel", rarity: 'uncommon', department: 'Legal Compliance', bonus: "20% DMG Reduction.", eff: { def: 0.20 }, usedBy: null },
-            { id: 'ceo', name: "Arthur", title: "Chief of Staff", rarity: 'rare', department: 'Executive Council Office', bonus: "2x Leverage gain.", eff: { lev: 2 }, usedBy: null },
-            { id: 'cat', name: "Mittens", title: "Office Cat", rarity: 'rare', department: 'Facilities and Administration', bonus: "35% Distraction chance.", eff: { dodge: 0.35 }, usedBy: null },
-            { id: 'mktg', name: "Becky", title: "Comms Officer", rarity: 'uncommon', department: 'Communications', bonus: "+5 attack potency.", eff: { dmg: 5 }, usedBy: null },
-            { id: 'audit', name: "Mr. Henderson", title: "Senior Auditor", rarity: 'uncommon', department: 'Finance', bonus: "30% DMG Reduction.", eff: { def: 0.30 }, usedBy: null },
-            { id: 'facilities', name: "Mike", title: "Facilities Lead", rarity: 'common', department: 'Facilities and Administration', bonus: "10% DMG Reduction & +3 Credibility/turn", eff: { def: 0.10, heal: 3 }, usedBy: null },
-            { id: 'liaison', name: "Constituent Liaison", title: "Public Relations", rarity: 'rare', department: 'Constituent Services', bonus: "No combat bonus, but +4 REP if in loop at end of match.", eff: { endRep: 4 }, usedBy: null },
-            { id: 'policy_cc', name: "Gemma", title: "Policy Analyst", rarity: 'uncommon', department: 'Policy', bonus: "15% DMG Reduction.", eff: { def: 0.15 }, usedBy: null },
-            { id: 'finance_cc', name: "Marcus", title: "Budget Controller", rarity: 'uncommon', department: 'Finance', bonus: "+5 HP and +5 Credibility/turn.", eff: { hpBonus: 5, heal: 5 }, usedBy: null },
-            { id: 'const_cc', name: "Elena", title: "Public Liaison", rarity: 'rare', department: 'Constituent Services', bonus: "+5 DMG and +1 REP if in loop at end of match.", eff: { dmg: 5, endRep: 1 }, usedBy: null }
-        ];
+// --- DATA ---
 
-        const TITLES = [
-            { name: "Cubicle Resident", level: 1, addressLimit: 5, sigLimit: 1, hpBonus: 0, dmgBonus: 0 },
-            { name: "Junior Clerk", level: 2, addressLimit: 5, sigLimit: 1, hpBonus: 10, dmgBonus: 2 },
-            { name: "Senior Clerk", level: 3, addressLimit: 6, sigLimit: 1, hpBonus: 20, dmgBonus: 4 },
-            { name: "Program Coordinator", level: 4, addressLimit: 6, sigLimit: 2, hpBonus: 30, dmgBonus: 6 },
-            { name: "Assistant Director", level: 5, addressLimit: 7, sigLimit: 2, hpBonus: 40, dmgBonus: 8 },
-            { name: "Deputy Director", level: 6, addressLimit: 7, sigLimit: 2, hpBonus: 50, dmgBonus: 10 },
-            { name: "Director", level: 7, addressLimit: 8, sigLimit: 3, hpBonus: 60, dmgBonus: 12 },
-            { name: "Commissioner", level: 8, addressLimit: 8, sigLimit: 3, hpBonus: 70, dmgBonus: 14 },
-            { name: "Council Member", level: 9, addressLimit: 10, sigLimit: 3, hpBonus: 80, dmgBonus: 16 }
-        ];
+const CONTACTS = [
+    {
+        "id": "intern",
+        "name": "Kevin",
+        "title": "HR Assistant",
+        "rarity": "common",
+        "department": "Human Resources",
+        "bonus": "+3 attack potency.",
+        "eff": {
+            "dmg": 3
+        },
+        "usedBy": null
+    },
+    {
+        "id": "it",
+        "name": "Pradeep",
+        "title": "IT Specialist",
+        "rarity": "common",
+        "department": "Information Technology",
+        "bonus": "+5 credibility/turn.",
+        "eff": {
+            "heal": 5
+        },
+        "usedBy": null
+    },
+    {
+        "id": "legal",
+        "name": "Sarah",
+        "title": "Legal Counsel",
+        "rarity": "uncommon",
+        "department": "Legal Compliance",
+        "bonus": "20% DMG Reduction.",
+        "eff": {
+            "def": 0.2
+        },
+        "usedBy": null
+    },
+    {
+        "id": "ceo",
+        "name": "Arthur",
+        "title": "Chief of Staff",
+        "rarity": "rare",
+        "department": "Executive Council Office",
+        "bonus": "2x Leverage gain.",
+        "eff": {
+            "lev": 2
+        },
+        "usedBy": null
+    },
+    {
+        "id": "cat",
+        "name": "Mittens",
+        "title": "Office Cat",
+        "rarity": "rare",
+        "department": "Facilities and Administration",
+        "bonus": "35% Distraction chance.",
+        "eff": {
+            "dodge": 0.35
+        },
+        "usedBy": null
+    },
+    {
+        "id": "mktg",
+        "name": "Becky",
+        "title": "Comms Officer",
+        "rarity": "uncommon",
+        "department": "Communications",
+        "bonus": "+5 attack potency.",
+        "eff": {
+            "dmg": 5
+        },
+        "usedBy": null
+    },
+    {
+        "id": "audit",
+        "name": "Mr. Henderson",
+        "title": "Senior Auditor",
+        "rarity": "uncommon",
+        "department": "Finance",
+        "bonus": "30% DMG Reduction.",
+        "eff": {
+            "def": 0.3
+        },
+        "usedBy": null
+    },
+    {
+        "id": "facilities",
+        "name": "Mike",
+        "title": "Facilities Lead",
+        "rarity": "common",
+        "department": "Facilities and Administration",
+        "bonus": "10% DMG Reduction & +3 Credibility/turn",
+        "eff": {
+            "def": 0.1,
+            "heal": 3
+        },
+        "usedBy": null
+    },
+    {
+        "id": "liaison",
+        "name": "Constituent Liaison",
+        "title": "Public Relations",
+        "rarity": "rare",
+        "department": "Constituent Services",
+        "bonus": "No combat bonus, but +4 REP if in loop at end of match.",
+        "eff": {
+            "endRep": 4
+        },
+        "usedBy": null
+    },
+    {
+        "id": "policy_cc",
+        "name": "Gemma",
+        "title": "Policy Analyst",
+        "rarity": "uncommon",
+        "department": "Policy",
+        "bonus": "15% DMG Reduction.",
+        "eff": {
+            "def": 0.15
+        },
+        "usedBy": null
+    },
+    {
+        "id": "finance_cc",
+        "name": "Marcus",
+        "title": "Budget Controller",
+        "rarity": "uncommon",
+        "department": "Finance",
+        "bonus": "+5 HP and +5 Credibility/turn.",
+        "eff": {
+            "hpBonus": 5,
+            "heal": 5
+        },
+        "usedBy": null
+    },
+    {
+        "id": "const_cc",
+        "name": "Elena",
+        "title": "Public Liaison",
+        "rarity": "rare",
+        "department": "Constituent Services",
+        "bonus": "+5 DMG and +1 REP if in loop at end of match.",
+        "eff": {
+            "dmg": 5,
+            "endRep": 1
+        },
+        "usedBy": null
+    }
+];
 
-        const SIGNATURES = [
-            { id: 'iphone', name: "Sent from my iPhone", bonus: "Gain 1 rep for each person who removes themselves that you did not instigate.", rarity: 'common', repBonus: 1 },
-            { id: 'regards', name: "Kind Regards,", bonus: "Reduce all incoming damage by 5%.", rarity: 'common', def: 0.05 },
-            { id: 'per_my_last', name: "Per my last email,", bonus: "Increase reply strength by 10%.", rarity: 'uncommon', dmgMult: 0.1 },
-            { id: 'best', name: "Best,", bonus: "Heal 2 HP every turn.", rarity: 'uncommon', heal: 2 },
-            { id: 'thanks_advance', name: "Thanks in advance,", bonus: "25% chance to double leverage gain.", rarity: 'rare', doubleLevChance: 0.25 },
-            { id: 'encrypted', name: "Sent from my encrypted workstation", bonus: "5% DMG Reduction.", rarity: 'common', def: 0.05 },
-            { id: 'disclaimer', name: "Standard Disclaimer Applied", bonus: "Increase reply strength by 5%.", rarity: 'common', dmgMult: 0.05 },
-            { id: 'breakroom', name: "Sent from the breakroom", bonus: "+2 Credibility/turn.", rarity: 'uncommon', heal: 2 }
-        ];
+const TITLES = [
+    {
+        "name": "Cubicle Resident",
+        "level": 1,
+        "addressLimit": 5,
+        "sigLimit": 1,
+        "hpBonus": 0,
+        "dmgBonus": 0
+    },
+    {
+        "name": "Junior Clerk",
+        "level": 2,
+        "addressLimit": 5,
+        "sigLimit": 1,
+        "hpBonus": 10,
+        "dmgBonus": 2
+    },
+    {
+        "name": "Senior Clerk",
+        "level": 3,
+        "addressLimit": 6,
+        "sigLimit": 1,
+        "hpBonus": 20,
+        "dmgBonus": 4
+    },
+    {
+        "name": "Program Coordinator",
+        "level": 4,
+        "addressLimit": 6,
+        "sigLimit": 2,
+        "hpBonus": 30,
+        "dmgBonus": 6
+    },
+    {
+        "name": "Assistant Director",
+        "level": 5,
+        "addressLimit": 7,
+        "sigLimit": 2,
+        "hpBonus": 40,
+        "dmgBonus": 8
+    },
+    {
+        "name": "Deputy Director",
+        "level": 6,
+        "addressLimit": 7,
+        "sigLimit": 2,
+        "hpBonus": 50,
+        "dmgBonus": 10
+    },
+    {
+        "name": "Director",
+        "level": 7,
+        "addressLimit": 8,
+        "sigLimit": 3,
+        "hpBonus": 60,
+        "dmgBonus": 12
+    },
+    {
+        "name": "Commissioner",
+        "level": 8,
+        "addressLimit": 8,
+        "sigLimit": 3,
+        "hpBonus": 70,
+        "dmgBonus": 14
+    },
+    {
+        "name": "Council Member",
+        "level": 9,
+        "addressLimit": 10,
+        "sigLimit": 3,
+        "hpBonus": 80,
+        "dmgBonus": 16
+    }
+];
 
-        const SALUTATIONS = [
-            { id: 'hi_all', name: "Hi all,", bonus: "+5 Max HP", rarity: 'common', hpBonus: 5 },
-            { id: 'team', name: "Team,", bonus: "+2 DMG", rarity: 'common', dmgBonus: 2 },
-            { id: 'colleagues', name: "Dear Colleagues,", bonus: "+5% DMG Reduction", rarity: 'uncommon', def: 0.05 },
-            { id: 'everyone', name: "Everyone,", bonus: "+10% Leverage gain", rarity: 'uncommon', levMult: 0.1 },
-            { id: 'formal', name: "To whom it may concern,", bonus: "+5 DMG", rarity: 'rare', dmgBonus: 5 },
-            { id: 'morning', name: "Good morning,", bonus: "+5 Max HP", rarity: 'common', hpBonus: 5 },
-            { id: 'project_team', name: "To the Project Team,", bonus: "+2 DMG", rarity: 'common', dmgBonus: 2 },
-            { id: 'greetings', name: "Greetings all,", bonus: "5% DMG Reduction", rarity: 'uncommon', def: 0.05 }
-        ];
+const SIGNATURES = [
+    {
+        "id": "iphone",
+        "name": "Sent from my iPhone",
+        "bonus": "Gain 1 rep for each person who removes themselves that you did not instigate.",
+        "rarity": "common",
+        "repBonus": 1
+    },
+    {
+        "id": "regards",
+        "name": "Kind Regards,",
+        "bonus": "Reduce all incoming damage by 5%.",
+        "rarity": "common",
+        "def": 0.05
+    },
+    {
+        "id": "per_my_last",
+        "name": "Per my last email,",
+        "bonus": "Increase reply strength by 10%.",
+        "rarity": "uncommon",
+        "dmgMult": 0.1
+    },
+    {
+        "id": "best",
+        "name": "Best,",
+        "bonus": "Heal 2 HP every turn.",
+        "rarity": "uncommon",
+        "heal": 2
+    },
+    {
+        "id": "thanks_advance",
+        "name": "Thanks in advance,",
+        "bonus": "25% chance to double leverage gain.",
+        "rarity": "rare",
+        "doubleLevChance": 0.25
+    },
+    {
+        "id": "encrypted",
+        "name": "Sent from my encrypted workstation",
+        "bonus": "5% DMG Reduction.",
+        "rarity": "common",
+        "def": 0.05
+    },
+    {
+        "id": "disclaimer",
+        "name": "Standard Disclaimer Applied",
+        "bonus": "Increase reply strength by 5%.",
+        "rarity": "common",
+        "dmgMult": 0.05
+    },
+    {
+        "id": "breakroom",
+        "name": "Sent from the breakroom",
+        "bonus": "+2 Credibility/turn.",
+        "rarity": "uncommon",
+        "heal": 2
+    }
+];
 
-        const SIGNOFFS = [
-            { id: 'thanks', name: "Thanks,", bonus: "+5 Max HP", rarity: 'common', hpBonus: 5 },
-            { id: 'cheers', name: "Cheers,", bonus: "+2 HP/turn", rarity: 'common', heal: 2 },
-            { id: 'sincerely', name: "Sincerely,", bonus: "+10% DMG Reduction", rarity: 'uncommon', def: 0.1 },
-            { id: 'best_regards', name: "Best Regards,", bonus: "+5 DMG", rarity: 'uncommon', dmgBonus: 5 },
-            { id: 'v_respectfully', name: "Very Respectfully,", bonus: "+20% Leverage gain", rarity: 'rare', levMult: 0.2 },
-            { id: 'warmly', name: "Warmly,", bonus: "+5 Max HP", rarity: 'common', hpBonus: 5 },
-            { id: 'solidarity', name: "In solidarity,", bonus: "+2 Credibility/turn", rarity: 'common', heal: 2 },
-            { id: 'best_wishes', name: "Best wishes,", bonus: "10% Leverage gain", rarity: 'uncommon', levMult: 0.1 }
-        ];
+const SALUTATIONS = [
+    {
+        "id": "hi_all",
+        "name": "Hi all,",
+        "bonus": "+5 Max HP",
+        "rarity": "common",
+        "hpBonus": 5
+    },
+    {
+        "id": "team",
+        "name": "Team,",
+        "bonus": "+2 DMG",
+        "rarity": "common",
+        "dmgBonus": 2
+    },
+    {
+        "id": "colleagues",
+        "name": "Dear Colleagues,",
+        "bonus": "+5% DMG Reduction",
+        "rarity": "uncommon",
+        "def": 0.05
+    },
+    {
+        "id": "everyone",
+        "name": "Everyone,",
+        "bonus": "+10% Leverage gain",
+        "rarity": "uncommon",
+        "levMult": 0.1
+    },
+    {
+        "id": "formal",
+        "name": "To whom it may concern,",
+        "bonus": "+5 DMG",
+        "rarity": "rare",
+        "dmgBonus": 5
+    },
+    {
+        "id": "morning",
+        "name": "Good morning,",
+        "bonus": "+5 Max HP",
+        "rarity": "common",
+        "hpBonus": 5
+    },
+    {
+        "id": "project_team",
+        "name": "To the Project Team,",
+        "bonus": "+2 DMG",
+        "rarity": "common",
+        "dmgBonus": 2
+    },
+    {
+        "id": "greetings",
+        "name": "Greetings all,",
+        "bonus": "5% DMG Reduction",
+        "rarity": "uncommon",
+        "def": 0.05
+    }
+];
 
-        const BCC_CONTACTS = [
-            { id: 'recall', name: "Recall Message", bonus: "Instantly stun current target for 1 turn.", rarity: 'common', effect: 'stun' },
-            { id: 'urgent', name: "Urgent Flag", bonus: "Next attack deals 2x damage.", rarity: 'uncommon', effect: 'doubleDmg' },
-            { id: 'redirect', name: "Redirect Message", bonus: "Current target attacks another random opponent next turn.", rarity: 'rare', effect: 'redirect' }
-        ];
+const SIGNOFFS = [
+    {
+        "id": "thanks",
+        "name": "Thanks,",
+        "bonus": "+5 Max HP",
+        "rarity": "common",
+        "hpBonus": 5
+    },
+    {
+        "id": "cheers",
+        "name": "Cheers,",
+        "bonus": "+2 HP/turn",
+        "rarity": "common",
+        "heal": 2
+    },
+    {
+        "id": "sincerely",
+        "name": "Sincerely,",
+        "bonus": "+10% DMG Reduction",
+        "rarity": "uncommon",
+        "def": 0.1
+    },
+    {
+        "id": "best_regards",
+        "name": "Best Regards,",
+        "bonus": "+5 DMG",
+        "rarity": "uncommon",
+        "dmgBonus": 5
+    },
+    {
+        "id": "v_respectfully",
+        "name": "Very Respectfully,",
+        "bonus": "+20% Leverage gain",
+        "rarity": "rare",
+        "levMult": 0.2
+    },
+    {
+        "id": "warmly",
+        "name": "Warmly,",
+        "bonus": "+5 Max HP",
+        "rarity": "common",
+        "hpBonus": 5
+    },
+    {
+        "id": "solidarity",
+        "name": "In solidarity,",
+        "bonus": "+2 Credibility/turn",
+        "rarity": "common",
+        "heal": 2
+    },
+    {
+        "id": "best_wishes",
+        "name": "Best wishes,",
+        "bonus": "10% Leverage gain",
+        "rarity": "uncommon",
+        "levMult": 0.1
+    }
+];
 
-        const EMPLOYEES = [
+const BCC_CONTACTS = [
+    {
+        "id": "recall",
+        "name": "Recall Message",
+        "bonus": "Instantly stun current target for 1 turn.",
+        "rarity": "common",
+        "effect": "stun"
+    },
+    {
+        "id": "urgent",
+        "name": "Urgent Flag",
+        "bonus": "Next attack deals 2x damage.",
+        "rarity": "uncommon",
+        "effect": "doubleDmg"
+    },
+    {
+        "id": "redirect",
+        "name": "Redirect Message",
+        "bonus": "Current target attacks another random opponent next turn.",
+        "rarity": "rare",
+        "effect": "redirect"
+    }
+];
+
+const EMPLOYEES = [
+    {
+        "id": "karen",
+        "name": "Karen (HR)",
+        "email": "k.smith@gov.org",
+        "department": "Human Resources",
+        "color": "text-purple-700",
+        "defeatMessage": "I am unsubscribing. I've documented the lack of professional decorum and will be following up with each of you individually. Regards.",
+        "lines": [
             {
-                id: 'karen',
-                name: "Karen (HR)",
-                email: "k.smith@gov.org",
-                department: 'Human Resources',
-                color: 'text-purple-700',
-                defeatMessage: "I am unsubscribing. I've documented the lack of professional decorum and will be following up with each of you individually. Regards.",
-                lines: [
-                    { text: "Your recent breakroom habits suggest a lack of respect for shared departmental assets.", missionId: 'microwave' },
-                    { text: "I noticed you haven't completed the mandatory 'Digital Hygiene' training module for this quarter.", missionId: null },
-                    { text: "I have three disciplinary hearings today; this thread is a significant drain on my operational capacity.", missionId: null },
-                    { text: "HR provides the framework for your employment; your contributions are currently being 're-evaluated'.", missionId: null },
-                    { text: "Please review the updated 'Shared Space Etiquette' PDF attached to my signature.", missionId: null },
-                    { text: "I'm scheduling a mandatory mediation session for the entire floor this Friday at 4:30 PM.", missionId: null },
-                    { text: "Your tone in this thread has been noted and will be discussed during your next performance review.", missionId: null },
-                    { text: "We have a zero-tolerance policy for passive-aggressive CC-ing. Please adhere to the chain of command.", missionId: null },
-                    { text: "I've CC'd the Chief Wellness Officer to address the 'toxic environment' you're creating.", missionId: null },
-                    { text: "Failure to identify the salmon-heater will result in a collective reduction of the 'Team Synergy' bonus.", missionId: 'microwave' },
-                    { text: "I'm looking at the handbook right now, and you're in violation of Section 8.4: Olfactory Neutrality.", missionId: 'microwave' },
-                    { text: "This 'Reply All' behavior is exactly why we can't have nice things, like the espresso machine I vetoed.", missionId: null }
+                "text": "Your recent breakroom habits suggest a lack of respect for shared departmental assets.",
+                "missionId": "microwave"
+            },
+            {
+                "text": "I noticed you haven't completed the mandatory 'Digital Hygiene' training module for this quarter.",
+                "missionId": null
+            },
+            {
+                "text": "I have three disciplinary hearings today; this thread is a significant drain on my operational capacity.",
+                "missionId": null
+            },
+            {
+                "text": "HR provides the framework for your employment; your contributions are currently being 're-evaluated'.",
+                "missionId": null
+            },
+            {
+                "text": "Please review the updated 'Shared Space Etiquette' PDF attached to my signature.",
+                "missionId": null
+            },
+            {
+                "text": "I'm scheduling a mandatory mediation session for the entire floor this Friday at 4:30 PM.",
+                "missionId": null
+            },
+            {
+                "text": "Your tone in this thread has been noted and will be discussed during your next performance review.",
+                "missionId": null
+            },
+            {
+                "text": "We have a zero-tolerance policy for passive-aggressive CC-ing. Please adhere to the chain of command.",
+                "missionId": null
+            },
+            {
+                "text": "I've CC'd the Chief Wellness Officer to address the 'toxic environment' you're creating.",
+                "missionId": null
+            },
+            {
+                "text": "Failure to identify the salmon-heater will result in a collective reduction of the 'Team Synergy' bonus.",
+                "missionId": "microwave"
+            },
+            {
+                "text": "I'm looking at the handbook right now, and you're in violation of Section 8.4: Olfactory Neutrality.",
+                "missionId": "microwave"
+            },
+            {
+                "text": "This 'Reply All' behavior is exactly why we can't have nice things, like the espresso machine I vetoed.",
+                "missionId": null
+            }
+        ]
+    },
+    {
+        "id": "christina",
+        "name": "Christina (Pol)",
+        "email": "c.policy@gov.org",
+        "department": "Policy",
+        "color": "text-blue-700",
+        "defeatMessage": "This thread has been archived for non-compliance. I am removing myself to draft a formal reprimand. Policy remains absolute.",
+        "lines": [
+            {
+                "text": "Per Policy 402.b, all communal appliances are to be used for non-odorous items only. Refer to the compliance guide.",
+                "missionId": "microwave"
+            },
+            {
+                "text": "I'm currently drafting a memorandum on 'Shared Air Space Ethics'. This thread is a case study in non-compliance.",
+                "missionId": "microwave"
+            },
+            {
+                "text": "The Policy department ensures rules are followed. Your blatant disregard for the Microwave Protocol is being escalated.",
+                "missionId": "microwave"
+            },
+            {
+                "text": "I've reviewed the 2019 precedent for 'unauthorized seafood heating'. It didn't end well for the perpetrator.",
+                "missionId": "microwave"
+            },
+            {
+                "text": "If you had attended the 'Navigating the Breakroom' seminar, we wouldn't be having this conversation.",
+                "missionId": null
+            },
+            {
+                "text": "I am CC-ing the Ethics Committee. This is the procedurally correct way to handle olfactory aggression.",
+                "missionId": "microwave"
+            },
+            {
+                "text": "Your response lacks the required 'Directive 9' formatting. Please resubmit using approved templates.",
+                "missionId": null
+            },
+            {
+                "text": "We are evaluating the environmental impact of your lunch choices. Sustainability is a core pillar of our mission.",
+                "missionId": null
+            },
+            {
+                "text": "Failure to comply with 'No Fish Friday' is a breach of department harmony. I'm noting this in the audit.",
+                "missionId": "microwave"
+            },
+            {
+                "text": "The data suggests a 98% probability that you are the source of the incident based on desk location.",
+                "missionId": null
+            },
+            {
+                "text": "Please cease and desist from using 'Reply All' unless you are citing a specific governmental regulation.",
+                "missionId": null
+            },
+            {
+                "text": "This thread is now under the jurisdiction of the Policy Oversight Division. Peer-review your next comment.",
+                "missionId": null
+            }
+        ]
+    },
+    {
+        "id": "megan",
+        "name": "Megan (Legal)",
+        "email": "m.compliance@gov.org",
+        "color": "text-red-700",
+        "defeatMessage": "I cannot continue this conversation without a physical copy of the minutes in front of me. Unsubscribing.",
+        "lines": [
+            {
+                "text": "The lack of physical documentation is a direct violation of the 2004 Record Keeping Act.",
+                "missionId": "paper"
+            },
+            {
+                "text": "I've drafted a cease and desist regarding this rationing. I'll send it as soon as I can find a working printer.",
+                "missionId": "paper"
+            },
+            {
+                "text": "Your 'digital-only' proposal fails to meet the standards for admissible evidence in a council hearing.",
+                "missionId": "paper"
+            },
+            {
+                "text": "I'm flagging this thread for potential liability issues. We need paper trails, not email trails.",
+                "missionId": null
+            },
+            {
+                "text": "Without a hard copy, this policy is effectively unenforceable. Please reconsider.",
+                "missionId": "paper"
+            },
+            {
+                "text": "I'm CC-ing the Archivist. We are losing history one deleted email at a time.",
+                "missionId": null
+            }
+        ]
+    },
+    {
+        "id": "colin",
+        "name": "Colin (IT)",
+        "email": "c.it@gov.org",
+        "department": "Information Technology",
+        "color": "text-indigo-700",
+        "defeatMessage": "Server load from this thread is too high. I'm muting this. Try rebooting your attitude.",
+        "lines": [
+            {
+                "text": "Have you tried not printing every single cat meme you see? It's clogging the spooler and the budget.",
+                "missionId": "paper"
+            },
+            {
+                "text": "The 'Paperless Initiative' has been ready for three years. You're just afraid of PDFs.",
+                "missionId": "paper"
+            },
+            {
+                "text": "I'm seeing a lot of 'Printer Error' tickets from your floor. Maybe try putting paper in the tray?",
+                "missionId": "paper"
+            },
+            {
+                "text": "Your 'urgent' requests are being redirected to the /dev/null of my inbox.",
+                "missionId": null
+            },
+            {
+                "text": "If it's not a PDF, it doesn't exist to me anymore.",
+                "missionId": null
+            },
+            {
+                "text": "The budget for paper was redirected to upgrade the firewall you keep trying to bypass.",
+                "missionId": "paper"
+            },
+            {
+                "text": "Stop asking for 'digital paper'. It's called a screen. Use it.",
+                "missionId": "paper"
+            },
+            {
+                "text": "I've limited your mailbox size to 50MB until the paper crisis is resolved. Choose your replies wisely.",
+                "missionId": "paper"
+            }
+        ]
+    },
+    {
+        "id": "jamie",
+        "name": "Brendan (IT?)",
+        "email": "b.it@gov.org",
+        "department": "Information Technology",
+        "color": "text-indigo-600",
+        "defeatMessage": "Too many emails. I've got a survey to send on a form to redesign.",
+        "lines": [
+            {
+                "text": "I'm not sure why I'm on this thread. but my form initiative will resolve any paper issues no doubt.",
+                "missionId": "paper"
+            },
+            {
+                "text": "You used it last I think, you fix it.",
+                "missionId": null
+            },
+            {
+                "text": "I recently got Adobe suite installed for the first time.",
+                "missionId": null
+            },
+            {
+                "text": "I'm planning to be away next week, can you take this?",
+                "missionId": null
+            }
+        ]
+    },
+    {
+        "id": "interns",
+        "name": "HR Interns",
+        "email": "hr.interns@gov.org",
+        "department": "Human Resources",
+        "color": "text-blue-900 font-bold",
+        "salutation": {
+            "name": "To the Permanent Staff,"
+        },
+        "signOff": {
+            "name": "The Intern Collective"
+        },
+        "signatures": [
+            {
+                "name": "Unpaid & Unappreciated"
+            }
+        ],
+        "defeatMessage": "The intern pool has been drained. We are collectively resigning to pursue opportunities in a less toxic environment.",
+        "lines": [
+            {
+                "text": "We've been CC'd on the entire thread and we're documenting everything for our final reports.",
+                "missionId": null
+            },
+            {
+                "text": "Our collective research suggests that fish-microwaving is the #1 cause of decreased morale.",
+                "missionId": "microwave"
+            },
+            {
+                "text": "We've been instructed to flag any 'non-synergetic' behavior. This thread is 100% flaggable.",
+                "missionId": null
+            },
+            {
+                "text": "As the future of this department, we demand a higher standard of digital decorum.",
+                "missionId": null
+            }
+        ]
+    },
+    {
+        "id": "sheila",
+        "name": "Sheila (Payroll)",
+        "email": "s.payroll@gov.org",
+        "department": "Finance",
+        "color": "text-green-700",
+        "salutation": {
+            "name": "Dear All,"
+        },
+        "signOff": {
+            "name": "Best, Sheila"
+        },
+        "defeatMessage": "I'm freezing all stipend payments until this thread is resolved. I'm out.",
+        "lines": [
+            {
+                "text": "Your overtime request for 'email management' has been denied. Stick to the mission.",
+                "missionId": null
+            },
+            {
+                "text": "I'm reviewing the cost-benefit analysis of your participation in this thread. It's not looking good.",
+                "missionId": null
+            },
+            {
+                "text": "Every 'Reply All' costs the department approximately $4.12 in lost productivity. You've cost us a fortune today.",
+                "missionId": null
+            },
+            {
+                "text": "Please refer to the payroll schedule before complaining about your 'emotional labor'.",
+                "missionId": "intern_grievance"
+            }
+        ]
+    },
+    {
+        "id": "sarah",
+        "name": "Sarah (ECO)",
+        "email": "s.eco@gov.org",
+        "color": "text-orange-700",
+        "defeatMessage": "I'm escalating this to the Deputy Director. I don't have time for intern drama.",
+        "lines": [
+            {
+                "text": "I need a status report on the 'Synergy Initiative' by EOD. This thread is a distraction.",
+                "missionId": null
+            },
+            {
+                "text": "We need to 'lean in' to a more positive communication style. Your tone is very 'lean out'.",
+                "missionId": null
+            },
+            {
+                "text": "I'm scheduling a sync-up to discuss your 'alignment' with departmental goals.",
+                "missionId": null
+            },
+            {
+                "text": "Let's take this offline. And by offline, I mean I'm deleting your replies.",
+                "missionId": null
+            }
+        ]
+    },
+    {
+        "id": "desmond",
+        "name": "Anneke VDH (ECO)",
+        "email": "anneke.eco@gov.org",
+        "department": "Executive Council Office",
+        "color": "text-red-900",
+        "salutation": {
+            "name": "Regarding the recent incident,"
+        },
+        "defeatMessage": "You know what? I'll leave this to the pipsqueaks. I'm out.",
+        "lines": [
+            {
+                "text": "I think your latest reply violates the 'Civility in Digital Spaces' directive.",
+                "missionId": null
+            },
+            {
+                "text": "I'm auditing this thread for potential FOIA requests. Mind your words.",
+                "missionId": null
+            },
+            {
+                "text": "Regulatory standards require a 24-hour cooling-off period after a 'Reply All' incident. You ignored it.",
+                "missionId": null
+            },
+            {
+                "text": "I've flagged this thread to the Auditor General. Good luck with the hearing.",
+                "missionId": null
+            }
+        ]
+    }
+];
+
+const MISSIONS = [
+    {
+        "id": "microwave",
+        "subject": "URGENT: Breakroom Incident",
+        "from": "HR.Director",
+        "intro": "Hi team,<br><br>I am absolutely disgusted. Someone heated up fish in the breakroom microwave. <strong>{playerName}</strong>, I'm sure you noticed the stench. <strong>{opp1}</strong>, I know you have the policy manual out already. <strong>{opp0}</strong>, please document this.<br><br>Please advise immediately on who is responsible for this violation of shared space ethics.",
+        "opponents": [
+            {
+                "id": 1,
+                "employeeId": "karen",
+                "hp": 50,
+                "maxHp": 50,
+                "wins": 3,
+                "buffs": [],
+                "addressBook": [
+                    "intern"
                 ]
             },
             {
-                id: 'christina',
-                name: "Christina (Pol)",
-                email: "c.policy@gov.org",
-                department: 'Policy',
-                color: 'text-blue-700',
-                defeatMessage: "This thread has been archived for non-compliance. I am removing myself to draft a formal reprimand. Policy remains absolute.",
-                lines: [
-                    { text: "Per Policy 402.b, all communal appliances are to be used for non-odorous items only. Refer to the compliance guide.", missionId: 'microwave' },
-                    { text: "I'm currently drafting a memorandum on 'Shared Air Space Ethics'. This thread is a case study in non-compliance.", missionId: 'microwave' },
-                    { text: "The Policy department ensures rules are followed. Your blatant disregard for the Microwave Protocol is being escalated.", missionId: 'microwave' },
-                    { text: "I've reviewed the 2019 precedent for 'unauthorized seafood heating'. It didn't end well for the perpetrator.", missionId: 'microwave' },
-                    { text: "If you had attended the 'Navigating the Breakroom' seminar, we wouldn't be having this conversation.", missionId: null },
-                    { text: "I am CC-ing the Ethics Committee. This is the procedurally correct way to handle olfactory aggression.", missionId: 'microwave' },
-                    { text: "Your response lacks the required 'Directive 9' formatting. Please resubmit using approved templates.", missionId: null },
-                    { text: "We are evaluating the environmental impact of your lunch choices. Sustainability is a core pillar of our mission.", missionId: null },
-                    { text: "Failure to comply with 'No Fish Friday' is a breach of department harmony. I'm noting this in the audit.", missionId: 'microwave' },
-                    { text: "The data suggests a 98% probability that you are the source of the incident based on desk location.", missionId: null },
-                    { text: "Please cease and desist from using 'Reply All' unless you are citing a specific governmental regulation.", missionId: null },
-                    { text: "This thread is now under the jurisdiction of the Policy Oversight Division. Peer-review your next comment.", missionId: null }
-                ]
-            },
-            {
-                id: 'megan',
-                name: "Megan (Legal)",
-                email: "m.compliance@gov.org",
-                department: 'Legal Compliance',
-                color: 'text-red-700',
-                defeatMessage: "I cannot continue this conversation without a physical copy of the minutes. Unsubscribing until the rationing is lifted.",
-                lines: [
-                    { text: "The lack of physical documentation is a direct violation of the 2004 Record Keeping Act.", missionId: 'paper' },
-                    { text: "I've drafted a cease and desist regarding this rationing. I'll send it as soon as I can find a working printer.", missionId: 'paper' },
-                    { text: "Your 'digital-only' proposal fails to meet the standards for admissible evidence in a council hearing.", missionId: 'paper' },
-                    { text: "I'm flagging this thread for potential liability issues. We need paper trails, not email trails.", missionId: null },
-                    { text: "Without a hard copy, this policy is effectively unenforceable. Please reconsider.", missionId: 'paper' },
-                    { text: "I'm CC-ing the Archivist. We are losing history one deleted email at a time.", missionId: null }
-                ]
-            },
-            {
-                id: 'colin',
-                name: "Colin (IT)",
-                email: "c.it@gov.org",
-                department: 'Information Technology',
-                color: 'text-indigo-700',
-                defeatMessage: "Server load from this thread is too high. I'm muting this. Try rebooting your attitude.",
-                lines: [
-                    { text: "Have you tried not printing every single cat meme you see? It's clogging the spooler and the budget.", missionId: 'paper' },
-                    { text: "The 'Paperless Initiative' has been ready for three years. You're just afraid of PDFs.", missionId: 'paper' },
-                    { text: "I'm seeing a lot of 'Printer Error' tickets from your floor. Maybe try putting paper in the tray?", missionId: 'paper' },
-                    { text: "Your 'urgent' requests are being redirected to the /dev/null of my inbox.", missionId: null },
-                    { text: "If it's not a PDF, it doesn't exist to me anymore.", missionId: null },
-                    { text: "The budget for paper was redirected to upgrade the firewall you keep trying to bypass.", missionId: 'paper' },
-                    { text: "Stop asking for 'digital paper'. It's called a screen. Use it.", missionId: 'paper' },
-                    { text: "I've limited your mailbox size to 50MB until the paper crisis is resolved. Choose your replies wisely.", missionId: 'paper' }
-                ]
-            },
-            {
-                id: 'jamie',
-                name: "Brendan (IT?)",
-                email: "b.it@gov.org",
-                department: 'Information Technology',
-                color: 'text-indigo-600',
-                defeatMessage: "Too many emails. I've got a survey to send on a form to redesign.",
-                lines: [
-                    { text: "I'm not sure why I'm on this thread. but my form initiative will resolve any paper issues no doubt.", missionId: 'paper' },
-                    { text: "You used it last I think, you fix it.", missionId: null },
-                    { text: "I recently got Adobe suite installed for the first time.", missionId: null },
-                    { text: "I'm planning to be away next week, can you take this?", missionId: null }
-                ]
-            },
-            {
-                id: 'interns',
-                name: "HR Interns",
-                email: "hr.interns@gov.org",
-                department: 'Human Resources',
-                color: 'text-blue-900 font-bold',
-                salutation: { name: "To the Permanent Staff," },
-                signOff: { name: "The Intern Collective" },
-                signatures: [{ name: "Unpaid & Unappreciated" }],
-                defeatMessage: "The intern pool has been drained. We are collectively resigning to pursue opportunities in a less toxic environment.",
-                lines: [
-                    { text: "We've been CC'd on the entire thread and we're documenting everything for our final reports.", missionId: null },
-                    { text: "Our collective research suggests that fish-microwaving is the #1 cause of decreased morale.", missionId: 'microwave' },
-                    { text: "We've been instructed to flag any 'non-synergetic' behavior. This thread is 100% flaggable.", missionId: null },
-                    { text: "As the future of this department, we demand a higher standard of digital decorum.", missionId: null }
-                ]
-            },
-            {
-                id: 'sheila',
-                name: "Sheila (Payroll)",
-                email: "s.payroll@gov.org",
-                department: 'Finance',
-                color: 'text-green-700',
-                salutation: { name: "Dear All," },
-                signOff: { name: "Best, Sheila" },
-                defeatMessage: "I'm freezing all stipend payments until this thread is resolved. I'm out.",
-                lines: [
-                    { text: "Your overtime request for 'email management' has been denied. Stick to the mission.", missionId: null },
-                    { text: "I'm reviewing the cost-benefit analysis of your participation in this thread. It's not looking good.", missionId: null },
-                    { text: "Every 'Reply All' costs the department approximately $4.12 in lost productivity. You've cost us a fortune today.", missionId: null },
-                    { text: "Please refer to the payroll schedule before complaining about your 'emotional labor'.", missionId: 'intern_grievance' }
-                ]
-            },
-            {
-                id: 'sarah',
-                name: "Sarah (ECO)",
-                email: "s.eco@gov.org",
-                department: 'Executive Council Office',
-                color: 'text-orange-700',
-                signOff: { name: "Sent from my Office" },
-                defeatMessage: "I'm escalating this to the Director. I don't have time for intern drama.",
-                lines: [
-                    { text: "I need a status report on the 'Synergy Initiative' by EOD. This thread is a distraction.", missionId: null },
-                    { text: "We need to 'lean in' to a more positive communication style. Your tone is very 'lean out'.", missionId: null },
-                    { text: "I'm scheduling a sync-up to discuss your 'alignment' with departmental goals.", missionId: null },
-                    { text: "Let's take this offline. And by offline, I mean I'm deleting your replies.", missionId: null }
-                ]
-            },
-            {
-                id: 'desmond',
-                name: "Anneke VDH (ECO)",
-                email: "anneke.eco@gov.org",
-                department: 'Executive Council Office',
-                color: 'text-red-900',
-                salutation: { name: "Regarding the recent incident," },
-                defeatMessage: "You know what? I'll leave this to the pipsqueaks. I'm out.",
-                lines: [
-                    { text: "I think your latest reply violates the 'Civility in Digital Spaces' directive.", missionId: null },
-                    { text: "I'm auditing this thread for potential FOIA requests. Mind your words.", missionId: null },
-                    { text: "Regulatory standards require a 24-hour cooling-off period after a 'Reply All' incident. You ignored it.", missionId: null },
-                    { text: "I've flagged this thread to the Auditor General. Good luck with the hearing.", missionId: null }
+                "id": 2,
+                "employeeId": "christina",
+                "hp": 60,
+                "maxHp": 60,
+                "wins": 3,
+                "buffs": [],
+                "addressBook": [
+                    "legal"
                 ]
             }
-        ];
-
-        const MISSIONS = [
+        ]
+    },
+    {
+        "id": "paper",
+        "subject": "CRITICAL: Departmental Paper Rationing",
+        "from": "Facilities.Admin",
+        "intro": "Dear Staff,<br><br>Due to unforeseen budget constraints, we are implementing immediate paper rationing. <strong>{playerName}</strong>, your department's printing logs are particularly high. <strong>Megan</strong>, please ensure we are still meeting filing requirements. <strong>Colin</strong>, please expedite the 'Paperless Initiative'.<br><br>Effective immediately, all non-essential printing is strictly prohibited.",
+        "opponents": [
             {
-                id: 'microwave',
-                subject: "URGENT: Breakroom Incident",
-                from: "HR.Director",
-                intro: "Hi team,<br><br>I am absolutely disgusted. Someone heated up fish in the breakroom microwave. <strong>{playerName}</strong>, I'm sure you noticed the stench. <strong>{opp1}</strong>, I know you have the policy manual out already. <strong>{opp0}</strong>, please document this.<br><br>Please advise immediately on who is responsible for this violation of shared space ethics.",
-                opponents: [
-                    { id: 1, employeeId: 'karen', hp: 50, maxHp: 50, wins: 3, buffs: [], addressBook: ['intern'] },
-                    { id: 2, employeeId: 'christina', hp: 60, maxHp: 60, wins: 3, buffs: [], addressBook: ['legal'] }
+                "id": 3,
+                "employeeId": "megan",
+                "hp": 60,
+                "maxHp": 60,
+                "wins": 3,
+                "buffs": [],
+                "addressBook": [
+                    "legal"
                 ]
             },
             {
-                id: 'paper',
-                subject: "CRITICAL: Departmental Paper Rationing",
-                from: "Facilities.Admin",
-                intro: "Dear Staff,<br><br>Due to unforeseen budget constraints, we are implementing immediate paper rationing. <strong>{playerName}</strong>, your department's printing logs are particularly high. <strong>Megan</strong>, please ensure we are still meeting filing requirements. <strong>Colin</strong>, please expedite the 'Paperless Initiative'.<br><br>Effective immediately, all non-essential printing is strictly prohibited.",
-                opponents: [
-                    { id: 3, employeeId: 'megan', hp: 60, maxHp: 60, wins: 3, buffs: [], addressBook: ['legal'] },
-                    { id: 4, employeeId: 'colin', hp: 50, maxHp: 50, wins: 3, buffs: [], addressBook: ['it'] },
-                    { id: 44, employeeId: 'jamie', hp: 50, maxHp: 50, wins: 3, buffs: [], addressBook: ['it'] }
+                "id": 4,
+                "employeeId": "colin",
+                "hp": 50,
+                "maxHp": 50,
+                "wins": 3,
+                "buffs": [],
+                "addressBook": [
+                    "it"
                 ]
             },
             {
-                id: 'intern_grievance',
-                subject: "RE: Intern Grievance Collective",
-                from: "HR.Interns",
-                intro: "To the Permanent Staff,<br><br>We, the interns, have noticed a significant lack of 'Team Synergy' and 'Professional Courtesy'. <strong>{playerName}</strong>, your recent emails have been cited as 'aggressive'. <strong>Management</strong>, we are looping in our mentors. <strong>Payroll</strong>, we expect our stipends to reflect the emotional labor of this thread.",
-                opponents: [
-                    { id: 5, employeeId: 'interns', hp: 80, maxHp: 80, wins: 5, buffs: [], addressBook: ['intern'] },
-                    { id: 6, employeeId: 'sheila', hp: 70, maxHp: 70, wins: 2, buffs: [], addressBook: ['audit'] },
-                    { id: 7, employeeId: 'jordan', hp: 90, maxHp: 90, wins: 4, buffs: [], addressBook: ['eco'] },
-                    { id: 8, employeeId: 'desmond', hp: 75, maxHp: 75, wins: 3, buffs: [], addressBook: ['eco'] }
+                "id": 44,
+                "employeeId": "jamie",
+                "hp": 50,
+                "maxHp": 50,
+                "wins": 3,
+                "buffs": [],
+                "addressBook": [
+                    "it"
                 ]
             }
-        ];
+        ]
+    },
+    {
+        "id": "intern_grievance",
+        "subject": "RE: Intern Grievance Collective",
+        "from": "HR.Interns",
+        "intro": "To the Permanent Staff,<br><br>We, the interns, have noticed a significant lack of 'Team Synergy' and 'Professional Courtesy'. <strong>{playerName}</strong>, your recent emails have been cited as 'aggressive'. <strong>Management</strong>, we are looping in our mentors. <strong>Payroll</strong>, we expect our stipends to reflect the emotional labor of this thread.",
+        "opponents": [
+            {
+                "id": 5,
+                "employeeId": "interns",
+                "hp": 80,
+                "maxHp": 80,
+                "wins": 5,
+                "buffs": [],
+                "addressBook": [
+                    "intern"
+                ]
+            },
+            {
+                "id": 6,
+                "employeeId": "sheila",
+                "hp": 70,
+                "maxHp": 70,
+                "wins": 2,
+                "buffs": [],
+                "addressBook": [
+                    "audit"
+                ]
+            },
+            {
+                "id": 7,
+                "employeeId": "jordan",
+                "hp": 90,
+                "maxHp": 90,
+                "wins": 4,
+                "buffs": [],
+                "addressBook": [
+                    "eco"
+                ]
+            },
+            {
+                "id": 8,
+                "employeeId": "desmond",
+                "hp": 75,
+                "maxHp": 75,
+                "wins": 3,
+                "buffs": [],
+                "addressBook": [
+                    "eco"
+                ]
+            }
+        ]
+    }
+];
+
+
 
         let opponents = [];
 
