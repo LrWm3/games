@@ -324,7 +324,7 @@
           >
           <button
             onclick="advanceToNextQuarter()"
-            class="retro-button text-black text-[10px] py-0 px-2 h-4"
+            class="retro-button text-black text-[10px] py-0 px-2 h-5"
           >
             NEXT QUARTER &gt;
           </button>
@@ -986,7 +986,7 @@
           title: "IT Specialist",
           rarity: "common",
           departmentId: "information_technology",
-          bonus: "+5 credibility/turn.",
+          bonus: "+5 Credibility/turn.",
           loopInText:
             "I'm looping in <strong>{name}</strong> because I think we need an {title} to help with the technical issues affecting others' replies in this thread.",
           eff: {
@@ -1086,7 +1086,7 @@
           title: "Facilities Lead",
           rarity: "common",
           departmentId: "facilities_and_administration",
-          bonus: "Reduce incoming damage by 2 & +3 Credibility/turn",
+          bonus: "Reduce incoming damage by 2 & +3 Credibility/turn.",
           loopInText:
             "I'm looping in <strong>{name}</strong> ({title}) to handle the facilities impact.",
           eff: {
@@ -1129,7 +1129,7 @@
           title: "Budget Controller",
           rarity: "uncommon",
           departmentId: "finance",
-          bonus: "+5 Max Credibility and +5 Credibility/turn.",
+          bonus: "+5 Max Credibility & +5 Credibility/turn.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to track fiscal impact against budgetary constraints and keep the numbers straight.",
           eff: {
@@ -1256,7 +1256,7 @@
         {
           id: "best",
           name: "Best,",
-          bonus: "Heal 2 HP every turn.",
+          bonus: "+2 Credibility/turn.",
           rarity: "uncommon",
           heal: 2,
         },
@@ -3683,10 +3683,19 @@
           };
           pill.className = `target-pill px-2 py-0.5 flex flex-col min-w-[90px] cursor-pointer bg-white ${isActive ? "active" : "opacity-60 grayscale"}`;
           const textClass = isActive ? "text-white" : "text-gray-900";
+          const lastPct =
+            typeof o._lastHpPct === "number" ? o._lastHpPct : pct;
           pill.innerHTML = `<div class="flex justify-between font-bold text-[8px] truncate ${isActive ? "text-white" : "text-gray-800"}"><span class="mr-2">${o.name}</span><span>${o.hp > 0 ? o.wins + "w" : "UNSUBBED"}</span></div>
-                                <div class="h-1 w-full bg-gray-200 mt-0.5"><div class="h-full bg-red-500 transition-[width] duration-300 ease-out" style="width: ${pct}%"></div></div>
+                                <div class="h-1 w-full bg-gray-200 mt-0.5"><div class="h-full bg-red-500 transition-[width] duration-300 ease-out" data-opp-hp style="width: ${lastPct}%"></div></div>
                                 <div class="text-[8px] mt-0.5 ${textClass}">${Math.max(0, Math.ceil(o.hp))}/${getUnitMaxHp(o)} Cred</div>`;
           oppContainer.appendChild(pill);
+          const fill = pill.querySelector("[data-opp-hp]");
+          if (fill) {
+            requestAnimationFrame(() => {
+              fill.style.width = pct + "%";
+            });
+          }
+          o._lastHpPct = pct;
         });
         selector.appendChild(oppContainer);
         if (opponents.length > maxOppPreview) {
@@ -4022,7 +4031,7 @@
               }
             }
 
-            if (a.redirectNext) {
+            if (a.redirectNext && target.id === "player") {
               a.redirectNext = false;
               const targets = alive.filter((o) => o.id !== a.id);
               if (targets.length > 0) {
@@ -4380,13 +4389,14 @@
             "italic text-gray-500 text-[10px]",
           );
         } else if (bcc.effect === "redirect") {
-          const target = opponents.find((o) => o.id === state.targetId);
-          target.redirectNext = true;
+          opponents.forEach((o) => {
+            if (o.hp > 0) o.redirectNext = true;
+          });
           addEmailToLog(
             "SYSTEM",
             state.player.name,
             "Message Redirected",
-            `${target.name} will target someone else next turn.`,
+            `Anyone targeting you will be redirected next turn.`,
             "italic text-gray-500 text-[10px]",
           );
         }
