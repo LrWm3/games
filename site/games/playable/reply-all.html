@@ -4697,7 +4697,9 @@
             ? pickBounceTarget(p, target)
             : null;
           const bounceResult = bounceTarget
-            ? applyDamage(p, bounceTarget, bounceDamage)
+            ? applyDamage(p, bounceTarget, bounceDamage, {
+                ignoreReflect: true,
+              })
             : null;
 
           const q = drawFromLineBag(
@@ -5055,7 +5057,9 @@
                       ? pickBounceTarget(a, state.player)
                       : null;
                     const bounceResult = bounceTarget
-                      ? applyDamage(a, bounceTarget, bounceDamage)
+                      ? applyDamage(a, bounceTarget, bounceDamage, {
+                          ignoreReflect: true,
+                        })
                       : null;
                     if (result.blocked > 0) {
                       body += `<br><br><strong>Deflected:</strong> ${result.blocked} reflected.`;
@@ -5102,7 +5106,9 @@
                     ? pickBounceTarget(a, target)
                     : null;
                   const bounceResult = bounceTarget
-                    ? applyDamage(a, bounceTarget, bounceDamage)
+                    ? applyDamage(a, bounceTarget, bounceDamage, {
+                        ignoreReflect: true,
+                      })
                     : null;
                   if (result.blocked > 0) {
                     body += `<br><br><strong>Deflected:</strong> ${result.blocked} reflected.`;
