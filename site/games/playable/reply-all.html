@@ -1015,8 +1015,8 @@
           name: "Telly",
           title: "Intern",
           rarity: "common",
-          departmentId: "operations",
-          employeeId: "telly_operations",
+          departmentId: "marketing",
+          employeeId: "telly_marketing",
           bonus: "+3 reply to",
           loopInText:
             "I'm looping in <strong>{name}</strong> to generate a contact report for this thread.",
@@ -1655,33 +1655,33 @@
           ],
         },
         {
-          id: "malik_operations",
-          name: "Malik (Facilities)",
-          email: "m.facilities@gov.org",
+          id: "rory_operations",
+          name: "Rory (Facilities)",
+          email: "r.facilities@gov.org",
           departmentId: "operations",
           color: "text-slate-600",
           defeatMessage:
-            "I've got contractors waiting downstairs. I'm off this thread and back to the job site.",
+            "Alright we don't need to share. I've got work to do and a desk to return to. I'll see you all in the office.",
           selfPromote:
-            "We cleared the maintenance backlog two days early. That's what execution looks like.",
+            "I was in by 6 AM and already cleared two work orders. The office runs when we're here.",
           deflectLines: [
-            "I'm documenting this before I reply further.",
+            "I'm pausing to document this before I get back to the floor.",
           ],
           lines: [
             {
-              text: "The vendors are on-site and need a safety briefing. That's not optional.",
+              text: "We can share the room. Everyone's already here—let's just run the meetings together.",
               missionId: "calendar_chaos",
             },
             {
-              text: "We can move, but it'll delay scheduled work across the floor.",
+              text: "The office is for working. If we're all in the building, we can make it work.",
               missionId: "calendar_chaos",
             },
             {
-              text: "I'm not interested in another calendar debate. We need a decision.",
+              text: "I'd rather stay in the office and solve this than bounce rooms all day.",
               missionId: null,
             },
             {
-              text: "Operations runs on time blocks. Please respect that.",
+              text: "Honestly, I love being here. Let's just share the space and get it done.",
               missionId: null,
             },
           ],
@@ -1719,42 +1719,42 @@
           ],
         },
         {
-          id: "jonah_finance",
-          name: "Jonah (Budget)",
-          email: "j.budget@gov.org",
+          id: "dora_finance",
+          name: "Dora (Budget)",
+          email: "d.budget@gov.org",
           departmentId: "finance",
           color: "text-emerald-600",
           defeatMessage:
             "I'm stepping out. I'll send my notes offline.",
           selfPromote:
-            "I reconciled the quarterly numbers ahead of schedule. Accuracy matters.",
+            "I held the budget together through sheer willpower. We need another pair of hands.",
           deflectLines: [
             "I'm holding response until this is documented.",
           ],
           lines: [
             {
-              text: "The quarterly reconciliation needs a locked room and a stable block of time.",
+              text: "I'm behind on reconciliation and I can't catch up without this block of time.",
               missionId: "calendar_chaos",
             },
             {
-              text: "We booked this for review and sign-off. Rescheduling risks missing the cutoff.",
+              text: "We booked this for review and sign-off. If we move it, we miss the cutoff.",
               missionId: "calendar_chaos",
             },
             {
-              text: "Let's align on the booking record and stop guessing.",
+              text: "Honestly, I need help. Is anyone available to jump in on reconciliation?",
               missionId: null,
             },
             {
-              text: "I'm tracking this thread for audit purposes.",
+              text: "I'm drowning in numbers here. Please don't make this harder.",
               missionId: null,
             },
           ],
         },
         {
-          id: "telly_operations",
+          id: "telly_marketing",
           name: "Telly (Intern)",
-          email: "telly.ops@gov.org",
-          departmentId: "operations",
+          email: "telly.marketing@gov.org",
+          departmentId: "marketing",
           color: "text-slate-700",
           defeatMessage:
             "I booked the room properly, but I'll give it up this time I guess.",
@@ -2304,7 +2304,7 @@
             },
             {
               id: 10,
-              employeeId: "malik_operations",
+              employeeId: "rory_operations",
               hp: 50,
               maxHp: 50,
               wins: 2,
@@ -2322,7 +2322,7 @@
             },
             {
               id: 12,
-              employeeId: "jonah_finance",
+              employeeId: "dora_finance",
               hp: 40,
               maxHp: 40,
               wins: 2,
@@ -2331,7 +2331,7 @@
             },
             {
               id: 13,
-              employeeId: "telly_operations",
+              employeeId: "telly_marketing",
               hp: 20,
               maxHp: 20,
               wins: 1,
