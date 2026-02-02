@@ -1016,6 +1016,7 @@
           title: "Intern",
           rarity: "common",
           departmentId: "operations",
+          employeeId: "telly_operations",
           bonus: "+3 reply to",
           loopInText:
             "I'm looping in <strong>{name}</strong> to generate a contact report for this thread.",
@@ -1622,6 +1623,166 @@
           ],
         },
         {
+          id: "avery_operations",
+          name: "Avery (Ops)",
+          email: "a.ops@gov.org",
+          departmentId: "operations",
+          color: "text-slate-700",
+          defeatMessage:
+            "I'm removing myself from this thread and logging the incident with Facilities. We'll reset the room schedule after this.",
+          selfPromote:
+            "I updated the weekly facilities checklist ahead of schedule. Process discipline still matters.",
+          deflectLines: [
+            "I'm pausing to document this thread before responding further.",
+          ],
+          lines: [
+            {
+              text: "The conference room has a safety walkthrough scheduled; we need that time block to proceed.",
+              missionId: "calendar_chaos",
+            },
+            {
+              text: "I can resolve this quickly if we stick to the booking records and timestamps.",
+              missionId: "calendar_chaos",
+            },
+            {
+              text: "Please use the shared calendar correctly. It's there for a reason.",
+              missionId: null,
+            },
+            {
+              text: "We can't keep reassigning rooms on short notice without disrupting core operations.",
+              missionId: null,
+            },
+          ],
+        },
+        {
+          id: "malik_operations",
+          name: "Malik (Facilities)",
+          email: "m.facilities@gov.org",
+          departmentId: "operations",
+          color: "text-slate-600",
+          defeatMessage:
+            "I've got contractors waiting downstairs. I'm off this thread and back to the job site.",
+          selfPromote:
+            "We cleared the maintenance backlog two days early. That's what execution looks like.",
+          deflectLines: [
+            "I'm documenting this before I reply further.",
+          ],
+          lines: [
+            {
+              text: "The vendors are on-site and need a safety briefing. That's not optional.",
+              missionId: "calendar_chaos",
+            },
+            {
+              text: "We can move, but it'll delay scheduled work across the floor.",
+              missionId: "calendar_chaos",
+            },
+            {
+              text: "I'm not interested in another calendar debate. We need a decision.",
+              missionId: null,
+            },
+            {
+              text: "Operations runs on time blocks. Please respect that.",
+              missionId: null,
+            },
+          ],
+        },
+        {
+          id: "priya_finance",
+          name: "Priya (Finance)",
+          email: "p.finance@gov.org",
+          departmentId: "finance",
+          color: "text-emerald-700",
+          defeatMessage:
+            "We'll proceed without the room. If payroll slips, that's on this thread.",
+          selfPromote:
+            "We closed the month early and kept variance under 1%. That's the standard.",
+          deflectLines: [
+            "I'm pausing to document the payroll risk before responding.",
+          ],
+          lines: [
+            {
+              text: "Payroll finalization closes today. We need the room and the time block.",
+              missionId: "calendar_chaos",
+            },
+            {
+              text: "Moving this meeting puts paychecks at risk. I'm not signing off on that.",
+              missionId: "calendar_chaos",
+            },
+            {
+              text: "The cost of delay is real. Please treat this as priority.",
+              missionId: null,
+            },
+            {
+              text: "We have a reporting cutoff. This isn't optional.",
+              missionId: null,
+            },
+          ],
+        },
+        {
+          id: "jonah_finance",
+          name: "Jonah (Budget)",
+          email: "j.budget@gov.org",
+          departmentId: "finance",
+          color: "text-emerald-600",
+          defeatMessage:
+            "I'm stepping out. I'll send my notes offline.",
+          selfPromote:
+            "I reconciled the quarterly numbers ahead of schedule. Accuracy matters.",
+          deflectLines: [
+            "I'm holding response until this is documented.",
+          ],
+          lines: [
+            {
+              text: "The quarterly reconciliation needs a locked room and a stable block of time.",
+              missionId: "calendar_chaos",
+            },
+            {
+              text: "We booked this for review and sign-off. Rescheduling risks missing the cutoff.",
+              missionId: "calendar_chaos",
+            },
+            {
+              text: "Let's align on the booking record and stop guessing.",
+              missionId: null,
+            },
+            {
+              text: "I'm tracking this thread for audit purposes.",
+              missionId: null,
+            },
+          ],
+        },
+        {
+          id: "telly_operations",
+          name: "Telly (Intern)",
+          email: "telly.ops@gov.org",
+          departmentId: "operations",
+          color: "text-slate-700",
+          defeatMessage:
+            "I booked the room properly, but I'll give it up this time I guess.",
+          selfPromote:
+            "I handled the scheduling backlog this morning. Everything was confirmed.",
+          deflectLines: [
+            "I'm pausing to document the booking record before replying.",
+          ],
+          lines: [
+            {
+              text: "I booked the room at 8:12 AM and sent confirmations to both teams.",
+              missionId: "calendar_chaos",
+            },
+            {
+              text: "The calendar shows a single reservation. The double booking happened after my confirmation.",
+              missionId: "calendar_chaos",
+            },
+            {
+              text: "I can forward the timestamps if needed.",
+              missionId: "calendar_chaos",
+            },
+            {
+              text: "Please stop replying all. I'm just the intern.",
+              missionId: null,
+            },
+          ],
+        },
+        {
           id: "christina_policy",
           name: "Christina (Pol)",
           email: "c.policy@gov.org",
@@ -2122,6 +2283,60 @@
               wins: 2,
               buffs: [],
               addressBook: ["cc_samantha_executive_council_office"],
+            },
+          ],
+        },
+        {
+          id: "calendar_chaos",
+          subject: "RE: Conference Room Double Booking",
+          from: "facilities@gov.org",
+          intro:
+            "Hi all,<br><br>We have a triple booking for the main conference room this morning. <strong>{playerName}</strong>, you have it booked for an internal process audit. <strong>{opp0}</strong> and <strong>{opp1}</strong> from Operations flagged a safety walkthrough and vendor briefing. <strong>{opp2}</strong> and <strong>{opp3}</strong> from Finance flagged payroll finalization and budget reconciliation. <strong>{opp4}</strong>, thanks for the initial booking—please stand by while we sort this out.<br><br>Please reply with your priority and availability.",
+          opponents: [
+            {
+              id: 9,
+              employeeId: "avery_operations",
+              hp: 50,
+              maxHp: 50,
+              wins: 2,
+              buffs: [],
+              addressBook: [],
+            },
+            {
+              id: 10,
+              employeeId: "malik_operations",
+              hp: 50,
+              maxHp: 50,
+              wins: 2,
+              buffs: [],
+              addressBook: [],
+            },
+            {
+              id: 11,
+              employeeId: "priya_finance",
+              hp: 40,
+              maxHp: 40,
+              wins: 2,
+              buffs: [],
+              addressBook: ["cc_adam_finance"],
+            },
+            {
+              id: 12,
+              employeeId: "jonah_finance",
+              hp: 40,
+              maxHp: 40,
+              wins: 2,
+              buffs: [],
+              addressBook: ["cc_adam_finance"],
+            },
+            {
+              id: 13,
+              employeeId: "telly_operations",
+              hp: 20,
+              maxHp: 20,
+              wins: 1,
+              buffs: [],
+              addressBook: [],
             },
           ],
         },
