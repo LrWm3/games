@@ -108,15 +108,18 @@
                 <h2 class="text-xl font-bold terminal-font mb-2">PERFORMANCE METRICS</h2>
                 <div class="w-full bg-white retro-border-inset p-3 space-y-2 text-xs mb-4">
                     <div class="flex justify-between">
-                        <span>Participants Removed:</span>
-                        <span id="summary-removed-count" class="font-mono">0/0</span>
+                        <span>Base Mission Reward:</span>
+                        <span id="summary-base-rep" class="font-mono">+4</span>
+                    </div>
+                    <div id="summary-optouts-list" class="space-y-1 py-1 border-y border-gray-100 hidden">
+                        <!-- Individual opt-outs injected here -->
                     </div>
                     <div class="flex justify-between">
-                        <span>Success Rate:</span>
-                        <span id="summary-success-rate" class="font-mono">0%</span>
+                        <span>Additional Bonuses:</span>
+                        <span id="summary-bonus-rep" class="font-mono">+0</span>
                     </div>
                     <div class="border-t border-gray-300 pt-2 flex justify-between font-bold text-[#000080]">
-                        <span>REPUTATION EARNED:</span>
+                        <span>TOTAL REP EARNED:</span>
                         <span id="summary-rep-earned" class="font-mono text-lg">+0</span>
                     </div>
                 </div>
@@ -169,6 +172,51 @@
             </div>
             <div class="bg-[#dfdfdf] border-t border-[#808080] p-2 text-[10px] text-center italic text-gray-600 shrink-0">
                 Corporate policy: All purchases are final and non-refundable.
+            </div>
+        </div>
+    </div>
+
+    <!-- LOSE SCREEN (Termination Notice) -->
+    <div id="lose-screen" class="hidden fixed inset-0 z-[150] bg-black flex items-center justify-center p-4">
+        <div class="bg-[#c0c0c0] retro-border max-w-sm w-full shadow-2xl overflow-hidden">
+            <div class="bg-red-800 text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+                <span>SYSTEM LOCKOUT - SECURITY BREACH</span>
+                <span>✕</span>
+            </div>
+            <div class="p-6 flex flex-col items-center">
+                <div class="w-16 h-16 bg-red-600 retro-border flex items-center justify-center mb-6">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                </div>
+
+                <h2 class="text-2xl font-bold terminal-font mb-4 text-red-800">NOTICE OF TERMINATION</h2>
+
+                <div class="w-full bg-white retro-border-inset p-4 space-y-3 text-[11px] mb-6 leading-tight">
+                    <p class="font-bold text-center border-b pb-2 mb-2">Final Employee Records</p>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500 uppercase">Final Title:</span>
+                        <span id="lose-title" class="font-bold">Cubicle Resident</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500 uppercase">Period:</span>
+                        <span id="lose-period" class="font-bold">Q3 - Year 1</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500 uppercase">Total Reputation:</span>
+                        <span id="lose-total-rep" class="font-bold">0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500 uppercase">Address Book:</span>
+                        <span id="lose-contacts" class="font-bold">0 Contacts</span>
+                    </div>
+                </div>
+
+                <div class="text-[12px] text-center italic text-gray-800 px-2 leading-relaxed">
+                    "Credibility is of utmost importance for ECO staff. As a result of correspondence recently brought to our attention, your role here has come to an end."
+                </div>
+
+                <div class="mt-8 text-[10px] text-gray-500 uppercase tracking-widest animate-pulse">
+                    Access Revoked. See Security.
+                </div>
             </div>
         </div>
     </div>
@@ -661,7 +709,7 @@
         });
 
         function transitionTo(screenId) {
-            const screens = ['start-screen', 'game-ui', 'inbox-screen', 'summary-screen', 'shop-screen', 'promotion-screen'];
+            const screens = ['start-screen', 'game-ui', 'inbox-screen', 'summary-screen', 'shop-screen', 'promotion-screen', 'lose-screen'];
             screens.forEach(s => {
                 const el = document.getElementById(s);
                 if (el) el.classList.add('hidden');
@@ -869,8 +917,26 @@
             generateShopItems();
             setTimeout(() => {
                 transitionTo('summary-screen');
-                const removedPct = state.removedByPlayer / state.removedTotal;
-                const repEarned = 4 + Math.floor(6 * removedPct);
+                const baseRep = 4;
+                const totalOptOutRep = Math.floor(6 * (state.removedByPlayer / state.removedTotal));
+
+                // Distribution
+                const optOutList = document.getElementById('summary-optouts-list');
+                optOutList.innerHTML = "";
+                const playerKills = opponents.filter(o => o.removedByPlayer);
+
+                if (playerKills.length > 0) {
+                    optOutList.classList.remove('hidden');
+                    playerKills.forEach((o, i) => {
+                        const share = Math.floor((i + 1) * totalOptOutRep / playerKills.length) - Math.floor(i * totalOptOutRep / playerKills.length);
+                        const div = document.createElement('div');
+                        div.className = "flex justify-between text-[10px] text-gray-600 italic";
+                        div.innerHTML = `<span>Opt-out: ${o.name}</span><span>+${share}</span>`;
+                        optOutList.appendChild(div);
+                    });
+                } else {
+                    optOutList.classList.add('hidden');
+                }
 
                 // Signature bonus
                 let bonusRep = 0;
@@ -885,14 +951,14 @@
                     bonusRep += 4;
                 }
 
-                const totalRep = repEarned + bonusRep;
+                const totalRep = baseRep + totalOptOutRep + bonusRep;
                 state.player.reputation += totalRep;
 
                 // Advance mission index
                 state.currentMissionIndex = (state.currentMissionIndex + 1) % MISSIONS.length;
 
-                document.getElementById('summary-removed-count').innerText = `${state.removedTotal - opponents.filter(o => o.hp > 0).length}/${state.removedTotal}`;
-                document.getElementById('summary-success-rate').innerText = `${Math.round(removedPct * 100)}%`;
+                document.getElementById('summary-base-rep').innerText = `+${baseRep}`;
+                document.getElementById('summary-bonus-rep').innerText = `+${bonusRep}`;
                 document.getElementById('summary-rep-earned').innerText = `+${totalRep}`;
             }, 1500);
         }
@@ -900,6 +966,15 @@
         function showShop() {
             transitionTo('shop-screen');
             updateShopUI();
+        }
+
+        function showLoseScreen() {
+            const p = state.player;
+            document.getElementById('lose-title').innerText = p.title.name;
+            document.getElementById('lose-period').innerText = `${p.quarter} - Year ${p.year}`;
+            document.getElementById('lose-total-rep').innerText = p.reputation;
+            document.getElementById('lose-contacts').innerText = `${p.addressBook.length} Contacts`;
+            transitionTo('lose-screen');
         }
 
         function advanceToNextQuarter() {
@@ -1050,7 +1125,10 @@
             if (o.isDefeated) return;
             o.hp = 0;
             o.isDefeated = true;
-            if (byPlayer) state.removedByPlayer++;
+            if (byPlayer) {
+                state.removedByPlayer++;
+                o.removedByPlayer = true;
+            }
             addEmailToLog(o.name, "everyone@gov.org", "Unsubscribing", o.defeatMessage, "italic text-gray-600 bg-gray-50 border-l-4 border-gray-400");
             if (state.targetId === o.id) {
                 const next = opponents.find(opp => opp.hp > 0);
@@ -1265,7 +1343,11 @@
                         }
                     }
 
-                    if (state.player.hp <= 0) { state.gameOver = true; addEmailToLog("HR", state.player.email, "ACCESS REVOKED", `Due to your repeated failure to maintain professional standards, your access to this email thread—and the corporate network—has been revoked. Please see Security.`, "bg-black text-white p-4 text-center"); updateUI(); }
+                    if (state.player.hp <= 0) {
+                        state.gameOver = true;
+                        updateUI();
+                        setTimeout(showLoseScreen, 1500);
+                    }
                 }, idx * 700);
             });
 
