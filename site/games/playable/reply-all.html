@@ -414,164 +414,194 @@
             { id: 'redirect', name: "Redirect Message", bonus: "Current target attacks another random opponent next turn.", rarity: 'rare', effect: 'redirect' }
         ];
 
+        const EMPLOYEES = [
+            {
+                id: 'karen',
+                name: "Karen (HR)",
+                email: "k.smith@gov.org",
+                department: 'Human Resources',
+                color: 'text-purple-700',
+                defeatMessage: "I am unsubscribing. I've documented the lack of professional decorum and will be following up with each of you individually. Regards.",
+                lines: [
+                    { text: "Your recent breakroom habits suggest a lack of respect for shared departmental assets.", missionId: 'microwave' },
+                    { text: "I noticed you haven't completed the mandatory 'Digital Hygiene' training module for this quarter.", missionId: null },
+                    { text: "I have three disciplinary hearings today; this thread is a significant drain on my operational capacity.", missionId: null },
+                    { text: "HR provides the framework for your employment; your contributions are currently being 're-evaluated'.", missionId: null },
+                    { text: "Please review the updated 'Shared Space Etiquette' PDF attached to my signature.", missionId: null },
+                    { text: "I'm scheduling a mandatory mediation session for the entire floor this Friday at 4:30 PM.", missionId: null },
+                    { text: "Your tone in this thread has been noted and will be discussed during your next performance review.", missionId: null },
+                    { text: "We have a zero-tolerance policy for passive-aggressive CC-ing. Please adhere to the chain of command.", missionId: null },
+                    { text: "I've CC'd the Chief Wellness Officer to address the 'toxic environment' you're creating.", missionId: null },
+                    { text: "Failure to identify the salmon-heater will result in a collective reduction of the 'Team Synergy' bonus.", missionId: 'microwave' },
+                    { text: "I'm looking at the handbook right now, and you're in violation of Section 8.4: Olfactory Neutrality.", missionId: 'microwave' },
+                    { text: "This 'Reply All' behavior is exactly why we can't have nice things, like the espresso machine I vetoed.", missionId: null }
+                ]
+            },
+            {
+                id: 'christina',
+                name: "Christina (Pol)",
+                email: "c.policy@gov.org",
+                department: 'Policy',
+                color: 'text-blue-700',
+                defeatMessage: "This thread has been archived for non-compliance. I am removing myself to draft a formal reprimand. Policy remains absolute.",
+                lines: [
+                    { text: "Per Policy 402.b, all communal appliances are to be used for non-odorous items only. Refer to the compliance guide.", missionId: 'microwave' },
+                    { text: "I'm currently drafting a memorandum on 'Shared Air Space Ethics'. This thread is a case study in non-compliance.", missionId: 'microwave' },
+                    { text: "The Policy department ensures rules are followed. Your blatant disregard for the Microwave Protocol is being escalated.", missionId: 'microwave' },
+                    { text: "I've reviewed the 2019 precedent for 'unauthorized seafood heating'. It didn't end well for the perpetrator.", missionId: 'microwave' },
+                    { text: "If you had attended the 'Navigating the Breakroom' seminar, we wouldn't be having this conversation.", missionId: null },
+                    { text: "I am CC-ing the Ethics Committee. This is the procedurally correct way to handle olfactory aggression.", missionId: 'microwave' },
+                    { text: "Your response lacks the required 'Directive 9' formatting. Please resubmit using approved templates.", missionId: null },
+                    { text: "We are evaluating the environmental impact of your lunch choices. Sustainability is a core pillar of our mission.", missionId: null },
+                    { text: "Failure to comply with 'No Fish Friday' is a breach of department harmony. I'm noting this in the audit.", missionId: 'microwave' },
+                    { text: "The data suggests a 98% probability that you are the source of the incident based on desk location.", missionId: null },
+                    { text: "Please cease and desist from using 'Reply All' unless you are citing a specific governmental regulation.", missionId: null },
+                    { text: "This thread is now under the jurisdiction of the Policy Oversight Division. Peer-review your next comment.", missionId: null }
+                ]
+            },
+            {
+                id: 'megan',
+                name: "Megan (Legal)",
+                email: "m.compliance@gov.org",
+                department: 'Legal Compliance',
+                color: 'text-red-700',
+                defeatMessage: "I cannot continue this conversation without a physical copy of the minutes. Unsubscribing until the rationing is lifted.",
+                lines: [
+                    { text: "The lack of physical documentation is a direct violation of the 2004 Record Keeping Act.", missionId: 'paper' },
+                    { text: "I've drafted a cease and desist regarding this rationing. I'll send it as soon as I can find a working printer.", missionId: 'paper' },
+                    { text: "Your 'digital-only' proposal fails to meet the standards for admissible evidence in a council hearing.", missionId: 'paper' },
+                    { text: "I'm flagging this thread for potential liability issues. We need paper trails, not email trails.", missionId: null },
+                    { text: "Without a hard copy, this policy is effectively unenforceable. Please reconsider.", missionId: 'paper' },
+                    { text: "I'm CC-ing the Archivist. We are losing history one deleted email at a time.", missionId: null }
+                ]
+            },
+            {
+                id: 'colin',
+                name: "Colin (IT)",
+                email: "c.it@gov.org",
+                department: 'Information Technology',
+                color: 'text-indigo-700',
+                defeatMessage: "Server load from this thread is too high. I'm muting this. Try rebooting your attitude.",
+                lines: [
+                    { text: "Have you tried not printing every single cat meme you see? It's clogging the spooler and the budget.", missionId: 'paper' },
+                    { text: "The 'Paperless Initiative' has been ready for three years. You're just afraid of PDFs.", missionId: 'paper' },
+                    { text: "I'm seeing a lot of 'Printer Error' tickets from your floor. Maybe try putting paper in the tray?", missionId: 'paper' },
+                    { text: "The budget for paper was redirected to upgrade the firewall you keep trying to bypass.", missionId: 'paper' },
+                    { text: "Stop asking for 'digital paper'. It's called a screen. Use it.", missionId: 'paper' },
+                    { text: "I've limited your mailbox size to 50MB until the paper crisis is resolved. Choose your replies wisely.", missionId: 'paper' }
+                ]
+            },
+            {
+                id: 'jamie',
+                name: "Jamie (IT)",
+                email: "j.it@gov.org",
+                department: 'Information Technology',
+                color: 'text-indigo-600',
+                defeatMessage: "Too many emails, too little bandwidth. I'm dropping off the thread.",
+                lines: [
+                    { text: "I'm locking the printer queue until we get a budget increase.", missionId: 'paper' },
+                    { text: "Your 'urgent' print requests are being redirected to the /dev/null of my inbox.", missionId: null },
+                    { text: "If it's not a PDF, it doesn't exist to me anymore.", missionId: null },
+                    { text: "I've automated my response to this thread. Goodbye.", missionId: null }
+                ]
+            },
+            {
+                id: 'interns',
+                name: "HR Interns",
+                email: "hr.interns@gov.org",
+                department: 'Human Resources',
+                color: 'text-blue-900 font-bold',
+                salutation: { name: "To the Permanent Staff," },
+                signOff: { name: "The Intern Collective" },
+                signatures: [{ name: "Unpaid & Unappreciated" }],
+                defeatMessage: "The intern pool has been drained. We are collectively resigning to pursue opportunities in a less toxic environment.",
+                lines: [
+                    { text: "We've been CC'd on the entire thread and we're documenting everything for our final reports.", missionId: null },
+                    { text: "Our collective research suggests that fish-microwaving is the #1 cause of decreased morale.", missionId: 'microwave' },
+                    { text: "We've been instructed to flag any 'non-synergetic' behavior. This thread is 100% flaggable.", missionId: null },
+                    { text: "As the future of this department, we demand a higher standard of digital decorum.", missionId: null }
+                ]
+            },
+            {
+                id: 'sheila',
+                name: "Sheila (Payroll)",
+                email: "s.payroll@gov.org",
+                department: 'Finance',
+                color: 'text-green-700',
+                salutation: { name: "Dear All," },
+                signOff: { name: "Best, Sheila" },
+                defeatMessage: "I'm freezing all stipend payments until this thread is resolved. I'm out.",
+                lines: [
+                    { text: "Your overtime request for 'email management' has been denied. Stick to the mission.", missionId: null },
+                    { text: "I'm reviewing the cost-benefit analysis of your participation in this thread. It's not looking good.", missionId: null },
+                    { text: "Every 'Reply All' costs the department approximately $4.12 in lost productivity. You've cost us a fortune today.", missionId: null },
+                    { text: "Please refer to the payroll schedule before complaining about your 'emotional labor'.", missionId: 'intern_grievance' }
+                ]
+            },
+            {
+                id: 'jordan',
+                name: "Jordan (Exec)",
+                email: "j.exec@gov.org",
+                department: 'Executive Council Office',
+                color: 'text-orange-700',
+                signOff: { name: "Sent from my Executive Suite" },
+                defeatMessage: "I'm escalating this to the Director. I don't have time for intern drama.",
+                lines: [
+                    { text: "I need a status report on the 'Synergy Initiative' by EOD. This thread is a distraction.", missionId: null },
+                    { text: "We need to 'lean in' to a more positive communication style. Your tone is very 'lean out'.", missionId: null },
+                    { text: "I'm scheduling a sync-up to discuss your 'alignment' with departmental goals.", missionId: null },
+                    { text: "Let's take this offline. And by offline, I mean I'm deleting your replies.", missionId: null }
+                ]
+            },
+            {
+                id: 'desmond',
+                name: "Desmond (Legal)",
+                email: "d.compliance@gov.org",
+                department: 'Legal Compliance',
+                color: 'text-red-900',
+                salutation: { name: "Regarding the recent incident," },
+                defeatMessage: "Non-compliance detected. I am withdrawing to file a formal grievance.",
+                lines: [
+                    { text: "Your latest reply violates the 'Civility in Digital Spaces' directive. Consider this a warning.", missionId: null },
+                    { text: "I'm auditing this thread for potential FOIA requests. Mind your words.", missionId: null },
+                    { text: "Regulatory standards require a 24-hour cooling-off period after a 'Reply All' incident. You ignored it.", missionId: null },
+                    { text: "I've flagged this thread for the Ethics Committee. Good luck with the hearing.", missionId: null }
+                ]
+            }
+        ];
+
         const MISSIONS = [
             {
                 id: 'microwave',
                 subject: "URGENT: Breakroom Incident",
                 from: "HR.Director",
-                intro: (playerName) => `Hi team,<br><br>I am absolutely disgusted. Someone heated up fish in the breakroom microwave. <strong>${playerName}</strong>, I'm sure you noticed the stench. <strong>Christina</strong>, I know you have the policy manual out already. <strong>Karen</strong>, please document this.<br><br>Please advise immediately on who is responsible for this violation of shared space ethics.`,
+                intro: "Hi team,<br><br>I am absolutely disgusted. Someone heated up fish in the breakroom microwave. <strong>{playerName}</strong>, I'm sure you noticed the stench. <strong>{opp1}</strong>, I know you have the policy manual out already. <strong>{opp0}</strong>, please document this.<br><br>Please advise immediately on who is responsible for this violation of shared space ethics.",
                 opponents: [
-                    {
-                        id: 1, name: "Karen (HR)", email: "k.smith@gov.org", hp: 50, maxHp: 50, wins: 3, buffs: [], department: 'Human Resources',
-                        addressBook: ['intern'],
-                        defeatMessage: "I am unsubscribing. I've documented the lack of professional decorum and will be following up with each of you individually. Regards.",
-                        attacks: [
-                            "Your recent breakroom habits suggest a lack of respect for shared departmental assets.",
-                            "I noticed you haven't completed the mandatory 'Digital Hygiene' training module for this quarter.",
-                            "I have three disciplinary hearings today; this thread is a significant drain on my operational capacity.",
-                            "HR provides the framework for your employment; your contributions are currently being 're-evaluated'.",
-                            "Please review the updated 'Shared Space Etiquette' PDF attached to my signature.",
-                            "I'm scheduling a mandatory mediation session for the entire floor this Friday at 4:30 PM.",
-                            "Your tone in this thread has been noted and will be discussed during your next performance review.",
-                            "We have a zero-tolerance policy for passive-aggressive CC-ing. Please adhere to the chain of command.",
-                            "I've CC'd the Chief Wellness Officer to address the 'toxic environment' you're creating.",
-                            "Failure to identify the salmon-heater will result in a collective reduction of the 'Team Synergy' bonus.",
-                            "I'm looking at the handbook right now, and you're in violation of Section 8.4: Olfactory Neutrality.",
-                            "This 'Reply All' behavior is exactly why we can't have nice things, like the espresso machine I vetoed."
-                        ],
-                        color: 'text-purple-700'
-                    },
-                    {
-                        id: 2, name: "Christina (Pol)", email: "c.policy@gov.org", hp: 60, maxHp: 60, wins: 3, buffs: [], department: 'Policy',
-                        addressBook: ['legal'],
-                        defeatMessage: "This thread has been archived for non-compliance. I am removing myself to draft a formal reprimand. Policy remains absolute.",
-                        attacks: [
-                            "Per Policy 402.b, all communal appliances are to be used for non-odorous items only. Refer to the compliance guide.",
-                            "I'm currently drafting a memorandum on 'Shared Air Space Ethics'. This thread is a case study in non-compliance.",
-                            "The Policy department ensures rules are followed. Your blatant disregard for the Microwave Protocol is being escalated.",
-                            "I've reviewed the 2019 precedent for 'unauthorized seafood heating'. It didn't end well for the perpetrator.",
-                            "If you had attended the 'Navigating the Breakroom' seminar, we wouldn't be having this conversation.",
-                            "I am CC-ing the Ethics Committee. This is the procedurally correct way to handle olfactory aggression.",
-                            "Your response lacks the required 'Directive 9' formatting. Please resubmit using approved templates.",
-                            "We are evaluating the environmental impact of your lunch choices. Sustainability is a core pillar of our mission.",
-                            "Failure to comply with 'No Fish Friday' is a breach of department harmony. I'm noting this in the audit.",
-                            "The data suggests a 98% probability that you are the source of the incident based on desk location.",
-                            "Please cease and desist from using 'Reply All' unless you are citing a specific governmental regulation.",
-                            "This thread is now under the jurisdiction of the Policy Oversight Division. Peer-review your next comment."
-                        ],
-                        color: 'text-blue-700'
-                    }
+                    { id: 1, employeeId: 'karen', hp: 50, maxHp: 50, wins: 3, buffs: [], addressBook: ['intern'] },
+                    { id: 2, employeeId: 'christina', hp: 60, maxHp: 60, wins: 3, buffs: [], addressBook: ['legal'] }
                 ]
             },
             {
                 id: 'paper',
                 subject: "CRITICAL: Departmental Paper Rationing",
                 from: "Facilities.Admin",
-                intro: (playerName) => `Dear Staff,<br><br>Due to unforeseen budget constraints, we are implementing immediate paper rationing. <strong>${playerName}</strong>, your department's printing logs are particularly high. <strong>Legal</strong>, please ensure we are still meeting filing requirements. <strong>IT</strong>, please expedite the 'Paperless Initiative'.<br><br>Effective immediately, all non-essential printing is strictly prohibited.`,
+                intro: "Dear Staff,<br><br>Due to unforeseen budget constraints, we are implementing immediate paper rationing. <strong>{playerName}</strong>, your department's printing logs are particularly high. <strong>Legal</strong>, please ensure we are still meeting filing requirements. <strong>IT</strong>, please expedite the 'Paperless Initiative'.<br><br>Effective immediately, all non-essential printing is strictly prohibited.",
                 opponents: [
-                    {
-                        id: 3, name: "Megan (Legal)", email: "m.compliance@gov.org", hp: 60, maxHp: 60, wins: 3, buffs: [], department: 'Legal Compliance',
-                        addressBook: ['legal'],
-                        defeatMessage: "I cannot continue this conversation without a physical copy of the minutes. Unsubscribing until the rationing is lifted.",
-                        attacks: [
-                            "The lack of physical documentation is a direct violation of the 2004 Record Keeping Act.",
-                            "I've drafted a cease and desist regarding this rationing. I'll send it as soon as I can find a working printer.",
-                            "Your 'digital-only' proposal fails to meet the standards for admissible evidence in a council hearing.",
-                            "I'm flagging this thread for potential liability issues. We need paper trails, not email trails.",
-                            "Without a hard copy, this policy is effectively unenforceable. Please reconsider.",
-                            "I'm CC-ing the Archivist. We are losing history one deleted email at a time."
-                        ],
-                        color: 'text-red-700'
-                    },
-                    {
-                        id: 4, name: "Colin (IT)", email: "c.it@gov.org", hp: 50, maxHp: 50, wins: 3, buffs: [], department: 'Information Technology',
-                        addressBook: ['it'],
-                        defeatMessage: "Server load from this thread is too high. I'm muting this. Try rebooting your attitude.",
-                        attacks: [
-                            "Have you tried not printing every single cat meme you see? It's clogging the spooler and the budget.",
-                            "The 'Paperless Initiative' has been ready for three years. You're just afraid of PDFs.",
-                            "I'm seeing a lot of 'Printer Error' tickets from your floor. Maybe try putting paper in the tray?",
-                            "The budget for paper was redirected to upgrade the firewall you keep trying to bypass.",
-                            "Stop asking for 'digital paper'. It's called a screen. Use it.",
-                            "I've limited your mailbox size to 50MB until the paper crisis is resolved. Choose your replies wisely."
-                        ],
-                        color: 'text-indigo-700'
-                    },
-                    {
-                        id: 44, name: "Jamie (IT)", email: "j.it@gov.org", hp: 50, maxHp: 50, wins: 3, buffs: [], department: 'Information Technology',
-                        addressBook: ['it'],
-                        defeatMessage: "Too many emails, too little bandwidth. I'm dropping off the thread.",
-                        attacks: [
-                            "I'm locking the printer queue until we get a budget increase.",
-                            "Your 'urgent' print requests are being redirected to the /dev/null of my inbox.",
-                            "If it's not a PDF, it doesn't exist to me anymore.",
-                            "I've automated my response to this thread. Goodbye."
-                        ],
-                        color: 'text-indigo-600'
-                    }
+                    { id: 3, employeeId: 'megan', hp: 60, maxHp: 60, wins: 3, buffs: [], addressBook: ['legal'] },
+                    { id: 4, employeeId: 'colin', hp: 50, maxHp: 50, wins: 3, buffs: [], addressBook: ['it'] },
+                    { id: 44, employeeId: 'jamie', hp: 50, maxHp: 50, wins: 3, buffs: [], addressBook: ['it'] }
                 ]
             },
             {
                 id: 'intern_grievance',
                 subject: "RE: Intern Grievance Collective",
                 from: "HR.Interns",
-                intro: (playerName) => `To the Permanent Staff,<br><br>We, the interns, have noticed a significant lack of 'Team Synergy' and 'Professional Courtesy'. <strong>${playerName}</strong>, your recent emails have been cited as 'aggressive'. <strong>Management</strong>, we are looping in our mentors. <strong>Payroll</strong>, we expect our stipends to reflect the emotional labor of this thread.`,
+                intro: "To the Permanent Staff,<br><br>We, the interns, have noticed a significant lack of 'Team Synergy' and 'Professional Courtesy'. <strong>{playerName}</strong>, your recent emails have been cited as 'aggressive'. <strong>Management</strong>, we are looping in our mentors. <strong>Payroll</strong>, we expect our stipends to reflect the emotional labor of this thread.",
                 opponents: [
-                    {
-                        id: 5, name: "HR Interns", email: "hr.interns@gov.org", hp: 80, maxHp: 80, wins: 5, buffs: [], department: 'Human Resources',
-                        addressBook: ['intern'],
-                        salutation: { name: "To the Permanent Staff," },
-                        signOff: { name: "The Intern Collective" },
-                        signatures: [{ name: "Unpaid & Unappreciated" }],
-                        defeatMessage: "The intern pool has been drained. We are collectively resigning to pursue opportunities in a less toxic environment.",
-                        attacks: [
-                            "We've been CC'd on the entire thread and we're documenting everything for our final reports.",
-                            "Our collective research suggests that fish-microwaving is the #1 cause of decreased morale.",
-                            "We've been instructed to flag any 'non-synergetic' behavior. This thread is 100% flaggable.",
-                            "As the future of this department, we demand a higher standard of digital decorum."
-                        ],
-                        color: 'text-blue-900 font-bold'
-                    },
-                    {
-                        id: 6, name: "Sheila (Payroll)", email: "s.payroll@gov.org", hp: 70, maxHp: 70, wins: 2, buffs: [], department: 'Finance',
-                        addressBook: ['audit'],
-                        salutation: { name: "Dear All," },
-                        signOff: { name: "Best, Sheila" },
-                        defeatMessage: "I'm freezing all stipend payments until this thread is resolved. I'm out.",
-                        attacks: [
-                            "Your overtime request for 'email management' has been denied. Stick to the mission.",
-                            "I'm reviewing the cost-benefit analysis of your participation in this thread. It's not looking good.",
-                            "Every 'Reply All' costs the department approximately $4.12 in lost productivity. You've cost us a fortune today.",
-                            "Please refer to the payroll schedule before complaining about your 'emotional labor'."
-                        ],
-                        color: 'text-green-700'
-                    },
-                    {
-                        id: 7, name: "Jordan (Exec)", email: "j.exec@gov.org", hp: 90, maxHp: 90, wins: 4, buffs: [], department: 'Executive Council Office',
-                        addressBook: ['ceo'],
-                        signOff: { name: "Sent from my Executive Suite" },
-                        defeatMessage: "I'm escalating this to the Director. I don't have time for intern drama.",
-                        attacks: [
-                            "I need a status report on the 'Synergy Initiative' by EOD. This thread is a distraction.",
-                            "We need to 'lean in' to a more positive communication style. Your tone is very 'lean out'.",
-                            "I'm scheduling a sync-up to discuss your 'alignment' with departmental goals.",
-                            "Let's take this offline. And by offline, I mean I'm deleting your replies."
-                        ],
-                        color: 'text-orange-700'
-                    },
-                    {
-                        id: 8, name: "Desmond (Legal)", email: "d.compliance@gov.org", hp: 75, maxHp: 75, wins: 3, buffs: [], department: 'Legal Compliance',
-                        addressBook: ['legal'],
-                        salutation: { name: "Regarding the recent incident," },
-                        defeatMessage: "Non-compliance detected. I am withdrawing to file a formal grievance.",
-                        attacks: [
-                            "Your latest reply violates the 'Civility in Digital Spaces' directive. Consider this a warning.",
-                            "I'm auditing this thread for potential FOIA requests. Mind your words.",
-                            "Regulatory standards require a 24-hour cooling-off period after a 'Reply All' incident. You ignored it.",
-                            "I've flagged this thread for the Ethics Committee. Good luck with the hearing."
-                        ],
-                        color: 'text-red-900'
-                    }
+                    { id: 5, employeeId: 'interns', hp: 80, maxHp: 80, wins: 5, buffs: [], addressBook: ['intern'] },
+                    { id: 6, employeeId: 'sheila', hp: 70, maxHp: 70, wins: 2, buffs: [], addressBook: ['audit'] },
+                    { id: 7, employeeId: 'jordan', hp: 90, maxHp: 90, wins: 4, buffs: [], addressBook: ['ceo'] },
+                    { id: 8, employeeId: 'desmond', hp: 75, maxHp: 75, wins: 3, buffs: [], addressBook: ['legal'] }
                 ]
             }
         ];
@@ -770,10 +800,20 @@
             CONTACTS.forEach(c => c.usedBy = null);
 
             const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
-            opponents = mission.opponents.map(o => {
-                const clone = JSON.parse(JSON.stringify(o));
+
+            // Assemble opponents from EMPLOYEES and mission-specific data
+            opponents = mission.opponents.map(missionOpponent => {
+                const employee = EMPLOYEES.find(e => e.id === missionOpponent.employeeId);
+                const clone = {
+                    ...JSON.parse(JSON.stringify(employee)),
+                    ...JSON.parse(JSON.stringify(missionOpponent))
+                };
                 clone.hp = clone.maxHp;
-                clone.buffs = []; // Opponents start with empty buffs, must loop them in
+                clone.buffs = [];
+                // Filter lines based on missionId
+                clone.attacks = employee.lines
+                    .filter(l => l.missionId === null || l.missionId === mission.id)
+                    .map(l => l.text);
                 return clone;
             });
 
@@ -785,8 +825,16 @@
             document.getElementById('game-header-subject').innerText = `Outlook Express - [${mission.subject}]`;
             updateUI();
 
+            // Templating the intro
+            let introText = mission.intro;
+            introText = introText.replace(/{playerName}/g, p.name);
+            opponents.forEach((opp, idx) => {
+                const regex = new RegExp(`{opp${idx}}`, 'g');
+                introText = introText.replace(regex, opp.name);
+            });
+
             addEmailToLog(mission.from, "everyone@gov.org", mission.subject,
-                mission.intro(p.name), "border-l-4 border-blue-500 bg-blue-50");
+                introText, "border-l-4 border-blue-500 bg-blue-50");
         }
 
         function generateShopItems() {
