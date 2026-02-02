@@ -534,6 +534,8 @@
                     { text: "Have you tried not printing every single cat meme you see? It's clogging the spooler and the budget.", missionId: 'paper' },
                     { text: "The 'Paperless Initiative' has been ready for three years. You're just afraid of PDFs.", missionId: 'paper' },
                     { text: "I'm seeing a lot of 'Printer Error' tickets from your floor. Maybe try putting paper in the tray?", missionId: 'paper' },
+                    { text: "Your 'urgent' requests are being redirected to the /dev/null of my inbox.", missionId: null },
+                    { text: "If it's not a PDF, it doesn't exist to me anymore.", missionId: null },
                     { text: "The budget for paper was redirected to upgrade the firewall you keep trying to bypass.", missionId: 'paper' },
                     { text: "Stop asking for 'digital paper'. It's called a screen. Use it.", missionId: 'paper' },
                     { text: "I've limited your mailbox size to 50MB until the paper crisis is resolved. Choose your replies wisely.", missionId: 'paper' }
@@ -541,16 +543,16 @@
             },
             {
                 id: 'jamie',
-                name: "Jamie (IT)",
-                email: "j.it@gov.org",
+                name: "Brendan (IT?)",
+                email: "b.it@gov.org",
                 department: 'Information Technology',
                 color: 'text-indigo-600',
-                defeatMessage: "Too many emails, too little bandwidth. I'm dropping off the thread.",
+                defeatMessage: "Too many emails. I've got a survey to send on a form to redesign.",
                 lines: [
-                    { text: "I'm locking the printer queue until we get a budget increase.", missionId: 'paper' },
-                    { text: "Your 'urgent' print requests are being redirected to the /dev/null of my inbox.", missionId: null },
-                    { text: "If it's not a PDF, it doesn't exist to me anymore.", missionId: null },
-                    { text: "I've automated my response to this thread. Goodbye.", missionId: null }
+                    { text: "I'm not sure why I'm on this thread. but my form initiative will resolve any paper issues no doubt.", missionId: 'paper' },
+                    { text: "You used it last I think, you fix it.", missionId: null },
+                    { text: "I recently got Adobe suite installed for the first time.", missionId: null },
+                    { text: "I'm planning to be away next week, can you take this?", missionId: null }
                 ]
             },
             {
@@ -633,7 +635,7 @@
                 id: 'paper',
                 subject: "CRITICAL: Departmental Paper Rationing",
                 from: "Facilities.Admin",
-                intro: "Dear Staff,<br><br>Due to unforeseen budget constraints, we are implementing immediate paper rationing. <strong>{playerName}</strong>, your department's printing logs are particularly high. <strong>Legal</strong>, please ensure we are still meeting filing requirements. <strong>IT</strong>, please expedite the 'Paperless Initiative'.<br><br>Effective immediately, all non-essential printing is strictly prohibited.",
+                intro: "Dear Staff,<br><br>Due to unforeseen budget constraints, we are implementing immediate paper rationing. <strong>{playerName}</strong>, your department's printing logs are particularly high. <strong>Megan</strong>, please ensure we are still meeting filing requirements. <strong>Colin</strong>, please expedite the 'Paperless Initiative'.<br><br>Effective immediately, all non-essential printing is strictly prohibited.",
                 opponents: [
                     { id: 3, employeeId: 'megan', hp: 60, maxHp: 60, wins: 3, buffs: [], addressBook: ['legal'] },
                     { id: 4, employeeId: 'colin', hp: 50, maxHp: 50, wins: 3, buffs: [], addressBook: ['it'] },
@@ -648,8 +650,8 @@
                 opponents: [
                     { id: 5, employeeId: 'interns', hp: 80, maxHp: 80, wins: 5, buffs: [], addressBook: ['intern'] },
                     { id: 6, employeeId: 'sheila', hp: 70, maxHp: 70, wins: 2, buffs: [], addressBook: ['audit'] },
-                    { id: 7, employeeId: 'jordan', hp: 90, maxHp: 90, wins: 4, buffs: [], addressBook: ['ceo'] },
-                    { id: 8, employeeId: 'desmond', hp: 75, maxHp: 75, wins: 3, buffs: [], addressBook: ['legal'] }
+                    { id: 7, employeeId: 'jordan', hp: 90, maxHp: 90, wins: 4, buffs: [], addressBook: ['eco'] },
+                    { id: 8, employeeId: 'desmond', hp: 75, maxHp: 75, wins: 3, buffs: [], addressBook: ['eco'] }
                 ]
             }
         ];
