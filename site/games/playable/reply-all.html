@@ -5123,7 +5123,7 @@
             (state.currentMissionIndex + 1) % MISSIONS.length;
 
           renderSummary(summary);
-        }, 4000);
+        }, 3000);
       }
 
       function computeSummary() {
@@ -6255,7 +6255,7 @@
         updateUI();
         if (state.player.hp <= 0) {
           state.gameOver = true;
-          setTimeout(showLoseScreen, 4000);
+          setTimeout(showLoseScreen, 3000);
           return;
         }
         setTimeout(ffaRound, 800);
