@@ -2059,6 +2059,14 @@
           ],
           lines: [
             {
+              text: "I'd rather set it lower and save on the oil bill. 64°F is not outrageous.",
+              missionId: "thermostat_war",
+            },
+            {
+              text: "We keep this place running. Heating costs are real and they add up fast.",
+              missionId: "thermostat_war",
+            },
+            {
               text: "The old holiday parties used to happen after hours in the lobby. We kept it simple.",
               missionId: "holiday_reply_all",
             },
@@ -2098,6 +2106,14 @@
             "I'm pausing to document the payroll risk before responding.",
           ],
           lines: [
+            {
+              text: "We need it cooler. 96°F makes accurate review impossible.",
+              missionId: "thermostat_war",
+            },
+            {
+              text: "64°F is low, but it's preferable to 96°F for review work.",
+              missionId: "thermostat_war",
+            },
             {
               text: "Payroll finalization closes today. We need the room and the time block.",
               missionId: "calendar_chaos",
@@ -2163,6 +2179,14 @@
           ],
           lines: [
             {
+              text: "I'm melting at 96°F. I can't reconcile anything in this heat.",
+              missionId: "thermostat_war",
+            },
+            {
+              text: "I can handle 68°F, but 64°F is too low. Please don't drop it further.",
+              missionId: "thermostat_war",
+            },
+            {
               text: "I'm behind on reconciliation and I can't catch up without this block of time.",
               missionId: "calendar_chaos",
             },
@@ -2226,6 +2250,14 @@
             "I'm pausing to confirm scope and stakeholder ownership.",
           ],
           lines: [
+            {
+              text: "Our team is cold. We need 96°F or people can't focus.",
+              missionId: "thermostat_war",
+            },
+            {
+              text: "96°F is the only setting that works for us right now.",
+              missionId: "thermostat_war",
+            },
             {
               text: "We need a single holiday message with approved visuals. I can draft it.",
               missionId: "holiday_reply_all",
@@ -2387,6 +2419,14 @@
           ],
           lines: [
             {
+              text: "We need a warmer room. 96°F keeps people from bundling up on camera.",
+              missionId: "thermostat_war",
+            },
+            {
+              text: "Set it to 96°F and keep it there so we can do back‑to‑back calls.",
+              missionId: "thermostat_war",
+            },
+            {
               text: "The current tone doesn't match our approved voice. Please revise for brand alignment.",
               missionId: null,
             },
@@ -2418,6 +2458,14 @@
             "I'm pausing to draft a brief and de-escalate the narrative.",
           ],
           lines: [
+            {
+              text: "We need it warmer. 96°F keeps the team from freezing on calls.",
+              missionId: "thermostat_war",
+            },
+            {
+              text: "Please set it to 96°F and leave it. I couldn't get to the beach this year—vacation has to be at my desk.",
+              missionId: "thermostat_war",
+            },
             {
               text: "We need a clear, single narrative. Please stop fragmenting the message.",
               missionId: null,
@@ -3431,6 +3479,60 @@
           ],
         },
         {
+          id: "thermostat_war",
+          subject: "RE: Office Thermostat Dispute",
+          from: "facilities@gov.org",
+          intro:
+            "Hi all,<br><br>Facilities here. We received multiple complaints about the floor thermostat. It looks like the setpoint has been toggled between 74°F and 96°F. <strong>{playerName}</strong>, your desk is listed at 74°F. My view is we should be aiming lower overall to bring down the oil bill for this place, but we need a consistent setting. The <strong>Marketing</strong> team (<strong>{opp1}</strong>, <strong>{opp2}</strong>) is pushing for 96°F. The <strong>Finance</strong> team (<strong>{opp3}</strong>, <strong>{opp4}</strong>) says the 96°F setting is unacceptable for reviews.<br><br>How does around 64°F sound?",
+          opponents: [
+            {
+              id: 20,
+              employeeId: "larry_facilities_and_administration",
+              hp: 45,
+              maxHp: 45,
+              wins: 2,
+              buffs: [],
+              addressBook: [],
+            },
+            {
+              id: 21,
+              employeeId: "maya_marketing",
+              hp: 45,
+              maxHp: 45,
+              wins: 2,
+              buffs: [],
+              addressBook: [],
+            },
+            {
+              id: 22,
+              employeeId: "jules_marketing",
+              hp: 45,
+              maxHp: 45,
+              wins: 2,
+              buffs: [],
+              addressBook: [],
+            },
+            {
+              id: 23,
+              employeeId: "priya_finance",
+              hp: 45,
+              maxHp: 45,
+              wins: 2,
+              buffs: [],
+              addressBook: ["cc_adam_finance"],
+            },
+            {
+              id: 24,
+              employeeId: "dora_finance",
+              hp: 45,
+              maxHp: 45,
+              wins: 2,
+              buffs: [],
+              addressBook: ["cc_adam_finance"],
+            },
+          ],
+        },
+        {
           id: "intern_grievance",
           subject: "RE: Intern Grievance Collective",
           from: "interns.hr@gov.org",
@@ -3557,7 +3659,13 @@
             "Perhaps we should focus on next quarters' deliverables instead of speculating on departmental policy?",
             "I'm happy to discuss this in a 1-on-1, but I don't believe this is a productive use of the 'All-Staff' distribution list.",
           ],
-          attackLinesByMission: {},
+          attackLinesByMission: {
+            thermostat_war: [
+              "I set it to 74°F because that's a normal working temperature. 96°F is not.",
+              "I'm fine with 74°F. Let's stop changing it every hour.",
+              "If we're picking a standard, 74°F is reasonable for most desks.",
+            ],
+          },
           attackLinesByTitle: {},
           escalateLines: [
             "Given the lack of alignment here, I'm escalating this thread for broader visibility.",
@@ -3570,7 +3678,11 @@
           selfPromoteLines: [
             "Just logging a new win—the quarterly audit came back clean under my supervision. Always happy to add value to the organization!",
           ],
-          selfPromoteLinesByMission: {},
+          selfPromoteLinesByMission: {
+            thermostat_war: [
+              "Quick update: I created a simple temperature log so we can stop arguing and use data.",
+            ],
+          },
           selfPromoteLinesByTitle: {},
           replyAllLines: [
             {
