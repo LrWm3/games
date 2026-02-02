@@ -510,7 +510,7 @@
         </p>
 
         <button
-          onclick="startQuarter()"
+          onclick="advanceToNextQuarter()"
           class="px-12 py-4 bg-[#000080] text-white font-bold hover:bg-blue-700 transition-colors shadow-lg"
         >
           RE-LOG TO INTRANET
@@ -833,6 +833,8 @@
           rarity: "common",
           department: "Operations",
           bonus: "+3 attack potency.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to generate a contact report for this thread.",
           eff: {
             dmg: 3,
           },
@@ -845,6 +847,8 @@
           rarity: "common",
           department: "Information Technology",
           bonus: "+5 credibility/turn.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to have him help with the technical issues affecting others' replies in this thread.",
           eff: {
             heal: 5,
           },
@@ -857,6 +861,8 @@
           rarity: "uncommon",
           department: "Executive Council Office",
           bonus: "20% DMG Reduction.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to help frame this conversation around department wide resourcing.",
           eff: {
             def: 0.2,
           },
@@ -869,6 +875,8 @@
           rarity: "rare",
           department: "Executive Council Office",
           bonus: "2x Leverage gain.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to keep him in the loop on this initative.",
           eff: {
             lev: 2,
           },
@@ -881,6 +889,8 @@
           rarity: "rare",
           department: "Facilities and Administration",
           bonus: "35% Distraction chance.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to provide this thread more light-hearted content.",
           eff: {
             dodge: 0.35,
           },
@@ -893,6 +903,8 @@
           rarity: "uncommon",
           department: "Marketing",
           bonus: "+8 attack potency.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to provide data‑driven context and keep claims grounded.",
           eff: {
             dmg: 8,
           },
@@ -905,6 +917,8 @@
           rarity: "uncommon",
           department: "Executive Council Office",
           bonus: "30% DMG Reduction.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to advise on our tactical approach and reduce reputational risk.",
           eff: {
             def: 0.25,
           },
@@ -917,6 +931,8 @@
           rarity: "common",
           department: "Facilities and Administration",
           bonus: "10% DMG Reduction & +3 Credibility/turn",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to handle the facilities impact.",
           eff: {
             def: 0.1,
             heal: 3,
@@ -930,6 +946,8 @@
           rarity: "rare",
           department: "Constituent Services",
           bonus: "No combat bonus, but +4 REP if in loop at end of match.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> for awareness and to mitigate reputational risk if this thread leaks.",
           eff: {
             endRep: 4,
           },
@@ -942,6 +960,8 @@
           rarity: "uncommon",
           department: "Policy",
           bonus: "15% DMG Reduction.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to ensure this stays within policy guardrails.",
           eff: {
             def: 0.15,
           },
@@ -954,6 +974,8 @@
           rarity: "uncommon",
           department: "Finance",
           bonus: "+5 Max Credibility and +5 Credibility/turn.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to track fiscal impact against budgetary constraints and keep the numbers straight.",
           eff: {
             hpBonus: 5,
             heal: 5,
@@ -967,6 +989,8 @@
           rarity: "rare",
           department: "Constituent Services",
           bonus: "+5 DMG and +1 REP if in loop at end of match.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to handle external messaging and stakeholder optics.",
           eff: {
             dmg: 5,
             endRep: 1,
@@ -980,74 +1004,66 @@
           name: "Cubicle Resident",
           level: 1,
           addressLimit: 5,
-          sigLimit: 1,
+          sigLimit: 2,
           hpBonus: 0,
           dmgBonus: 0,
         },
         {
           name: "Junior Clerk",
           level: 2,
-          addressLimit: 5,
-          sigLimit: 1,
+          addressLimit: 7,
+          sigLimit: 4,
           hpBonus: 10,
           dmgBonus: 2,
         },
         {
           name: "Senior Clerk",
           level: 3,
-          addressLimit: 6,
-          sigLimit: 1,
+          addressLimit: 9,
+          sigLimit: 6,
           hpBonus: 20,
           dmgBonus: 4,
         },
         {
           name: "Program Coordinator",
           level: 4,
-          addressLimit: 6,
-          sigLimit: 2,
+          addressLimit: 11,
+          sigLimit: 8,
           hpBonus: 30,
           dmgBonus: 6,
         },
         {
           name: "Assistant Director",
           level: 5,
-          addressLimit: 7,
-          sigLimit: 2,
+          addressLimit: 13,
+          sigLimit: 10,
           hpBonus: 40,
           dmgBonus: 8,
         },
         {
           name: "Deputy Director",
           level: 6,
-          addressLimit: 7,
-          sigLimit: 2,
+          addressLimit: 15,
+          sigLimit: 11,
           hpBonus: 50,
           dmgBonus: 10,
         },
         {
           name: "Director",
           level: 7,
-          addressLimit: 8,
-          sigLimit: 3,
+          addressLimit: 17,
+          sigLimit: 12,
           hpBonus: 60,
           dmgBonus: 12,
         },
         {
-          name: "Commissioner",
+          name: "Deputy Director",
           level: 8,
-          addressLimit: 8,
-          sigLimit: 3,
+          addressLimit: 20,
+          sigLimit: 15,
           hpBonus: 70,
           dmgBonus: 14,
-        },
-        {
-          name: "Council Member",
-          level: 9,
-          addressLimit: 10,
-          sigLimit: 3,
-          hpBonus: 80,
-          dmgBonus: 16,
-        },
+        }
       ];
 
       const SIGNATURES = [
@@ -1911,6 +1927,15 @@
             "Perhaps we should focus on the Q4 deliverables instead of speculating on departmental policy?",
             "I'm happy to discuss this in a 1-on-1, but I don't believe this is a productive use of the 'All-Staff' distribution list.",
           ],
+          selfPromoteLines: [
+            "Just logging a new win—the quarterly audit came back clean under my supervision. Always happy to add value to the organization!",
+          ],
+          replyAllLines: [
+            {
+              subject: "Fwd: Salary_Discrepancies_2024.xlsx",
+              body: "Not sure if I should be sending this to everyone, but since transparency is one of our 'core values', here is the full salary spreadsheet for the department. Enjoy.",
+            },
+          ],
         },
         currentMissionIndex: 0,
         targetId: 1,
@@ -2104,6 +2129,16 @@
           });
         }
         return body;
+      }
+
+      function pickRandomItem(list, fallback) {
+        if (!Array.isArray(list) || list.length === 0) return fallback;
+        return list[Math.floor(Math.random() * list.length)];
+      }
+
+      function formatLoopInText(contact, fallback) {
+        if (!contact || !contact.loopInText) return fallback;
+        return contact.loopInText.replace(/{name}/g, contact.name);
       }
 
       function startQuarter() {
@@ -2302,7 +2337,7 @@
             `+${bonusRep}`;
           document.getElementById("summary-rep-earned").innerText =
             `+${totalRep}`;
-        }, 1500);
+        }, 4000);
       }
 
       function showShop() {
@@ -2339,16 +2374,17 @@
       }
 
       function showPromotion() {
+        // TODO - if max title reached, skip promotion
+        if (state.player.year >= TITLES.length) {
+          advanceToNextQuarter();
+          return;
+        }
         transitionTo("promotion-screen");
-        // Advance titles more aggressively to reach Boardroom by end of Year 3
-        // 0: Intern, 4: Middle Manager, 8: Board Member
-        let titleIdx = 0;
-        if (state.player.year === 1)
-          titleIdx = 4; // Promoted to Mid-Mgmt after Year 1
-        else if (state.player.year === 2)
-          titleIdx = 8; // Promoted to Boardroom after Year 2
-        else titleIdx = 8;
 
+        // Determine next title by matching year
+        let titleIdx = state.player.year;
+
+        // Limit to max title
         const nextTitle = TITLES[titleIdx] || TITLES[TITLES.length - 1];
         state.player.title = nextTitle;
 
@@ -2714,11 +2750,15 @@
         } else if (type === "PROMOTE") {
           p.wins--;
           p.hp = Math.min(totalMaxHp, p.hp + 20);
+          const selfPromoteLine = pickRandomItem(
+            p.selfPromoteLines,
+            "Just logging a new win—the quarterly audit came back clean under my supervision. Always happy to add value to the organization!",
+          );
           addEmailToLog(
             p.name,
             "everyone@gov.org",
             "FYI: Project Milestone Met",
-            `Just logging a new win—the quarterly audit came back clean under my supervision. Always happy to add value to the organization!`,
+            selfPromoteLine,
             "bg-green-50 border-l-4 border-green-600",
           );
         } else if (type === "ULT") {
@@ -2729,11 +2769,15 @@
             }
           });
           p.ult = 0;
+          const replyAllLine = pickRandomItem(p.replyAllLines, {
+            subject: "Fwd: Salary_Discrepancies_2024.xlsx",
+            body: "Not sure if I should be sending this to everyone, but since transparency is one of our 'core values', here is the full salary spreadsheet for the department. Enjoy.",
+          });
           addEmailToLog(
             p.name,
             "everyone@gov.org",
-            "Fwd: Salary_Discrepancies_2024.xlsx",
-            `Not sure if I should be sending this to everyone, but since transparency is one of our 'core values', here is the full salary spreadsheet for the department. Enjoy.`,
+            replyAllLine.subject,
+            replyAllLine.body,
             "bg-yellow-50 font-bold border-l-4 border-yellow-500",
           );
         }
@@ -2821,11 +2865,15 @@
                 const buff = JSON.parse(JSON.stringify(c));
                 buff.usedBy = a.name;
                 a.buffs.push(buff);
+                const loopInText = formatLoopInText(
+                  c,
+                  `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`,
+                );
                 addEmailToLog(
                   a.name,
                   "everyone@gov.org",
                   "Looping in Support",
-                  `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`,
+                  loopInText,
                   "bg-blue-50",
                 );
               }
@@ -2941,11 +2989,15 @@
               const buff = JSON.parse(JSON.stringify(c));
               buff.usedBy = state.player.name;
               state.player.buffs.push(buff);
+              const loopInText = formatLoopInText(
+                c,
+                `I'm looping in <strong>${c.name}</strong> (${c.title}) to help clarify the organizational impact of this thread.`,
+              );
               addEmailToLog(
                 state.player.name,
                 "everyone@gov.org",
                 "Looping in Witness",
-                `I'm looping in <strong>${c.name}</strong> (${c.title}) to help clarify the organizational impact of this thread.`,
+                loopInText,
                 "bg-blue-100 font-bold border-l-4 border-blue-500",
               );
               closeAddressBook();
