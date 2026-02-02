@@ -3382,7 +3382,7 @@
                 </div>
                 <div class="flex items-center gap-2 text-[9px]" data-badge></div>
                 <div class="text-[10px] italic text-gray-600 leading-tight">${desc}</div>
-                <button class="mt-1 retro-button text-[10px] font-bold py-1 ${disabled ? "opacity-50" : ""}" ${disabled ? "disabled" : ""}>
+                <button data-buy class="mt-1 retro-button text-[10px] font-bold py-1 ${disabled ? "opacity-50" : ""}" ${disabled ? "disabled" : ""}>
                     ${label}
                 </button>
             `;
@@ -3400,8 +3400,9 @@
           };
           badgeWrap.appendChild(setBtn);
         }
-        if (!disabled)
-          div.querySelector("button").onclick = () => {
+        const buyBtn = div.querySelector("[data-buy]");
+        if (!disabled && buyBtn)
+          buyBtn.onclick = () => {
             onBuy();
             updateShopUI();
           };
@@ -3412,7 +3413,7 @@
         const cost = getItemCostByType(item.rarity || "common", type);
         const refund = Math.floor(cost / 2);
         const setBadge = item.setId
-          ? `<button type="button" class="text-[9px] uppercase px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 font-bold" onclick="openSetInfo('${item.setId}')">Set</button>`
+          ? `<button type="button" data-set-button data-set-id="${item.setId}" class="text-[9px] uppercase px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 font-bold">Set</button>`
           : "";
         const div = document.createElement("div");
         div.className =
@@ -3425,12 +3426,20 @@
                     </div>
                     <div class="text-[10px] italic text-gray-600">${item.bonus || ""}</div>
                 </div>
-                <button class="retro-button text-[10px] px-2 py-1">SELL +${refund}</button>
+                <button data-sell class="retro-button text-[10px] px-2 py-1">SELL +${refund}</button>
             `;
-        div.querySelector("button").onclick = () => {
+        const sellBtn = div.querySelector("[data-sell]");
+        if (sellBtn)
+          sellBtn.onclick = () => {
           onSell(refund);
           updateShopUI();
         };
+        div.querySelectorAll("[data-set-button]").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            openSetInfo(btn.dataset.setId);
+          });
+        });
         return div;
       }
 
@@ -4510,11 +4519,17 @@
               ? "IN LOOP"
               : "AVAIL";
           const setBadge = c.setId
-            ? `<button type="button" class="text-[9px] uppercase px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 font-bold" onclick="openSetInfo('${c.setId}')">Set</button>`
+            ? `<button type="button" data-set-button data-set-id="${c.setId}" class="text-[9px] uppercase px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 font-bold">Set</button>`
             : "";
           const btn = document.createElement("div");
           btn.className = `p-2 border border-gray-300 flex flex-col ${isDisabled ? "opacity-40 grayscale bg-gray-100" : "cursor-pointer hover:bg-blue-50"}`;
           btn.innerHTML = `<div class="flex justify-between font-bold text-[#000080] text-xs"><span>${c.name} - ${c.title}</span><span class="text-[9px]">${statusText}</span></div><div class="flex items-center gap-2 text-[10px] italic">${c.bonus || ""}${setBadge}</div>`;
+          btn.querySelectorAll("[data-set-button]").forEach((setBtn) => {
+            setBtn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              openSetInfo(setBtn.dataset.setId);
+            });
+          });
           if (!isDisabled)
             btn.onclick = () => {
               addContactBuff(state.player, c, state.player.name);
