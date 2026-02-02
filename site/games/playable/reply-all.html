@@ -395,6 +395,31 @@
       </div>
     </div>
 
+    <!-- STATS SUMMARY MODAL -->
+    <div
+      id="stats-modal"
+      class="hidden fixed inset-0 z-[160] bg-black/40 flex items-center justify-center p-4"
+    >
+      <div class="bg-[#f7f4e8] retro-border w-full max-w-2xl shadow-2xl">
+        <div
+          class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
+        >
+          <span>PLAYER STAT SUMMARY</span>
+          <button id="stats-modal-close" class="px-1">✕</button>
+        </div>
+        <div class="p-3 text-[10px] text-gray-800 space-y-3">
+          <div id="stats-modal-header" class="text-[11px] font-bold"></div>
+          <div class="grid grid-cols-2 gap-2" id="stats-modal-totals"></div>
+          <div>
+            <div class="text-[10px] font-bold uppercase text-gray-500 mb-1">
+              Sources
+            </div>
+            <div id="stats-modal-sources" class="space-y-2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- LOSE SCREEN (Termination Notice) -->
     <div
       id="lose-screen"
@@ -810,12 +835,13 @@
           <div
             class="bg-[#c0c0c0] border-t border-white px-1 flex gap-px text-[9px] h-5 shrink-0"
           >
-            <div
-              class="retro-border-inset px-2 flex items-center flex-grow truncate"
-              id="status-bar-name"
-            >
-              Logged Out
-            </div>
+          <div
+            class="retro-border-inset px-2 flex items-center flex-grow truncate cursor-pointer"
+            id="status-bar-name"
+            title="View stats"
+          >
+            Logged Out
+          </div>
             <div
               class="retro-border-inset px-2 flex items-center w-24 justify-center"
               id="status-bar-email"
@@ -2278,6 +2304,18 @@
         alert("Debug boost: +100 escalate dmg, +1000 REP.");
       });
 
+      const statusBarName = document.getElementById("status-bar-name");
+      const statsModal = document.getElementById("stats-modal");
+      const statsModalClose = document.getElementById("stats-modal-close");
+      if (statusBarName) statusBarName.addEventListener("click", openStatsModal);
+      if (statsModalClose)
+        statsModalClose.addEventListener("click", closeStatsModal);
+      if (statsModal) {
+        statsModal.addEventListener("click", (e) => {
+          if (e.target === statsModal) closeStatsModal();
+        });
+      }
+
       function transitionTo(screenId) {
         const screens = [
           "start-screen",
@@ -2465,6 +2503,46 @@
           });
         });
         return stats;
+      }
+
+      function getStatBlockFromObject(obj) {
+        if (!obj) return null;
+        const stats = {};
+        let hasAny = false;
+        STAT_FIELDS.forEach((field) => {
+          const value = obj[field];
+          if (typeof value === "number" && value !== 0) {
+            stats[field] = value;
+            hasAny = true;
+          }
+        });
+        return hasAny ? stats : null;
+      }
+
+      function getStatSources(u) {
+        const sources = [];
+        const pushSource = (label, obj) => {
+          const stats = getStatBlockFromObject(obj);
+          if (stats) sources.push({ label, stats });
+        };
+        if (!u) return sources;
+        pushSource("Base", u);
+        if (u.title) pushSource(`Title: ${u.title.name}`, u.title);
+        if (u.salutation) pushSource(`Greeting: ${u.salutation.name}`, u.salutation);
+        if (u.signOff) pushSource(`Sign-off: ${u.signOff.name}`, u.signOff);
+        if (Array.isArray(u.signatures)) {
+          u.signatures.forEach((s) => pushSource(`Signature: ${s.name}`, s));
+        }
+        if (Array.isArray(u.buffs)) {
+          u.buffs.forEach((b) => {
+            const name = b.name || b.id || "Contact";
+            pushSource(`Contact: ${name}`, b.eff ? b.eff : b);
+          });
+        }
+        SET_DEFS.forEach((set) => {
+          if (isSetActive(u, set)) pushSource(`Set: ${set.name}`, set.effect);
+        });
+        return sources;
       }
 
       function getUnitMaxHp(u) {
@@ -3462,6 +3540,58 @@
         });
       }
 
+      function renderStatsModal() {
+        const modal = document.getElementById("stats-modal");
+        const header = document.getElementById("stats-modal-header");
+        const totalsEl = document.getElementById("stats-modal-totals");
+        const sourcesEl = document.getElementById("stats-modal-sources");
+        if (!modal || !header || !totalsEl || !sourcesEl) return;
+
+        const p = state.player;
+        const totals = computeUnitStats(p);
+        header.innerText = `${p.name} (${p.title ? p.title.name : "Unranked"})`;
+
+        totalsEl.innerHTML = "";
+        STAT_FIELDS.forEach((field) => {
+          const value = totals[field];
+          if (!value) return;
+          const div = document.createElement("div");
+          div.className = "flex justify-between bg-white retro-border px-2 py-1";
+          div.innerHTML = `<span class="uppercase text-gray-500">${field}</span><span class="font-mono">${value}</span>`;
+          totalsEl.appendChild(div);
+        });
+
+        sourcesEl.innerHTML = "";
+        const sources = getStatSources(p);
+        if (sources.length === 0) {
+          sourcesEl.innerHTML =
+            '<div class="text-[10px] italic text-gray-500">No stat sources found.</div>';
+          return;
+        }
+        sources.forEach((src) => {
+          const rows = Object.entries(src.stats)
+            .map(([k, v]) => `<span class="font-mono">${k}: ${v}</span>`)
+            .join(", ");
+          const div = document.createElement("div");
+          div.className = "p-2 bg-white retro-border";
+          div.innerHTML = `<div class="font-bold">${src.label}</div><div class="text-[10px] text-gray-600">${rows}</div>`;
+          sourcesEl.appendChild(div);
+        });
+      }
+
+      function openStatsModal() {
+        const modal = document.getElementById("stats-modal");
+        if (!modal) return;
+        renderStatsModal();
+        modal.classList.remove("hidden");
+      }
+
+      function closeStatsModal() {
+        const modal = document.getElementById("stats-modal");
+        if (!modal) return;
+        modal.classList.add("hidden");
+      }
+
       function handleOpponentDefeat(o, byPlayer = false) {
         if (o.isDefeated) return;
         o.hp = 0;
@@ -3534,6 +3664,9 @@
           `${p.quarter} - YEAR ${p.year}`;
         document.getElementById("status-bar-name").innerText =
           `${p.name} (${p.title.name})`;
+        const statsModal = document.getElementById("stats-modal");
+        if (statsModal && !statsModal.classList.contains("hidden"))
+          renderStatsModal();
 
         const selector = document.getElementById("target-selector");
         selector.innerHTML = "";
