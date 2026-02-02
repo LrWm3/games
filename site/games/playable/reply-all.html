@@ -311,6 +311,10 @@
           </button>
         </div>
         <div class="bg-[#f0f0f0] p-4 flex-grow overflow-y-auto">
+          <div
+            id="shop-set-bonuses"
+            class="mb-3 p-2 bg-white retro-border text-[10px]"
+          ></div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Seminars (CCs) -->
             <div class="space-y-2">
@@ -894,17 +898,32 @@
           usedBy: null,
         },
         {
+          id: "cc_colin_information_technology",
+          name: "Colin",
+          title: "IT Lead",
+          rarity: "uncommon",
+          departmentId: "information_technology",
+          employeeId: "colin_information_technology",
+          bonus: "Deflect +2.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to keep our technical support aligned and logged.",
+          eff: {
+            deflectBonus: 2,
+          },
+          usedBy: null,
+        },
+        {
           id: "cc_samantha_executive_council_office",
           name: "Samantha",
           title: "Director of Marketing",
           rarity: "uncommon",
           departmentId: "executive_council_office",
           employeeId: "samantha_executive_council_office",
-          bonus: "20% DMG Reduction.",
+          bonus: "Reduce incoming damage by 4.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to help frame this conversation around department wide resourcing.",
           eff: {
-            def: 0.2,
+            defFlat: 4,
           },
           usedBy: null,
         },
@@ -956,11 +975,11 @@
           title: "Marketing Advisor",
           rarity: "uncommon",
           departmentId: "executive_council_office",
-          bonus: "30% DMG Reduction.",
+          bonus: "Reduce incoming damage by 5.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to advise on our tactical approach and reduce reputational risk.",
           eff: {
-            def: 0.25,
+            defFlat: 5,
           },
           usedBy: null,
         },
@@ -970,11 +989,11 @@
           title: "Facilities Lead",
           rarity: "common",
           departmentId: "facilities_and_administration",
-          bonus: "10% DMG Reduction & +3 Credibility/turn",
+          bonus: "Reduce incoming damage by 2 & +3 Credibility/turn",
           loopInText:
             "I'm looping in <strong>{name}</strong> ({title}) to handle the facilities impact.",
           eff: {
-            def: 0.1,
+            defFlat: 2,
             heal: 3,
           },
           usedBy: null,
@@ -999,11 +1018,11 @@
           title: "Policy Analyst",
           rarity: "uncommon",
           departmentId: "policy",
-          bonus: "15% DMG Reduction.",
+          bonus: "Reduce incoming damage by 3.",
           loopInText:
             "I'm looping in <strong>{name}</strong> from {department} to ensure this stays within policy guardrails.",
           eff: {
-            def: 0.15,
+            defFlat: 3,
           },
           usedBy: null,
         },
@@ -1126,9 +1145,9 @@
         {
           id: "regards",
           name: "Kind Regards,",
-          bonus: "Reduce all incoming damage by 5%.",
+          bonus: "Reduce incoming damage by 1.",
           rarity: "common",
-          def: 0.05,
+          defFlat: 1,
         },
         {
           id: "per_my_last",
@@ -1154,9 +1173,17 @@
         {
           id: "encrypted",
           name: "Sent from my encrypted workstation",
-          bonus: "15% DMG Reduction.",
-          rarity: "uncommon",
+          bonus: "15% damage reduction.",
+          rarity: "rare",
           def: 0.15,
+        },
+        {
+          id: "environment_printing",
+          name: "Please consider the environment before printing this email",
+          bonus: "+1 Credibility/turn.",
+          rarity: "uncommon",
+          setId: "earth_set",
+          heal: 1,
         },
         {
           id: "disclaimer",
@@ -1192,9 +1219,9 @@
         {
           id: "colleagues",
           name: "Dear Colleagues,",
-          bonus: "+5% DMG Reduction",
+          bonus: "Deflect +1.",
           rarity: "uncommon",
-          def: 0.05,
+          deflectBonus: 1,
         },
         {
           id: "everyone",
@@ -1225,11 +1252,19 @@
           singleDmgBonus: 2,
         },
         {
+          id: "sustainability_team",
+          name: "To the Sustainability Team,",
+          bonus: "+1 all comms dmg.",
+          rarity: "uncommon",
+          setId: "earth_set",
+          globalDmgBonus: 1,
+        },
+        {
           id: "greetings",
           name: "Greetings all,",
-          bonus: "5% DMG Reduction",
+          bonus: "Deflect +1.",
           rarity: "uncommon",
-          def: 0.05,
+          deflectBonus: 1,
         },
       ];
 
@@ -1251,9 +1286,9 @@
         {
           id: "sincerely",
           name: "Sincerely,",
-          bonus: "+10% DMG Reduction",
+          bonus: "Deflect +2.",
           rarity: "uncommon",
-          def: 0.1,
+          deflectBonus: 2,
         },
         {
           id: "best_regards",
@@ -1282,6 +1317,14 @@
           bonus: "+2 Credibility/turn",
           rarity: "common",
           heal: 2,
+        },
+        {
+          id: "solidarity_earth",
+          name: "In solidarity with the Earth",
+          bonus: "Deflect +1.",
+          rarity: "uncommon",
+          setId: "earth_set",
+          deflectBonus: 1,
         },
         {
           id: "best_wishes",
@@ -1313,6 +1356,36 @@
           bonus: "Current target attacks another random opponent next turn.",
           rarity: "rare",
           effect: "redirect",
+        },
+      ];
+
+      const COMMS_SETS = [
+        {
+          id: "earth_set",
+          name: "Sustainability Protocol",
+          salutationId: "sustainability_team",
+          signOffId: "solidarity_earth",
+          signatureIds: ["environment_printing"],
+          effect: {
+            bonusGlobalDmg: 1,
+            deflectBonus: 1,
+            escalateRecoverPerHit: 1,
+          },
+        },
+      ];
+
+      const CONTACT_SETS = [
+        {
+          id: "it_duo",
+          name: "Infrastructure Coverage",
+          contactIds: [
+            "cc_willy_boy_information_technology",
+            "cc_colin_information_technology",
+          ],
+          effect: {
+            replyDeptSplash: 2,
+            followUpChance: 0.15,
+          },
         },
       ];
 
@@ -1997,6 +2070,9 @@
           deflectPower: 3,
           bonusDeflect: 0,
           deflectCharge: 0,
+          followUpChance: 0,
+          replyDeptSplash: 0,
+          escalateRecoverPerHit: 0,
           attacks: [
             "I believe we need to circle back to your recent comments. My focus is on department output, and I suggest yours should be too.",
             "I've already addressed this in my previous email, but for the sake of clarity, I'll repeat it: This is not my responsibility.",
@@ -2123,6 +2199,9 @@
           u.buffs.forEach((b) => {
             if (b.eff && b.eff.hpBonus) max += b.eff.hpBonus;
           });
+          getUnitSetBonuses(u).forEach((b) => {
+            if (b.hpBonus) max += b.hpBonus;
+          });
           return max;
         }
         let max = u.maxHp;
@@ -2130,6 +2209,9 @@
         if (u.signOff && u.signOff.hpBonus) max += u.signOff.hpBonus;
         u.buffs.forEach((b) => {
           if (b.eff && b.eff.hpBonus) max += b.eff.hpBonus;
+        });
+        getUnitSetBonuses(u).forEach((b) => {
+          if (b.hpBonus) max += b.hpBonus;
         });
         return max;
       }
@@ -2149,6 +2231,36 @@
         if (u.deflectPower == null) u.deflectPower = 3;
         if (u.bonusDeflect == null) u.bonusDeflect = 0;
         if (u.deflectCharge == null) u.deflectCharge = 0;
+        if (u.followUpChance == null) u.followUpChance = 0;
+        if (u.replyDeptSplash == null) u.replyDeptSplash = 0;
+        if (u.escalateRecoverPerHit == null) u.escalateRecoverPerHit = 0;
+      }
+
+      function getUnitSetBonuses(u) {
+        const bonuses = [];
+        if (u.salutation && u.signOff && Array.isArray(u.signatures)) {
+          COMMS_SETS.forEach((set) => {
+            const hasSig = set.signatureIds.some((id) =>
+              u.signatures.some((s) => s.id === id),
+            );
+            if (
+              hasSig &&
+              u.salutation.id === set.salutationId &&
+              u.signOff.id === set.signOffId
+            ) {
+              bonuses.push(set.effect);
+            }
+          });
+        }
+        if (Array.isArray(u.buffs) && u.buffs.length > 0) {
+          const ids = new Set(u.buffs.map((b) => b.id));
+          CONTACT_SETS.forEach((set) => {
+            if (set.contactIds.every((id) => ids.has(id))) {
+              bonuses.push(set.effect);
+            }
+          });
+        }
+        return bonuses;
       }
 
       function getUnitDeflectPower(u) {
@@ -2160,6 +2272,9 @@
         if (u.signOff && u.signOff.deflectBonus) power += u.signOff.deflectBonus;
         u.buffs.forEach((b) => {
           if (b.eff && b.eff.deflectBonus) power += b.eff.deflectBonus;
+        });
+        getUnitSetBonuses(u).forEach((b) => {
+          if (b.deflectBonus) power += b.deflectBonus;
         });
         return power;
       }
@@ -2175,6 +2290,9 @@
           });
         if (u.salutation && u.salutation.heal) heal += u.salutation.heal;
         if (u.signOff && u.signOff.heal) heal += u.signOff.heal;
+        getUnitSetBonuses(u).forEach((b) => {
+          if (b.heal) heal += b.heal;
+        });
         return heal;
       }
 
@@ -2209,6 +2327,7 @@
         if (u.salutation) addBonuses(u.salutation);
         if (u.signOff) addBonuses(u.signOff);
         u.buffs.forEach((b) => addBonuses(b.eff));
+        getUnitSetBonuses(u).forEach((b) => addBonuses(b));
 
         let mult = 1;
         if (u.bonusGlobalDmgMult) mult += u.bonusGlobalDmgMult;
@@ -2238,8 +2357,26 @@
         addMults(u.salutation);
         addMults(u.signOff);
         u.buffs.forEach((b) => addMults(b.eff));
+        getUnitSetBonuses(u).forEach((b) => addMults(b));
 
         return (base + bonus) * mult;
+      }
+
+      function getUnitFlatDef(u) {
+        let defFlat = 0;
+        u.buffs.forEach((b) => {
+          if (b.eff && b.eff.defFlat) defFlat += b.eff.defFlat;
+        });
+        if (u.signatures)
+          u.signatures.forEach((s) => {
+            if (s.defFlat) defFlat += s.defFlat;
+          });
+        if (u.salutation && u.salutation.defFlat) defFlat += u.salutation.defFlat;
+        if (u.signOff && u.signOff.defFlat) defFlat += u.signOff.defFlat;
+        getUnitSetBonuses(u).forEach((b) => {
+          if (b.defFlat) defFlat += b.defFlat;
+        });
+        return defFlat;
       }
 
       function getUnitTotalDef(u) {
@@ -2253,11 +2390,65 @@
           });
         if (u.salutation && u.salutation.def) def += u.salutation.def;
         if (u.signOff && u.signOff.def) def += u.signOff.def;
+        getUnitSetBonuses(u).forEach((b) => {
+          if (b.def) def += b.def;
+        });
         return def;
+      }
+
+      function getUnitFollowUpChance(u) {
+        let chance = u.followUpChance || 0;
+        const addChance = (obj) => {
+          if (!obj) return;
+          if (obj.followUpChance) chance += obj.followUpChance;
+        };
+        addChance(u.title);
+        addChance(u.salutation);
+        addChance(u.signOff);
+        if (u.signatures)
+          u.signatures.forEach((s) => addChance(s));
+        u.buffs.forEach((b) => addChance(b.eff));
+        getUnitSetBonuses(u).forEach((b) => addChance(b));
+        return Math.max(0, Math.min(1, chance));
+      }
+
+      function getUnitReplyDeptSplash(u) {
+        let splash = u.replyDeptSplash || 0;
+        const addSplash = (obj) => {
+          if (!obj) return;
+          if (obj.replyDeptSplash) splash += obj.replyDeptSplash;
+        };
+        addSplash(u.title);
+        addSplash(u.salutation);
+        addSplash(u.signOff);
+        if (u.signatures)
+          u.signatures.forEach((s) => addSplash(s));
+        u.buffs.forEach((b) => addSplash(b.eff));
+        getUnitSetBonuses(u).forEach((b) => addSplash(b));
+        return splash;
+      }
+
+      function getUnitEscalateRecover(u) {
+        let recover = u.escalateRecoverPerHit || 0;
+        const addRecover = (obj) => {
+          if (!obj) return;
+          if (obj.escalateRecoverPerHit)
+            recover += obj.escalateRecoverPerHit;
+        };
+        addRecover(u.title);
+        addRecover(u.salutation);
+        addRecover(u.signOff);
+        if (u.signatures)
+          u.signatures.forEach((s) => addRecover(s));
+        u.buffs.forEach((b) => addRecover(b.eff));
+        getUnitSetBonuses(u).forEach((b) => addRecover(b));
+        return recover;
       }
 
       function applyDamage(attacker, target, rawDamage) {
         let dmg = Math.max(0, Math.floor(rawDamage));
+        const flatDef = getUnitFlatDef(target);
+        dmg = Math.max(0, dmg - flatDef);
         let def = getUnitTotalDef(target);
         dmg = Math.floor(dmg * (1 - def));
 
@@ -2281,6 +2472,27 @@
         }
 
         return { dmg, blocked, reflected };
+      }
+
+      function applyDepartmentSplash(attacker, target, splashDamage) {
+        if (!splashDamage || !target || !target.departmentId)
+          return { total: 0, hits: 0 };
+        const units = [...opponents, state.player];
+        let total = 0;
+        let hits = 0;
+        units.forEach((u) => {
+          if (!u || u.hp <= 0) return;
+          if (u === target) return;
+          if (attacker && u === attacker) return;
+          if (u.departmentId !== target.departmentId) return;
+          const result = applyDamage(attacker, u, splashDamage);
+          total += result.dmg;
+          hits += 1;
+          if (u !== state.player && u.hp <= 0) {
+            handleOpponentDefeat(u, attacker && attacker.id === "player");
+          }
+        });
+        return { total, hits };
       }
 
       function isContactInLoop(contactId) {
@@ -2574,10 +2786,15 @@
         generateShopItems();
         setTimeout(() => {
           transitionTo("summary-screen");
-          const baseRep = 4;
-          const totalOptOutRep = Math.floor(
-            6 * (state.removedByPlayer / state.removedTotal),
-          );
+          const baseRepByQuarter = {
+            Q3: 4,
+            Q4: 5,
+            Q2: 6,
+            Q1: 8,
+          };
+          const baseRep =
+            baseRepByQuarter[state.player.quarter] ?? baseRepByQuarter.Q3;
+          const totalOptOutRep = state.removedByPlayer * 2;
 
           // Distribution
           const optOutList = document.getElementById("summary-optouts-list");
@@ -2586,10 +2803,8 @@
 
           if (playerKills.length > 0) {
             optOutList.classList.remove("hidden");
-            playerKills.forEach((o, i) => {
-              const share =
-                Math.floor(((i + 1) * totalOptOutRep) / playerKills.length) -
-                Math.floor((i * totalOptOutRep) / playerKills.length);
+            playerKills.forEach((o) => {
+              const share = 2;
               const div = document.createElement("div");
               div.className =
                 "flex justify-between text-[10px] text-gray-600 italic";
@@ -2694,21 +2909,60 @@
         return array;
       }
 
-      function createShopCard(name, desc, cost, onBuy, purchased = false) {
+      function getRarityMeta(rarity) {
+        const meta = {
+          common: { label: "COMMON", className: "bg-gray-200 text-gray-700" },
+          uncommon: {
+            label: "UNCOMMON",
+            className: "bg-emerald-100 text-emerald-700",
+          },
+          rare: { label: "RARE", className: "bg-amber-100 text-amber-700" },
+        };
+        return meta[rarity] || meta.common;
+      }
+
+      function formatRarityBadge(rarity) {
+        const meta = getRarityMeta(rarity);
+        return `<span class="text-[9px] uppercase px-1 py-0.5 rounded-sm ${meta.className}">${meta.label}</span>`;
+      }
+
+      function getItemCostByType(rarity, type) {
+        const table = {
+          contact: { common: 4, uncommon: 7, rare: 12 },
+          signature: { common: 3, uncommon: 6, rare: 10 },
+          salutation: { common: 3, uncommon: 6, rare: 10 },
+          signoff: { common: 3, uncommon: 6, rare: 10 },
+          bcc: { common: 2, uncommon: 3, rare: 5 },
+        };
+        const row = table[type] || table.contact;
+        return row[rarity] ?? row.common;
+      }
+
+      function createShopCard(name, desc, cost, onBuy, options = {}) {
         const div = document.createElement("div");
         div.className = "p-2 bg-white retro-border flex flex-col gap-1";
         const canAfford = state.player.reputation >= cost;
+        const purchased = options.purchased || false;
+        const canBuy = options.canBuy ?? true;
+        const badge = options.badge || "";
+        const disabled = !canAfford || purchased || !canBuy;
+        const label = purchased
+          ? "OWNED"
+          : !canBuy
+            ? "MAKE SPACE"
+            : "ACQUIRE";
         div.innerHTML = `
-                <div class="flex justify-between font-bold text-[11px]">
-                    <span>${name}</span>
+                <div class="flex justify-between font-bold text-[11px] gap-2">
+                    <span class="truncate">${name}</span>
                     <span class="text-blue-700 font-mono">${purchased ? "ACQUIRED" : cost + " REP"}</span>
                 </div>
+                <div class="flex items-center gap-2 text-[9px]">${badge}</div>
                 <div class="text-[10px] italic text-gray-600 leading-tight">${desc}</div>
-                <button class="mt-1 retro-button text-[10px] font-bold py-1 ${!canAfford || purchased ? "opacity-50" : ""}" ${!canAfford || purchased ? "disabled" : ""}>
-                    ${purchased ? "BOUGHT" : "ACQUIRE"}
+                <button class="mt-1 retro-button text-[10px] font-bold py-1 ${disabled ? "opacity-50" : ""}" ${disabled ? "disabled" : ""}>
+                    ${label}
                 </button>
             `;
-        if (!purchased)
+        if (!disabled)
           div.querySelector("button").onclick = () => {
             onBuy();
             updateShopUI();
@@ -2716,45 +2970,169 @@
         return div;
       }
 
+      function createOwnedRow(item, type, onSell) {
+        const cost = getItemCostByType(item.rarity || "common", type);
+        const refund = Math.floor(cost / 2);
+        const div = document.createElement("div");
+        div.className =
+          "p-2 bg-white retro-border flex items-center justify-between gap-2";
+        div.innerHTML = `
+                <div class="flex flex-col gap-0.5">
+                    <div class="flex items-center gap-2 text-[11px] font-bold">
+                        <span>${item.name}</span>
+                        ${formatRarityBadge(item.rarity)}
+                    </div>
+                    <div class="text-[10px] italic text-gray-600">${item.bonus || ""}</div>
+                </div>
+                <button class="retro-button text-[10px] px-2 py-1">SELL +${refund}</button>
+            `;
+        div.querySelector("button").onclick = () => {
+          onSell(refund);
+          updateShopUI();
+        };
+        return div;
+      }
+
+      function describeEffect(effect) {
+        if (!effect) return "";
+        const parts = [];
+        if (effect.bonusGlobalDmg)
+          parts.push(`+${effect.bonusGlobalDmg} all comms dmg`);
+        if (effect.bonusSingleDmg)
+          parts.push(`+${effect.bonusSingleDmg} reply to dmg`);
+        if (effect.bonusEscalateDmg)
+          parts.push(`+${effect.bonusEscalateDmg} escalate dmg`);
+        if (effect.bonusReplyAllDmg)
+          parts.push(`+${effect.bonusReplyAllDmg} reply all dmg`);
+        if (effect.bonusGlobalDmgMult)
+          parts.push(`+${Math.round(effect.bonusGlobalDmgMult * 100)}% all comms dmg`);
+        if (effect.bonusSingleDmgMult)
+          parts.push(`+${Math.round(effect.bonusSingleDmgMult * 100)}% reply to dmg`);
+        if (effect.bonusEscalateDmgMult)
+          parts.push(`+${Math.round(effect.bonusEscalateDmgMult * 100)}% escalate dmg`);
+        if (effect.bonusReplyAllDmgMult)
+          parts.push(`+${Math.round(effect.bonusReplyAllDmgMult * 100)}% reply all dmg`);
+        if (effect.deflectBonus) parts.push(`Deflect +${effect.deflectBonus}`);
+        if (effect.defFlat) parts.push(`Reduce damage by ${effect.defFlat}`);
+        if (effect.followUpChance)
+          parts.push(`Follow-up +${Math.round(effect.followUpChance * 100)}%`);
+        if (effect.replyDeptSplash)
+          parts.push(`Dept splash +${effect.replyDeptSplash}`);
+        if (effect.escalateRecoverPerHit)
+          parts.push(`Escalate recover +${effect.escalateRecoverPerHit}`);
+        if (effect.heal) parts.push(`+${effect.heal} Cred/turn`);
+        return parts.join(", ");
+      }
+
       function updateShopUI() {
         document.getElementById("shop-reputation-display").innerText =
           `REP: ${state.player.reputation}`;
+
+        const setBox = document.getElementById("shop-set-bonuses");
+        if (setBox) {
+          const parts = [];
+          parts.push(`<div class="text-[10px] font-bold uppercase text-gray-500 mb-1">Set Bonuses</div>`);
+
+          if (COMMS_SETS.length > 0) {
+            parts.push(`<div class="text-[10px] font-bold uppercase text-gray-400 mt-1">Comms Sets</div>`);
+            COMMS_SETS.forEach((set) => {
+              const hasSal = state.player.salutation && state.player.salutation.id === set.salutationId;
+              const hasOff = state.player.signOff && state.player.signOff.id === set.signOffId;
+              const hasSig = state.player.signatures.some((s) =>
+                set.signatureIds.includes(s.id),
+              );
+              const active = hasSal && hasOff && hasSig;
+              const sal = SALUTATIONS.find((s) => s.id === set.salutationId);
+              const off = SIGNOFFS.find((s) => s.id === set.signOffId);
+              const sigNames = set.signatureIds
+                .map((id) => SIGNATURES.find((s) => s.id === id)?.name || id)
+                .join(" / ");
+              const missing = [
+                hasSal ? null : sal?.name || set.salutationId,
+                hasOff ? null : off?.name || set.signOffId,
+                hasSig ? null : sigNames,
+              ].filter(Boolean);
+              parts.push(
+                `<div class="text-[10px] ${active ? "text-emerald-700" : "text-gray-600"}">
+                  <strong>${set.name}</strong> — ${describeEffect(set.effect)}
+                  ${active ? " (ACTIVE)" : missing.length ? ` (Missing: ${missing.join(", ")})` : ""}
+                </div>`,
+              );
+            });
+          }
+
+          if (CONTACT_SETS.length > 0) {
+            parts.push(`<div class="text-[10px] font-bold uppercase text-gray-400 mt-2">Contact Sets</div>`);
+            CONTACT_SETS.forEach((set) => {
+              const names = set.contactIds
+                .map((id) => CONTACTS.find((c) => c.id === id)?.name || id)
+                .join(" + ");
+              parts.push(
+                `<div class="text-[10px] text-gray-600"><strong>${set.name}</strong> — ${names}. ${describeEffect(set.effect)} (Active when both are in loop.)</div>`,
+              );
+            });
+          }
+          setBox.innerHTML = parts.join("");
+        }
 
         // Seminars
         const semList = document.getElementById("shop-seminars");
         semList.innerHTML = "";
         const semHeader = semList.previousElementSibling;
         semHeader.innerText = `Enroll in Seminar (Address Book: ${state.player.addressBook.length}/${state.player.title.addressLimit})`;
+
+        const contactCurrent = document.createElement("div");
+        contactCurrent.className = "space-y-1 mb-2";
+        const contactTitle = document.createElement("div");
+        contactTitle.className = "text-[10px] font-bold uppercase text-gray-500";
+        contactTitle.innerText = "Current Contacts";
+        contactCurrent.appendChild(contactTitle);
+        if (state.player.addressBook.length === 0) {
+          const none = document.createElement("div");
+          none.className = "text-[10px] italic text-gray-400";
+          none.innerText = "No contacts enrolled.";
+          contactCurrent.appendChild(none);
+        } else {
+          state.player.addressBook.forEach((id) => {
+            const c = CONTACTS.find((con) => con.id === id);
+            if (!c) return;
+            contactCurrent.appendChild(
+              createOwnedRow(c, "contact", (refund) => {
+                state.player.addressBook = state.player.addressBook.filter(
+                  (cid) => cid !== id,
+                );
+                state.player.reputation += refund;
+              }),
+            );
+          });
+        }
+        semList.appendChild(contactCurrent);
+
         state.shop.seminars.forEach((c) => {
-          const cost =
-            c.rarity === "rare" ? 12 : c.rarity === "uncommon" ? 7 : 4;
+          const cost = getItemCostByType(c.rarity, "contact");
+          const owned = state.player.addressBook.includes(c.id);
+          const hasSpace =
+            state.player.addressBook.length < state.player.title.addressLimit;
           semList.appendChild(
             createShopCard(
               c.name,
               c.bonus,
               cost,
               () => {
-                if (
-                  state.player.addressBook.length >=
-                  state.player.title.addressLimit
-                ) {
-                  const toRemoveId = state.player.addressBook[0];
-                  const toRemove = CONTACTS.find(
-                    (con) => con.id === toRemoveId,
-                  );
-                  state.player.addressBook = state.player.addressBook.filter(
-                    (id) => id !== toRemoveId,
-                  );
-                  state.player.reputation += 2;
-                  alert(
-                    `Address book full. ${toRemove ? toRemove.name : toRemoveId} removed. +2 REP refunded.`,
-                  );
+                if (owned) return;
+                if (!hasSpace) {
+                  alert("Address book full. Sell a contact to make space.");
+                  return;
                 }
                 state.player.reputation -= cost;
                 state.player.addressBook.push(c.id);
                 c.purchased = true;
               },
-              c.purchased,
+              {
+                purchased: owned,
+                canBuy: hasSpace,
+                badge: formatRarityBadge(c.rarity),
+              },
             ),
           );
         });
@@ -2764,25 +3142,56 @@
         sigList.innerHTML = "";
         const sigHeader = sigList.previousElementSibling;
         sigHeader.innerText = `Update Email Signature (${state.player.signatures.length}/${state.player.title.sigLimit})`;
+        const sigCurrent = document.createElement("div");
+        sigCurrent.className = "space-y-1 mb-2";
+        const sigTitle = document.createElement("div");
+        sigTitle.className = "text-[10px] font-bold uppercase text-gray-500";
+        sigTitle.innerText = "Current Signatures";
+        sigCurrent.appendChild(sigTitle);
+        if (state.player.signatures.length === 0) {
+          const none = document.createElement("div");
+          none.className = "text-[10px] italic text-gray-400";
+          none.innerText = "No signatures equipped.";
+          sigCurrent.appendChild(none);
+        } else {
+          state.player.signatures.forEach((sig) => {
+            sigCurrent.appendChild(
+              createOwnedRow(sig, "signature", (refund) => {
+                state.player.signatures = state.player.signatures.filter(
+                  (s) => s.id !== sig.id,
+                );
+                state.player.reputation += refund;
+              }),
+            );
+          });
+        }
+        sigList.appendChild(sigCurrent);
+
         state.shop.signatures.forEach((s) => {
-          const cost =
-            s.rarity === "rare" ? 10 : s.rarity === "uncommon" ? 6 : 3;
+          const cost = getItemCostByType(s.rarity, "signature");
+          const owned = state.player.signatures.some((sig) => sig.id === s.id);
+          const hasSpace =
+            state.player.signatures.length < state.player.title.sigLimit;
           sigList.appendChild(
             createShopCard(
               s.name,
               s.bonus,
               cost,
               () => {
-                if (
-                  state.player.signatures.length >= state.player.title.sigLimit
-                ) {
-                  state.player.signatures.shift();
+                if (owned) return;
+                if (!hasSpace) {
+                  alert("Signature slots full. Sell a signature to make space.");
+                  return;
                 }
                 state.player.reputation -= cost;
                 state.player.signatures.push(s);
                 s.purchased = true;
               },
-              s.purchased,
+              {
+                purchased: owned,
+                canBuy: hasSpace,
+                badge: formatRarityBadge(s.rarity),
+              },
             ),
           );
         });
@@ -2790,24 +3199,49 @@
         // Salutations
         const salList = document.getElementById("shop-salutations");
         salList.innerHTML = "";
-        const currentSal = state.player.salutation
-          ? `<div class="text-[10px] bg-blue-50 p-1 mb-2 border border-blue-200"><strong>Current:</strong> ${state.player.salutation.name} (${state.player.salutation.bonus})</div>`
-          : "";
-        salList.innerHTML = currentSal;
+        const currentSalWrap = document.createElement("div");
+        currentSalWrap.className = "space-y-1 mb-2";
+        const salTitle = document.createElement("div");
+        salTitle.className = "text-[10px] font-bold uppercase text-gray-500";
+        salTitle.innerText = "Current Greeting";
+        currentSalWrap.appendChild(salTitle);
+        if (state.player.salutation) {
+          currentSalWrap.appendChild(
+            createOwnedRow(state.player.salutation, "salutation", (refund) => {
+              state.player.salutation = null;
+              state.player.reputation += refund;
+            }),
+          );
+        } else {
+          const none = document.createElement("div");
+          none.className = "text-[10px] italic text-gray-400";
+          none.innerText = "No greeting selected.";
+          currentSalWrap.appendChild(none);
+        }
+        salList.appendChild(currentSalWrap);
         state.shop.salutations.forEach((s) => {
-          const cost =
-            s.rarity === "rare" ? 10 : s.rarity === "uncommon" ? 6 : 3;
+          const cost = getItemCostByType(s.rarity, "salutation");
+          const owned = state.player.salutation && state.player.salutation.id === s.id;
+          const hasSpace = !state.player.salutation;
           salList.appendChild(
             createShopCard(
               s.name,
               s.bonus,
               cost,
               () => {
+                if (!hasSpace) {
+                  alert("Greeting slot full. Sell your current greeting first.");
+                  return;
+                }
                 state.player.reputation -= cost;
                 state.player.salutation = s;
                 s.purchased = true;
               },
-              s.purchased,
+              {
+                purchased: owned,
+                canBuy: hasSpace,
+                badge: formatRarityBadge(s.rarity),
+              },
             ),
           );
         });
@@ -2815,24 +3249,49 @@
         // Sign-offs
         const offList = document.getElementById("shop-signoffs");
         offList.innerHTML = "";
-        const currentOff = state.player.signOff
-          ? `<div class="text-[10px] bg-blue-50 p-1 mb-2 border border-blue-200"><strong>Current:</strong> ${state.player.signOff.name} (${state.player.signOff.bonus})</div>`
-          : "";
-        offList.innerHTML = currentOff;
+        const currentOffWrap = document.createElement("div");
+        currentOffWrap.className = "space-y-1 mb-2";
+        const offTitle = document.createElement("div");
+        offTitle.className = "text-[10px] font-bold uppercase text-gray-500";
+        offTitle.innerText = "Current Sign-Off";
+        currentOffWrap.appendChild(offTitle);
+        if (state.player.signOff) {
+          currentOffWrap.appendChild(
+            createOwnedRow(state.player.signOff, "signoff", (refund) => {
+              state.player.signOff = null;
+              state.player.reputation += refund;
+            }),
+          );
+        } else {
+          const none = document.createElement("div");
+          none.className = "text-[10px] italic text-gray-400";
+          none.innerText = "No sign-off selected.";
+          currentOffWrap.appendChild(none);
+        }
+        offList.appendChild(currentOffWrap);
         state.shop.signoffs.forEach((s) => {
-          const cost =
-            s.rarity === "rare" ? 10 : s.rarity === "uncommon" ? 6 : 3;
+          const cost = getItemCostByType(s.rarity, "signoff");
+          const owned = state.player.signOff && state.player.signOff.id === s.id;
+          const hasSpace = !state.player.signOff;
           offList.appendChild(
             createShopCard(
               s.name,
               s.bonus,
               cost,
               () => {
+                if (!hasSpace) {
+                  alert("Sign-off slot full. Sell your current sign-off first.");
+                  return;
+                }
                 state.player.reputation -= cost;
                 state.player.signOff = s;
                 s.purchased = true;
               },
-              s.purchased,
+              {
+                purchased: owned,
+                canBuy: hasSpace,
+                badge: formatRarityBadge(s.rarity),
+              },
             ),
           );
         });
@@ -2851,7 +3310,7 @@
                 p.apply();
                 p.purchased = true;
               },
-              p.purchased,
+              { purchased: p.purchased },
             ),
           );
         });
@@ -2872,7 +3331,7 @@
                 state.player.bccContacts.push(b);
                 b.purchased = true;
               },
-              b.purchased,
+              { purchased: b.purchased, badge: formatRarityBadge(b.rarity) },
             ),
           );
         });
@@ -3039,6 +3498,13 @@
           let levGain = getPlayerLeverageGain(20);
           p.ult += levGain;
 
+          const followUpChance = getUnitFollowUpChance(p);
+          const followUpHit =
+            followUpChance > 0 && Math.random() < followUpChance;
+          const followUpResult = followUpHit ? applyDamage(p, target, d) : null;
+          const splashDamage = getUnitReplyDeptSplash(p);
+          const splashResult = applyDepartmentSplash(p, target, splashDamage);
+
           const q = drawFromLineBag(
             p,
             getPlayerLineBagKey("attack", missionId, titleId),
@@ -3048,6 +3514,16 @@
           let body = formatMessageBody(p, q);
           if (result.blocked > 0) {
             body += `<br><br><strong>Deflected:</strong> ${result.blocked} reflected.`;
+          }
+          if (followUpResult) {
+            body += `<br><br><strong>Follow-up Reply:</strong> -${followUpResult.dmg}`;
+            if (followUpResult.blocked > 0) {
+              body += ` (Deflected ${followUpResult.blocked})`;
+            }
+            body += ".";
+          }
+          if (splashResult.hits > 0) {
+            body += `<br><br><strong>Department Splash:</strong> ${splashResult.hits} hit for ${splashResult.total}.`;
           }
           addEmailToLog(
             p.name,
@@ -3060,10 +3536,16 @@
         } else if (type === "ESCALATE") {
           const d = getUnitDamage(p, "escalate");
           let totalBlocked = 0;
+          let totalRecovered = 0;
+          const recoverPerHit = getUnitEscalateRecover(p);
           opponents.forEach((o) => {
             if (o.hp > 0) {
               const result = applyDamage(p, o, d);
               totalBlocked += result.blocked;
+              if (recoverPerHit > 0) {
+                totalRecovered += recoverPerHit;
+                p.hp = Math.min(totalMaxHp, p.hp + recoverPerHit);
+              }
               if (o.hp <= 0) handleOpponentDefeat(o, true);
             }
           });
@@ -3078,6 +3560,9 @@
           let body = formatMessageBody(p, line);
           if (totalBlocked > 0) {
             body += `<br><br><strong>Deflected:</strong> ${totalBlocked} reflected.`;
+          }
+          if (totalRecovered > 0) {
+            body += `<br><br><strong>Recovered:</strong> +${totalRecovered} Credibility.`;
           }
           addEmailToLog(
             p.name,
@@ -3281,6 +3766,8 @@
               } else if (actionRoll < 0.35) {
                 const d = getUnitDamage(a, "escalate");
                 let totalBlocked = 0;
+                let totalRecovered = 0;
+                const recoverPerHit = getUnitEscalateRecover(a);
                 const escalateTargets = [
                   ...alive.filter((o) => o.id !== a.id),
                   state.player,
@@ -3289,6 +3776,10 @@
                   if (t.hp > 0) {
                     const result = applyDamage(a, t, d);
                     totalBlocked += result.blocked;
+                    if (recoverPerHit > 0) {
+                      totalRecovered += recoverPerHit;
+                      a.hp = Math.min(getUnitMaxHp(a), a.hp + recoverPerHit);
+                    }
                     if (t !== state.player && t.hp <= 0)
                       handleOpponentDefeat(t);
                   }
@@ -3302,6 +3793,9 @@
                 let escBody = formatMessageBody(a, escLine);
                 if (totalBlocked > 0) {
                   escBody += `<br><br><strong>Deflected:</strong> ${totalBlocked} reflected.`;
+                }
+                if (totalRecovered > 0) {
+                  escBody += `<br><br><strong>Recovered:</strong> +${totalRecovered} Credibility.`;
                 }
                 addEmailToLog(
                   a.name,
@@ -3322,6 +3816,11 @@
                 );
                 let body = formatMessageBody(a, q);
 
+                const followUpChance = getUnitFollowUpChance(a);
+                const followUpHit =
+                  followUpChance > 0 && Math.random() < followUpChance;
+                const splashDamage = getUnitReplyDeptSplash(a);
+
                 if (target.id === "player") {
                   if (
                     state.player.buffs.find(
@@ -3338,8 +3837,22 @@
                     );
                   } else {
                     const result = applyDamage(a, state.player, d);
+                    const followUpResult = followUpHit
+                      ? applyDamage(a, state.player, d)
+                      : null;
+                    const splashResult = applyDepartmentSplash(
+                      a,
+                      state.player,
+                      splashDamage,
+                    );
                     if (result.blocked > 0) {
                       body += `<br><br><strong>Deflected:</strong> ${result.blocked} reflected.`;
+                    }
+                    if (followUpResult) {
+                      body += `<br><br><strong>Follow-up Reply:</strong> -${followUpResult.dmg}.`;
+                    }
+                    if (splashResult.hits > 0) {
+                      body += `<br><br><strong>Department Splash:</strong> ${splashResult.hits} hit for ${splashResult.total}.`;
                     }
                     addEmailToLog(
                       a.name,
@@ -3362,8 +3875,22 @@
                   }
                 } else {
                   const result = applyDamage(a, target, d);
+                  const followUpResult = followUpHit
+                    ? applyDamage(a, target, d)
+                    : null;
+                  const splashResult = applyDepartmentSplash(
+                    a,
+                    target,
+                    splashDamage,
+                  );
                   if (result.blocked > 0) {
                     body += `<br><br><strong>Deflected:</strong> ${result.blocked} reflected.`;
+                  }
+                  if (followUpResult) {
+                    body += `<br><br><strong>Follow-up Reply:</strong> -${followUpResult.dmg}.`;
+                  }
+                  if (splashResult.hits > 0) {
+                    body += `<br><br><strong>Department Splash:</strong> ${splashResult.hits} hit for ${splashResult.total}.`;
                   }
                   addEmailToLog(
                     a.name,
