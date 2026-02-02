@@ -2687,6 +2687,70 @@
           ],
         },
         {
+          id: "rachel_marketing",
+          name: "Rachel (Campaigns)",
+          email: "r.campaigns@gov.org",
+          departmentId: "marketing",
+          color: "text-rose-700",
+          defeatMessage:
+            "I'm stepping out. Please don't make decisions that erase the reality of our workloads.",
+          selfPromote:
+            "I pulled a weekend sprint and still delivered the launch assets. That's the baseline.",
+          deflectLines: [
+            "I'm pausing to lay out the actual impact before responding.",
+          ],
+          lines: [
+            {
+              text: "I need both bankable time off and weekends off, otherwise I never see my kids. That's the reality.",
+              missionId: "bankable_time_off",
+            },
+            {
+              text: "Please stop acting like this is a perk. It's the only way I can balance the hours.",
+              missionId: "bankable_time_off",
+            },
+            {
+              text: "If you want our output, then you have to protect us. I work too hard for this place.",
+              missionId: null,
+            },
+            {
+              text: "I don't care what my contract says, I'm not volunteering more unpaid hours.",
+              missionId: null,
+            },
+          ],
+        },
+        {
+          id: "jeff_marketing",
+          name: "Jeff (Growth)",
+          email: "j.growth@gov.org",
+          departmentId: "marketing",
+          color: "text-amber-700",
+          defeatMessage:
+            "I'm stepping out. I don't want to lose what we already have.",
+          selfPromote:
+            "I stabilized campaign performance without burning the team out. That's sustainable growth.",
+          deflectLines: [
+            "I'm pausing to think through the tradeoffs before responding.",
+          ],
+          lines: [
+            {
+              text: "I'm worried that if we ask for both, we'll lose our weekend carve‑out.",
+              missionId: "bankable_time_off",
+            },
+            {
+              text: "We already have a fragile arrangement. Please don't jeopardize it.",
+              missionId: "bankable_time_off",
+            },
+            {
+              text: "Let's not trade certainty for a promise we can't enforce.",
+              missionId: null,
+            },
+            {
+              text: "I'm open to change, but only if it protects what's working.",
+              missionId: null,
+            },
+          ],
+        },
+        {
           id: "casey_legal",
           name: "Casey (Contracts)",
           email: "c.contracts@gov.org",
@@ -3085,6 +3149,14 @@
           ],
           lines: [
             {
+              text: "Can someone explain why Marketing gets weekends bankable off the books while IT doesn't?",
+              missionId: "bankable_time_off",
+            },
+            {
+              text: "If we're talking parity, then it has to apply to everyone, not just the loudest team.",
+              missionId: "bankable_time_off",
+            },
+            {
               text: "Have you tried not printing every single cat meme you see? It's clogging the spooler and the budget.",
               missionId: "paper",
             },
@@ -3115,6 +3187,38 @@
             {
               text: "I've limited your mailbox size to 50MB until the paper crisis is resolved. Choose your replies wisely.",
               missionId: "paper",
+            },
+          ],
+        },
+        {
+          id: "stephan_information_technology",
+          name: "Stephan (IT Ops)",
+          email: "s.itops@gov.org",
+          departmentId: "information_technology",
+          color: "text-indigo-600",
+          defeatMessage:
+            "I'm stepping out. I'll send the numbers separately.",
+          selfPromote:
+            "I cleaned up eight years of ticket debt without missing a single escalation.",
+          deflectLines: [
+            "I'm pausing to run the numbers before replying.",
+          ],
+          lines: [
+            {
+              text: "If this policy existed when I started eight years ago, I'd have banked 1,700+ hours. Why is that okay to ignore?",
+              missionId: "bankable_time_off",
+            },
+            {
+              text: "I'm still trying to understand why Marketing gets weekends bankable off the books while we don't.",
+              missionId: "bankable_time_off",
+            },
+            {
+              text: "I'm sending the math again. Please read it this time.",
+              missionId: null,
+            },
+            {
+              text: "We track every hour. The policy should reflect that.",
+              missionId: null,
             },
           ],
         },
@@ -3286,6 +3390,14 @@
             "I'm documenting this thread before I respond.",
           ],
           lines: [
+            {
+              text: "I'm trying to understand the ask. Are you requesting parity, or an expanded benefit set?",
+              missionId: "bankable_time_off",
+            },
+            {
+              text: "Please clarify the current weekend arrangement and what change you want so I can assess feasibility.",
+              missionId: "bankable_time_off",
+            },
             {
               text: "I think your latest reply violates the 'Civility in Digital Spaces' directive.",
               missionId: null,
@@ -3698,8 +3810,9 @@
             {
               id: 5,
               employeeId: "interns_human_resources",
-              hp: 80,
-              maxHp: 80,
+              hp: 100,
+              maxHp: 100,
+              singleDmg: 5,
               wins: 5,
               buffs: [],
               addressBook: [
@@ -3733,6 +3846,69 @@
             },
             {
               id: 8,
+              employeeId: "anneke_executive_council_office",
+              hp: 60,
+              maxHp: 60,
+              wins: 3,
+              buffs: [],
+              addressBook: [
+                "cc_tim_executive_council_office",
+                "cc_meghan_cassedy_executive_council_office",
+              ],
+            },
+          ],
+        },
+        {
+          id: "bankable_time_off",
+          subject: "RE: Bankable Time Off Policy Dispute",
+          from: "anneke.eco@gov.org",
+          intro:
+            "Hi all,<br><br>I'm trying to understand the request around bankable time off. <strong>IT</strong> is asking for parity, and <strong>Marketing</strong> is split on whether to push for both bankable time off and weekend accruals or keep the current arrangement. The team is also confused about why Marketing gets weekends bankable off the books.<br><br><strong>{playerName}</strong>, please lead this discussion. <strong>{opp0}</strong> and <strong>{opp1}</strong> from IT, please outline the impact. <strong>{opp2}</strong> and <strong>{opp3}</strong> from Marketing, please clarify what you want and what you are willing to risk. I'll try to map this to policy and fairness.",
+          opponents: [
+            {
+              id: 25,
+              employeeId: "colin_information_technology",
+              hp: 55,
+              maxHp: 55,
+              wins: 3,
+              buffs: [],
+              addressBook: [
+                "cc_willy_boy_information_technology",
+                "cc_gemma_policy",
+              ],
+            },
+            {
+              id: 26,
+              employeeId: "stephan_information_technology",
+              hp: 55,
+              maxHp: 55,
+              wins: 3,
+              buffs: [],
+              addressBook: [
+                "cc_rowan_constituent_services",
+                "cc_christina_policy",
+              ],
+            },
+            {
+              id: 27,
+              employeeId: "rachel_marketing",
+              hp: 50,
+              maxHp: 50,
+              wins: 3,
+              buffs: [],
+              addressBook: ["cc_malik_marketing", "cc_dave_constituent_services"],
+            },
+            {
+              id: 28,
+              employeeId: "jeff_marketing",
+              hp: 50,
+              maxHp: 50,
+              wins: 3,
+              buffs: [],
+              addressBook: ["cc_lisa_marketing", "cc_karen_human_resources"],
+            },
+            {
+              id: 29,
               employeeId: "anneke_executive_council_office",
               hp: 60,
               maxHp: 60,
