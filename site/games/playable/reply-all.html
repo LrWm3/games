@@ -843,13 +843,34 @@
     <script>
       // --- GAME DATA ---
 
+      const DEPARTMENTS = [
+        { id: "operations", name: "Operations" },
+        { id: "information_technology", name: "Information Technology" },
+        { id: "executive_council_office", name: "Executive Council Office" },
+        {
+          id: "facilities_and_administration",
+          name: "Facilities and Administration",
+        },
+        { id: "marketing", name: "Marketing" },
+        { id: "constituent_services", name: "Constituent Services" },
+        { id: "policy", name: "Policy" },
+        { id: "finance", name: "Finance" },
+        { id: "human_resources", name: "Human Resources" },
+        { id: "legal", name: "Legal" },
+        { id: "m4_agency", name: "M4 Agency" },
+      ];
+
+      const DEPARTMENT_BY_ID = Object.fromEntries(
+        DEPARTMENTS.map((d) => [d.id, d]),
+      );
+
       const CONTACTS = [
         {
           id: "cc_telly_operations",
           name: "Telly",
           title: "Intern",
           rarity: "common",
-          department: "Operations",
+          departmentId: "operations",
           bonus: "+3 reply to dmg.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to generate a contact report for this thread.",
@@ -863,7 +884,7 @@
           name: "Willy Boy",
           title: "IT Specialist",
           rarity: "common",
-          department: "Information Technology",
+          departmentId: "information_technology",
           bonus: "+5 credibility/turn.",
           loopInText:
             "I'm looping in <strong>{name}</strong> because I think we need an {title} to help with the technical issues affecting others' replies in this thread.",
@@ -877,7 +898,8 @@
           name: "Samantha",
           title: "Director of Marketing",
           rarity: "uncommon",
-          department: "Executive Council Office",
+          departmentId: "executive_council_office",
+          employeeId: "samantha_executive_council_office",
           bonus: "20% DMG Reduction.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to help frame this conversation around department wide resourcing.",
@@ -891,7 +913,7 @@
           name: "Tim",
           title: "Premier",
           rarity: "rare",
-          department: "Executive Council Office",
+          departmentId: "executive_council_office",
           bonus: "2x Leverage gain.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep him in the loop on this initative.",
@@ -905,7 +927,7 @@
           name: "Nimby",
           title: "Office Cat",
           rarity: "rare",
-          department: "Facilities and Administration",
+          departmentId: "facilities_and_administration",
           bonus: "35% Distraction chance.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to provide this thread more light-hearted content.",
@@ -919,7 +941,7 @@
           name: "Lisa",
           title: "Director of Research",
           rarity: "uncommon",
-          department: "Marketing",
+          departmentId: "marketing",
           bonus: "+8 reply to dmg.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to provide data‑driven context and keep claims grounded.",
@@ -933,7 +955,7 @@
           name: "Meghan Cassedy",
           title: "Marketing Advisor",
           rarity: "uncommon",
-          department: "Executive Council Office",
+          departmentId: "executive_council_office",
           bonus: "30% DMG Reduction.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to advise on our tactical approach and reduce reputational risk.",
@@ -947,7 +969,7 @@
           name: "Larry",
           title: "Facilities Lead",
           rarity: "common",
-          department: "Facilities and Administration",
+          departmentId: "facilities_and_administration",
           bonus: "10% DMG Reduction & +3 Credibility/turn",
           loopInText:
             "I'm looping in <strong>{name}</strong> ({title}) to handle the facilities impact.",
@@ -962,7 +984,7 @@
           name: "Dave",
           title: "Social Media Manager",
           rarity: "rare",
-          department: "Constituent Services",
+          departmentId: "constituent_services",
           bonus: "No combat bonus, but +4 REP if in loop at end of match.",
           loopInText:
             "I'm looping in <strong>{name}</strong> for awareness and to mitigate reputational risk if this thread leaks.",
@@ -976,7 +998,7 @@
           name: "Gemma",
           title: "Policy Analyst",
           rarity: "uncommon",
-          department: "Policy",
+          departmentId: "policy",
           bonus: "15% DMG Reduction.",
           loopInText:
             "I'm looping in <strong>{name}</strong> from {department} to ensure this stays within policy guardrails.",
@@ -990,7 +1012,7 @@
           name: "Adam",
           title: "Budget Controller",
           rarity: "uncommon",
-          department: "Finance",
+          departmentId: "finance",
           bonus: "+5 Max Credibility and +5 Credibility/turn.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to track fiscal impact against budgetary constraints and keep the numbers straight.",
@@ -1005,7 +1027,7 @@
           name: "Rowan",
           title: "Public Liaison",
           rarity: "rare",
-          department: "Constituent Services",
+          departmentId: "constituent_services",
           bonus: "+5 reply to dmg and +1 REP if in loop at end of match.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to handle external messaging and stakeholder optics.",
@@ -1020,6 +1042,7 @@
       const TITLES = [
         {
           name: "Cubicle Resident",
+          id: "cubicle_resident",
           level: 1,
           addressLimit: 5,
           sigLimit: 2,
@@ -1028,6 +1051,7 @@
         },
         {
           name: "Junior Clerk",
+          id: "junior_clerk",
           level: 2,
           addressLimit: 7,
           sigLimit: 4,
@@ -1036,6 +1060,7 @@
         },
         {
           name: "Senior Clerk",
+          id: "senior_clerk",
           level: 3,
           addressLimit: 9,
           sigLimit: 6,
@@ -1044,6 +1069,7 @@
         },
         {
           name: "Program Coordinator",
+          id: "program_coordinator",
           level: 4,
           addressLimit: 11,
           sigLimit: 8,
@@ -1052,6 +1078,7 @@
         },
         {
           name: "Assistant Director",
+          id: "assistant_director",
           level: 5,
           addressLimit: 13,
           sigLimit: 10,
@@ -1060,6 +1087,7 @@
         },
         {
           name: "Deputy Director",
+          id: "deputy_director",
           level: 6,
           addressLimit: 15,
           sigLimit: 11,
@@ -1068,6 +1096,7 @@
         },
         {
           name: "Director",
+          id: "director",
           level: 7,
           addressLimit: 17,
           sigLimit: 12,
@@ -1076,6 +1105,7 @@
         },
         {
           name: "Deputy Director",
+          id: "deputy_director",
           level: 8,
           addressLimit: 20,
           sigLimit: 15,
@@ -1291,7 +1321,7 @@
           id: "karen_human_resources",
           name: "Karen (HR)",
           email: "k.smith@gov.org",
-          department: "Human Resources",
+          departmentId: "human_resources",
           color: "text-purple-700",
           defeatMessage:
             "I am unsubscribing. I've documented the lack of professional decorum and will be following up with each of you individually. Regards.",
@@ -1352,7 +1382,7 @@
           id: "christina_policy",
           name: "Christina (Pol)",
           email: "c.policy@gov.org",
-          department: "Policy",
+          departmentId: "policy",
           color: "text-blue-700",
           defeatMessage:
             "This thread has been archived for non-compliance. I am removing myself to draft a formal reprimand. Policy remains absolute.",
@@ -1413,7 +1443,7 @@
           id: "megan_legal",
           name: "Megan (Legal)",
           email: "m.compliance@gov.org",
-          department: "Legal",
+          departmentId: "legal",
           color: "text-red-700",
           defeatMessage:
             "I cannot continue this conversation without a physical copy of the minutes in front of me. Unsubscribing.",
@@ -1450,7 +1480,7 @@
           id: "colin_information_technology",
           name: "Colin (IT)",
           email: "c.it@gov.org",
-          department: "Information Technology",
+          departmentId: "information_technology",
           color: "text-indigo-700",
           defeatMessage:
             "Server load from this thread is too high. I'm muting this. Try rebooting your attitude.",
@@ -1495,7 +1525,7 @@
           id: "fraser_information_technology",
           name: "Fraser (IT?)",
           email: "f.it@gov.org",
-          department: "Information Technology",
+          departmentId: "information_technology",
           color: "text-indigo-600",
           defeatMessage:
             "Too many emails. I've got a survey to send on how we should redesign a 10-column spreadsheet.",
@@ -1533,7 +1563,7 @@
           id: "interns_human_resources",
           name: "HR Interns",
           email: "hr.interns@gov.org",
-          department: "Human Resources",
+          departmentId: "human_resources",
           color: "text-blue-900 font-bold",
           salutation: {
             name: "To the Permanent Staff,",
@@ -1573,7 +1603,7 @@
           id: "sheila_finance",
           name: "Sheila (Payroll)",
           email: "s.payroll@gov.org",
-          department: "Finance",
+          departmentId: "finance",
           color: "text-green-700",
           salutation: {
             name: "Dear All,",
@@ -1608,7 +1638,7 @@
           id: "samantha_executive_council_office",
           name: "Samantha (ECO)",
           email: "s.eco@gov.org",
-          department: "Executive Council Office",
+          departmentId: "executive_council_office",
           color: "text-orange-700",
           defeatMessage:
             "I'm escalating this to the Deputy Director. I don't have time for intern drama.",
@@ -1637,7 +1667,7 @@
           id: "anneke_executive_council_office",
           name: "Anneke VDH (ECO)",
           email: "anneke.eco@gov.org",
-          department: "Executive Council Office",
+          departmentId: "executive_council_office",
           color: "text-red-900",
           defeatMessage:
             "You know what? I'll leave this to the pipsqueaks. I'm out.",
@@ -1678,7 +1708,7 @@
           id: "selina_m4_agency",
           name: "Selina",
           email: "selina@m4agency.com",
-          department: "M4 Agency",
+          departmentId: "m4_agency",
           color: "#F08080",
           defeatMessage:
             "I just need 5 minutes to recalibrate my bandwidth. Then I'll circle back to this deliverable.",
@@ -1715,7 +1745,7 @@
           id: "taz_m4_agency",
           name: "Taz",
           email: "taz@m4agency.com",
-          department: "M4 Agency",
+          departmentId: "m4_agency",
           color: "#1B4F72",
           defeatMessage:
             "Look, okay, I'll reassess our current fee structure and see what we can do this time. But honestly, we'll be losing money on this..",
@@ -1748,7 +1778,7 @@
           id: "anthony_m4_agency",
           name: "Anthony",
           email: "anthony@m4agency.com",
-          department: "M4 Agency",
+          departmentId: "m4_agency",
           color: "#D3D3D3",
           defeatMessage:
             "While the current campaign metrics may appear suboptimal, they reflect an aggressive dedication to boundary testing. Frankly, the complexity of dealing with these minor budgetary concerns pales in comparison to the critical decisions my parents face daily in the OR.",
@@ -1950,7 +1980,7 @@
           salutation: null,
           signOff: null,
           bccContacts: [],
-          department: "Executive Council Office",
+          departmentId: "executive_council_office",
           baseDmgSingle: 10,
           baseDmgEscalate: 5,
           baseDmgReplyAll: 20,
@@ -1973,6 +2003,8 @@
             "Perhaps we should focus on next quarters' deliverables instead of speculating on departmental policy?",
             "I'm happy to discuss this in a 1-on-1, but I don't believe this is a productive use of the 'All-Staff' distribution list.",
           ],
+          attackLinesByMission: {},
+          attackLinesByTitle: {},
           escalateLines: [
             "Given the lack of alignment here, I'm escalating this thread for broader visibility.",
             "I'm escalating this to keep all stakeholders aligned and reduce duplication.",
@@ -1984,12 +2016,16 @@
           selfPromoteLines: [
             "Just logging a new win—the quarterly audit came back clean under my supervision. Always happy to add value to the organization!",
           ],
+          selfPromoteLinesByMission: {},
+          selfPromoteLinesByTitle: {},
           replyAllLines: [
             {
               subject: "Fwd: Salary_Discrepancies_2024.xlsx",
               body: "Not sure if I should be sending this to everyone, but since transparency is one of our 'core values', here is the full salary spreadsheet for the department. Enjoy.",
             },
           ],
+          replyAllLinesByMission: {},
+          replyAllLinesByTitle: {},
         },
         currentMissionIndex: 0,
         targetId: 1,
@@ -2296,12 +2332,62 @@
         return list[Math.floor(Math.random() * list.length)];
       }
 
+      function drawFromLineBag(holder, key, source, fallback) {
+        if (!holder) return fallback;
+        if (!holder._lineBags) holder._lineBags = {};
+        let bag = holder._lineBags[key];
+        if (!Array.isArray(bag) || bag.length === 0) {
+          const fresh = Array.isArray(source) ? [...source] : [];
+          if (fresh.length === 0) return fallback;
+          bag = shuffle(fresh);
+        }
+        const next = bag.pop();
+        holder._lineBags[key] = bag;
+        return next == null ? fallback : next;
+      }
+
+      function getPlayerLineBagKey(action, missionId, titleId) {
+        return `player:${action}:${missionId || "default"}:${titleId || "base"}`;
+      }
+
+      function getPlayerActionLines(action, missionId) {
+        const p = state.player;
+        const titleId = p.title ? p.title.id : null;
+        const byMission = (p[`${action}LinesByMission`] || {})[missionId] || [];
+        const byTitle = (p[`${action}LinesByTitle`] || {})[titleId] || [];
+        let base = [];
+        if (action === "attack") base = p.attacks || [];
+        else if (action === "selfPromote") base = p.selfPromoteLines || [];
+        else if (action === "replyAll") base = p.replyAllLines || [];
+        else if (action === "escalate") base = p.escalateLines || [];
+        else if (action === "deflect") base = p.deflectLines || [];
+        return [...base, ...byMission, ...byTitle];
+      }
+
+      function getUnitSelfPromoteLines(unit) {
+        if (Array.isArray(unit.selfPromoteLines) && unit.selfPromoteLines.length)
+          return unit.selfPromoteLines;
+        if (unit.selfPromote) return [unit.selfPromote];
+        return [];
+      }
+
+      function getDepartmentName(departmentId) {
+        if (!departmentId) return "";
+        return DEPARTMENT_BY_ID[departmentId]?.name || departmentId;
+      }
+
       function formatLoopInText(contact, fallback) {
         if (!contact || !contact.loopInText) return fallback;
+        const departmentName = getDepartmentName(contact.departmentId);
         return contact.loopInText
           .replace(/{name}/g, contact.name || "")
           .replace(/{title}/g, contact.title || "")
-          .replace(/{department}/g, contact.department || "");
+          .replace(/{department}/g, departmentName);
+      }
+
+      function isContactImplicated(contact) {
+        if (!contact || !contact.employeeId) return false;
+        return opponents.some((o) => o.employeeId === contact.employeeId);
       }
 
       function addContactBuff(target, contact, usedBy) {
@@ -2320,6 +2406,7 @@
         state.isProcessing = false;
         const p = state.player;
         applyUnitDefaults(p);
+        p._lineBags = {};
         p.hp = getUnitMaxHp(p);
         p.ult = 0;
         p.wins = 3 + p.bonusWins;
@@ -2344,9 +2431,11 @@
             ...JSON.parse(JSON.stringify(missionOpponent)),
           };
           applyUnitDefaults(clone);
+          clone.employeeId = employee.id;
           clone.hp = clone.maxHp;
           clone.buffs = [];
           clone.deflectCharge = 0;
+          clone._lineBags = {};
           // Filter lines based on missionId
           clone.attacks = employee.lines
             .filter((l) => l.missionId === null || l.missionId === mission.id)
@@ -2930,6 +3019,9 @@
         state.turn++;
         const target = opponents.find((o) => o.id === state.targetId);
         const p = state.player;
+        const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
+        const missionId = mission.id;
+        const titleId = p.title ? p.title.id : null;
         const totalMaxHp = getUnitMaxHp(p);
 
         // Heal from all sources
@@ -2947,7 +3039,12 @@
           let levGain = getPlayerLeverageGain(20);
           p.ult += levGain;
 
-          const q = p.attacks[Math.floor(Math.random() * p.attacks.length)];
+          const q = drawFromLineBag(
+            p,
+            getPlayerLineBagKey("attack", missionId, titleId),
+            getPlayerActionLines("attack", missionId),
+            "I believe we need to circle back to your recent comments.",
+          );
           let body = formatMessageBody(p, q);
           if (result.blocked > 0) {
             body += `<br><br><strong>Deflected:</strong> ${result.blocked} reflected.`;
@@ -2972,7 +3069,12 @@
           });
           let levGain = getPlayerLeverageGain(10);
           p.ult += levGain;
-          const line = pickRandomItem(p.escalateLines, "I'm escalating this for clarity across the thread.");
+          const line = drawFromLineBag(
+            p,
+            getPlayerLineBagKey("escalate", missionId, titleId),
+            getPlayerActionLines("escalate", missionId),
+            "I'm escalating this for clarity across the thread.",
+          );
           let body = formatMessageBody(p, line);
           if (totalBlocked > 0) {
             body += `<br><br><strong>Deflected:</strong> ${totalBlocked} reflected.`;
@@ -2986,8 +3088,10 @@
           );
         } else if (type === "DEFLECT") {
           p.deflectCharge = getUnitDeflectPower(p);
-          const line = pickRandomItem(
-            p.deflectLines,
+          const line = drawFromLineBag(
+            p,
+            getPlayerLineBagKey("deflect", missionId, titleId),
+            getPlayerActionLines("deflect", missionId),
             "Holding response to keep this thread scoped and documented.",
           );
           addEmailToLog(
@@ -3000,8 +3104,10 @@
         } else if (type === "PROMOTE") {
           p.wins--;
           p.hp = Math.min(totalMaxHp, p.hp + 20);
-          const selfPromoteLine = pickRandomItem(
-            p.selfPromoteLines,
+          const selfPromoteLine = drawFromLineBag(
+            p,
+            getPlayerLineBagKey("selfPromote", missionId, titleId),
+            getPlayerActionLines("selfPromote", missionId),
             "Just logging a new win—the quarterly audit came back clean under my supervision. Always happy to add value to the organization!",
           );
           addEmailToLog(
@@ -3022,10 +3128,15 @@
             }
           });
           p.ult = 0;
-          const replyAllLine = pickRandomItem(p.replyAllLines, {
-            subject: "Fwd: Salary_Discrepancies_2024.xlsx",
-            body: "Not sure if I should be sending this to everyone, but since transparency is one of our 'core values', here is the full salary spreadsheet for the department. Enjoy.",
-          });
+          const replyAllLine = drawFromLineBag(
+            p,
+            getPlayerLineBagKey("replyAll", missionId, titleId),
+            getPlayerActionLines("replyAll", missionId),
+            {
+              subject: "Fwd: Salary_Discrepancies_2024.xlsx",
+              body: "Not sure if I should be sending this to everyone, but since transparency is one of our 'core values', here is the full salary spreadsheet for the department. Enjoy.",
+            },
+          );
           let replyBody = replyAllLine.body;
           if (totalBlocked > 0) {
             replyBody += `<br><br><strong>Deflected:</strong> ${totalBlocked} reflected.`;
@@ -3078,13 +3189,13 @@
                 id: "player",
                 name: state.player.name,
                 email: state.player.email,
-                department: state.player.department,
+                departmentId: state.player.departmentId,
               },
             ];
 
             // Targeting logic: weigh opponents by department (colleagues never attack each other)
             let weights = pool.map((t) =>
-              t.department === a.department ? 0 : 1.0,
+              t.departmentId === a.departmentId ? 0 : 1.0,
             );
             let totalWeight = weights.reduce((acc, w) => acc + w, 0);
             let random = Math.random() * totalWeight;
@@ -3116,33 +3227,33 @@
 
             a.hp = Math.min(getUnitMaxHp(a), a.hp + getUnitTotalHeal(a));
 
-            const availFromBook = a.addressBook.filter(
-              (id) => !isContactInLoop(id),
-            );
+            const availFromBook = a.addressBook
+              .map((id) => CONTACTS.find((con) => con.id === id))
+              .filter((c) => c && !isContactInLoop(c.id) && !isContactImplicated(c));
             if (roll < 0.15 && availFromBook.length > 0) {
-              const id =
+              const c =
                 availFromBook[Math.floor(Math.random() * availFromBook.length)];
-              const c = CONTACTS.find((con) => con.id === id);
-              if (c) {
-                addContactBuff(a, c, a.name);
-                const loopInText = formatLoopInText(
-                  c,
-                  `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`,
-                );
-                addEmailToLog(
-                  a.name,
-                  "everyone@gov.org",
-                  "Looping in Support",
-                  loopInText,
-                  "bg-blue-50",
-                );
-              }
+              addContactBuff(a, c, a.name);
+              const loopInText = formatLoopInText(
+                c,
+                `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`,
+              );
+              addEmailToLog(
+                a.name,
+                "everyone@gov.org",
+                "Looping in Support",
+                loopInText,
+                "bg-blue-50",
+              );
             } else if (roll < 0.3 && a.hp < 20 && a.wins > 0) {
               a.wins--;
               a.hp = Math.min(getUnitMaxHp(a), a.hp + 15);
-              const selfPromoteLine =
-                a.selfPromote ||
-                `I'm logging a significant departmental achievement. This incident shouldn't distract from real wins.`;
+              const selfPromoteLine = drawFromLineBag(
+                a,
+                "selfPromote",
+                getUnitSelfPromoteLines(a),
+                "I'm logging a significant departmental achievement. This incident shouldn't distract from real wins.",
+              );
               addEmailToLog(
                 a.name,
                 "everyone@gov.org",
@@ -3154,7 +3265,9 @@
               const actionRoll = Math.random();
               if (actionRoll < 0.15 && a.deflectCharge <= 0) {
                 a.deflectCharge = getUnitDeflectPower(a);
-                const deflectLine = pickRandomItem(
+                const deflectLine = drawFromLineBag(
+                  a,
+                  "deflect",
                   a.deflectLines,
                   "I'm pausing to document this thread before responding further.",
                 );
@@ -3180,7 +3293,9 @@
                       handleOpponentDefeat(t);
                   }
                 });
-                const escLine = pickRandomItem(
+                const escLine = drawFromLineBag(
+                  a,
+                  "escalate",
                   a.escalateLines,
                   "I'm escalating this across the thread for visibility.",
                 );
@@ -3199,8 +3314,12 @@
                 let d = getUnitDamage(a, "single");
 
                 // Select attack type
-                const q =
-                  a.attacks[Math.floor(Math.random() * a.attacks.length)];
+                const q = drawFromLineBag(
+                  a,
+                  "attack",
+                  a.attacks,
+                  "I'm following up to keep this thread moving.",
+                );
                 let body = formatMessageBody(a, q);
 
                 if (target.id === "player") {
@@ -3297,10 +3416,17 @@
           const c = CONTACTS.find((con) => con.id === id);
           if (!c) return;
           const isUsed = isContactInLoop(c.id);
+          const isImplicated = isContactImplicated(c);
+          const isDisabled = isUsed || isImplicated;
+          const statusText = isImplicated
+            ? "IMPLICATED"
+            : isUsed
+              ? "IN LOOP"
+              : "AVAIL";
           const btn = document.createElement("div");
-          btn.className = `p-2 border border-gray-300 flex flex-col ${isUsed ? "opacity-40 grayscale bg-gray-100" : "cursor-pointer hover:bg-blue-50"}`;
-          btn.innerHTML = `<div class="flex justify-between font-bold text-[#000080] text-xs"><span>${c.name} - ${c.title}</span><span class="text-[9px]">${isUsed ? "IN LOOP" : "AVAIL"}</span></div><div class="text-[10px] italic">${c.bonus}</div>`;
-          if (!isUsed)
+          btn.className = `p-2 border border-gray-300 flex flex-col ${isDisabled ? "opacity-40 grayscale bg-gray-100" : "cursor-pointer hover:bg-blue-50"}`;
+          btn.innerHTML = `<div class="flex justify-between font-bold text-[#000080] text-xs"><span>${c.name} - ${c.title}</span><span class="text-[9px]">${statusText}</span></div><div class="text-[10px] italic">${c.bonus}</div>`;
+          if (!isDisabled)
             btn.onclick = () => {
               addContactBuff(state.player, c, state.player.name);
               const loopInText = formatLoopInText(
