@@ -927,7 +927,7 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> to generate a contact report for this thread.",
           eff: {
-            singleDmgBonus: 3,
+            singleDmg: 3,
           },
           usedBy: null,
         },
@@ -956,7 +956,7 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep our technical support aligned and logged.",
           eff: {
-            deflectBonus: 2,
+            deflect: 2,
           },
           usedBy: null,
         },
@@ -985,7 +985,7 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep him in the loop on this initative.",
           eff: {
-            lev: 2,
+            levMult: 1,
           },
           usedBy: null,
         },
@@ -1013,7 +1013,7 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> to provide data‑driven context and keep claims grounded.",
           eff: {
-            singleDmgBonus: 8,
+            singleDmg: 8,
           },
           usedBy: null,
         },
@@ -1084,7 +1084,7 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> to track fiscal impact against budgetary constraints and keep the numbers straight.",
           eff: {
-            hpBonus: 5,
+            maxHp: 5,
             heal: 5,
           },
           usedBy: null,
@@ -1099,7 +1099,7 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> to handle external messaging and stakeholder optics.",
           eff: {
-            singleDmgBonus: 5,
+            singleDmg: 5,
             endRep: 1,
           },
           usedBy: null,
@@ -1113,8 +1113,8 @@
           level: 1,
           addressLimit: 5,
           sigLimit: 2,
-          hpBonus: 0,
-          singleDmgBonus: 0,
+          maxHp: 0,
+          singleDmg: 0,
         },
         {
           name: "Junior Clerk",
@@ -1122,8 +1122,8 @@
           level: 2,
           addressLimit: 7,
           sigLimit: 4,
-          hpBonus: 10,
-          singleDmgBonus: 2,
+          maxHp: 10,
+          singleDmg: 2,
         },
         {
           name: "Senior Clerk",
@@ -1131,8 +1131,8 @@
           level: 3,
           addressLimit: 9,
           sigLimit: 6,
-          hpBonus: 20,
-          singleDmgBonus: 4,
+          maxHp: 20,
+          singleDmg: 4,
         },
         {
           name: "Program Coordinator",
@@ -1140,8 +1140,8 @@
           level: 4,
           addressLimit: 11,
           sigLimit: 8,
-          hpBonus: 30,
-          singleDmgBonus: 6,
+          maxHp: 30,
+          singleDmg: 6,
         },
         {
           name: "Assistant Director",
@@ -1149,8 +1149,8 @@
           level: 5,
           addressLimit: 13,
           sigLimit: 10,
-          hpBonus: 40,
-          singleDmgBonus: 8,
+          maxHp: 40,
+          singleDmg: 8,
         },
         {
           name: "Deputy Director",
@@ -1158,8 +1158,8 @@
           level: 6,
           addressLimit: 15,
           sigLimit: 11,
-          hpBonus: 50,
-          singleDmgBonus: 10,
+          maxHp: 50,
+          singleDmg: 10,
         },
         {
           name: "Director",
@@ -1167,8 +1167,8 @@
           level: 7,
           addressLimit: 17,
           sigLimit: 12,
-          hpBonus: 60,
-          singleDmgBonus: 12,
+          maxHp: 60,
+          singleDmg: 12,
         },
         {
           name: "Deputy Director",
@@ -1176,8 +1176,8 @@
           level: 8,
           addressLimit: 20,
           sigLimit: 15,
-          hpBonus: 70,
-          singleDmgBonus: 14,
+          maxHp: 70,
+          singleDmg: 14,
         }
       ];
 
@@ -1247,7 +1247,7 @@
           bonus: "+1 reply to dmg.",
           rarity: "common",
           setId: "coffee_lovers",
-          singleDmgBonus: 1,
+          singleDmg: 1,
         },
         {
           id: "disclaimer",
@@ -1271,21 +1271,21 @@
           name: "Hi all,",
           bonus: "+10 Max Credibility",
           rarity: "common",
-          hpBonus: 10,
+          maxHp: 10,
         },
         {
           id: "team",
           name: "Team,",
           bonus: "+2 reply to dmg",
           rarity: "common",
-          singleDmgBonus: 2,
+          singleDmg: 2,
         },
         {
           id: "colleagues",
           name: "Dear Colleagues,",
           bonus: "Deflect +1.",
           rarity: "uncommon",
-          deflectBonus: 1,
+          deflect: 1,
         },
         {
           id: "everyone",
@@ -1299,21 +1299,21 @@
           name: "To whom it may concern,",
           bonus: "+5 reply to dmg",
           rarity: "rare",
-          singleDmgBonus: 5,
+          singleDmg: 5,
         },
         {
           id: "morning",
           name: "Good morning,",
           bonus: "+10 Max Credibility",
           rarity: "common",
-          hpBonus: 10,
+          maxHp: 10,
         },
         {
           id: "project_team",
           name: "To the Project Team,",
           bonus: "+2 reply to dmg",
           rarity: "common",
-          singleDmgBonus: 2,
+          singleDmg: 2,
         },
         {
           id: "sustainability_team",
@@ -1321,14 +1321,14 @@
           bonus: "+1 all comms dmg.",
           rarity: "uncommon",
           setId: "earth_set",
-          globalDmgBonus: 1,
+          globalDmg: 1,
         },
         {
           id: "greetings",
           name: "Greetings all,",
           bonus: "Deflect +1.",
           rarity: "uncommon",
-          deflectBonus: 1,
+          deflect: 1,
         },
       ];
 
@@ -1338,7 +1338,7 @@
           name: "Thanks,",
           bonus: "+10 Max Credibility",
           rarity: "common",
-          hpBonus: 10,
+          maxHp: 10,
         },
         {
           id: "cheers",
@@ -1352,14 +1352,14 @@
           name: "Sincerely,",
           bonus: "Deflect +2.",
           rarity: "uncommon",
-          deflectBonus: 2,
+          deflect: 2,
         },
         {
           id: "best_regards",
           name: "Best Regards,",
           bonus: "+5 reply to dmg",
           rarity: "uncommon",
-          singleDmgBonus: 5,
+          singleDmg: 5,
         },
         {
           id: "v_respectfully",
@@ -1373,7 +1373,7 @@
           name: "Warmly,",
           bonus: "+10 Max Credibility",
           rarity: "common",
-          hpBonus: 10,
+          maxHp: 10,
         },
         {
           id: "solidarity",
@@ -1388,7 +1388,7 @@
           bonus: "Deflect +1.",
           rarity: "uncommon",
           setId: "earth_set",
-          deflectBonus: 1,
+          deflect: 1,
         },
         {
           id: "best_wishes",
@@ -1433,8 +1433,8 @@
             { type: "signature", id: "environment_printing" },
           ],
           effect: {
-            bonusGlobalDmg: 1,
-            deflectBonus: 1,
+            globalDmg: 1,
+            deflect: 1,
             escalateRecoverPerHit: 1,
           },
         },
@@ -2161,6 +2161,7 @@
           maxHp: 50,
           ult: 0,
           wins: 3,
+          currentWins: 3,
           buffs: [],
           reputation: 0,
           year: 1,
@@ -2172,21 +2173,16 @@
           signOff: null,
           bccContacts: [],
           departmentId: "executive_council_office",
-          baseDmgSingle: 10,
-          baseDmgEscalate: 5,
-          baseDmgReplyAll: 20,
-          bonusSingleDmg: 0,
-          bonusEscalateDmg: 0,
-          bonusReplyAllDmg: 0,
-          bonusGlobalDmg: 0,
-          bonusSingleDmgMult: 0,
-          bonusEscalateDmgMult: 0,
-          bonusReplyAllDmgMult: 0,
-          bonusGlobalDmgMult: 0,
-          bonusMaxHp: 0,
-          bonusWins: 0,
+          singleDmg: 10,
+          escalateDmg: 5,
+          replyAllDmg: 20,
+          globalDmg: 0,
+          singleDmgMult: 0,
+          escalateDmgMult: 0,
+          replyAllDmgMult: 0,
+          globalDmgMult: 0,
           deflectPower: 3,
-          bonusDeflect: 0,
+          deflect: 0,
           deflectCharge: 0,
           followUpChance: 0,
           replyDeptSplash: 0,
@@ -2251,7 +2247,7 @@
         if (e.key !== "0") return;
         const tag = document.activeElement && document.activeElement.tagName;
         if (tag === "INPUT" || tag === "TEXTAREA") return;
-        state.player.bonusEscalateDmg += 100;
+        state.player.escalateDmg += 100;
         state.player.reputation += 1000;
         updateUI();
         if (!document.getElementById("shop-screen").classList.contains("hidden"))
@@ -2336,49 +2332,55 @@
           `${324 + state.player.year * 4} Messages, 1 Unread`;
       }
 
-      function getUnitMaxHp(u) {
-        if (u.id === "player") {
-          let max = 50 + u.title.hpBonus + u.bonusMaxHp;
-          if (u.salutation && u.salutation.hpBonus) max += u.salutation.hpBonus;
-          if (u.signOff && u.signOff.hpBonus) max += u.signOff.hpBonus;
-          u.buffs.forEach((b) => {
-            if (b.eff && b.eff.hpBonus) max += b.eff.hpBonus;
-          });
-          getUnitSetBonuses(u).forEach((b) => {
-            if (b.hpBonus) max += b.hpBonus;
-          });
-          return max;
-        }
-        let max = u.maxHp;
-        if (u.salutation && u.salutation.hpBonus) max += u.salutation.hpBonus;
-        if (u.signOff && u.signOff.hpBonus) max += u.signOff.hpBonus;
-        u.buffs.forEach((b) => {
-          if (b.eff && b.eff.hpBonus) max += b.eff.hpBonus;
-        });
-        getUnitSetBonuses(u).forEach((b) => {
-          if (b.hpBonus) max += b.hpBonus;
-        });
-        return max;
-      }
+      const STAT_FIELDS = [
+        "escalateDmg",
+        "replyAllDmg",
+        "globalDmg",
+        "singleDmg",
+        "singleDmgMult",
+        "escalateDmgMult",
+        "replyAllDmgMult",
+        "globalDmgMult",
+        "maxHp",
+        "wins",
+        "deflectPower",
+        "deflect",
+        "followUpChance",
+        "replyDeptSplash",
+        "escalateRecoverPerHit",
+        "defFlat",
+        "def",
+        "heal",
+        "levMult",
+        "repBonus",
+        "endRep",
+        "bounceBase",
+      ];
 
       function applyUnitDefaults(u) {
-        if (u.baseDmgSingle == null) u.baseDmgSingle = 10;
-        if (u.baseDmgEscalate == null) u.baseDmgEscalate = 5;
-        if (u.baseDmgReplyAll == null) u.baseDmgReplyAll = 20;
-        if (u.bonusSingleDmg == null) u.bonusSingleDmg = 0;
-        if (u.bonusEscalateDmg == null) u.bonusEscalateDmg = 0;
-        if (u.bonusReplyAllDmg == null) u.bonusReplyAllDmg = 0;
-        if (u.bonusGlobalDmg == null) u.bonusGlobalDmg = 0;
-        if (u.bonusSingleDmgMult == null) u.bonusSingleDmgMult = 0;
-        if (u.bonusEscalateDmgMult == null) u.bonusEscalateDmgMult = 0;
-        if (u.bonusReplyAllDmgMult == null) u.bonusReplyAllDmgMult = 0;
-        if (u.bonusGlobalDmgMult == null) u.bonusGlobalDmgMult = 0;
+        if (u.singleDmg == null) u.singleDmg = 10;
+        if (u.escalateDmg == null) u.escalateDmg = 5;
+        if (u.replyAllDmg == null) u.replyAllDmg = 20;
+        if (u.globalDmg == null) u.globalDmg = 0;
+        if (u.singleDmgMult == null) u.singleDmgMult = 0;
+        if (u.escalateDmgMult == null) u.escalateDmgMult = 0;
+        if (u.replyAllDmgMult == null) u.replyAllDmgMult = 0;
+        if (u.globalDmgMult == null) u.globalDmgMult = 0;
+        if (u.maxHp == null) u.maxHp = 0;
+        if (u.wins == null) u.wins = 0;
         if (u.deflectPower == null) u.deflectPower = 3;
-        if (u.bonusDeflect == null) u.bonusDeflect = 0;
+        if (u.deflect == null) u.deflect = 0;
         if (u.deflectCharge == null) u.deflectCharge = 0;
         if (u.followUpChance == null) u.followUpChance = 0;
         if (u.replyDeptSplash == null) u.replyDeptSplash = 0;
         if (u.escalateRecoverPerHit == null) u.escalateRecoverPerHit = 0;
+        if (u.defFlat == null) u.defFlat = 0;
+        if (u.def == null) u.def = 0;
+        if (u.heal == null) u.heal = 0;
+        if (u.levMult == null) u.levMult = 0;
+        if (u.repBonus == null) u.repBonus = 0;
+        if (u.endRep == null) u.endRep = 0;
+        if (u.bounceBase == null) u.bounceBase = 0;
         if (!Array.isArray(u.deflectLines) || u.deflectLines.length === 0) {
           u.deflectLines = [
             "I'm pausing to document this thread before responding further.",
@@ -2416,228 +2418,85 @@
           return false;
         });
       }
+      function getUnitStatBlocks(u) {
+        const blocks = [];
+        if (!u) return blocks;
+        blocks.push(u);
+        if (u.title) blocks.push(u.title);
+        if (u.salutation) blocks.push(u.salutation);
+        if (u.signOff) blocks.push(u.signOff);
+        if (Array.isArray(u.signatures)) blocks.push(...u.signatures);
+        if (Array.isArray(u.buffs))
+          blocks.push(...u.buffs.map((b) => (b.eff ? b.eff : b)));
+        blocks.push(...getUnitSetBonuses(u));
+        return blocks;
+      }
+
+      function computeUnitStats(u) {
+        const stats = Object.fromEntries(STAT_FIELDS.map((f) => [f, 0]));
+        getUnitStatBlocks(u).forEach((block) => {
+          if (!block) return;
+          STAT_FIELDS.forEach((field) => {
+            const value = block[field];
+            if (typeof value === "number") stats[field] += value;
+          });
+        });
+        return stats;
+      }
+
+      function getUnitMaxHp(u) {
+        return computeUnitStats(u).maxHp;
+      }
 
       function getUnitDeflectPower(u) {
-        let power = u.deflectPower || 0;
-        if (u.bonusDeflect) power += u.bonusDeflect;
-        if (u.title && u.title.deflectBonus) power += u.title.deflectBonus;
-        if (u.salutation && u.salutation.deflectBonus)
-          power += u.salutation.deflectBonus;
-        if (u.signOff && u.signOff.deflectBonus) power += u.signOff.deflectBonus;
-        u.buffs.forEach((b) => {
-          if (b.eff && b.eff.deflectBonus) power += b.eff.deflectBonus;
-        });
-        getUnitSetBonuses(u).forEach((b) => {
-          if (b.deflectBonus) power += b.deflectBonus;
-        });
-        return power;
+        const stats = computeUnitStats(u);
+        return stats.deflectPower + stats.deflect;
       }
 
       function getUnitTotalHeal(u) {
-        let heal = 0;
-        u.buffs.forEach((b) => {
-          if (b.eff.heal) heal += b.eff.heal;
-        });
-        if (u.signatures)
-          u.signatures.forEach((s) => {
-            if (s.heal) heal += s.heal;
-          });
-        if (u.salutation && u.salutation.heal) heal += u.salutation.heal;
-        if (u.signOff && u.signOff.heal) heal += u.signOff.heal;
-        getUnitSetBonuses(u).forEach((b) => {
-          if (b.heal) heal += b.heal;
-        });
-        return heal;
+        return computeUnitStats(u).heal;
       }
 
       function getUnitDamage(u, type) {
-        let base = 0;
-        if (type === "single") base = u.baseDmgSingle ?? 10;
-        else if (type === "escalate") base = u.baseDmgEscalate ?? 5;
-        else base = u.baseDmgReplyAll ?? 20;
-
-        let bonus = 0;
-        if (u.bonusGlobalDmg) bonus += u.bonusGlobalDmg;
-        if (type === "single" && u.bonusSingleDmg) bonus += u.bonusSingleDmg;
-        if (type === "escalate" && u.bonusEscalateDmg)
-          bonus += u.bonusEscalateDmg;
-        if (type === "replyAll" && u.bonusReplyAllDmg)
-          bonus += u.bonusReplyAllDmg;
-
-        const addBonuses = (obj) => {
-          if (!obj) return;
-          if (obj.globalDmgBonus) bonus += obj.globalDmgBonus;
-          if (obj.dmgBonus) bonus += obj.dmgBonus;
-          if (obj.dmg) bonus += obj.dmg;
-          if (type === "single" && obj.singleDmgBonus)
-            bonus += obj.singleDmgBonus;
-          if (type === "escalate" && obj.escalateDmgBonus)
-            bonus += obj.escalateDmgBonus;
-          if (type === "replyAll" && obj.replyAllDmgBonus)
-            bonus += obj.replyAllDmgBonus;
+        const stats = computeUnitStats(u);
+        const fieldMap = {
+          single: { dmg: "singleDmg", mult: "singleDmgMult" },
+          escalate: { dmg: "escalateDmg", mult: "escalateDmgMult" },
+          replyAll: { dmg: "replyAllDmg", mult: "replyAllDmgMult" },
         };
-
-        if (u.title) addBonuses(u.title);
-        if (u.salutation) addBonuses(u.salutation);
-        if (u.signOff) addBonuses(u.signOff);
-        u.buffs.forEach((b) => addBonuses(b.eff));
-        getUnitSetBonuses(u).forEach((b) => addBonuses(b));
-
-        let mult = 1;
-        if (u.bonusGlobalDmgMult) mult += u.bonusGlobalDmgMult;
-        if (type === "single" && u.bonusSingleDmgMult)
-          mult += u.bonusSingleDmgMult;
-        if (type === "escalate" && u.bonusEscalateDmgMult)
-          mult += u.bonusEscalateDmgMult;
-        if (type === "replyAll" && u.bonusReplyAllDmgMult)
-          mult += u.bonusReplyAllDmgMult;
-
-        const addMults = (obj) => {
-          if (!obj) return;
-          if (obj.globalDmgMult) mult += obj.globalDmgMult;
-          if (obj.dmgMult) mult += obj.dmgMult;
-          if (type === "single" && obj.singleDmgMult)
-            mult += obj.singleDmgMult;
-          if (type === "escalate" && obj.escalateDmgMult)
-            mult += obj.escalateDmgMult;
-          if (type === "replyAll" && obj.replyAllDmgMult)
-            mult += obj.replyAllDmgMult;
-        };
-
-        if (u.signatures)
-          u.signatures.forEach((s) => {
-            addMults(s);
-          });
-        addMults(u.salutation);
-        addMults(u.signOff);
-        u.buffs.forEach((b) => addMults(b.eff));
-        getUnitSetBonuses(u).forEach((b) => addMults(b));
-
-        return (base + bonus) * mult;
+        const fields = fieldMap[type] || fieldMap.single;
+        const base = stats[fields.dmg] || 0;
+        const flat = stats.globalDmg || 0;
+        const mult = 1 + (stats.globalDmgMult || 0) + (stats[fields.mult] || 0);
+        return (base + flat) * mult;
       }
 
       function getUnitFlatDef(u) {
-        let defFlat = 0;
-        u.buffs.forEach((b) => {
-          if (b.eff && b.eff.defFlat) defFlat += b.eff.defFlat;
-        });
-        if (u.signatures)
-          u.signatures.forEach((s) => {
-            if (s.defFlat) defFlat += s.defFlat;
-          });
-        if (u.salutation && u.salutation.defFlat) defFlat += u.salutation.defFlat;
-        if (u.signOff && u.signOff.defFlat) defFlat += u.signOff.defFlat;
-        getUnitSetBonuses(u).forEach((b) => {
-          if (b.defFlat) defFlat += b.defFlat;
-        });
-        return defFlat;
+        return computeUnitStats(u).defFlat;
       }
 
       function getUnitTotalDef(u) {
-        let def = 0;
-        u.buffs.forEach((b) => {
-          if (b.eff.def) def += b.eff.def;
-        });
-        if (u.signatures)
-          u.signatures.forEach((s) => {
-            if (s.def) def += s.def;
-          });
-        if (u.salutation && u.salutation.def) def += u.salutation.def;
-        if (u.signOff && u.signOff.def) def += u.signOff.def;
-        getUnitSetBonuses(u).forEach((b) => {
-          if (b.def) def += b.def;
-        });
-        return def;
+        return computeUnitStats(u).def;
       }
 
       function getUnitFollowUpChance(u) {
-        let chance = u.followUpChance || 0;
-        const addChance = (obj) => {
-          if (!obj) return;
-          if (obj.followUpChance) chance += obj.followUpChance;
-        };
-        addChance(u.title);
-        addChance(u.salutation);
-        addChance(u.signOff);
-        if (u.signatures)
-          u.signatures.forEach((s) => addChance(s));
-        u.buffs.forEach((b) => addChance(b.eff));
-        getUnitSetBonuses(u).forEach((b) => addChance(b));
+        const chance = computeUnitStats(u).followUpChance;
         return Math.max(0, Math.min(1, chance));
       }
 
       function getUnitReplyDeptSplash(u) {
-        let splash = u.replyDeptSplash || 0;
-        const addSplash = (obj) => {
-          if (!obj) return;
-          if (obj.replyDeptSplash) splash += obj.replyDeptSplash;
-        };
-        addSplash(u.title);
-        addSplash(u.salutation);
-        addSplash(u.signOff);
-        if (u.signatures)
-          u.signatures.forEach((s) => addSplash(s));
-        u.buffs.forEach((b) => addSplash(b.eff));
-        getUnitSetBonuses(u).forEach((b) => addSplash(b));
-        return splash;
+        return computeUnitStats(u).replyDeptSplash;
       }
 
       function getUnitEscalateRecover(u) {
-        let recover = u.escalateRecoverPerHit || 0;
-        const addRecover = (obj) => {
-          if (!obj) return;
-          if (obj.escalateRecoverPerHit)
-            recover += obj.escalateRecoverPerHit;
-        };
-        addRecover(u.title);
-        addRecover(u.salutation);
-        addRecover(u.signOff);
-        if (u.signatures)
-          u.signatures.forEach((s) => addRecover(s));
-        u.buffs.forEach((b) => addRecover(b.eff));
-        getUnitSetBonuses(u).forEach((b) => addRecover(b));
-        return recover;
-      }
-
-      function getUnitGlobalDamageBonus(u) {
-        let bonus = u.bonusGlobalDmg || 0;
-        const addBonus = (obj) => {
-          if (!obj) return;
-          if (obj.globalDmgBonus) bonus += obj.globalDmgBonus;
-        };
-        addBonus(u.title);
-        addBonus(u.salutation);
-        addBonus(u.signOff);
-        if (u.signatures) u.signatures.forEach((s) => addBonus(s));
-        u.buffs.forEach((b) => addBonus(b.eff));
-        getUnitSetBonuses(u).forEach((b) => addBonus(b));
-        return bonus;
-      }
-
-      function getUnitGlobalDamageMult(u) {
-        let mult = u.bonusGlobalDmgMult || 0;
-        const addMult = (obj) => {
-          if (!obj) return;
-          if (obj.globalDmgMult) mult += obj.globalDmgMult;
-        };
-        addMult(u.title);
-        addMult(u.salutation);
-        addMult(u.signOff);
-        if (u.signatures) u.signatures.forEach((s) => addMult(s));
-        u.buffs.forEach((b) => addMult(b.eff));
-        getUnitSetBonuses(u).forEach((b) => addMult(b));
-        return mult;
+        return computeUnitStats(u).escalateRecoverPerHit;
       }
 
       function getUnitBounceDamage(u) {
-        const base = getUnitSetBonuses(u).reduce(
-          (acc, b) => acc + (b.bounceBase || 0),
-          0,
-        );
-        if (!base) return 0;
-        const bonus = getUnitGlobalDamageBonus(u);
-        const mult = getUnitGlobalDamageMult(u);
-        return Math.floor((base + bonus) * (1 + mult));
+        const stats = computeUnitStats(u);
+        if (!stats.bounceBase) return 0;
+        const mult = 1 + (stats.globalDmgMult || 0);
+        return Math.floor((stats.bounceBase + stats.globalDmg) * mult);
       }
 
       function pickBounceTarget(attacker, primaryTarget) {
@@ -2710,15 +2569,8 @@
 
       function getPlayerLeverageGain(base) {
         const p = state.player;
-        let mult = 1;
-        if (p.buffs.find((b) => b.eff.lev)) mult *= 2;
-        p.signatures.forEach((s) => {
-          if (s.levMult) mult += s.levMult;
-        });
-        if (p.salutation && p.salutation.levMult) mult += p.salutation.levMult;
-        if (p.signOff && p.signOff.levMult) mult += p.signOff.levMult;
-
-        let gain = base * mult;
+        const stats = computeUnitStats(p);
+        let gain = base * (1 + stats.levMult);
         p.signatures.forEach((s) => {
           if (s.doubleLevChance && Math.random() < s.doubleLevChance) gain *= 2;
         });
@@ -2828,8 +2680,8 @@
         const buff = JSON.parse(JSON.stringify(contact));
         buff.usedBy = usedBy;
         target.buffs.push(buff);
-        if (buff.eff && buff.eff.hpBonus) {
-          target.hp = Math.min(getUnitMaxHp(target), target.hp + buff.eff.hpBonus);
+        if (buff.eff && buff.eff.maxHp) {
+          target.hp = Math.min(getUnitMaxHp(target), target.hp + buff.eff.maxHp);
         }
       }
 
@@ -2841,14 +2693,12 @@
         const p = state.player;
         applyUnitDefaults(p);
         p._lineBags = {};
-        p.hp = getUnitMaxHp(p);
         p.ult = 0;
-        p.wins = 3 + p.bonusWins;
-        if (p.salutation && p.salutation.bonusWins)
-          p.wins += p.salutation.bonusWins;
-        if (p.signOff && p.signOff.bonusWins) p.wins += p.signOff.bonusWins;
         p.buffs = []; // Reset combat buffs
         p.deflectCharge = 0;
+        const baseStats = computeUnitStats(p);
+        p.hp = getUnitMaxHp(p);
+        p.currentWins = Math.max(0, Math.floor(baseStats.wins));
 
         // Reset global CONTACTS.usedBy
         CONTACTS.forEach((c) => (c.usedBy = null));
@@ -2935,7 +2785,7 @@
             bonus: "+2 reply to dmg",
             cost: 10,
             apply: () => {
-              state.player.bonusSingleDmg += 2;
+              state.player.singleDmg += 2;
             },
           },
           {
@@ -2944,7 +2794,7 @@
             bonus: "+2 escalate dmg",
             cost: 10,
             apply: () => {
-              state.player.bonusEscalateDmg += 2;
+              state.player.escalateDmg += 2;
             },
           },
           {
@@ -2953,7 +2803,7 @@
             bonus: "+3 reply all dmg",
             cost: 12,
             apply: () => {
-              state.player.bonusReplyAllDmg += 3;
+              state.player.replyAllDmg += 3;
             },
           },
           {
@@ -2962,7 +2812,7 @@
             bonus: "+1 all comms dmg",
             cost: 12,
             apply: () => {
-              state.player.bonusGlobalDmg += 1;
+              state.player.globalDmg += 1;
             },
           },
           {
@@ -2971,7 +2821,7 @@
             bonus: "+5 Max Credibility",
             cost: 10,
             apply: () => {
-              state.player.bonusMaxHp += 5;
+              state.player.maxHp += 5;
             },
           },
           {
@@ -2980,7 +2830,7 @@
             bonus: "+1 New Win/Round",
             cost: 10,
             apply: () => {
-              state.player.bonusWins += 1;
+              state.player.wins += 1;
             },
           },
           {
@@ -2989,7 +2839,7 @@
             bonus: "+2 Deflect",
             cost: 10,
             apply: () => {
-              state.player.bonusDeflect += 2;
+              state.player.deflect += 2;
             },
           },
         ];
@@ -3037,21 +2887,17 @@
             optOutList.classList.add("hidden");
           }
 
-          // Signature bonus
           let bonusRep = 0;
-          state.player.signatures.forEach((sig) => {
-            if (sig.repBonus) {
-              bonusRep +=
-                (state.removedTotal -
-                  opponents.filter((o) => o.hp > 0).length -
-                  state.removedByPlayer) *
-                sig.repBonus;
-            }
-          });
-
-          // CC bonus (Constituent Liaison)
-          if (state.player.buffs.some((b) => b.eff && b.eff.endRep)) {
-            bonusRep += 4;
+          const repStats = computeUnitStats(state.player);
+          if (repStats.repBonus) {
+            bonusRep +=
+              (state.removedTotal -
+                opponents.filter((o) => o.hp > 0).length -
+                state.removedByPlayer) *
+              repStats.repBonus;
+          }
+          if (repStats.endRep) {
+            bonusRep += repStats.endRep;
           }
 
           const totalRep = baseRep + totalOptOutRep + bonusRep;
@@ -3120,7 +2966,7 @@
         document.getElementById("promotion-new-title").innerText =
           nextTitle.name;
         document.getElementById("promotion-perks").innerText =
-          `+${nextTitle.hpBonus} HP, +${nextTitle.singleDmgBonus} reply to dmg, Limit: ${nextTitle.sigLimit} Sig, ${nextTitle.addressLimit} CCs`;
+          `+${nextTitle.maxHp} HP, +${nextTitle.singleDmg} reply to dmg, Limit: ${nextTitle.sigLimit} Sig, ${nextTitle.addressLimit} CCs`;
       }
 
       function shuffle(array) {
@@ -3218,23 +3064,23 @@
       function describeEffect(effect) {
         if (!effect) return "";
         const parts = [];
-        if (effect.bonusGlobalDmg)
-          parts.push(`+${effect.bonusGlobalDmg} all comms dmg`);
-        if (effect.bonusSingleDmg)
-          parts.push(`+${effect.bonusSingleDmg} reply to dmg`);
-        if (effect.bonusEscalateDmg)
-          parts.push(`+${effect.bonusEscalateDmg} escalate dmg`);
-        if (effect.bonusReplyAllDmg)
-          parts.push(`+${effect.bonusReplyAllDmg} reply all dmg`);
-        if (effect.bonusGlobalDmgMult)
-          parts.push(`+${Math.round(effect.bonusGlobalDmgMult * 100)}% all comms dmg`);
-        if (effect.bonusSingleDmgMult)
-          parts.push(`+${Math.round(effect.bonusSingleDmgMult * 100)}% reply to dmg`);
-        if (effect.bonusEscalateDmgMult)
-          parts.push(`+${Math.round(effect.bonusEscalateDmgMult * 100)}% escalate dmg`);
-        if (effect.bonusReplyAllDmgMult)
-          parts.push(`+${Math.round(effect.bonusReplyAllDmgMult * 100)}% reply all dmg`);
-        if (effect.deflectBonus) parts.push(`Deflect +${effect.deflectBonus}`);
+        if (effect.globalDmg)
+          parts.push(`+${effect.globalDmg} all comms dmg`);
+        if (effect.singleDmg)
+          parts.push(`+${effect.singleDmg} reply to dmg`);
+        if (effect.escalateDmg)
+          parts.push(`+${effect.escalateDmg} escalate dmg`);
+        if (effect.replyAllDmg)
+          parts.push(`+${effect.replyAllDmg} reply all dmg`);
+        if (effect.globalDmgMult)
+          parts.push(`+${Math.round(effect.globalDmgMult * 100)}% all comms dmg`);
+        if (effect.singleDmgMult)
+          parts.push(`+${Math.round(effect.singleDmgMult * 100)}% reply to dmg`);
+        if (effect.escalateDmgMult)
+          parts.push(`+${Math.round(effect.escalateDmgMult * 100)}% escalate dmg`);
+        if (effect.replyAllDmgMult)
+          parts.push(`+${Math.round(effect.replyAllDmgMult * 100)}% reply all dmg`);
+        if (effect.deflect) parts.push(`Deflect +${effect.deflect}`);
         if (effect.defFlat) parts.push(`Reduce damage by ${effect.defFlat}`);
         if (effect.followUpChance)
           parts.push(`Follow-up +${Math.round(effect.followUpChance * 100)}%`);
@@ -3594,7 +3440,7 @@
           `${Math.ceil(p.hp)}/${totalMaxHp}`;
         document.getElementById("player-ult-fill").style.width = ultPct + "%";
         document.getElementById("player-win-status").innerText =
-          `New Wins: ${p.wins} Available`;
+          `New Wins: ${p.currentWins} Available`;
 
         if (hpPct < 30)
           document.getElementById("player-hp-fill").className =
@@ -3623,7 +3469,7 @@
           `${p.addressBook.length}/${p.title.addressLimit} Contacts`;
 
         document.getElementById("reply-all-btn").disabled = p.ult < 100;
-        document.getElementById("win-btn").disabled = p.wins <= 0;
+        document.getElementById("win-btn").disabled = p.currentWins <= 0;
 
         document.getElementById("game-quarter-display").innerText =
           `${p.quarter} - YEAR ${p.year}`;
@@ -3876,7 +3722,7 @@
             "bg-blue-50 border-l-4 border-blue-500",
           );
         } else if (type === "PROMOTE") {
-          p.wins--;
+          p.currentWins--;
           p.hp = Math.min(totalMaxHp, p.hp + 20);
           const selfPromoteLine = drawFromLineBag(
             p,
