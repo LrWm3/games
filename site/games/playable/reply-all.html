@@ -1256,11 +1256,12 @@
           title: "Marketing Advisor",
           rarity: "uncommon",
           departmentId: "executive_council_office",
-          bonus: "Reduce incoming damage by 3.",
+          bonus: "Reduce incoming damage by 3 & Self-Promote +5.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to advise on our tactical approach and reduce reputational risk.",
           eff: {
             defFlat: 3,
+            selfPromoteHeal: 5,
           },
           usedBy: null,
         },
@@ -4412,6 +4413,7 @@
         "globalDmgMult",
         "maxHp",
         "wins",
+        "selfPromoteHeal",
         "deflectPower",
         "deflect",
         "followUpChance",
@@ -4443,6 +4445,7 @@
         if (u.followUpChance == null) u.followUpChance = 0;
         if (u.replyDeptSplash == null) u.replyDeptSplash = 0;
         if (u.escalateRecoverPerHit == null) u.escalateRecoverPerHit = 0;
+        if (u.selfPromoteHeal == null) u.selfPromoteHeal = 0;
         if (u.defFlat == null) u.defFlat = 0;
         if (u.def == null) u.def = 0;
         if (u.heal == null) u.heal = 0;
@@ -4564,6 +4567,11 @@
 
       function getUnitTotalHeal(u) {
         return computeUnitStats(u).heal;
+      }
+
+      function getUnitSelfPromoteHeal(u, base) {
+        const stats = computeUnitStats(u);
+        return (base || 0) + (stats.selfPromoteHeal || 0);
       }
 
       function getUnitDamage(u, type) {
@@ -5044,6 +5052,14 @@
               state.player.deflect += 2;
             },
           },
+          {
+            id: "upgrade_self_promote",
+            name: "Visibility Coaching",
+            bonus: "Self-Promote +5",
+            apply: () => {
+              state.player.selfPromoteHeal += 5;
+            },
+          },
         ];
       }
 
@@ -5484,6 +5500,8 @@
         if (effect.replyAllDmgMult)
           parts.push(`+${Math.round(effect.replyAllDmgMult * 100)}% reply all`);
         if (effect.deflect) parts.push(`Deflect +${effect.deflect}`);
+        if (effect.selfPromoteHeal)
+          parts.push(`Self-Promote +${effect.selfPromoteHeal}`);
         if (effect.defFlat) parts.push(`Reduce damage by ${effect.defFlat}`);
         if (effect.followUpChance)
           parts.push(`Follow-up +${Math.round(effect.followUpChance * 100)}%`);
@@ -5923,8 +5941,9 @@
           `-${Math.floor(singleDmg)} Cred to Target`;
         document.getElementById("escalate-subtext").innerText =
           `-${Math.floor(escalateDmg)} Cred to All`;
+        const selfPromoteHeal = getUnitSelfPromoteHeal(p, 20);
         document.getElementById("promote-subtext").innerText =
-          `+20 Cred, -1 Win`;
+          `+${Math.floor(selfPromoteHeal)} Cred, -1 Win`;
         document.getElementById("deflect-subtext").innerText =
           `Block ${Math.floor(getUnitDeflectPower(p))}`;
         document.getElementById("ult-subtext").innerText =
@@ -6206,7 +6225,8 @@
           );
         } else if (type === "PROMOTE") {
           p.currentWins--;
-          p.hp = Math.min(totalMaxHp, p.hp + 20);
+          const promoteHeal = getUnitSelfPromoteHeal(p, 20);
+          p.hp = Math.min(totalMaxHp, p.hp + promoteHeal);
           const selfPromoteLine = drawFromLineBag(
             p,
             getPlayerLineBagKey("selfPromote", missionId, titleId),
@@ -6352,7 +6372,8 @@
               );
             } else if (roll < 0.3 && a.hp < 20 && a.wins > 0) {
               a.wins--;
-              a.hp = Math.min(getUnitMaxHp(a), a.hp + 15);
+              const promoteHeal = getUnitSelfPromoteHeal(a, 15);
+              a.hp = Math.min(getUnitMaxHp(a), a.hp + promoteHeal);
               const selfPromoteLine = drawFromLineBag(
                 a,
                 "selfPromote",
