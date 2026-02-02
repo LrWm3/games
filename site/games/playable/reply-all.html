@@ -384,7 +384,7 @@
     <div id="address-book" class="fixed inset-0 z-[110] bg-black/50 items-center justify-center p-4 hidden flex">
         <div class="bg-[#c0c0c0] retro-border w-full max-w-sm shadow-2xl">
             <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
-                <span>PERSONNEL DIRECTORY</span>
+                <span id="address-book-title">PERSONNEL DIRECTORY</span>
                 <button onclick="closeAddressBook()" class="px-1">✕</button>
             </div>
             <div id="contact-list" class="max-h-64 overflow-y-auto p-2 space-y-2 bg-white"></div>
@@ -1451,6 +1451,14 @@ const MISSIONS = [
             return def;
         }
 
+        function isContactInLoop(contactId) {
+            if (state.player.buffs.some(b => b.id === contactId)) return true;
+            for (const opp of opponents) {
+                if (opp.buffs.some(b => b.id === contactId)) return true;
+            }
+            return false;
+        }
+
         function getPlayerLeverageGain(base) {
             const p = state.player;
             let mult = 1;
@@ -1693,6 +1701,8 @@ const MISSIONS = [
 
             // Seminars
             const semList = document.getElementById('shop-seminars'); semList.innerHTML = "";
+            const semHeader = semList.previousElementSibling;
+            semHeader.innerText = `Enroll in Seminar (Address Book: ${state.player.addressBook.length}/${state.player.title.addressLimit})`;
             state.shop.seminars.forEach(c => {
                 const cost = c.rarity === 'rare' ? 12 : (c.rarity === 'uncommon' ? 7 : 4);
                 semList.appendChild(createShopCard(c.name, c.bonus, cost, () => {
@@ -1812,7 +1822,7 @@ const MISSIONS = [
             document.getElementById('attack-subtext').innerText = `-${Math.floor(dmg)} Cred to Target`;
             document.getElementById('promote-subtext').innerText = `+20 Cred, -1 Win`;
             document.getElementById('ult-subtext').innerText = `-20 Cred to All`;
-            document.getElementById('loop-subtext').innerText = `Summon Buff`;
+            document.getElementById('loop-subtext').innerText = `${p.addressBook.length}/${p.title.addressLimit} Contacts`;
 
             document.getElementById('reply-all-btn').disabled = p.ult < 100;
             document.getElementById('win-btn').disabled = p.wins <= 0;
@@ -1956,7 +1966,7 @@ const MISSIONS = [
 
                     a.hp = Math.min(getUnitMaxHp(a), a.hp + getUnitTotalHeal(a));
 
-                    const availFromBook = a.addressBook.filter(id => !a.buffs.some(b => b.id === id));
+                    const availFromBook = a.addressBook.filter(id => !isContactInLoop(id));
                     if (roll < 0.15 && availFromBook.length > 0) {
                         const id = availFromBook[Math.floor(Math.random() * availFromBook.length)];
                         const c = CONTACTS.find(con => con.id === id);
@@ -2014,6 +2024,7 @@ const MISSIONS = [
 
         function openAddressBook() {
             const list = document.getElementById('contact-list'); list.innerHTML = "";
+            document.getElementById('address-book-title').innerText = `PERSONNEL DIRECTORY (${state.player.addressBook.length}/${state.player.title.addressLimit})`;
 
             // CCs
             const headerCC = document.createElement('div');
@@ -2024,7 +2035,7 @@ const MISSIONS = [
             state.player.addressBook.forEach(id => {
                 const c = CONTACTS.find(con => con.id === id);
                 if (!c) return;
-                const isUsed = state.player.buffs.some(b => b.id === c.id);
+                const isUsed = isContactInLoop(c.id);
                 const btn = document.createElement('div');
                 btn.className = `p-2 border border-gray-300 flex flex-col ${isUsed ? 'opacity-40 grayscale bg-gray-100' : 'cursor-pointer hover:bg-blue-50'}`;
                 btn.innerHTML = `<div class="flex justify-between font-bold text-[#000080] text-xs"><span>${c.name} - ${c.title}</span><span class="text-[9px]">${isUsed ? 'IN LOOP' : 'AVAIL'}</span></div><div class="text-[10px] italic">${c.bonus}</div>`;
