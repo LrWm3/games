@@ -4109,7 +4109,7 @@
       initLoginOption();
 
       document.addEventListener("keydown", (e) => {
-        if (e.key !== "0") return;
+        if (e.key !== "-") return;
         const tag = document.activeElement && document.activeElement.tagName;
         if (tag === "INPUT" || tag === "TEXTAREA") return;
         state.player.escalateDmg += 100;
