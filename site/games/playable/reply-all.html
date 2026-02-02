@@ -17,7 +17,7 @@
          * FUNCTIONALITY CATALOG:
          * 1. Turn-based FFA Loop: Logic preserved.
          * 2. Targeting: TargetId state mapped to "To:" field.
-         * 3. Actions: ATTACK (Circle Back), SELF-PROMOTE (New Wins/Heal), ULT (Reply All), CC (Summon/Buff).
+        * 3. Actions: ATTACK (Circle Back), ESCALATE (Light AOE), DEFLECT (Block/Reflect), SELF-PROMOTE (New Wins/Heal), ULT (Reply All), CC (Summon/Buff).
          * 4. Address Book: Modal system for assigning permanent buffs.
          * 5. Personality: Specific attack types (Compliance, Value, Time, Accusatory).
          */
@@ -725,7 +725,7 @@
 
           <!-- Action Panel -->
           <div class="p-2 bg-[#c0c0c0] border-t-2 border-white shrink-0">
-            <div class="grid grid-cols-2 gap-1.5 max-w-lg mx-auto">
+            <div class="grid grid-cols-3 gap-1.5 max-w-lg mx-auto">
               <button
                 onclick="performAction('ATTACK')"
                 class="retro-button py-2 flex flex-col items-center"
@@ -733,6 +733,15 @@
                 <span class="text-[11px] font-bold">Circle Back</span>
                 <span id="attack-subtext" class="text-[8px] opacity-70 italic"
                   >Target Reply</span
+                >
+              </button>
+              <button
+                onclick="performAction('ESCALATE')"
+                class="retro-button py-2 flex flex-col items-center"
+              >
+                <span class="text-[11px] font-bold">Escalate</span>
+                <span id="escalate-subtext" class="text-[8px] opacity-70 italic"
+                  >Threadwide Nudge</span
                 >
               </button>
               <button
@@ -752,6 +761,15 @@
                 <span class="text-[11px] font-bold">Self-Promote</span>
                 <span id="promote-subtext" class="text-[8px] opacity-70 italic"
                   >Log a Win</span
+                >
+              </button>
+              <button
+                onclick="performAction('DEFLECT')"
+                class="retro-button py-2 flex flex-col items-center"
+              >
+                <span class="text-[11px] font-bold">Deflect</span>
+                <span id="deflect-subtext" class="text-[8px] opacity-70 italic"
+                  >Hold Line</span
                 >
               </button>
               <button
@@ -1918,14 +1936,35 @@
           signOff: null,
           bccContacts: [],
           department: "Executive Council Office",
-          bonusDmg: 0,
+          baseDmgSingle: 10,
+          baseDmgEscalate: 5,
+          baseDmgReplyAll: 20,
+          bonusSingleDmg: 0,
+          bonusEscalateDmg: 0,
+          bonusReplyAllDmg: 0,
+          bonusGlobalDmg: 0,
+          bonusSingleDmgMult: 0,
+          bonusEscalateDmgMult: 0,
+          bonusReplyAllDmgMult: 0,
+          bonusGlobalDmgMult: 0,
           bonusMaxHp: 0,
           bonusWins: 0,
+          deflectPower: 3,
+          bonusDeflect: 0,
+          deflectCharge: 0,
           attacks: [
             "I believe we need to circle back to your recent comments. My focus is on department output, and I suggest yours should be too.",
             "I've already addressed this in my previous email, but for the sake of clarity, I'll repeat it: This is not my responsibility.",
             "Perhaps we should focus on next quarters' deliverables instead of speculating on departmental policy?",
             "I'm happy to discuss this in a 1-on-1, but I don't believe this is a productive use of the 'All-Staff' distribution list.",
+          ],
+          escalateLines: [
+            "Given the lack of alignment here, I'm escalating this thread for broader visibility.",
+            "I'm escalating this to keep all stakeholders aligned and reduce duplication.",
+          ],
+          deflectLines: [
+            "I'm taking a moment to document this properly before responding further.",
+            "Let's pause and keep the thread within scope. I'll respond once this is reframed.",
           ],
           selfPromoteLines: [
             "Just logging a new win—the quarterly audit came back clean under my supervision. Always happy to add value to the organization!",
@@ -2044,6 +2083,36 @@
         return max;
       }
 
+      function applyUnitDefaults(u) {
+        if (u.baseDmgSingle == null) u.baseDmgSingle = 10;
+        if (u.baseDmgEscalate == null) u.baseDmgEscalate = 5;
+        if (u.baseDmgReplyAll == null) u.baseDmgReplyAll = 20;
+        if (u.bonusSingleDmg == null) u.bonusSingleDmg = 0;
+        if (u.bonusEscalateDmg == null) u.bonusEscalateDmg = 0;
+        if (u.bonusReplyAllDmg == null) u.bonusReplyAllDmg = 0;
+        if (u.bonusGlobalDmg == null) u.bonusGlobalDmg = 0;
+        if (u.bonusSingleDmgMult == null) u.bonusSingleDmgMult = 0;
+        if (u.bonusEscalateDmgMult == null) u.bonusEscalateDmgMult = 0;
+        if (u.bonusReplyAllDmgMult == null) u.bonusReplyAllDmgMult = 0;
+        if (u.bonusGlobalDmgMult == null) u.bonusGlobalDmgMult = 0;
+        if (u.deflectPower == null) u.deflectPower = 3;
+        if (u.bonusDeflect == null) u.bonusDeflect = 0;
+        if (u.deflectCharge == null) u.deflectCharge = 0;
+      }
+
+      function getUnitDeflectPower(u) {
+        let power = u.deflectPower || 0;
+        if (u.bonusDeflect) power += u.bonusDeflect;
+        if (u.title && u.title.deflectBonus) power += u.title.deflectBonus;
+        if (u.salutation && u.salutation.deflectBonus)
+          power += u.salutation.deflectBonus;
+        if (u.signOff && u.signOff.deflectBonus) power += u.signOff.deflectBonus;
+        u.buffs.forEach((b) => {
+          if (b.eff && b.eff.deflectBonus) power += b.eff.deflectBonus;
+        });
+        return power;
+      }
+
       function getUnitTotalHeal(u) {
         let heal = 0;
         u.buffs.forEach((b) => {
@@ -2058,25 +2127,68 @@
         return heal;
       }
 
-      function getUnitTotalDmg(u) {
-        let d = 10;
-        if (u.id === "player") {
-          d += u.title.dmgBonus + u.bonusDmg;
-        }
-        if (u.salutation && u.salutation.dmgBonus) d += u.salutation.dmgBonus;
-        if (u.signOff && u.signOff.dmgBonus) d += u.signOff.dmgBonus;
-        u.buffs.forEach((b) => {
-          if (b.eff.dmg) d += b.eff.dmg;
-        });
+      function getUnitDamage(u, type) {
+        let base = 0;
+        if (type === "single") base = u.baseDmgSingle ?? 10;
+        else if (type === "escalate") base = u.baseDmgEscalate ?? 5;
+        else base = u.baseDmgReplyAll ?? 20;
+
+        let bonus = 0;
+        if (u.bonusGlobalDmg) bonus += u.bonusGlobalDmg;
+        if (type === "single" && u.bonusSingleDmg) bonus += u.bonusSingleDmg;
+        if (type === "escalate" && u.bonusEscalateDmg)
+          bonus += u.bonusEscalateDmg;
+        if (type === "replyAll" && u.bonusReplyAllDmg)
+          bonus += u.bonusReplyAllDmg;
+
+        const addBonuses = (obj) => {
+          if (!obj) return;
+          if (obj.globalDmgBonus) bonus += obj.globalDmgBonus;
+          if (obj.dmgBonus) bonus += obj.dmgBonus;
+          if (obj.dmg) bonus += obj.dmg;
+          if (type === "single" && obj.singleDmgBonus)
+            bonus += obj.singleDmgBonus;
+          if (type === "escalate" && obj.escalateDmgBonus)
+            bonus += obj.escalateDmgBonus;
+          if (type === "replyAll" && obj.replyAllDmgBonus)
+            bonus += obj.replyAllDmgBonus;
+        };
+
+        if (u.title) addBonuses(u.title);
+        if (u.salutation) addBonuses(u.salutation);
+        if (u.signOff) addBonuses(u.signOff);
+        u.buffs.forEach((b) => addBonuses(b.eff));
 
         let mult = 1;
+        if (u.bonusGlobalDmgMult) mult += u.bonusGlobalDmgMult;
+        if (type === "single" && u.bonusSingleDmgMult)
+          mult += u.bonusSingleDmgMult;
+        if (type === "escalate" && u.bonusEscalateDmgMult)
+          mult += u.bonusEscalateDmgMult;
+        if (type === "replyAll" && u.bonusReplyAllDmgMult)
+          mult += u.bonusReplyAllDmgMult;
+
+        const addMults = (obj) => {
+          if (!obj) return;
+          if (obj.globalDmgMult) mult += obj.globalDmgMult;
+          if (obj.dmgMult) mult += obj.dmgMult;
+          if (type === "single" && obj.singleDmgMult)
+            mult += obj.singleDmgMult;
+          if (type === "escalate" && obj.escalateDmgMult)
+            mult += obj.escalateDmgMult;
+          if (type === "replyAll" && obj.replyAllDmgMult)
+            mult += obj.replyAllDmgMult;
+        };
+
         if (u.signatures)
           u.signatures.forEach((s) => {
-            if (s.dmgMult) mult += s.dmgMult;
+            addMults(s);
           });
-        if (u.salutation && u.salutation.dmgMult) mult += u.salutation.dmgMult;
-        if (u.signOff && u.signOff.dmgMult) mult += u.signOff.dmgMult;
-        return d * mult;
+        addMults(u.salutation);
+        addMults(u.signOff);
+        u.buffs.forEach((b) => addMults(b.eff));
+
+        return (base + bonus) * mult;
       }
 
       function getUnitTotalDef(u) {
@@ -2091,6 +2203,33 @@
         if (u.salutation && u.salutation.def) def += u.salutation.def;
         if (u.signOff && u.signOff.def) def += u.signOff.def;
         return def;
+      }
+
+      function applyDamage(attacker, target, rawDamage) {
+        let dmg = Math.max(0, Math.floor(rawDamage));
+        let def = getUnitTotalDef(target);
+        dmg = Math.floor(dmg * (1 - def));
+
+        let blocked = 0;
+        if (target.deflectCharge && target.deflectCharge > 0 && dmg > 0) {
+          blocked = Math.min(target.deflectCharge, dmg);
+          dmg -= blocked;
+          target.deflectCharge = 0;
+        }
+
+        target.hp -= dmg;
+
+        let reflected = 0;
+        if (blocked > 0 && attacker) {
+          reflected = blocked;
+          if (attacker.id === "player") {
+            state.player.hp -= reflected;
+          } else if (attacker.hp != null) {
+            attacker.hp -= reflected;
+          }
+        }
+
+        return { dmg, blocked, reflected };
       }
 
       function isContactInLoop(contactId) {
@@ -2165,6 +2304,7 @@
         state.turn = 0;
         state.isProcessing = false;
         const p = state.player;
+        applyUnitDefaults(p);
         p.hp = getUnitMaxHp(p);
         p.ult = 0;
         p.wins = 3 + p.bonusWins;
@@ -2172,6 +2312,7 @@
           p.wins += p.salutation.bonusWins;
         if (p.signOff && p.signOff.bonusWins) p.wins += p.signOff.bonusWins;
         p.buffs = []; // Reset combat buffs
+        p.deflectCharge = 0;
 
         // Reset global CONTACTS.usedBy
         CONTACTS.forEach((c) => (c.usedBy = null));
@@ -2187,8 +2328,10 @@
             ...JSON.parse(JSON.stringify(employee)),
             ...JSON.parse(JSON.stringify(missionOpponent)),
           };
+          applyUnitDefaults(clone);
           clone.hp = clone.maxHp;
           clone.buffs = [];
+          clone.deflectCharge = 0;
           // Filter lines based on missionId
           clone.attacks = employee.lines
             .filter((l) => l.missionId === null || l.missionId === mission.id)
@@ -2249,12 +2392,39 @@
         // Promotions (Stats)
         const promoOptions = [
           {
-            id: "dmg",
-            name: "Project Excellence",
-            bonus: "+2 DMG",
+            id: "dmg_single",
+            name: "Targeted Push",
+            bonus: "+2 Single DMG",
             cost: 10,
             apply: () => {
-              state.player.bonusDmg += 2;
+              state.player.bonusSingleDmg += 2;
+            },
+          },
+          {
+            id: "dmg_escalate",
+            name: "Escalation Training",
+            bonus: "+2 Escalate DMG",
+            cost: 10,
+            apply: () => {
+              state.player.bonusEscalateDmg += 2;
+            },
+          },
+          {
+            id: "dmg_replyall",
+            name: "Reply-All Mastery",
+            bonus: "+3 Reply-All DMG",
+            cost: 12,
+            apply: () => {
+              state.player.bonusReplyAllDmg += 3;
+            },
+          },
+          {
+            id: "dmg_global",
+            name: "Agency-Wide Influence",
+            bonus: "+1 Global DMG",
+            cost: 12,
+            apply: () => {
+              state.player.bonusGlobalDmg += 1;
             },
           },
           {
@@ -2274,7 +2444,16 @@
             apply: () => {
               state.player.bonusWins += 1;
             },
-          }
+          },
+          {
+            id: "deflect",
+            name: "Deflection Coaching",
+            bonus: "+2 Deflect",
+            cost: 10,
+            apply: () => {
+              state.player.bonusDeflect += 2;
+            },
+          },
         ];
         state.shop.promotions = shuffle([...promoOptions])
           .slice(0, 2)
@@ -2644,12 +2823,19 @@
           document.getElementById("player-hp-fill").className =
             "h-full bg-green-500 transition-[width] duration-300 ease-out";
 
-        const dmg = getUnitTotalDmg(p);
+        const singleDmg = getUnitDamage(p, "single");
+        const escalateDmg = getUnitDamage(p, "escalate");
+        const replyAllDmg = getUnitDamage(p, "replyAll");
         document.getElementById("attack-subtext").innerText =
-          `-${Math.floor(dmg)} Cred to Target`;
+          `-${Math.floor(singleDmg)} Cred to Target`;
+        document.getElementById("escalate-subtext").innerText =
+          `-${Math.floor(escalateDmg)} Cred to All`;
         document.getElementById("promote-subtext").innerText =
           `+20 Cred, -1 Win`;
-        document.getElementById("ult-subtext").innerText = `-20 Cred to All`;
+        document.getElementById("deflect-subtext").innerText =
+          `Block ${Math.floor(getUnitDeflectPower(p))}`;
+        document.getElementById("ult-subtext").innerText =
+          `-${Math.floor(replyAllDmg)} Cred to All`;
         document.getElementById("loop-subtext").innerText =
           `${p.addressBook.length}/${p.title.addressLimit} Contacts`;
 
@@ -2735,19 +2921,22 @@
         p.hp = Math.min(totalMaxHp, p.hp + getUnitTotalHeal(p));
 
         if (type === "ATTACK") {
-          let d = getUnitTotalDmg(p);
+          let d = getUnitDamage(p, "single");
 
           if (p.nextAttackMult) {
             d *= p.nextAttackMult;
             p.nextAttackMult = 1; // reset back to 1
           }
 
-          target.hp -= d;
+          const result = applyDamage(p, target, d);
           let levGain = getPlayerLeverageGain(20);
           p.ult += levGain;
 
           const q = p.attacks[Math.floor(Math.random() * p.attacks.length)];
-          const body = formatMessageBody(p, q);
+          let body = formatMessageBody(p, q);
+          if (result.blocked > 0) {
+            body += `<br><br><strong>Deflected:</strong> ${result.blocked} reflected.`;
+          }
           addEmailToLog(
             p.name,
             target.name,
@@ -2756,6 +2945,43 @@
             "border-l-4 border-blue-600",
           );
           if (target.hp <= 0) handleOpponentDefeat(target, true);
+        } else if (type === "ESCALATE") {
+          const d = getUnitDamage(p, "escalate");
+          let totalBlocked = 0;
+          opponents.forEach((o) => {
+            if (o.hp > 0) {
+              const result = applyDamage(p, o, d);
+              totalBlocked += result.blocked;
+              if (o.hp <= 0) handleOpponentDefeat(o, true);
+            }
+          });
+          let levGain = getPlayerLeverageGain(10);
+          p.ult += levGain;
+          const line = pickRandomItem(p.escalateLines, "I'm escalating this for clarity across the thread.");
+          let body = formatMessageBody(p, line);
+          if (totalBlocked > 0) {
+            body += `<br><br><strong>Deflected:</strong> ${totalBlocked} reflected.`;
+          }
+          addEmailToLog(
+            p.name,
+            "everyone@gov.org",
+            "Escalation Notice",
+            body,
+            "bg-orange-50 border-l-4 border-orange-500",
+          );
+        } else if (type === "DEFLECT") {
+          p.deflectCharge = getUnitDeflectPower(p);
+          const line = pickRandomItem(
+            p.deflectLines,
+            "Holding response to keep this thread scoped and documented.",
+          );
+          addEmailToLog(
+            p.name,
+            "everyone@gov.org",
+            "Holding Response",
+            `${formatMessageBody(p, line)}<br><br><strong>Deflection Ready:</strong> ${p.deflectCharge}`,
+            "bg-blue-50 border-l-4 border-blue-500",
+          );
         } else if (type === "PROMOTE") {
           p.wins--;
           p.hp = Math.min(totalMaxHp, p.hp + 20);
@@ -2771,9 +2997,12 @@
             "bg-green-50 border-l-4 border-green-600",
           );
         } else if (type === "ULT") {
+          const d = getUnitDamage(p, "replyAll");
+          let totalBlocked = 0;
           opponents.forEach((o) => {
             if (o.hp > 0) {
-              o.hp -= 20;
+              const result = applyDamage(p, o, d);
+              totalBlocked += result.blocked;
               if (o.hp <= 0) handleOpponentDefeat(o, true);
             }
           });
@@ -2782,16 +3011,25 @@
             subject: "Fwd: Salary_Discrepancies_2024.xlsx",
             body: "Not sure if I should be sending this to everyone, but since transparency is one of our 'core values', here is the full salary spreadsheet for the department. Enjoy.",
           });
+          let replyBody = replyAllLine.body;
+          if (totalBlocked > 0) {
+            replyBody += `<br><br><strong>Deflected:</strong> ${totalBlocked} reflected.`;
+          }
           addEmailToLog(
             p.name,
             "everyone@gov.org",
             replyAllLine.subject,
-            replyAllLine.body,
+            replyBody,
             "bg-yellow-50 font-bold border-l-4 border-yellow-500",
           );
         }
 
         updateUI();
+        if (state.player.hp <= 0) {
+          state.gameOver = true;
+          setTimeout(showLoseScreen, 4000);
+          return;
+        }
         setTimeout(ffaRound, 800);
       }
 
@@ -2898,61 +3136,117 @@
                 "opacity-70",
               );
             } else {
-              let d = getUnitTotalDmg(a);
-
-              // Select attack type
-              const q = a.attacks[Math.floor(Math.random() * a.attacks.length)];
-              const body = formatMessageBody(a, q);
-
-              if (target.id === "player") {
-                if (
-                  state.player.buffs.find(
-                    (b) => b.eff.dodge && Math.random() < b.eff.dodge,
-                  )
-                ) {
-                  addEmailToLog(
-                    a.name,
-                    state.player.name,
-                    "Urgent Follow-up",
-                    body +
-                      `<br><br>(Thread ignored by <strong>Mittens</strong>. No standing lost.)`,
-                    "text-blue-600",
-                  );
-                } else {
-                  let def = getUnitTotalDef(state.player);
-                  d = Math.floor(d * (1 - def));
-                  state.player.hp -= d;
-                  addEmailToLog(
-                    a.name,
-                    state.player.name,
-                    "Escalation",
-                    body +
-                      `<br><br><strong>Damage to Credibility: -${d}</strong>`,
-                    "bg-red-50 border-l-2 border-red-400",
-                  );
-                  document.getElementById("game-ui").classList.add("shaking");
-                  setTimeout(
-                    () =>
-                      document
-                        .getElementById("game-ui")
-                        .classList.remove("shaking"),
-                    200,
-                  );
-                }
-              } else {
-                let targetDef = getUnitTotalDef(target);
-                d = Math.floor(d * (1 - targetDef));
-                target.hp -= d;
+              const actionRoll = Math.random();
+              if (actionRoll < 0.15 && a.deflectCharge <= 0) {
+                a.deflectCharge = getUnitDeflectPower(a);
+                const deflectLine = pickRandomItem(
+                  a.deflectLines,
+                  "I'm pausing to document this thread before responding further.",
+                );
                 addEmailToLog(
                   a.name,
-                  target.name,
-                  "Internal Memo",
-                  body +
-                    `<br><br>(Targeting ${target.name}. Standing lost: ${d})`,
-                  "text-gray-500 text-[11px]",
+                  "everyone@gov.org",
+                  "Holding Response",
+                  `${formatMessageBody(a, deflectLine)}<br><br><strong>Deflection Ready:</strong> ${a.deflectCharge}`,
+                  "bg-blue-50",
                 );
-                if (target.hp <= 0) handleOpponentDefeat(target);
+              } else if (actionRoll < 0.35) {
+                const d = getUnitDamage(a, "escalate");
+                let totalBlocked = 0;
+                const escalateTargets = [
+                  ...alive.filter((o) => o.id !== a.id),
+                  state.player,
+                ];
+                escalateTargets.forEach((t) => {
+                  if (t.hp > 0) {
+                    const result = applyDamage(a, t, d);
+                    totalBlocked += result.blocked;
+                    if (t !== state.player && t.hp <= 0)
+                      handleOpponentDefeat(t);
+                  }
+                });
+                const escLine = pickRandomItem(
+                  a.escalateLines,
+                  "I'm escalating this across the thread for visibility.",
+                );
+                let escBody = formatMessageBody(a, escLine);
+                if (totalBlocked > 0) {
+                  escBody += `<br><br><strong>Deflected:</strong> ${totalBlocked} reflected.`;
+                }
+                addEmailToLog(
+                  a.name,
+                  "everyone@gov.org",
+                  "Escalation Notice",
+                  escBody,
+                  "bg-orange-50",
+                );
+              } else {
+                let d = getUnitDamage(a, "single");
+
+                // Select attack type
+                const q =
+                  a.attacks[Math.floor(Math.random() * a.attacks.length)];
+                let body = formatMessageBody(a, q);
+
+                if (target.id === "player") {
+                  if (
+                    state.player.buffs.find(
+                      (b) => b.eff.dodge && Math.random() < b.eff.dodge,
+                    )
+                  ) {
+                    addEmailToLog(
+                      a.name,
+                      state.player.name,
+                      "Urgent Follow-up",
+                      body +
+                        `<br><br>(Thread ignored by <strong>Mittens</strong>. No standing lost.)`,
+                      "text-blue-600",
+                    );
+                  } else {
+                    const result = applyDamage(a, state.player, d);
+                    if (result.blocked > 0) {
+                      body += `<br><br><strong>Deflected:</strong> ${result.blocked} reflected.`;
+                    }
+                    addEmailToLog(
+                      a.name,
+                      state.player.name,
+                      "Escalation",
+                      body +
+                        `<br><br><strong>Damage to Credibility: -${result.dmg}</strong>`,
+                      "bg-red-50 border-l-2 border-red-400",
+                    );
+                    document
+                      .getElementById("game-ui")
+                      .classList.add("shaking");
+                    setTimeout(
+                      () =>
+                        document
+                          .getElementById("game-ui")
+                          .classList.remove("shaking"),
+                      200,
+                    );
+                  }
+                } else {
+                  const result = applyDamage(a, target, d);
+                  if (result.blocked > 0) {
+                    body += `<br><br><strong>Deflected:</strong> ${result.blocked} reflected.`;
+                  }
+                  addEmailToLog(
+                    a.name,
+                    target.name,
+                    "Internal Memo",
+                    body +
+                      `<br><br>(Targeting ${target.name}. Standing lost: ${result.dmg})`,
+                    "text-gray-500 text-[11px]",
+                  );
+                  if (target.hp <= 0) handleOpponentDefeat(target);
+                }
               }
+            }
+
+            if (a.hp <= 0) {
+              handleOpponentDefeat(a);
+              return;
             }
 
             if (state.player.hp <= 0) {
