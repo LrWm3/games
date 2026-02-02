@@ -17,7 +17,7 @@
          * FUNCTIONALITY CATALOG:
          * 1. Turn-based FFA Loop: Logic preserved.
          * 2. Targeting: TargetId state mapped to "To:" field.
-        * 3. Actions: ATTACK (Circle Back), ESCALATE (Light AOE), DEFLECT (Block/Reflect), SELF-PROMOTE (New Wins/Heal), ULT (Reply All), CC (Summon/Buff).
+        * 3. Actions: ATTACK (Reply to), ESCALATE (Light AOE), DEFLECT (Block/Reflect), SELF-PROMOTE (New Wins/Heal), ULT (Reply All), CC (Summon/Buff).
          * 4. Address Book: Modal system for assigning permanent buffs.
          * 5. Personality: Specific attack types (Compliance, Value, Time, Accusatory).
          */
@@ -730,7 +730,7 @@
                 onclick="performAction('ATTACK')"
                 class="retro-button py-2 flex flex-col items-center"
               >
-                <span class="text-[11px] font-bold">Circle Back</span>
+                <span class="text-[11px] font-bold">Reply to</span>
                 <span id="attack-subtext" class="text-[8px] opacity-70 italic"
                   >Target Reply</span
                 >
@@ -850,11 +850,11 @@
           title: "Intern",
           rarity: "common",
           department: "Operations",
-          bonus: "+3 attack potency.",
+          bonus: "+3 reply to dmg.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to generate a contact report for this thread.",
           eff: {
-            dmg: 3,
+            singleDmgBonus: 3,
           },
           usedBy: null,
         },
@@ -920,11 +920,11 @@
           title: "Director of Research",
           rarity: "uncommon",
           department: "Marketing",
-          bonus: "+8 attack potency.",
+          bonus: "+8 reply to dmg.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to provide data‑driven context and keep claims grounded.",
           eff: {
-            dmg: 8,
+            singleDmgBonus: 8,
           },
           usedBy: null,
         },
@@ -1006,11 +1006,11 @@
           title: "Public Liaison",
           rarity: "rare",
           department: "Constituent Services",
-          bonus: "+5 DMG and +1 REP if in loop at end of match.",
+          bonus: "+5 reply to dmg and +1 REP if in loop at end of match.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to handle external messaging and stakeholder optics.",
           eff: {
-            dmg: 5,
+            singleDmgBonus: 5,
             endRep: 1,
           },
           usedBy: null,
@@ -1024,7 +1024,7 @@
           addressLimit: 5,
           sigLimit: 2,
           hpBonus: 0,
-          dmgBonus: 0,
+          singleDmgBonus: 0,
         },
         {
           name: "Junior Clerk",
@@ -1032,7 +1032,7 @@
           addressLimit: 7,
           sigLimit: 4,
           hpBonus: 10,
-          dmgBonus: 2,
+          singleDmgBonus: 2,
         },
         {
           name: "Senior Clerk",
@@ -1040,7 +1040,7 @@
           addressLimit: 9,
           sigLimit: 6,
           hpBonus: 20,
-          dmgBonus: 4,
+          singleDmgBonus: 4,
         },
         {
           name: "Program Coordinator",
@@ -1048,7 +1048,7 @@
           addressLimit: 11,
           sigLimit: 8,
           hpBonus: 30,
-          dmgBonus: 6,
+          singleDmgBonus: 6,
         },
         {
           name: "Assistant Director",
@@ -1056,7 +1056,7 @@
           addressLimit: 13,
           sigLimit: 10,
           hpBonus: 40,
-          dmgBonus: 8,
+          singleDmgBonus: 8,
         },
         {
           name: "Deputy Director",
@@ -1064,7 +1064,7 @@
           addressLimit: 15,
           sigLimit: 11,
           hpBonus: 50,
-          dmgBonus: 10,
+          singleDmgBonus: 10,
         },
         {
           name: "Director",
@@ -1072,7 +1072,7 @@
           addressLimit: 17,
           sigLimit: 12,
           hpBonus: 60,
-          dmgBonus: 12,
+          singleDmgBonus: 12,
         },
         {
           name: "Deputy Director",
@@ -1080,7 +1080,7 @@
           addressLimit: 20,
           sigLimit: 15,
           hpBonus: 70,
-          dmgBonus: 14,
+          singleDmgBonus: 14,
         }
       ];
 
@@ -1103,9 +1103,9 @@
         {
           id: "per_my_last",
           name: "Per my last email,",
-          bonus: "Increase reply strength by 10%.",
+          bonus: "+10% reply to dmg.",
           rarity: "uncommon",
-          dmgMult: 0.1,
+          singleDmgMult: 0.1,
         },
         {
           id: "best",
@@ -1131,9 +1131,9 @@
         {
           id: "disclaimer",
           name: "Standard Disclaimer Applied",
-          bonus: "Increase reply strength by 10%.",
+          bonus: "+10% reply to dmg.",
           rarity: "common",
-          dmgMult: 0.1,
+          singleDmgMult: 0.1,
         },
         {
           id: "breakroom",
@@ -1155,9 +1155,9 @@
         {
           id: "team",
           name: "Team,",
-          bonus: "+2 DMG",
+          bonus: "+2 reply to dmg",
           rarity: "common",
-          dmgBonus: 2,
+          singleDmgBonus: 2,
         },
         {
           id: "colleagues",
@@ -1176,9 +1176,9 @@
         {
           id: "formal",
           name: "To whom it may concern,",
-          bonus: "+5 DMG",
+          bonus: "+5 reply to dmg",
           rarity: "rare",
-          dmgBonus: 5,
+          singleDmgBonus: 5,
         },
         {
           id: "morning",
@@ -1190,9 +1190,9 @@
         {
           id: "project_team",
           name: "To the Project Team,",
-          bonus: "+2 DMG",
+          bonus: "+2 reply to dmg",
           rarity: "common",
-          dmgBonus: 2,
+          singleDmgBonus: 2,
         },
         {
           id: "greetings",
@@ -1228,9 +1228,9 @@
         {
           id: "best_regards",
           name: "Best Regards,",
-          bonus: "+5 DMG",
+          bonus: "+5 reply to dmg",
           rarity: "uncommon",
-          dmgBonus: 5,
+          singleDmgBonus: 5,
         },
         {
           id: "v_respectfully",
@@ -1273,7 +1273,7 @@
         {
           id: "urgent",
           name: "Urgent Flag",
-          bonus: "Next attack deals 2x damage.",
+          bonus: "Next reply to deals 2x damage.",
           rarity: "uncommon",
           effect: "doubleDmg",
         },
@@ -2394,7 +2394,7 @@
           {
             id: "dmg_single",
             name: "Targeted Push",
-            bonus: "+2 Single DMG",
+            bonus: "+2 reply to dmg",
             cost: 10,
             apply: () => {
               state.player.bonusSingleDmg += 2;
@@ -2403,7 +2403,7 @@
           {
             id: "dmg_escalate",
             name: "Escalation Training",
-            bonus: "+2 Escalate DMG",
+            bonus: "+2 escalate dmg",
             cost: 10,
             apply: () => {
               state.player.bonusEscalateDmg += 2;
@@ -2412,7 +2412,7 @@
           {
             id: "dmg_replyall",
             name: "Reply-All Mastery",
-            bonus: "+3 Reply-All DMG",
+            bonus: "+3 reply all dmg",
             cost: 12,
             apply: () => {
               state.player.bonusReplyAllDmg += 3;
@@ -2421,7 +2421,7 @@
           {
             id: "dmg_global",
             name: "Agency-Wide Influence",
-            bonus: "+1 Global DMG",
+            bonus: "+1 all comms dmg",
             cost: 12,
             apply: () => {
               state.player.bonusGlobalDmg += 1;
@@ -2579,7 +2579,7 @@
         document.getElementById("promotion-new-title").innerText =
           nextTitle.name;
         document.getElementById("promotion-perks").innerText =
-          `+${nextTitle.hpBonus} HP, +${nextTitle.dmgBonus} DMG, Limit: ${nextTitle.sigLimit} Sig, ${nextTitle.addressLimit} CCs`;
+          `+${nextTitle.hpBonus} HP, +${nextTitle.singleDmgBonus} reply to dmg, Limit: ${nextTitle.sigLimit} Sig, ${nextTitle.addressLimit} CCs`;
       }
 
       function shuffle(array) {
@@ -2940,7 +2940,7 @@
           addEmailToLog(
             p.name,
             target.name,
-            "Circle Back",
+            "Reply to",
             body,
             "border-l-4 border-blue-600",
           );
@@ -3355,7 +3355,7 @@
             "SYSTEM",
             state.player.name,
             "Urgent Flag Set",
-            `Your next attack will deal 2x damage.`,
+            `Your next reply to will deal 2x damage.`,
             "italic text-gray-500 text-[10px]",
           );
         } else if (bcc.effect === "redirect") {
