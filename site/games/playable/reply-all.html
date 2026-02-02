@@ -106,7 +106,7 @@
         display: flex;
         flex-wrap: wrap;
         gap: 4px;
-        max-height: 28px;
+        max-height: 38px;
         overflow: hidden;
         transition: max-height 0.2s ease;
       }
@@ -3549,9 +3549,10 @@
             updateUI();
           };
           pill.className = `target-pill px-2 py-0.5 flex flex-col min-w-[90px] cursor-pointer bg-white ${isActive ? "active" : "opacity-60 grayscale"}`;
-          pill.innerHTML = `<div class="flex justify-between font-bold text-[8px] truncate"><span class="mr-2">${o.name}</span><span>${o.hp > 0 ? o.wins + "w" : "UNSUBBED"}</span></div>
+          const textClass = isActive ? "text-white" : "text-gray-900";
+          pill.innerHTML = `<div class="flex justify-between font-bold text-[8px] truncate ${isActive ? "text-white" : "text-gray-800"}"><span class="mr-2">${o.name}</span><span>${o.hp > 0 ? o.wins + "w" : "UNSUBBED"}</span></div>
                                 <div class="h-1 w-full bg-gray-200 mt-0.5"><div class="h-full bg-red-500 transition-[width] duration-300 ease-out" style="width: ${pct}%"></div></div>
-                                <div class="text-[8px] text-gray-500 mt-0.5">${Math.max(0, Math.ceil(o.hp))}/${getUnitMaxHp(o)} Cred</div>`;
+                                <div class="text-[8px] mt-0.5 ${textClass}">${Math.max(0, Math.ceil(o.hp))}/${getUnitMaxHp(o)} Cred</div>`;
           oppContainer.appendChild(pill);
         });
         selector.appendChild(oppContainer);
