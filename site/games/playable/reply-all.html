@@ -102,6 +102,25 @@
         border: 2px solid var(--win-border-light);
         box-shadow: inset -1px -1px 0 var(--win-border-dark);
       }
+      .contacts-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        max-height: 28px;
+        overflow: hidden;
+        transition: max-height 0.2s ease;
+      }
+      .contacts-container.expanded {
+        max-height: 140px;
+      }
+      .contacts-more {
+        cursor: pointer;
+        color: #000080;
+        font-style: normal;
+        font-weight: bold;
+        text-decoration: underline;
+        margin-left: 4px;
+      }
       .target-pill {
         transition: all 0.2s;
         border: 1px solid #808080;
@@ -843,6 +862,35 @@
         </div>
       </div>
     </div>
+    <div
+      id="cc-profile"
+      class="fixed inset-0 z-[120] bg-black/50 items-center justify-center p-4 hidden flex"
+    >
+      <div class="bg-[#c0c0c0] retro-border w-full max-w-xs shadow-2xl">
+        <div
+          class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
+        >
+          <span id="cc-profile-title">CC Profile</span>
+          <button onclick="closeCcProfile()" class="px-1">✕</button>
+        </div>
+        <div class="p-3 bg-white text-[11px] space-y-2">
+          <div>
+            <div class="font-bold text-[#000080]" id="cc-profile-name"></div>
+            <div class="text-gray-600" id="cc-profile-role"></div>
+          </div>
+          <div class="text-gray-700" id="cc-profile-dept"></div>
+          <div class="text-gray-700 italic" id="cc-profile-effect"></div>
+        </div>
+        <div class="p-2 flex justify-end bg-[#c0c0c0]">
+          <button
+            onclick="closeCcProfile()"
+            class="retro-button text-xs px-4"
+          >
+            CLOSE
+          </button>
+        </div>
+      </div>
+    </div>
 
     <script>
       // --- GAME DATA ---
@@ -1186,6 +1234,22 @@
           heal: 1,
         },
         {
+          id: "coffee_break",
+          name: "Sent from the breakroom coffee line",
+          bonus: "+2% leverage gain.",
+          rarity: "common",
+          setId: "coffee_lovers",
+          levMult: 0.02,
+        },
+        {
+          id: "double_espresso",
+          name: "Powered by double espresso",
+          bonus: "+1 reply to dmg.",
+          rarity: "common",
+          setId: "coffee_lovers",
+          singleDmgBonus: 1,
+        },
+        {
           id: "disclaimer",
           name: "Standard Disclaimer Applied",
           bonus: "+10% reply to dmg.",
@@ -1359,32 +1423,42 @@
         },
       ];
 
-      const COMMS_SETS = [
+      const SET_DEFS = [
         {
           id: "earth_set",
           name: "Sustainability Protocol",
-          salutationId: "sustainability_team",
-          signOffId: "solidarity_earth",
-          signatureIds: ["environment_printing"],
+          items: [
+            { type: "salutation", id: "sustainability_team" },
+            { type: "signoff", id: "solidarity_earth" },
+            { type: "signature", id: "environment_printing" },
+          ],
           effect: {
             bonusGlobalDmg: 1,
             deflectBonus: 1,
             escalateRecoverPerHit: 1,
           },
         },
-      ];
-
-      const CONTACT_SETS = [
         {
           id: "it_duo",
           name: "Infrastructure Coverage",
-          contactIds: [
-            "cc_willy_boy_information_technology",
-            "cc_colin_information_technology",
+          items: [
+            { type: "contact", id: "cc_willy_boy_information_technology" },
+            { type: "contact", id: "cc_colin_information_technology" },
           ],
           effect: {
             replyDeptSplash: 2,
             followUpChance: 0.15,
+          },
+        },
+        {
+          id: "coffee_lovers",
+          name: "Coffee Lovers",
+          items: [
+            { type: "signature", id: "coffee_break" },
+            { type: "signature", id: "double_espresso" },
+          ],
+          effect: {
+            bounceBase: 5,
           },
         },
       ];
@@ -1522,6 +1596,9 @@
             "I cannot continue this conversation without a physical copy of the minutes in front of me. Unsubscribing.",
           selfPromote:
             "I've successfully digitized the 1998 archive. Legal integrity has never been higher.",
+          deflectLines: [
+            "Given the compliance implications, I'm pausing to document this thread properly before responding.",
+          ],
           lines: [
             {
               text: "The lack of physical documentation is a direct violation of the 2004 Record Keeping Act.",
@@ -1544,7 +1621,15 @@
               missionId: "paper",
             },
             {
-              text: "I'm CC-ing the Archivist. We are losing history one deleted email at a time.",
+              text: "This change will directly result in a loss of admissible evidence one deleted email at a time.",
+              missionId: "paper",
+            },
+            {
+              text: "Please confirm who authorized this change so Legal can document the decision trail.",
+              missionId: null,
+            },
+            {
+              text: "I'm adding a retention note here in case this thread is requested later.",
               missionId: null,
             },
           ],
@@ -2129,6 +2214,18 @@
         state.player.email = email;
       });
 
+      document.addEventListener("keydown", (e) => {
+        if (e.key !== "0") return;
+        const tag = document.activeElement && document.activeElement.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+        state.player.bonusEscalateDmg += 100;
+        state.player.reputation += 1000;
+        updateUI();
+        if (!document.getElementById("shop-screen").classList.contains("hidden"))
+          updateShopUI();
+        alert("Debug boost: +100 escalate dmg, +1000 REP.");
+      });
+
       function transitionTo(screenId) {
         const screens = [
           "start-screen",
@@ -2178,8 +2275,23 @@
           "Enlarge your career",
           "Inheritance Notification",
           "Meeting?",
+          "Action Required: Password Reset",
+          "Last Chance: Office Supply Lottery",
+          "Invoice Attached",
+          "Team Lunch Sign-Up",
+          "Weekly Pipeline Digest",
+          "Travel Reimbursement Pending",
+          "Urgent: Calendar Sync",
+          "Wellness Survey Reminder",
+          "FW: Please Review",
+          "Recruitment Outreach",
+          "Security Notice",
+          "New Policy Update",
+          "Printer Status Alert",
+          "Quarterly Town Hall",
+          "Zoom Recording Available",
         ];
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 16; i++) {
           const spam = document.createElement("div");
           spam.className =
             "grid grid-cols-12 p-2 border-b border-gray-100 bg-gray-50 text-gray-400 opacity-60";
@@ -2234,33 +2346,42 @@
         if (u.followUpChance == null) u.followUpChance = 0;
         if (u.replyDeptSplash == null) u.replyDeptSplash = 0;
         if (u.escalateRecoverPerHit == null) u.escalateRecoverPerHit = 0;
+        if (!Array.isArray(u.deflectLines) || u.deflectLines.length === 0) {
+          u.deflectLines = [
+            "I'm pausing to document this thread before responding further.",
+          ];
+        }
       }
 
       function getUnitSetBonuses(u) {
         const bonuses = [];
-        if (u.salutation && u.signOff && Array.isArray(u.signatures)) {
-          COMMS_SETS.forEach((set) => {
-            const hasSig = set.signatureIds.some((id) =>
-              u.signatures.some((s) => s.id === id),
-            );
-            if (
-              hasSig &&
-              u.salutation.id === set.salutationId &&
-              u.signOff.id === set.signOffId
-            ) {
-              bonuses.push(set.effect);
-            }
-          });
-        }
-        if (Array.isArray(u.buffs) && u.buffs.length > 0) {
-          const ids = new Set(u.buffs.map((b) => b.id));
-          CONTACT_SETS.forEach((set) => {
-            if (set.contactIds.every((id) => ids.has(id))) {
-              bonuses.push(set.effect);
-            }
-          });
-        }
+        SET_DEFS.forEach((set) => {
+          if (isSetActive(u, set)) bonuses.push(set.effect);
+        });
         return bonuses;
+      }
+
+      function isSetActive(u, set) {
+        if (!u || !set) return false;
+        if (!Array.isArray(set.items) || set.items.length === 0) return false;
+        const hasContact = (id) => {
+          if (!Array.isArray(u.buffs)) return false;
+          return u.buffs.some((b) => b.id === id);
+        };
+        const hasSignature = (id) => {
+          if (!Array.isArray(u.signatures)) return false;
+          return u.signatures.some((s) => s.id === id);
+        };
+        return set.items.every((item) => {
+          if (!item || !item.type || !item.id) return false;
+          if (item.type === "salutation")
+            return u.salutation && u.salutation.id === item.id;
+          if (item.type === "signoff")
+            return u.signOff && u.signOff.id === item.id;
+          if (item.type === "signature") return hasSignature(item.id);
+          if (item.type === "contact") return hasContact(item.id);
+          return false;
+        });
       }
 
       function getUnitDeflectPower(u) {
@@ -2445,6 +2566,57 @@
         return recover;
       }
 
+      function getUnitGlobalDamageBonus(u) {
+        let bonus = u.bonusGlobalDmg || 0;
+        const addBonus = (obj) => {
+          if (!obj) return;
+          if (obj.globalDmgBonus) bonus += obj.globalDmgBonus;
+        };
+        addBonus(u.title);
+        addBonus(u.salutation);
+        addBonus(u.signOff);
+        if (u.signatures) u.signatures.forEach((s) => addBonus(s));
+        u.buffs.forEach((b) => addBonus(b.eff));
+        getUnitSetBonuses(u).forEach((b) => addBonus(b));
+        return bonus;
+      }
+
+      function getUnitGlobalDamageMult(u) {
+        let mult = u.bonusGlobalDmgMult || 0;
+        const addMult = (obj) => {
+          if (!obj) return;
+          if (obj.globalDmgMult) mult += obj.globalDmgMult;
+        };
+        addMult(u.title);
+        addMult(u.salutation);
+        addMult(u.signOff);
+        if (u.signatures) u.signatures.forEach((s) => addMult(s));
+        u.buffs.forEach((b) => addMult(b.eff));
+        getUnitSetBonuses(u).forEach((b) => addMult(b));
+        return mult;
+      }
+
+      function getUnitBounceDamage(u) {
+        const base = getUnitSetBonuses(u).reduce(
+          (acc, b) => acc + (b.bounceBase || 0),
+          0,
+        );
+        if (!base) return 0;
+        const bonus = getUnitGlobalDamageBonus(u);
+        const mult = getUnitGlobalDamageMult(u);
+        return Math.floor((base + bonus) * (1 + mult));
+      }
+
+      function pickBounceTarget(attacker, primaryTarget) {
+        const units = [...opponents, state.player];
+        const choices = units.filter(
+          (u) => u && u.hp > 0 && u !== attacker && u !== primaryTarget,
+        );
+        return choices.length
+          ? choices[Math.floor(Math.random() * choices.length)]
+          : null;
+      }
+
       function applyDamage(attacker, target, rawDamage) {
         let dmg = Math.max(0, Math.floor(rawDamage));
         const flatDef = getUnitFlatDef(target);
@@ -2600,6 +2772,23 @@
       function isContactImplicated(contact) {
         if (!contact || !contact.employeeId) return false;
         return opponents.some((o) => o.employeeId === contact.employeeId);
+      }
+
+      function openCcProfile(contact) {
+        const deptName = getDepartmentName(contact.departmentId);
+        document.getElementById("cc-profile-title").innerText = "CC Profile";
+        document.getElementById("cc-profile-name").innerText = contact.name;
+        document.getElementById("cc-profile-role").innerText = contact.title;
+        document.getElementById("cc-profile-dept").innerText = deptName
+          ? `Department: ${deptName}`
+          : "Department: N/A";
+        document.getElementById("cc-profile-effect").innerText =
+          contact.bonus || "Effect: N/A";
+        document.getElementById("cc-profile").classList.remove("hidden");
+      }
+
+      function closeCcProfile() {
+        document.getElementById("cc-profile").classList.add("hidden");
       }
 
       function addContactBuff(target, contact, usedBy) {
@@ -3021,6 +3210,7 @@
         if (effect.escalateRecoverPerHit)
           parts.push(`Escalate recover +${effect.escalateRecoverPerHit}`);
         if (effect.heal) parts.push(`+${effect.heal} Cred/turn`);
+        if (effect.bounceBase) parts.push(`Bounce +${effect.bounceBase} base`);
         return parts.join(", ");
       }
 
@@ -3032,46 +3222,43 @@
         if (setBox) {
           const parts = [];
           parts.push(`<div class="text-[10px] font-bold uppercase text-gray-500 mb-1">Set Bonuses</div>`);
-
-          if (COMMS_SETS.length > 0) {
-            parts.push(`<div class="text-[10px] font-bold uppercase text-gray-400 mt-1">Comms Sets</div>`);
-            COMMS_SETS.forEach((set) => {
-              const hasSal = state.player.salutation && state.player.salutation.id === set.salutationId;
-              const hasOff = state.player.signOff && state.player.signOff.id === set.signOffId;
-              const hasSig = state.player.signatures.some((s) =>
-                set.signatureIds.includes(s.id),
-              );
-              const active = hasSal && hasOff && hasSig;
-              const sal = SALUTATIONS.find((s) => s.id === set.salutationId);
-              const off = SIGNOFFS.find((s) => s.id === set.signOffId);
-              const sigNames = set.signatureIds
-                .map((id) => SIGNATURES.find((s) => s.id === id)?.name || id)
-                .join(" / ");
-              const missing = [
-                hasSal ? null : sal?.name || set.salutationId,
-                hasOff ? null : off?.name || set.signOffId,
-                hasSig ? null : sigNames,
-              ].filter(Boolean);
-              parts.push(
-                `<div class="text-[10px] ${active ? "text-emerald-700" : "text-gray-600"}">
-                  <strong>${set.name}</strong> — ${describeEffect(set.effect)}
-                  ${active ? " (ACTIVE)" : missing.length ? ` (Missing: ${missing.join(", ")})` : ""}
-                </div>`,
-              );
+          SET_DEFS.forEach((set) => {
+            const active = isSetActive(state.player, set);
+            const missing = [];
+            const reqParts = set.items.map((item) => {
+              if (!item) return "";
+              if (item.type === "salutation") {
+                const sal = SALUTATIONS.find((s) => s.id === item.id);
+                if (!state.player.salutation || state.player.salutation.id !== item.id)
+                  missing.push(sal?.name || item.id);
+                return sal?.name || item.id;
+              }
+              if (item.type === "signoff") {
+                const off = SIGNOFFS.find((s) => s.id === item.id);
+                if (!state.player.signOff || state.player.signOff.id !== item.id)
+                  missing.push(off?.name || item.id);
+                return off?.name || item.id;
+              }
+              if (item.type === "signature") {
+                const sig = SIGNATURES.find((s) => s.id === item.id);
+                if (!state.player.signatures.some((s) => s.id === item.id))
+                  missing.push(sig?.name || item.id);
+                return sig?.name || item.id;
+              }
+              if (item.type === "contact") {
+                const c = CONTACTS.find((c) => c.id === item.id);
+                return `${c?.name || item.id} (in loop)`;
+              }
+              return item.id;
             });
-          }
-
-          if (CONTACT_SETS.length > 0) {
-            parts.push(`<div class="text-[10px] font-bold uppercase text-gray-400 mt-2">Contact Sets</div>`);
-            CONTACT_SETS.forEach((set) => {
-              const names = set.contactIds
-                .map((id) => CONTACTS.find((c) => c.id === id)?.name || id)
-                .join(" + ");
-              parts.push(
-                `<div class="text-[10px] text-gray-600"><strong>${set.name}</strong> — ${names}. ${describeEffect(set.effect)} (Active when both are in loop.)</div>`,
-              );
-            });
-          }
+            const reqText = reqParts.filter(Boolean).join(" + ");
+            parts.push(
+              `<div class="text-[10px] ${active ? "text-emerald-700" : "text-gray-600"}">
+                <strong>${set.name}</strong> — ${reqText}. ${describeEffect(set.effect)}
+                ${active ? " (ACTIVE)" : missing.length ? ` (Missing: ${missing.join(", ")})` : ""}
+              </div>`,
+            );
+          });
           setBox.innerHTML = parts.join("");
         }
 
@@ -3412,6 +3599,9 @@
 
         const selector = document.getElementById("target-selector");
         selector.innerHTML = "";
+        const oppContainer = document.createElement("div");
+        oppContainer.className = "contacts-container";
+        const maxOppPreview = 4;
         opponents.forEach((o) => {
           const isActive = state.targetId === o.id;
           const pct = Math.max(0, (o.hp / getUnitMaxHp(o)) * 100);
@@ -3423,22 +3613,75 @@
           pill.className = `target-pill px-2 py-0.5 flex flex-col min-w-[90px] cursor-pointer bg-white ${isActive ? "active" : "opacity-60 grayscale"}`;
           pill.innerHTML = `<div class="flex justify-between font-bold text-[8px] truncate"><span class="mr-2">${o.name}</span><span>${o.hp > 0 ? o.wins + "w" : "UNSUBBED"}</span></div>
                                 <div class="h-1 w-full bg-gray-200 mt-0.5"><div class="h-full bg-red-500" style="width: ${pct}%"></div></div>`;
-          selector.appendChild(pill);
+          oppContainer.appendChild(pill);
         });
+        selector.appendChild(oppContainer);
+        if (opponents.length > maxOppPreview) {
+          const more = document.createElement("span");
+          const hiddenCount = opponents.length - maxOppPreview;
+          more.className = "contacts-more text-[9px]";
+          more.innerText = `+ ${hiddenCount} more`;
+          more.onclick = () => {
+            const expanded = oppContainer.classList.toggle("expanded");
+            more.innerText = expanded ? "Show less" : `+ ${hiddenCount} more`;
+          };
+          selector.appendChild(more);
+        }
 
         const ccDisplay = document.getElementById("cc-display");
         const activeBuffs = [
           ...state.player.buffs,
           ...opponents.flatMap((o) => o.buffs || []),
         ];
-        ccDisplay.innerHTML = activeBuffs.length
-          ? activeBuffs
-              .map(
-                (b) =>
-                  `<span class="bg-blue-800 text-white px-1 text-[9px] rounded-sm">${b.name} (by ${b.usedBy})</span>`,
-              )
-              .join(" ")
-          : "No one in loop.";
+        if (activeBuffs.length === 0) {
+          ccDisplay.className = "flex gap-1 text-gray-400 italic";
+          ccDisplay.innerHTML = "No one in loop.";
+        } else {
+          const usedByOrder = (name) => {
+            if (name === state.player.name) return 0;
+            const idx = opponents.findIndex((o) => o.name === name);
+            return idx >= 0 ? idx + 1 : 999;
+          };
+          const sortedBuffs = [...activeBuffs].sort((a, b) => {
+            const byUsed = usedByOrder(a.usedBy) - usedByOrder(b.usedBy);
+            if (byUsed !== 0) return byUsed;
+            const deptA = getDepartmentName(a.departmentId);
+            const deptB = getDepartmentName(b.departmentId);
+            const byDept = deptA.localeCompare(deptB);
+            if (byDept !== 0) return byDept;
+            return (a.name || "").localeCompare(b.name || "");
+          });
+
+          ccDisplay.className = "flex items-center gap-1 text-gray-600";
+          ccDisplay.innerHTML = "";
+          const container = document.createElement("div");
+          container.className = "contacts-container";
+          const maxPreview = 4;
+          sortedBuffs.forEach((b) => {
+            const pill = document.createElement("button");
+            pill.className =
+              "bg-blue-800 text-white px-1 text-[9px] rounded-sm hover:bg-blue-700";
+            pill.type = "button";
+            pill.innerHTML = `${b.name} (by ${b.usedBy})`;
+            pill.onclick = () => openCcProfile(b);
+            container.appendChild(pill);
+          });
+          ccDisplay.appendChild(container);
+
+          if (sortedBuffs.length > maxPreview) {
+            const more = document.createElement("span");
+            const hiddenCount = sortedBuffs.length - maxPreview;
+            more.className = "contacts-more text-[9px]";
+            more.innerText = `+ ${hiddenCount} more`;
+            more.onclick = () => {
+              const expanded = container.classList.toggle("expanded");
+              more.innerText = expanded
+                ? "Show less"
+                : `+ ${hiddenCount} more`;
+            };
+            ccDisplay.appendChild(more);
+          }
+        }
 
         const h = 9 + Math.floor(state.turn / 4);
         const m = (state.turn % 4) * 15;
@@ -3504,6 +3747,13 @@
           const followUpResult = followUpHit ? applyDamage(p, target, d) : null;
           const splashDamage = getUnitReplyDeptSplash(p);
           const splashResult = applyDepartmentSplash(p, target, splashDamage);
+          const bounceDamage = getUnitBounceDamage(p);
+          const bounceTarget = bounceDamage
+            ? pickBounceTarget(p, target)
+            : null;
+          const bounceResult = bounceTarget
+            ? applyDamage(p, bounceTarget, bounceDamage)
+            : null;
 
           const q = drawFromLineBag(
             p,
@@ -3524,6 +3774,12 @@
           }
           if (splashResult.hits > 0) {
             body += `<br><br><strong>Department Splash:</strong> ${splashResult.hits} hit for ${splashResult.total}.`;
+          }
+          if (bounceResult && bounceTarget) {
+            body += `<br><br><strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`;
+            if (bounceResult.blocked > 0) {
+              body += ` (Deflected ${bounceResult.blocked})`;
+            }
           }
           addEmailToLog(
             p.name,
@@ -3773,6 +4029,8 @@
                   state.player,
                 ];
                 escalateTargets.forEach((t) => {
+                  if (t !== state.player && t.departmentId === a.departmentId)
+                    return;
                   if (t.hp > 0) {
                     const result = applyDamage(a, t, d);
                     totalBlocked += result.blocked;
@@ -3820,6 +4078,7 @@
                 const followUpHit =
                   followUpChance > 0 && Math.random() < followUpChance;
                 const splashDamage = getUnitReplyDeptSplash(a);
+                const bounceDamage = getUnitBounceDamage(a);
 
                 if (target.id === "player") {
                   if (
@@ -3845,6 +4104,12 @@
                       state.player,
                       splashDamage,
                     );
+                    const bounceTarget = bounceDamage
+                      ? pickBounceTarget(a, state.player)
+                      : null;
+                    const bounceResult = bounceTarget
+                      ? applyDamage(a, bounceTarget, bounceDamage)
+                      : null;
                     if (result.blocked > 0) {
                       body += `<br><br><strong>Deflected:</strong> ${result.blocked} reflected.`;
                     }
@@ -3853,6 +4118,9 @@
                     }
                     if (splashResult.hits > 0) {
                       body += `<br><br><strong>Department Splash:</strong> ${splashResult.hits} hit for ${splashResult.total}.`;
+                    }
+                    if (bounceResult && bounceTarget) {
+                      body += `<br><br><strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`;
                     }
                     addEmailToLog(
                       a.name,
@@ -3883,6 +4151,12 @@
                     target,
                     splashDamage,
                   );
+                  const bounceTarget = bounceDamage
+                    ? pickBounceTarget(a, target)
+                    : null;
+                  const bounceResult = bounceTarget
+                    ? applyDamage(a, bounceTarget, bounceDamage)
+                    : null;
                   if (result.blocked > 0) {
                     body += `<br><br><strong>Deflected:</strong> ${result.blocked} reflected.`;
                   }
@@ -3891,6 +4165,9 @@
                   }
                   if (splashResult.hits > 0) {
                     body += `<br><br><strong>Department Splash:</strong> ${splashResult.hits} hit for ${splashResult.total}.`;
+                  }
+                  if (bounceResult && bounceTarget) {
+                    body += `<br><br><strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`;
                   }
                   addEmailToLog(
                     a.name,
