@@ -938,13 +938,44 @@
         </div>
         <div class="p-3 bg-white text-[11px] space-y-2">
           <div class="font-bold text-[#000080]" id="set-info-name"></div>
-          <div class="text-gray-700" id="set-info-parts"></div>
+          <div class="space-y-1">
+            <div class="text-[10px] uppercase text-gray-500 font-bold">
+              Parts
+            </div>
+            <div id="set-info-parts" class="flex flex-wrap gap-1"></div>
+          </div>
           <div class="text-gray-700" id="set-info-bonus"></div>
           <div class="text-gray-600 italic" id="set-info-status"></div>
         </div>
         <div class="p-2 flex justify-end bg-[#c0c0c0]">
           <button
             onclick="closeSetInfo()"
+            class="retro-button text-xs px-4"
+          >
+            CLOSE
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      id="training-modal"
+      class="fixed inset-0 z-[140] bg-black/50 items-center justify-center p-4 hidden flex"
+    >
+      <div class="bg-[#c0c0c0] retro-border w-full max-w-sm shadow-2xl">
+        <div
+          class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
+        >
+          <span id="training-title">Training Selection</span>
+          <button onclick="closeTrainingModal()" class="px-1">✕</button>
+        </div>
+        <div class="p-3 bg-white text-[11px] space-y-2">
+          <div class="font-bold text-[#000080]" id="training-name"></div>
+          <div class="text-gray-600" id="training-subtitle"></div>
+          <div id="training-options" class="space-y-2"></div>
+        </div>
+        <div class="p-2 flex justify-end bg-[#c0c0c0]">
+          <button
+            onclick="closeTrainingModal()"
             class="retro-button text-xs px-4"
           >
             CLOSE
@@ -2295,6 +2326,7 @@
           promotions: [],
           bccs: [],
         },
+        pendingTraining: null,
       };
 
       const nameInput = document.getElementById("player-name-input");
@@ -2376,7 +2408,15 @@
       }
 
       function hydrateShop(savedShop) {
-        if (!savedShop) return { seminars: [], signatures: [], salutations: [], signoffs: [], promotions: [], bccs: [] };
+        if (!savedShop)
+          return {
+            seminars: [],
+            signatures: [],
+            salutations: [],
+            signoffs: [],
+            promotions: [],
+            bccs: [],
+          };
         const build = (list, source) =>
           (list || [])
             .map((item) => {
@@ -2390,7 +2430,7 @@
           signatures: build(savedShop.signatures, SIGNATURES),
           salutations: build(savedShop.salutations, SALUTATIONS),
           signoffs: build(savedShop.signoffs, SIGNOFFS),
-          promotions: build(savedShop.promotions, getPromoOptions()),
+          promotions: build(savedShop.promotions, getTrainingOffers()),
           bccs: build(savedShop.bccs, BCC_CONTACTS),
         };
       }
@@ -2454,6 +2494,7 @@
         } else if (screen === "inbox-screen") {
           showInbox();
         }
+        if (state.pendingTraining) openTrainingModal();
       }
 
       function initLoginOption() {
@@ -2969,8 +3010,17 @@
         const active = isSetActive(state.player, set);
         document.getElementById("set-info-title").innerText = "Set";
         document.getElementById("set-info-name").innerText = set.name;
-        document.getElementById("set-info-parts").innerText =
-          `Parts: ${details.parts.join(" + ")}`;
+        const partsEl = document.getElementById("set-info-parts");
+        const missingSet = new Set(details.missing);
+        partsEl.innerHTML = details.parts
+          .map((part) => {
+            const isMissing = missingSet.has(part);
+            const cls = isMissing
+              ? "bg-red-100 text-red-700 border-red-200"
+              : "bg-gray-100 text-gray-700 border-gray-200";
+            return `<span class="px-1.5 py-0.5 rounded-sm border text-[10px] ${cls}">${part}</span>`;
+          })
+          .join("");
         document.getElementById("set-info-bonus").innerText =
           `Bonus: ${describeEffect(set.effect)}`;
         document.getElementById("set-info-status").innerText = active
@@ -2983,6 +3033,63 @@
 
       function closeSetInfo() {
         document.getElementById("set-info").classList.add("hidden");
+      }
+
+      function openTrainingModal() {
+        const pending = state.pendingTraining;
+        if (!pending) return;
+        const offer = getTrainingOffers().find((o) => o.id === pending.offerId);
+        if (!offer) return;
+        const upgrades = getTrainingUpgrades();
+        const options = pending.options
+          .map((id) => upgrades.find((u) => u.id === id))
+          .filter(Boolean);
+        const modal = document.getElementById("training-modal");
+        document.getElementById("training-title").innerText = "Training Selection";
+        document.getElementById("training-name").innerText = offer.name;
+        document.getElementById("training-subtitle").innerText =
+          `Choose ${pending.picksLeft} more`;
+        const list = document.getElementById("training-options");
+        list.innerHTML = "";
+        options.forEach((opt) => {
+          const btn = document.createElement("button");
+          btn.className =
+            "w-full retro-border text-left p-2 bg-white hover:bg-blue-50";
+          btn.innerHTML = `<div class="font-bold">${opt.name}</div><div class="text-[10px] italic text-gray-600">${opt.bonus}</div>`;
+          btn.onclick = () => {
+            opt.apply();
+            pending.picksLeft -= 1;
+            pending.options = pending.options.filter((id) => id !== opt.id);
+            saveGame();
+            if (pending.picksLeft <= 0) {
+              state.pendingTraining = null;
+              closeTrainingModal();
+              updateUI();
+              updateShopUI();
+            } else {
+              updateUI();
+              openTrainingModal();
+            }
+          };
+          list.appendChild(btn);
+        });
+        modal.classList.remove("hidden");
+      }
+
+      function closeTrainingModal() {
+        document.getElementById("training-modal").classList.add("hidden");
+      }
+
+      function startTraining(offer) {
+        const upgrades = shuffle([...getTrainingUpgrades()]);
+        const options = upgrades.slice(0, offer.optionsCount).map((u) => u.id);
+        state.pendingTraining = {
+          offerId: offer.id,
+          options,
+          picksLeft: offer.picks,
+        };
+        saveGame();
+        openTrainingModal();
       }
 
       function addContactBuff(target, contact, usedBy) {
@@ -3062,70 +3169,92 @@
         );
       }
 
-      function getPromoOptions() {
+      function getTrainingUpgrades() {
         return [
           {
-            id: "dmg_single",
-            name: "Targeted Push",
-            bonus: "+2 reply to",
-            cost: 10,
+            id: "upgrade_single",
+            name: "Reply to Focus",
+            bonus: "+2 reply to dmg",
             apply: () => {
               state.player.singleDmg += 2;
             },
           },
           {
-            id: "dmg_escalate",
-            name: "Escalation Training",
-            bonus: "+2 escalate",
-            cost: 10,
+            id: "upgrade_escalate",
+            name: "Escalation Focus",
+            bonus: "+2 escalate dmg",
             apply: () => {
               state.player.escalateDmg += 2;
             },
           },
           {
-            id: "dmg_replyall",
-            name: "Reply-All Mastery",
-            bonus: "+3 reply all",
-            cost: 12,
+            id: "upgrade_replyall",
+            name: "Reply-All Focus",
+            bonus: "+3 reply all dmg",
             apply: () => {
               state.player.replyAllDmg += 3;
             },
           },
           {
-            id: "dmg_global",
+            id: "upgrade_global",
             name: "Agency-Wide Influence",
-            bonus: "+1 all messages",
-            cost: 12,
+            bonus: "+1 all comms dmg",
             apply: () => {
               state.player.globalDmg += 1;
             },
           },
           {
-            id: "hp",
+            id: "upgrade_hp",
             name: "Resilience Training",
             bonus: "+5 Max Credibility",
-            cost: 10,
             apply: () => {
               state.player.maxHp += 5;
             },
           },
           {
-            id: "win",
+            id: "upgrade_win",
             name: "Public Speaking",
             bonus: "+1 New Win/Round",
-            cost: 10,
             apply: () => {
               state.player.wins += 1;
             },
           },
           {
-            id: "deflect",
+            id: "upgrade_deflect",
             name: "Deflection Coaching",
             bonus: "+2 Deflect",
-            cost: 10,
             apply: () => {
               state.player.deflect += 2;
             },
+          },
+        ];
+      }
+
+      function getTrainingOffers() {
+        return [
+          {
+            id: "training_lnl",
+            name: "Attend Lunch & Learn",
+            bonus: "Pick 1 of 2 upgrades",
+            cost: 6,
+            optionsCount: 2,
+            picks: 1,
+          },
+          {
+            id: "training_course",
+            name: "Take Daily Course",
+            bonus: "Pick 1 of 3 upgrades",
+            cost: 8,
+            optionsCount: 3,
+            picks: 1,
+          },
+          {
+            id: "training_conference",
+            name: "Attend Conference",
+            bonus: "Pick 2 of 3 upgrades",
+            cost: 10,
+            optionsCount: 3,
+            picks: 2,
           },
         ];
       }
@@ -3155,8 +3284,8 @@
           .map((s) => ({ ...s, purchased: false }));
 
         // Promotions (Stats)
-        state.shop.promotions = shuffle([...getPromoOptions()])
-          .slice(0, 2)
+        state.shop.promotions = shuffle([...getTrainingOffers()])
+          .slice(0, 1)
           .map((p) => ({ ...p, purchased: false }));
 
         // BCCs
@@ -3325,25 +3454,31 @@
           if (!item) return "";
           if (item.type === "salutation") {
             const sal = SALUTATIONS.find((s) => s.id === item.id);
+            const name = sal?.name || item.id;
             if (!player.salutation || player.salutation.id !== item.id)
-              missing.push(sal?.name || item.id);
-            return sal?.name || item.id;
+              missing.push(`Greeting: ${name}`);
+            return `Greeting: ${name}`;
           }
           if (item.type === "signoff") {
             const off = SIGNOFFS.find((s) => s.id === item.id);
+            const name = off?.name || item.id;
             if (!player.signOff || player.signOff.id !== item.id)
-              missing.push(off?.name || item.id);
-            return off?.name || item.id;
+              missing.push(`Sign-off: ${name}`);
+            return `Sign-off: ${name}`;
           }
           if (item.type === "signature") {
             const sig = SIGNATURES.find((s) => s.id === item.id);
+            const name = sig?.name || item.id;
             if (!player.signatures.some((s) => s.id === item.id))
-              missing.push(sig?.name || item.id);
-            return sig?.name || item.id;
+              missing.push(`Signature: ${name}`);
+            return `Signature: ${name}`;
           }
           if (item.type === "contact") {
             const c = CONTACTS.find((c) => c.id === item.id);
-            return `${c?.name || item.id} (in loop)`;
+            const name = c?.name || item.id;
+            if (!player.buffs.some((b) => b.id === item.id))
+              missing.push(`CC: ${name}`);
+            return `CC: ${name}`;
           }
           return item.id;
         });
@@ -3714,9 +3849,10 @@
               p.bonus,
               p.cost,
               () => {
+                if (p.purchased) return;
                 state.player.reputation -= p.cost;
-                p.apply();
                 p.purchased = true;
+                startTraining(p);
               },
               { purchased: p.purchased },
             ),
