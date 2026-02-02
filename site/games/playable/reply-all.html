@@ -4506,6 +4506,16 @@
         return false;
       }
 
+      function getContactUsedBy(contactId) {
+        const playerBuff = state.player.buffs.find((b) => b.id === contactId);
+        if (playerBuff) return playerBuff.usedBy || state.player.name;
+        for (const opp of opponents) {
+          const buff = (opp.buffs || []).find((b) => b.id === contactId);
+          if (buff) return buff.usedBy || opp.name;
+        }
+        return null;
+      }
+
       function getPlayerLeverageGain(base) {
         const p = state.player;
         const stats = computeUnitStats(p);
@@ -6391,10 +6401,11 @@
           const isUsed = isContactInLoop(c.id);
           const isImplicated = isContactImplicated(c);
           const isDisabled = isUsed || isImplicated;
+          const usedByName = isUsed ? getContactUsedBy(c.id) : null;
           const statusText = isImplicated
             ? "IMPLICATED"
             : isUsed
-              ? "IN LOOP"
+              ? `IN LOOP (${usedByName === state.player.name ? "YOU" : usedByName || "OTHER"})`
               : "AVAIL";
           const setBadge = c.setId
             ? `<button type="button" data-set-button data-set-id="${c.setId}" class="text-[9px] uppercase px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 font-bold">Set</button>`
