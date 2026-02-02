@@ -848,7 +848,7 @@
           department: "Information Technology",
           bonus: "+5 credibility/turn.",
           loopInText:
-            "I'm looping in <strong>{name}</strong> to have him help with the technical issues affecting others' replies in this thread.",
+            "I'm looping in <strong>{name}</strong> because I think we need an {title} to help with the technical issues affecting others' replies in this thread.",
           eff: {
             heal: 5,
           },
@@ -932,7 +932,7 @@
           department: "Facilities and Administration",
           bonus: "10% DMG Reduction & +3 Credibility/turn",
           loopInText:
-            "I'm looping in <strong>{name}</strong> to handle the facilities impact.",
+            "I'm looping in <strong>{name}</strong> ({title}) to handle the facilities impact.",
           eff: {
             def: 0.1,
             heal: 3,
@@ -961,7 +961,7 @@
           department: "Policy",
           bonus: "15% DMG Reduction.",
           loopInText:
-            "I'm looping in <strong>{name}</strong> to ensure this stays within policy guardrails.",
+            "I'm looping in <strong>{name}</strong> from {department} to ensure this stays within policy guardrails.",
           eff: {
             def: 0.15,
           },
@@ -2030,11 +2030,17 @@
           let max = 50 + u.title.hpBonus + u.bonusMaxHp;
           if (u.salutation && u.salutation.hpBonus) max += u.salutation.hpBonus;
           if (u.signOff && u.signOff.hpBonus) max += u.signOff.hpBonus;
+          u.buffs.forEach((b) => {
+            if (b.eff && b.eff.hpBonus) max += b.eff.hpBonus;
+          });
           return max;
         }
         let max = u.maxHp;
         if (u.salutation && u.salutation.hpBonus) max += u.salutation.hpBonus;
         if (u.signOff && u.signOff.hpBonus) max += u.signOff.hpBonus;
+        u.buffs.forEach((b) => {
+          if (b.eff && b.eff.hpBonus) max += b.eff.hpBonus;
+        });
         return max;
       }
 
@@ -2138,7 +2144,19 @@
 
       function formatLoopInText(contact, fallback) {
         if (!contact || !contact.loopInText) return fallback;
-        return contact.loopInText.replace(/{name}/g, contact.name);
+        return contact.loopInText
+          .replace(/{name}/g, contact.name || "")
+          .replace(/{title}/g, contact.title || "")
+          .replace(/{department}/g, contact.department || "");
+      }
+
+      function addContactBuff(target, contact, usedBy) {
+        const buff = JSON.parse(JSON.stringify(contact));
+        buff.usedBy = usedBy;
+        target.buffs.push(buff);
+        if (buff.eff && buff.eff.hpBonus) {
+          target.hp = Math.min(getUnitMaxHp(target), target.hp + buff.eff.hpBonus);
+        }
       }
 
       function startQuarter() {
@@ -2605,7 +2623,7 @@
       function updateUI() {
         if (state.gameOver) return;
         const p = state.player;
-        const totalMaxHp = p.maxHp + p.title.hpBonus + p.bonusMaxHp;
+        const totalMaxHp = getUnitMaxHp(p);
         const hpPct = Math.max(0, (p.hp / totalMaxHp) * 100);
         const ultPct = Math.min(100, p.ult);
 
@@ -2618,13 +2636,13 @@
 
         if (hpPct < 30)
           document.getElementById("player-hp-fill").className =
-            "h-full bg-red-600";
+            "h-full bg-red-600 transition-[width] duration-300 ease-out";
         else if (hpPct < 60)
           document.getElementById("player-hp-fill").className =
-            "h-full bg-yellow-500";
+            "h-full bg-yellow-500 transition-[width] duration-300 ease-out";
         else
           document.getElementById("player-hp-fill").className =
-            "h-full bg-green-500";
+            "h-full bg-green-500 transition-[width] duration-300 ease-out";
 
         const dmg = getUnitTotalDmg(p);
         document.getElementById("attack-subtext").innerText =
@@ -2647,7 +2665,7 @@
         selector.innerHTML = "";
         opponents.forEach((o) => {
           const isActive = state.targetId === o.id;
-          const pct = Math.max(0, (o.hp / o.maxHp) * 100);
+          const pct = Math.max(0, (o.hp / getUnitMaxHp(o)) * 100);
           const pill = document.createElement("div");
           pill.onclick = () => {
             if (o.hp > 0) state.targetId = o.id;
@@ -2853,9 +2871,7 @@
                 availFromBook[Math.floor(Math.random() * availFromBook.length)];
               const c = CONTACTS.find((con) => con.id === id);
               if (c) {
-                const buff = JSON.parse(JSON.stringify(c));
-                buff.usedBy = a.name;
-                a.buffs.push(buff);
+                addContactBuff(a, c, a.name);
                 const loopInText = formatLoopInText(
                   c,
                   `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`,
@@ -2977,9 +2993,7 @@
           btn.innerHTML = `<div class="flex justify-between font-bold text-[#000080] text-xs"><span>${c.name} - ${c.title}</span><span class="text-[9px]">${isUsed ? "IN LOOP" : "AVAIL"}</span></div><div class="text-[10px] italic">${c.bonus}</div>`;
           if (!isUsed)
             btn.onclick = () => {
-              const buff = JSON.parse(JSON.stringify(c));
-              buff.usedBy = state.player.name;
-              state.player.buffs.push(buff);
+              addContactBuff(state.player, c, state.player.name);
               const loopInText = formatLoopInText(
                 c,
                 `I'm looping in <strong>${c.name}</strong> (${c.title}) to help clarify the organizational impact of this thread.`,
