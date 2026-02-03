@@ -1626,6 +1626,7 @@
           sigLimit: 2,
           maxHp: 0,
           singleDmg: 0,
+          numCCperCCaction: 0,
         },
         {
           name: "Junior Clerk",
@@ -1635,6 +1636,7 @@
           sigLimit: 4,
           maxHp: 10,
           singleDmg: 2,
+          numCCperCCaction: 1,
         },
         {
           name: "Senior Clerk",
@@ -1644,6 +1646,7 @@
           sigLimit: 6,
           maxHp: 20,
           singleDmg: 4,
+          numCCperCCaction: 1,
         },
         {
           name: "Program Coordinator",
@@ -1653,6 +1656,7 @@
           sigLimit: 8,
           maxHp: 30,
           singleDmg: 6,
+          numCCperCCaction: 2,
         },
         {
           name: "Director",
@@ -1662,6 +1666,7 @@
           sigLimit: 10,
           maxHp: 40,
           singleDmg: 8,
+          numCCperCCaction: 2,
         },
         {
           name: "Deputy Director",
@@ -1671,6 +1676,7 @@
           sigLimit: 11,
           maxHp: 50,
           singleDmg: 10,
+          numCCperCCaction: 2,
         },
         {
           name: "Department Chief",
@@ -1680,6 +1686,7 @@
           sigLimit: 12,
           maxHp: 60,
           singleDmg: 12,
+          numCCperCCaction: 2,
         },
         {
           name: "Deputy Minister",
@@ -1689,6 +1696,7 @@
           sigLimit: 15,
           maxHp: 70,
           singleDmg: 14,
+          numCCperCCaction: 3,
         }
       ];
 
@@ -4164,6 +4172,7 @@
           ],
           replyAllLinesByMission: {},
           replyAllLinesByTitle: {},
+          discoveredSets: [],
         },
         currentMissionIndex: 0,
         targetId: 1,
@@ -4172,6 +4181,8 @@
         gameOver: false,
         removedByPlayer: 0,
         removedTotal: 0,
+        ccPicksTaken: 0,
+        ccPicksLeft: 0,
         shop: {
           seminars: [],
           signatures: [],
@@ -4213,6 +4224,7 @@
             ? player.signatures.map((s) => s.id)
             : [],
           bccIds: player.bccContacts ? player.bccContacts.map((b) => b.id) : [],
+          discoveredSets: player.discoveredSets || [],
         };
       }
 
@@ -4241,6 +4253,7 @@
           signOff,
           signatures,
           bccContacts,
+          discoveredSets: saved.discoveredSets || [],
         };
         applyUnitDefaults(player);
         return player;
@@ -4495,6 +4508,7 @@
         "levMult",
         "repBonus",
         "endRep",
+        "numCCperCCaction",
         "bounceBase",
       ];
 
@@ -4522,6 +4536,7 @@
         if (u.levMult == null) u.levMult = 0;
         if (u.repBonus == null) u.repBonus = 0;
         if (u.endRep == null) u.endRep = 0;
+        if (u.numCCperCCaction == null) u.numCCperCCaction = 1;
         if (u.bounceBase == null) u.bounceBase = 0;
         if (!Array.isArray(u.deflectLines) || u.deflectLines.length === 0) {
           u.deflectLines = [
@@ -4559,6 +4574,13 @@
           if (item.type === "contact") return hasContact(item.id);
           return false;
         });
+
+        if (active && u === state.player) {
+          if (!state.player.discoveredSets.includes(set.id)) {
+            state.player.discoveredSets.push(set.id);
+          }
+        }
+        return active;
       }
       function getUnitStatBlocks(u) {
         const blocks = [];
@@ -4910,8 +4932,11 @@
             return `<span class="px-1.5 py-0.5 rounded-sm border text-[10px] ${cls}">${part}</span>`;
           })
           .join("");
+
+        const isDiscovered = state.player.discoveredSets.includes(set.id);
         document.getElementById("set-info-bonus").innerText =
-          `Bonus: ${describeEffect(set.effect)}`;
+          `Bonus: ${isDiscovered ? describeEffect(set.effect) : "???"}`;
+
         document.getElementById("set-info-status").innerText = active
           ? "Status: Active"
           : details.missing.length
@@ -6466,20 +6491,27 @@
               .map((id) => CONTACTS.find((con) => con.id === id))
               .filter((c) => c && !isContactInLoop(c.id) && !isContactImplicated(c));
             if (roll < 0.15 && availFromBook.length > 0) {
-              const c =
-                availFromBook[Math.floor(Math.random() * availFromBook.length)];
-              addContactBuff(a, c, a.name);
-              const loopInText = formatLoopInText(
-                c,
-                `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`,
-              );
-              addEmailToLog(
-                a.name,
-                "everyone@gov.org",
-                "Looping in Support",
-                loopInText,
-                "bg-blue-50",
-              );
+              const numPicks = computeUnitStats(a).numCCperCCaction;
+              for (let p = 0; p < numPicks; p++) {
+                const currentAvail = a.addressBook
+                  .map((id) => CONTACTS.find((con) => con.id === id))
+                  .filter((c) => c && !isContactInLoop(c.id) && !isContactImplicated(c));
+                if (currentAvail.length === 0) break;
+
+                const c = currentAvail[Math.floor(Math.random() * currentAvail.length)];
+                addContactBuff(a, c, a.name);
+                const loopInText = formatLoopInText(
+                  c,
+                  `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`,
+                );
+                addEmailToLog(
+                  a.name,
+                  "everyone@gov.org",
+                  "Looping in Support",
+                  loopInText,
+                  "bg-blue-50",
+                );
+              }
             } else if (roll < 0.3 && a.hp < 20 && a.wins > 0) {
               a.wins--;
               const promoteHeal = getUnitSelfPromoteHeal(a, 15);
@@ -6703,11 +6735,39 @@
         }, alive.length * 700);
       }
 
+      function finishCcAction() {
+        document.getElementById("address-book").classList.add("hidden");
+        updateUI();
+        if (state.ccPicksTaken > 0) {
+          state.turn++;
+          const p = state.player;
+          p.hp = Math.min(getUnitMaxHp(p), p.hp + getUnitTotalHeal(p));
+          state.isProcessing = true;
+          setTimeout(ffaRound, 400);
+        }
+      }
+
       function openAddressBook() {
+        if (state.isProcessing || state.gameOver) return;
+        state.ccPicksLeft = computeUnitStats(state.player).numCCperCCaction;
+        state.ccPicksTaken = 0;
+        renderAddressBook();
+        document.getElementById("address-book").classList.remove("hidden");
+      }
+
+      function renderAddressBook() {
         const list = document.getElementById("contact-list");
         list.innerHTML = "";
-        document.getElementById("address-book-title").innerText =
-          `PERSONNEL DIRECTORY (${state.player.addressBook.length}/${state.player.title.addressLimit})`;
+        let titleText = `PERSONNEL DIRECTORY (${state.player.addressBook.length}/${state.player.title.addressLimit})`;
+        if (state.ccPicksLeft > 1 || state.ccPicksTaken > 0) {
+          titleText += ` - PICKS: ${state.ccPicksLeft}`;
+        }
+        document.getElementById("address-book-title").innerText = titleText;
+
+        const cancelBtn = document.querySelector("#address-book .retro-button");
+        if (cancelBtn) {
+          cancelBtn.innerText = state.ccPicksTaken > 0 ? "DONE" : "CANCEL";
+        }
 
         // CCs
         const headerCC = document.createElement("div");
@@ -6754,10 +6814,19 @@
                 loopInText,
                 "bg-blue-100 font-bold border-l-4 border-blue-500",
               );
-              closeAddressBook();
-              updateUI();
-              state.isProcessing = true;
-              setTimeout(ffaRound, 400);
+              state.ccPicksTaken++;
+              state.ccPicksLeft--;
+
+              const nextAvail = state.player.addressBook.some((cid) => {
+                const con = CONTACTS.find((con) => con.id === cid);
+                return con && !isContactInLoop(con.id) && !isContactImplicated(con);
+              }) || state.player.bccContacts.length > 0;
+
+              if (state.ccPicksLeft <= 0 || !nextAvail) {
+                finishCcAction();
+              } else {
+                renderAddressBook();
+              }
             };
           list.appendChild(btn);
         });
@@ -6780,8 +6849,6 @@
             list.appendChild(btn);
           });
         }
-
-        document.getElementById("address-book").classList.remove("hidden");
       }
 
       function useBcc(bcc, index) {
@@ -6826,14 +6893,27 @@
           );
         }
 
-        closeAddressBook();
-        updateUI();
-        state.isProcessing = true;
-        setTimeout(ffaRound, 400);
+        state.ccPicksTaken++;
+        state.ccPicksLeft--;
+
+        const nextAvail = state.player.addressBook.some((cid) => {
+          const con = CONTACTS.find((con) => con.id === cid);
+          return con && !isContactInLoop(con.id) && !isContactImplicated(con);
+        }) || state.player.bccContacts.length > 0;
+
+        if (state.ccPicksLeft <= 0 || !nextAvail) {
+          finishCcAction();
+        } else {
+          renderAddressBook();
+        }
       }
 
       function closeAddressBook() {
-        document.getElementById("address-book").classList.add("hidden");
+        if (state.ccPicksTaken > 0) {
+          finishCcAction();
+        } else {
+          document.getElementById("address-book").classList.add("hidden");
+        }
       }
     </script>
   </body>
