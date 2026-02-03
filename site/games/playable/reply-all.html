@@ -3660,7 +3660,7 @@
           id: "microwave",
           subject: "URGENT: Breakroom Incident",
           from: "k.smith@gov.org",
-          turns: 10,
+          turns: 12,
           intro:
             "Hi team,<br><br>I am absolutely disgusted. Someone heated up fish in the breakroom microwave. <strong>{playerName}</strong>, I'm sure you noticed the stench. <strong>{opp1}</strong>, I know you have the policy manual out already. <strong>{opp0}</strong>, please document this.<br><br>Please advise immediately on who is responsible for this violation of shared space ethics.",
           opponents: [
@@ -3688,7 +3688,7 @@
           id: "calendar_chaos",
           subject: "RE: Conference Room Double Booking",
           from: "a.ops@gov.org",
-          turns: 10,
+          turns: 12,
           intro:
             "Hi all,<br><br>We have a triple booking for the main conference room this morning. <strong>{playerName}</strong>, you have it booked for an internal process audit. <strong>{opp0}</strong> and <strong>{opp1}</strong> from Operations flagged a safety walkthrough and vendor briefing. <strong>{opp2}</strong> and <strong>{opp3}</strong> from Finance flagged payroll finalization and budget reconciliation. <strong>{opp4}</strong>, thanks for the initial booking—please stand by while we sort this out.<br><br>Please reply with your priority and availability.",
           opponents: [
@@ -3749,7 +3749,7 @@
           id: "holiday_reply_all",
           subject: "RE: Happy Holidays!",
           from: "announcements@gov.org",
-          turns: 10,
+          turns: 12,
           onlyMissionLines: true,
           intro:
             "Happy holidays everyone!<br><br>Thank you to everyone for attending the holiday party once again! We also want to wish Elliot well once again for winning the 'Cultural Award' for the year.",
@@ -3814,7 +3814,7 @@
           id: "paper",
           subject: "CRITICAL: Departmental Paper Rationing",
           from: "m.compliance@gov.org",
-          turns: 10,
+          turns: 12,
           intro:
             "Dear Staff,<br><br>Due to unforeseen budget constraints, we are implementing immediate paper rationing. <strong>{playerName}</strong>, your department's printing logs are particularly high. <strong>Megan</strong>, please ensure we are still meeting filing requirements. <strong>Colin</strong>, please expedite the 'Paperless Initiative'.<br><br>Effective immediately, all non-essential printing is strictly prohibited.",
           opponents: [
@@ -3857,7 +3857,7 @@
           id: "thermostat_war",
           subject: "RE: Office Thermostat Dispute",
           from: "l.facilities@gov.org",
-          turns: 10,
+          turns: 12,
           intro:
             "Hi all,<br><br>Facilities here. We received multiple complaints about the floor thermostat. It looks like the setpoint has been toggled between 74°F and 96°F. <strong>{playerName}</strong>, your desk is listed at 74°F. My view is we should be aiming lower overall to bring down the oil bill for this place, but we need a consistent setting. The <strong>Marketing</strong> team (<strong>{opp1}</strong>, <strong>{opp2}</strong>) is pushing for 96°F. The <strong>Finance</strong> team (<strong>{opp3}</strong>, <strong>{opp4}</strong>) says the 96°F setting is unacceptable for reviews.<br><br>How does around 64°F sound?",
           opponents: [
@@ -3918,7 +3918,7 @@
           id: "intern_grievance",
           subject: "RE: Intern Grievance Collective",
           from: "hr.interns@gov.org",
-          turns: 10,
+          turns: 12,
           intro:
             "To the Permanent Staff,<br><br>We, the interns, have noticed a significant lack of 'Team Synergy' and 'Professional Courtesy'. <strong>{playerName}</strong>, your recent emails have been cited as 'aggressive'. <strong>Samantha</strong>, we are looping in our mentor <strong>Anneke</strong>. <strong>Shelia</strong>, we expect payroll to ensure our stipends to reflect the emotional labor of this thread.",
           opponents: [
@@ -3977,7 +3977,7 @@
           id: "bankable_time_off",
           subject: "RE: Bankable Time Off Policy Dispute",
           from: "anneke.eco@gov.org",
-          turns: 10,
+          turns: 12,
           intro:
             "Hi all,<br><br>I'm trying to understand the request around bankable time off. <strong>IT</strong> is asking for parity, and <strong>Marketing</strong> is split on whether to push for both bankable time off and weekend accruals or keep the current arrangement. The team is also confused about why Marketing gets weekends bankable off the books.<br><br><strong>{playerName}</strong>, please lead this discussion. <strong>{opp0}</strong> and <strong>{opp1}</strong> from IT, please outline the impact. <strong>{opp2}</strong> and <strong>{opp3}</strong> from Marketing, please clarify what you want and what you are willing to risk. I'll try to map this to policy and fairness.",
           opponents: [
@@ -4041,7 +4041,7 @@
           id: "M015_MediaCrisis",
           subject: "CRITICAL: Budget Re-Forecasting & Ad Targeting Session",
           from: "taz@m4agency.com",
-          turns: 10,
+          turns: 12,
           intro:
             "Hey all,<br><br>There has been a <strong>significant overspend</strong> of the quarterly media budget earmarked for the strategic placement for the <strong>Measles Vaccination Initiative</strong>. During media plan implementation, an unforeseen configuration error on our end resulted in a demographic targeting misalignment—specifically, an overly focused optimization towards the <strong>equine sector</strong> executed entirely on day one. <strong>{playerName}</strong>, we need to leverage this emergency session to ensure continuity of service delivery.<br><strong>Selina</strong> and <strong>Anthony</strong> are here for support, and to use up our retainer. The objective is to devise a recovery plan that allows us to meet our six-week deliverable goals with additional budgetary approval, <strong>as the original $40,000 has been fully exhausted.</strong>",
           opponents: [
@@ -6230,9 +6230,9 @@
         const baseMinutes = 9 * 60;
         const totalMinutes = baseMinutes + Math.max(0, turn) * 15;
         const breakStart = 12 * 60;
-        const breakEnd = 13 * 60;
+        const breakEnd = 13 * 60 + 15;
         const adjustedMinutes =
-          totalMinutes >= breakStart ? totalMinutes + (breakEnd - breakStart) : totalMinutes;
+          totalMinutes > breakStart ? totalMinutes + (breakEnd - breakStart) : totalMinutes;
         let h = Math.floor(adjustedMinutes / 60);
         const m = adjustedMinutes % 60;
         const suffix = h >= 12 ? "PM" : "AM";
@@ -6244,8 +6244,9 @@
       }
 
       function getMissionDueTurn(mission) {
-        const turns = mission && typeof mission.turns === "number" ? mission.turns : 0;
-        return turns + 1;
+        const turns =
+          mission && typeof mission.turns === "number" ? mission.turns : 0;
+        return turns;
       }
 
       function getMissionDeadlineTime(mission) {
@@ -6448,8 +6449,10 @@
         const log = document.getElementById("message-log");
         const entry = document.createElement("div");
         const time = document.getElementById("turn-clock").innerText;
+        const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
         const reCount =
           state.turn > 0 ? "RE: ".repeat(Math.min(state.turn, 4)) : "";
+        const baseSubject = mission && mission.subject ? mission.subject : subject;
 
         entry.className = `message-entry p-0 border-2 border-gray-100 bg-white shadow-sm ${classes}`;
         entry.innerHTML = `
@@ -6460,7 +6463,7 @@
                     </div>
                     <div class="flex flex-wrap gap-x-4">
                         <div><strong>Sent:</strong> Today, ${time}</div>
-                        <div><strong>Subject:</strong> ${reCount}${subject}</div>
+                        <div><strong>Subject:</strong> ${reCount}${baseSubject}</div>
                     </div>
                 </div>
                 <div class="email-body px-3 py-2 font-serif italic">
@@ -6475,10 +6478,6 @@
         if (state.isProcessing || state.gameOver) return;
         state.isProcessing = true;
         state.turn++;
-        if (isMissionOverdue()) {
-          triggerTimeoutLoss();
-          return;
-        }
         const target = opponents.find((o) => o.id === state.targetId);
         const p = state.player;
         const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
@@ -6660,6 +6659,10 @@
           state.gameOver = true;
           state.lossReason = "defeat";
           setTimeout(showLoseScreen, 3000);
+          return;
+        }
+        if (isMissionOverdue()) {
+          triggerTimeoutLoss();
           return;
         }
         setTimeout(ffaRound, 800);
@@ -6989,12 +6992,12 @@
         updateUI();
         if (state.ccPicksTaken > 0) {
           state.turn++;
+          const p = state.player;
+          p.hp = Math.min(getUnitMaxHp(p), p.hp + getUnitTotalHeal(p));
           if (isMissionOverdue()) {
             triggerTimeoutLoss();
             return;
           }
-          const p = state.player;
-          p.hp = Math.min(getUnitMaxHp(p), p.hp + getUnitTotalHeal(p));
           state.isProcessing = true;
           setTimeout(ffaRound, 400);
         }
