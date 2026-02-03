@@ -288,6 +288,10 @@
               <span>Additional Bonuses:</span>
               <span id="summary-bonus-rep" class="font-mono">+0</span>
             </div>
+            <div id="summary-interest-row" class="flex justify-between hidden">
+              <span>Reputational Interest:</span>
+              <span id="summary-interest-rep" class="font-mono">+0</span>
+            </div>
             <div
               class="border-t border-gray-300 pt-2 flex justify-between font-bold text-[#000080]"
             >
@@ -317,9 +321,16 @@
           class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold shrink-0"
         >
           <span>INTRA-NET: HR PORTAL & EMPLOYEE SERVICES</span>
+          <button
+            id="shop-reroll-btn"
+            onclick="rerollShop()"
+            class="retro-button text-black text-[10px] py-0 px-2 h-5 ml-auto mr-2"
+          >
+            Request alternate arrangements (5 REP)
+          </button>
           <span
             id="shop-reputation-display"
-            class="bg-yellow-400 text-black px-2 rounded-sm ml-auto mr-4"
+            class="bg-yellow-400 text-black px-2 rounded-sm mr-4"
             >REPUTATION: 0</span
           >
           <button
@@ -2034,6 +2045,7 @@
           bonus: "Instantly stun current target for 1 turn.",
           rarity: "common",
           effect: "stun",
+          logText: "I've recalled this message to ensure accuracy.",
         },
         {
           id: "urgent",
@@ -2041,6 +2053,7 @@
           bonus: "Next reply to deals 2x damage.",
           rarity: "uncommon",
           effect: "doubleDmg",
+          logText: "I've flagged this thread as [URGENT] to expedite a resolution.",
         },
         {
           id: "redirect",
@@ -2048,6 +2061,7 @@
           bonus: "Current target attacks another random opponent next turn.",
           rarity: "rare",
           effect: "redirect",
+          logText: "I'm redirecting this thread to the relevant departmental stakeholders.",
         },
         {
           id: "expense_report",
@@ -2055,13 +2069,15 @@
           bonus: "Doubles mission base rep (max +10 bonus).",
           rarity: "common",
           effect: "doubleRep",
+          logText: "I've submitted an expense report for this initiative's overhead.",
         },
         {
           id: "networking_event",
           name: "Networking Event",
-          bonus: "Gain reputation equal to the total reputation value of your current CCs when used.",
+          bonus: "Gain reputation equal to the total sell value of your current CCs (Max 30).",
           rarity: "uncommon",
           effect: "contactRep",
+          logText: "How {playerName} uses AI to expedite their workflows will be featured in our upcoming newsletter!",
         },
         {
           id: "mentorship",
@@ -2069,6 +2085,7 @@
           bonus: "Trains a random contact in your loop for reply to damage, escalate, and max health.",
           rarity: "rare",
           effect: "trainContact",
+          logText: "I've initiated a mentorship review to upskill our CC'd personnel.",
         },
       ];
 
@@ -4063,7 +4080,7 @@
           wins: 3,
           currentWins: 3,
           buffs: [],
-          reputation: 0,
+          reputation: 4,
           year: 1,
           quarter: "Q3",
           title: TITLES[0],
@@ -4196,6 +4213,7 @@
         shop: {
           directItems: [],
           packs: [],
+          rerollCount: 0,
         },
         pendingTraining: null,
         expenseReportActive: false,
@@ -5440,7 +5458,7 @@
         };
         const baseRep =
           baseRepByQuarter[state.player.quarter] ?? baseRepByQuarter.Q3;
-        const totalOptOutRep = state.removedByPlayer * 2;
+        const totalOptOutRep = state.removedByPlayer * 1;
         let bonusRep = 0;
 
         if (state.expenseReportActive) {
@@ -5458,8 +5476,10 @@
         if (repStats.endRep) {
           bonusRep += repStats.endRep;
         }
-        const totalRep = baseRep + totalOptOutRep + bonusRep;
-        return { baseRep, bonusRep, totalRep };
+
+        const interestRep = Math.min(5, Math.floor(state.player.reputation / 5));
+        const totalRep = baseRep + totalOptOutRep + bonusRep + interestRep;
+        return { baseRep, bonusRep, totalRep, interestRep };
       }
 
       function renderSummary(summary = computeSummary()) {
@@ -5472,7 +5492,7 @@
         if (playerKills.length > 0) {
           optOutList.classList.remove("hidden");
           playerKills.forEach((o) => {
-            const share = 2;
+            const share = 1;
             const div = document.createElement("div");
             div.className =
               "flex justify-between text-[10px] text-gray-600 italic";
@@ -5487,13 +5507,37 @@
           `+${summary.baseRep}`;
         document.getElementById("summary-bonus-rep").innerText =
           `+${summary.bonusRep}`;
+
+        const interestRow = document.getElementById("summary-interest-row");
+        const interestRepEl = document.getElementById("summary-interest-rep");
+        if (interestRow && interestRepEl) {
+          if (summary.interestRep > 0) {
+            interestRow.classList.remove("hidden");
+            interestRepEl.innerText = `+${summary.interestRep}`;
+          } else {
+            interestRow.classList.add("hidden");
+          }
+        }
+
         document.getElementById("summary-rep-earned").innerText =
           `+${summary.totalRep}`;
       }
 
       function showShop() {
+        state.shop.rerollCount = 0;
         transitionTo("shop-screen");
         updateShopUI();
+      }
+
+      function rerollShop() {
+        const cost = 5 + (state.shop.rerollCount || 0);
+        if (state.player.reputation >= cost) {
+          state.player.reputation -= cost;
+          state.shop.rerollCount = (state.shop.rerollCount || 0) + 1;
+          generateShopItems();
+          updateShopUI();
+          playSound("trash");
+        }
       }
 
       function showLoseScreen() {
@@ -5524,7 +5568,7 @@
             wins: 3,
             currentWins: 3,
             buffs: [],
-            reputation: 0,
+            reputation: 4,
             year: 1,
             quarter: "Q3",
             title: TITLES[0],
@@ -5557,12 +5601,9 @@
           removedByPlayer: 0,
           removedTotal: 0,
           shop: {
-            seminars: [],
-            signatures: [],
-            salutations: [],
-            signoffs: [],
-            promotions: [],
-            bccs: [],
+            directItems: [],
+            packs: [],
+            rerollCount: 0,
           },
           pendingTraining: null,
         };
@@ -5854,6 +5895,13 @@
       function updateShopUI() {
         document.getElementById("shop-reputation-display").innerText =
           `REP: ${state.player.reputation}`;
+
+        const rerollBtn = document.getElementById("shop-reroll-btn");
+        if (rerollBtn) {
+          const cost = 5 + (state.shop.rerollCount || 0);
+          rerollBtn.innerText = `Request alternate arrangements (${cost} REP)`;
+          rerollBtn.disabled = state.player.reputation < cost;
+        }
 
         // --- OWNED ASSETS ---
         const ownedContacts = document.getElementById("shop-owned-contacts");
@@ -6887,11 +6935,14 @@
 
       function useBcc(bcc, index) {
         state.player.bccContacts.splice(index, 1);
+        let logContent = bcc.logText || bcc.bonus;
+        logContent = logContent.replace(/{playerName}/g, state.player.name);
+
         addEmailToLog(
           state.player.name,
           "everyone@gov.org",
           `BCC: ${bcc.name}`,
-          `[PRIVATE MESSAGE] Sent: ${bcc.bonus}`,
+          `[PRIVATE MESSAGE] Sent: ${logContent}`,
           "bg-yellow-100 border-l-4 border-yellow-600",
         );
 
@@ -6937,14 +6988,16 @@
         } else if (bcc.effect === "contactRep") {
           let total = 0;
           state.player.buffs.forEach((b) => {
-            if (b.eff && b.eff.endRep) total += b.eff.endRep;
+            const buyValue = getItemCostByType(b.rarity || 'common', 'contact');
+            total += Math.floor(buyValue / 2);
           });
+          total = Math.min(30, total);
           state.player.reputation += total;
           addEmailToLog(
             "SYSTEM",
             state.player.name,
             "Networking Success",
-            `Gained +${total} reputation from your current CC'd contacts.`,
+            `Gained +${total} reputation from your current CC'd contacts' sell value (capped at 30).`,
             "italic text-gray-500 text-[10px]",
           );
         } else if (bcc.effect === "trainContact") {
