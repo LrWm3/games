@@ -1130,11 +1130,11 @@
           rarity: "common",
           departmentId: "marketing",
           employeeId: "telly_marketing",
-          bonus: "+4 REP at end of match.",
+          bonus: "+3 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to generate a contact report for this thread.",
           eff: {
-            endRep: 4,
+            singleDmg: 3,
           },
           usedBy: null,
         },
@@ -5340,13 +5340,36 @@
           pool = BCC_CONTACTS.map((b) => ({ ...b, itemType: "bcc" }));
         }
 
+        const packNames = {
+          contact: {
+            small: "Personnel Mixer",
+            medium: "Recruitment Drive",
+            large: "Executive Search",
+          },
+          email: {
+            small: "Comms Tune-up",
+            medium: "Messaging Workshop",
+            large: "Branding Overhaul",
+          },
+          dev: {
+            small: "Lunch & Learn",
+            medium: "Daily Professional Course",
+            large: "Annual Conference",
+          },
+          bcc: {
+            small: "Help Desk Onboarding",
+            medium: "Tier 1 Support Ticket",
+            large: "Priority Escalation Bundle",
+          },
+        };
+
         const options = pickWeighted(pool, t.options);
         return {
           id: `pack_${type}_${tier}_${Date.now()}_${Math.random()}`,
           type,
           tier,
-          name: `${tier.toUpperCase()} ${type.toUpperCase()} PACK`,
-          description: `Pick ${t.picks} of ${t.options} ${type} items.`,
+          name: packNames[type][tier] || `${tier.toUpperCase()} ${type.toUpperCase()} PACK`,
+          description: `Pick ${t.picks} of ${t.options} ${type} options.`,
           cost: t.cost,
           options: options.map((o) => ({ ...o })),
           picks: t.picks,
@@ -5681,12 +5704,15 @@
         const priceLabel = purchased
           ? options.ownedPriceLabel || "ON FILE"
           : options.priceLabel || `REQ: ${cost} REP`;
+        const typeBadge = options.typeLabel
+          ? `<span class="bg-blue-800 text-white px-1 uppercase font-bold">${options.typeLabel}</span>`
+          : "";
         div.innerHTML = `
                 <div class="flex justify-between font-bold text-[11px] gap-2">
                     <span class="truncate">${name}</span>
                     <span class="text-blue-700 font-mono">${priceLabel}</span>
                 </div>
-                <div class="flex items-center gap-2 text-[9px]" data-badge></div>
+                <div class="flex items-center gap-2 text-[9px]" data-badge>${typeBadge}</div>
                 <div class="text-[10px] italic text-gray-600 leading-tight">${desc}</div>
                 <button data-buy class="mt-1 retro-button text-[10px] font-bold py-1 ${disabled ? "opacity-50" : ""}" ${disabled ? "disabled" : ""}>
                     ${label}
@@ -5916,6 +5942,22 @@
           const owned = isItemOwned(item);
           const canBuy = hasSpaceForItem(item);
 
+          const typeLabels = {
+            contact: "Contact",
+            signature: "Signature",
+            salutation: "Greeting",
+            signoff: "Sign-off",
+            bcc: "BCC",
+          };
+
+          const actionLabels = {
+            contact: "REACH OUT",
+            signature: "APPLY",
+            salutation: "SET GREETING",
+            signoff: "SET SIGN-OFF",
+            bcc: "REQUEST",
+          };
+
           directList.appendChild(
             createShopCard(
               item.name,
@@ -5928,6 +5970,8 @@
                 badge: formatRarityBadge(item.rarity),
                 setId: item.setId,
                 ownedLabel: owned ? "OWNED" : "PURCHASED",
+                typeLabel: typeLabels[item.itemType] || item.itemType,
+                actionLabel: actionLabels[item.itemType] || "SUBMIT REQUEST",
               },
             ),
           );
