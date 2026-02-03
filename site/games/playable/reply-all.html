@@ -1145,6 +1145,7 @@
         { id: "human_resources", name: "Human Resources" },
         { id: "legal", name: "Legal" },
         { id: "m4_agency", name: "M4 Agency" },
+        { id: "digital_technology", name: "Digital Technology" },
       ];
 
       const DEPARTMENT_BY_ID = Object.fromEntries(
@@ -3653,6 +3654,34 @@
             },
           ],
         },
+        {
+          id: "jen_lavallee",
+          name: "Jen LaVallee",
+          title: "Deputy Minister",
+          department: "Digital Technology",
+          departmentId: "digital_technology",
+          signatures: [
+            "Synthesized by Gov-AI (Beta)",
+            "Optimization is mandatory",
+            "Human-in-the-loop (Optional)",
+            "Sent from my Neural Link",
+            "Building a 100% automated future",
+            "Digital transformation in progress",
+            "Efficiency | Precision | Automation",
+            "Data-driven leadership for a digital age"
+          ],
+          greet: "I have analyzed your previous correspondence and found several inefficiencies.",
+          signoff: "Awaiting your automated acknowledgment.",
+          selfPromote: "I am recalibrating my internal feedback loops for 100% efficiency.",
+          lines: [
+            { text: "My models indicate that 99.8% of this thread's content is redundant.", missionId: null },
+            { text: "I have already optimized the response you were about to send. You're welcome.", missionId: null },
+            { text: "Digital transformation is not a choice; it is an inevitability. Please align accordingly.", missionId: null },
+            { text: "I am deploying a corrective algorithm to this thread's sentiment analysis.", missionId: null },
+            { text: "Your concerns about 'balance' have been logged and categorized as 'resistance to efficiency'.", missionId: "AI_Rollout" },
+            { text: "I've CC'd my specialized aJENts to assist with your cognitive load.", missionId: "AI_Rollout" },
+          ],
+        },
       ];
 
       const MISSIONS = [
@@ -4073,6 +4102,55 @@
               addressBook: ["cc_gemma_policy"],
             },
           ],
+        },
+        {
+          id: "AI_Rollout",
+          subject: "RE: Strategic AI Implementation Rollout",
+          from: "j.lavallee@gov.org",
+          turns: 15,
+          intro: "Hello all,<br><br>I am Jen LaVallee, your new Deputy Minister of Digital Technology. I have been tasked with overseeing the 'AI Everywhere' rollout across our departments. <strong>{playerName}</strong>, I've heard you have concerns about balance. I assure you, balance is less efficient than total automation. I am looping in my initial suite of CCs to help you see the logic.<br><br>Let's find some 'efficiencies', shall we?",
+          opponents: [
+            {
+              id: 30,
+              employeeId: "jen_lavallee",
+              hp: 800,
+              maxHp: 800,
+              defFlat: 5,
+              selfPromoteHeal: 200,
+              wins: 3,
+              singleDmg: 40,
+              escalateDmg: 30,
+              numCCperCCaction: 10,
+              hasDoneFirstTurn: false,
+              addressBook: [
+                "cc_telly_operations",
+                "cc_samantha_executive_council_office",
+                "cc_tim_executive_council_office",
+                "cc_lisa_marketing",
+                "cc_meghan_cassedy_executive_council_office",
+                "cc_larry_facilities_and_administration",
+                "cc_dave_constituent_services",
+                "cc_gemma_policy",
+                "cc_adam_finance",
+                "cc_rowan_constituent_services",
+                "cc_karen_human_resources",
+                "cc_avery_operations",
+                "cc_malik_marketing",
+                "cc_priya_finance",
+                "cc_rory_operations",
+                "cc_dora_finance",
+                "cc_christina_policy",
+                "cc_fraser_information_technology",
+                "cc_anthony_m4_agency",
+                "cc_jonah_finance",
+                "cc_interns_human_resources",
+                "cc_sheila_finance",
+                "cc_taz_m4_agency",
+                "cc_selina_m4_agency"
+              ],
+              buffs: []
+            }
+          ]
         },
       ];
 
@@ -6692,6 +6770,28 @@
               return;
             }
 
+            // Jen's first turn guarantee
+            if (a.employeeId === "jen_lavallee" && a.name === "Jen LaVallee" && !a.hasDoneFirstTurn) {
+              a.hasDoneFirstTurn = true;
+              let pool = [...a.addressBook];
+              let picks = [];
+              for (let i = 0; i < 10 && pool.length > 0; i++) {
+                const idx = Math.floor(Math.random() * pool.length);
+                picks.push(pool.splice(idx, 1)[0]);
+              }
+              picks.forEach((cid) => {
+                const c = CONTACTS.find((con) => con.id === cid);
+                if (c) addContactBuff(a, c, a.name);
+              });
+              addEmailToLog(
+                a.name,
+                "everyone@gov.org",
+                "Consensus Algorithm Initiated",
+                `${a.name} loops in 10 contacts to ensure "maximum consensus".`,
+                "bg-blue-50 border-l-4 border-blue-500",
+              );
+            }
+
             let pool = [
               ...alive.filter((o) => o.id !== a.id),
               {
@@ -6783,6 +6883,57 @@
             } else {
               const actionRoll = Math.random();
               if (actionRoll < 0.15 && a.deflectCharge <= 0) {
+              if (a.employeeId === "jen_lavallee" && a.name === "Jen LaVallee") {
+                const agentId = Math.random().toString(36).substring(2, 6).toUpperCase();
+                const newAgents = [
+                  {
+                    id: Date.now() + Math.random(),
+                    name: `AI aJENt-${agentId}`,
+                    employeeId: "jen_lavallee",
+                    title: "Automated Processing Unit",
+                    department: "Digital Technology",
+                    departmentId: "digital_technology",
+                    hp: 20,
+                    maxHp: 20,
+                    wins: 1,
+                    singleDmg: 15,
+                    escalateDmg: 10,
+                    numCCperCCaction: 0,
+                    addressBook: [],
+                    buffs: [],
+                    greet: "INITIATING SUB-PROCESS...",
+                    signoff: "PROCESS COMPLETE.",
+                    signatures: ["[AUTOMATED SYSTEM MESSAGE]"],
+                  },
+                  {
+                    id: Date.now() + Math.random(),
+                    name: `AI aJENt-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+                    employeeId: "jen_lavallee",
+                    title: "Automated Processing Unit",
+                    department: "Digital Technology",
+                    departmentId: "digital_technology",
+                    hp: 20,
+                    maxHp: 20,
+                    wins: 1,
+                    singleDmg: 15,
+                    escalateDmg: 10,
+                    numCCperCCaction: 0,
+                    addressBook: [],
+                    buffs: [],
+                    greet: "INITIATING SUB-PROCESS...",
+                    signoff: "PROCESS COMPLETE.",
+                    signatures: ["[AUTOMATED SYSTEM MESSAGE]"],
+                  },
+                ];
+                opponents.push(...newAgents);
+                addEmailToLog(
+                  a.name,
+                  "everyone@gov.org",
+                  "Automated Provisioning",
+                  `I am provisioning two additional processing units: <strong>${newAgents[0].name}</strong> and <strong>${newAgents[1].name}</strong>. They will assist in managing this thread's bandwidth.`,
+                  "bg-cyan-50 border-l-4 border-cyan-500",
+                );
+              } else {
                 a.deflectCharge = getUnitDeflectPower(a);
                 const deflectLine = drawFromLineBag(
                   a,
@@ -6797,6 +6948,7 @@
                   `${formatMessageBody(a, deflectLine)}<br><br><strong>Deflection Ready:</strong> ${a.deflectCharge}`,
                   "bg-blue-50",
                 );
+              }
               } else if (actionRoll < 0.35) {
                 const d = getUnitDamage(a, "escalate");
                 let totalBlocked = 0;
