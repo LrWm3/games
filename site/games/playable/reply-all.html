@@ -1164,6 +1164,37 @@
           usedBy: null,
         },
         {
+          id: "cc_elsie",
+          name: "Elsie",
+          title: "The Baby",
+          rarity: "rare",
+          departmentId: "legal",
+          bonus: "Cuteness: 25% Distraction chance.",
+          loopInText:
+            "Look at <strong>{name}</strong>! Isn't she adorable?",
+          eff: {
+            dodge: 0.25,
+            specialTriggerText: "Thread distracted by {name}'s cuteness! No standing lost.",
+          },
+          usedBy: null,
+          noShop: true,
+        },
+        {
+          id: "cc_andrew_legal",
+          name: "Andrew",
+          title: "Legal Counsel",
+          rarity: "uncommon",
+          departmentId: "legal",
+          employeeId: "andrew_legal",
+          bonus: "Dry Wit: Reduce incoming damage by 2.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to give us some perspective. He's a lawyer, but he's cool.",
+          eff: {
+            defFlat: 2,
+          },
+          usedBy: null,
+        },
+        {
           id: "cc_willy_boy_information_technology",
           name: "Willy Boy",
           title: "IT Specialist",
@@ -1233,6 +1264,7 @@
             "I'm looping in <strong>{name}</strong> to provide this thread more light-hearted content.",
           eff: {
             dodge: 0.35,
+            specialTriggerText: "Thread distracted by {name}! No standing lost.",
           },
           usedBy: null,
         },
@@ -2060,9 +2092,40 @@
             bounceBase: 5,
           },
         },
+        {
+          id: "legal_parents",
+          name: "New Parents",
+          items: [
+            { type: "contact", id: "cc_andrew_legal" },
+            { type: "contact", id: "cc_megan_legal" },
+          ],
+          effect: {
+            special: "Automatically loops in Elsie when both parents are CC'd.",
+          },
+        },
       ];
 
       const EMPLOYEES = [
+        {
+          id: "andrew_legal",
+          name: "Andrew (Legal)",
+          email: "a.legal@gov.org",
+          departmentId: "legal",
+          color: "text-red-700",
+          defeatMessage: "Fine. I'm leaving. I've got a lawn to mow anyway.",
+          selfPromote:
+            "I finally cleared my desk. It only took three years of ignored emails.",
+          deflectLines: [
+            "I'm going to need a minute to process this. Or an hour. Maybe a day.",
+          ],
+          lines: [
+            { text: "Fine.", missionId: null },
+            { text: "Noted.", missionId: null },
+            { text: "I'll look into it. Eventually.", missionId: null },
+            { text: "That's certainly a choice.", missionId: null },
+            { text: "I've seen worse. Not much worse, but worse.", missionId: null },
+          ],
+        },
         {
           id: "karen_human_resources",
           name: "Karen (HR)",
@@ -4926,6 +4989,37 @@
           target.hp = Math.min(getUnitMaxHp(target), target.hp + buff.eff.maxHp);
         }
         playSound("connect");
+
+        if (
+          contact.id === "cc_andrew_legal" ||
+          contact.id === "cc_megan_legal"
+        ) {
+          const hasAndrew = target.buffs.some(
+            (b) => b.id === "cc_andrew_legal" && b.usedBy === usedBy,
+          );
+          const hasMegan = target.buffs.some(
+            (b) => b.id === "cc_megan_legal" && b.usedBy === usedBy,
+          );
+          const hasElsie = target.buffs.some(
+            (b) => b.id === "cc_elsie" && b.usedBy === usedBy,
+          );
+          if (hasAndrew && hasMegan && !hasElsie) {
+            const elsie = CONTACTS.find((c) => c.id === "cc_elsie");
+            if (elsie) {
+              addContactBuff(target, elsie, usedBy);
+              addEmailToLog(
+                usedBy,
+                "everyone@gov.org",
+                "New Addition to the Thread!",
+                formatLoopInText(
+                  elsie,
+                  "Wait, is that a baby on the CC list? It's Elsie!",
+                ),
+                "bg-pink-50 border-l-4 border-pink-300",
+              );
+            }
+          }
+        }
       }
 
       function startQuarter() {
@@ -5102,7 +5196,7 @@
       function generateShopItems() {
         // Seminars
         const availCCs = CONTACTS.filter(
-          (c) => !state.player.addressBook.includes(c.id),
+          (c) => !state.player.addressBook.includes(c.id) && !c.noShop,
         );
         state.shop.seminars = shuffle([...availCCs])
           .slice(0, 2)
@@ -5490,6 +5584,7 @@
       function describeEffect(effect) {
         if (!effect) return "";
         const parts = [];
+        if (effect.special) parts.push(effect.special);
         if (effect.globalDmg)
           parts.push(`+${effect.globalDmg} all messages`);
         if (effect.singleDmg)
@@ -6481,17 +6576,18 @@
                 const bounceDamage = getUnitBounceDamage(a);
 
                 if (target.id === "player") {
-                  if (
-                    state.player.buffs.find(
-                      (b) => b.eff.dodge && Math.random() < b.eff.dodge,
-                    )
-                  ) {
+                  const dodgeBuff = state.player.buffs.find(
+                    (b) => b.eff.dodge && Math.random() < b.eff.dodge,
+                  );
+                  if (dodgeBuff) {
+                    const defaultLine = `${dodgeBuff.name} distracted the thread and they didnt see this email, no effect!`;
+                    const triggerText = (dodgeBuff.eff.specialTriggerText || defaultLine)
+                      .replace(/{name}/g, dodgeBuff.name);
                     addEmailToLog(
                       a.name,
                       state.player.name,
                       "Urgent Follow-up",
-                      body +
-                        `<br><br>(Thread ignored by <strong>Mittens</strong>. No standing lost.)`,
+                      body + `<br><br>(${triggerText})`,
                       "text-blue-600",
                     );
                   } else {
