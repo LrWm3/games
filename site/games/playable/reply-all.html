@@ -1180,6 +1180,21 @@
           noShop: true,
         },
         {
+          id: "cc_tater_the_dog",
+          name: "Tater the Dog",
+          title: "The Goodest Boy",
+          rarity: "rare",
+          departmentId: "facilities_and_administration",
+          bonus: "Good Boy: 50% chance to reply twice.",
+          loopInText:
+            "I'm looping in <strong>{name}</strong>! Who's a good boy?",
+          eff: {
+            followUpChance: 0.5,
+          },
+          usedBy: null,
+          noShop: true,
+        },
+        {
           id: "cc_andrew_legal",
           name: "Andrew",
           title: "Legal Counsel",
@@ -2078,15 +2093,14 @@
           },
         },
         {
-          id: "it_duo",
-          name: "Infrastructure Coverage",
+          id: "office_allies",
+          name: "Office Allies",
           items: [
+            { type: "contact", id: "cc_anneke_executive_council_office" },
             { type: "contact", id: "cc_willy_boy_information_technology" },
-            { type: "contact", id: "cc_colin_information_technology" },
           ],
           effect: {
-            replyDeptSplash: 2,
-            followUpChance: 0.15,
+            special: "Automatically loops in Tater the Dog when both are CC'd.",
           },
         },
         {
@@ -5041,6 +5055,37 @@
                   "Wait, is that a baby on the CC list? It's Elsie!",
                 ),
                 "bg-pink-50 border-l-4 border-pink-300",
+              );
+            }
+          }
+        }
+
+        if (
+          contact.id === "cc_anneke_executive_council_office" ||
+          contact.id === "cc_willy_boy_information_technology"
+        ) {
+          const hasAnneke = target.buffs.some(
+            (b) => b.id === "cc_anneke_executive_council_office" && b.usedBy === usedBy,
+          );
+          const hasWill = target.buffs.some(
+            (b) => b.id === "cc_willy_boy_information_technology" && b.usedBy === usedBy,
+          );
+          const hasTater = target.buffs.some(
+            (b) => b.id === "cc_tater_the_dog" && b.usedBy === usedBy,
+          );
+          if (hasAnneke && hasWill && !hasTater) {
+            const tater = CONTACTS.find((c) => c.id === "cc_tater_the_dog");
+            if (tater) {
+              addContactBuff(target, tater, usedBy);
+              addEmailToLog(
+                usedBy,
+                "everyone@gov.org",
+                "Bark! Bark!",
+                formatLoopInText(
+                  tater,
+                  "Tater is here to help! Who's a good boy? <strong>{name}</strong> is!",
+                ),
+                "bg-amber-50 border-l-4 border-amber-300",
               );
             }
           }
