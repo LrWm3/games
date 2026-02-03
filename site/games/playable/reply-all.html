@@ -329,61 +329,36 @@
             NEXT QUARTER &gt;
           </button>
         </div>
-        <div class="bg-[#f0f0f0] p-4 flex-grow overflow-y-auto">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Seminars (CCs) -->
-            <div class="space-y-2">
-              <h3
-                class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
-              >
-                Reach Out (Address Book)
-              </h3>
-              <div id="shop-seminars" class="space-y-2"></div>
+        <div class="bg-[#f0f0f0] p-4 flex-grow overflow-y-auto space-y-6">
+          <!-- Active Employee Assets -->
+          <div class="space-y-4">
+            <h3 class="text-xs font-bold uppercase border-b border-[#808080] pb-1">
+              Active Employee Assets
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div id="shop-owned-contacts" class="space-y-2"></div>
+              <div class="space-y-4">
+                <div id="shop-owned-signatures" class="space-y-2"></div>
+                <div id="shop-owned-email-meta" class="space-y-2"></div>
+                <div id="shop-owned-bccs" class="space-y-2"></div>
+              </div>
             </div>
-            <!-- Signatures -->
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Individual Opportunities -->
             <div class="space-y-2">
-              <h3
-                class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
-              >
-                Email Signature Library
+              <h3 class="text-xs font-bold uppercase border-b border-[#808080] pb-1">
+                Individual Opportunities (Direct)
               </h3>
-              <div id="shop-signatures" class="space-y-2"></div>
+              <div id="shop-direct-items" class="grid grid-cols-1 gap-2"></div>
             </div>
-            <!-- Salutations -->
+            <!-- Development Packs -->
             <div class="space-y-2">
-              <h3
-                class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
-              >
-                Set Greeting
+              <h3 class="text-xs font-bold uppercase border-b border-[#808080] pb-1">
+                Development Packs
               </h3>
-              <div id="shop-salutations" class="space-y-2"></div>
-            </div>
-            <!-- Sign-offs -->
-            <div class="space-y-2">
-              <h3
-                class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
-              >
-                Set Sign-off
-              </h3>
-              <div id="shop-signoffs" class="space-y-2"></div>
-            </div>
-            <!-- Self Promotion -->
-            <div class="space-y-2">
-              <h3
-                class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
-              >
-                Professional Development
-              </h3>
-              <div id="shop-promotions" class="space-y-2"></div>
-            </div>
-            <!-- Help Desk (BCCs) -->
-            <div class="space-y-2">
-              <h3
-                class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
-              >
-                Help Desk Escalations (BCCs)
-              </h3>
-              <div id="shop-bccs" class="space-y-2"></div>
+              <div id="shop-packs" class="grid grid-cols-1 gap-2"></div>
             </div>
           </div>
         </div>
@@ -2073,6 +2048,27 @@
           bonus: "Current target attacks another random opponent next turn.",
           rarity: "rare",
           effect: "redirect",
+        },
+        {
+          id: "expense_report",
+          name: "Expense Report",
+          bonus: "Doubles mission base rep (max +10 bonus).",
+          rarity: "common",
+          effect: "doubleRep",
+        },
+        {
+          id: "networking_event",
+          name: "Networking Event",
+          bonus: "Gain reputation equal to the total reputation value of your current CCs when used.",
+          rarity: "uncommon",
+          effect: "contactRep",
+        },
+        {
+          id: "mentorship",
+          name: "Mentorship Program",
+          bonus: "Trains a random contact in your loop for reply to damage, escalate, and max health.",
+          rarity: "rare",
+          effect: "trainContact",
         },
       ];
 
@@ -4198,14 +4194,11 @@
         ccPicksTaken: 0,
         ccPicksLeft: 0,
         shop: {
-          seminars: [],
-          signatures: [],
-          salutations: [],
-          signoffs: [],
-          promotions: [],
-          bccs: [],
+          directItems: [],
+          packs: [],
         },
         pendingTraining: null,
+        expenseReportActive: false,
       };
 
       const nameInput = document.getElementById("player-name-input");
@@ -4274,45 +4267,39 @@
       }
 
       function serializeShop(shop) {
-        const mapIds = (list) =>
-          Array.isArray(list)
-            ? list.map((item) => ({ id: item.id, purchased: !!item.purchased }))
-            : [];
+        const mapItem = (item) => ({ id: item.id, purchased: !!item.purchased, itemType: item.itemType });
         return {
-          seminars: mapIds(shop.seminars),
-          signatures: mapIds(shop.signatures),
-          salutations: mapIds(shop.salutations),
-          signoffs: mapIds(shop.signoffs),
-          promotions: mapIds(shop.promotions),
-          bccs: mapIds(shop.bccs),
+          directItems: (shop.directItems || []).map(mapItem),
+          packs: (shop.packs || []).map(p => ({
+            ...p,
+            options: (p.options || []).map(mapItem)
+          }))
         };
       }
 
       function hydrateShop(savedShop) {
-        if (!savedShop)
-          return {
-            seminars: [],
-            signatures: [],
-            salutations: [],
-            signoffs: [],
-            promotions: [],
-            bccs: [],
-          };
-        const build = (list, source) =>
-          (list || [])
-            .map((item) => {
-              const found = source.find((s) => s.id === item.id);
-              if (!found) return null;
-              return { ...found, purchased: !!item.purchased };
-            })
-            .filter(Boolean);
+        if (!savedShop) return { directItems: [], packs: [] };
+
+        const getItem = (s) => {
+            let source = [];
+            if (s.itemType === 'contact') source = CONTACTS;
+            else if (s.itemType === 'signature') source = SIGNATURES;
+            else if (s.itemType === 'salutation') source = SALUTATIONS;
+            else if (s.itemType === 'signoff') source = SIGNOFFS;
+            else if (s.itemType === 'bcc') source = BCC_CONTACTS;
+            else if (s.itemType === 'dev') source = getTrainingUpgrades();
+
+            const found = source.find(item => item.id === s.id);
+            if (!found) return null;
+            return { ...found, purchased: !!s.purchased, itemType: s.itemType };
+        };
+
         return {
-          seminars: build(savedShop.seminars, CONTACTS),
-          signatures: build(savedShop.signatures, SIGNATURES),
-          salutations: build(savedShop.salutations, SALUTATIONS),
-          signoffs: build(savedShop.signoffs, SIGNOFFS),
-          promotions: build(savedShop.promotions, getTrainingOffers()),
-          bccs: build(savedShop.bccs, BCC_CONTACTS),
+          directItems: (savedShop.directItems || []).map(getItem).filter(Boolean),
+          packs: (savedShop.packs || []).map(p => ({
+            ...p,
+            options: (p.options || []).map(getItem).filter(Boolean)
+          }))
         };
       }
 
@@ -4375,7 +4362,7 @@
         } else if (screen === "inbox-screen") {
           showInbox();
         }
-        if (state.pendingTraining) openTrainingModal();
+        if (state.pendingTraining) openPackModal();
       }
 
       function initLoginOption() {
@@ -4963,29 +4950,77 @@
         document.getElementById("set-info").classList.add("hidden");
       }
 
-      function openTrainingModal() {
+      function startPackOpening(pack) {
+        state.pendingTraining = {
+          packId: pack.id,
+          options: pack.options.map((o) => o.id),
+          picksLeft: pack.picks,
+          isPack: true,
+        };
+        saveGame();
+        openPackModal();
+      }
+
+      function applyPackItem(item) {
+        if (item.itemType === "contact") state.player.addressBook.push(item.id);
+        else if (item.itemType === "signature")
+          state.player.signatures.push(item);
+        else if (item.itemType === "salutation") state.player.salutation = item;
+        else if (item.itemType === "signoff") state.player.signOff = item;
+        else if (item.itemType === "bcc") state.player.bccContacts.push(item);
+        else if (item.itemType === "dev") item.apply();
+        playSound("connect");
+      }
+
+      function openPackModal() {
         const pending = state.pendingTraining;
         if (!pending) return;
-        const offer = getTrainingOffers().find((o) => o.id === pending.offerId);
-        if (!offer) return;
-        const upgrades = getTrainingUpgrades();
-        const options = pending.options
-          .map((id) => upgrades.find((u) => u.id === id))
-          .filter(Boolean);
+
+        let pack;
+        if (pending.isPack) {
+          pack = state.shop.packs.find((p) => p.id === pending.packId);
+        } else {
+          // Fallback for old style training
+          const offer = getTrainingOffers().find((o) => o.id === pending.offerId);
+          if (offer) {
+            pack = {
+              ...offer,
+              options: getTrainingUpgrades()
+                .filter((u) => pending.options.includes(u.id))
+                .map((u) => ({ ...u, itemType: "dev" })),
+            };
+          }
+        }
+
+        if (!pack) return;
+
         const modal = document.getElementById("training-modal");
-        document.getElementById("training-title").innerText = "Training Selection";
-        document.getElementById("training-name").innerText = offer.name;
-        document.getElementById("training-subtitle").innerText =
-          `Choose ${pending.picksLeft} more`;
+        document.getElementById("training-title").innerText = pack.name;
+        document.getElementById("training-name").innerText = pack.name;
+        document.getElementById("training-subtitle").innerText = `Choose ${pending.picksLeft} more`;
         const list = document.getElementById("training-options");
         list.innerHTML = "";
-        options.forEach((opt) => {
+
+        pack.options.forEach((opt) => {
+          if (!pending.options.includes(opt.id)) return;
+
           const btn = document.createElement("button");
           btn.className =
-            "w-full retro-border text-left p-2 bg-white hover:bg-blue-50";
-          btn.innerHTML = `<div class="font-bold">${opt.name}</div><div class="text-[10px] italic text-gray-600">${opt.bonus}</div>`;
+            "w-full retro-border text-left p-2 bg-white hover:bg-blue-50 flex flex-col gap-1";
+
+          const badge = opt.rarity ? formatRarityBadge(opt.rarity) : "";
+          const bonusDesc = opt.bonus || describeEffect(opt.eff || opt);
+
+          btn.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="font-bold">${opt.name}</span>
+                    ${badge}
+                </div>
+                <div class="text-[10px] italic text-gray-600">${bonusDesc}</div>
+            `;
+
           btn.onclick = () => {
-            opt.apply();
+            applyPackItem(opt);
             pending.picksLeft -= 1;
             pending.options = pending.options.filter((id) => id !== opt.id);
             saveGame();
@@ -4996,7 +5031,7 @@
               updateShopUI();
             } else {
               updateUI();
-              openTrainingModal();
+              openPackModal();
             }
           };
           list.appendChild(btn);
@@ -5006,18 +5041,6 @@
 
       function closeTrainingModal() {
         document.getElementById("training-modal").classList.add("hidden");
-      }
-
-      function startTraining(offer) {
-        const upgrades = shuffle([...getTrainingUpgrades()]);
-        const options = upgrades.slice(0, offer.optionsCount).map((u) => u.id);
-        state.pendingTraining = {
-          offerId: offer.id,
-          options,
-          picksLeft: offer.picks,
-        };
-        saveGame();
-        openTrainingModal();
       }
 
       function addContactBuff(target, contact, usedBy) {
@@ -5103,6 +5126,7 @@
         p.ult = 0;
         p.buffs = []; // Reset combat buffs
         p.deflectCharge = 0;
+        state.expenseReportActive = false;
         const baseStats = computeUnitStats(p);
         p.hp = getUnitMaxHp(p);
         p.currentWins = Math.max(0, Math.floor(baseStats.wins));
@@ -5263,39 +5287,109 @@
         ];
       }
 
+      function getRarityWeight(rarity) {
+        if (rarity === "rare") return 1;
+        if (rarity === "uncommon") return 4;
+        return 10;
+      }
+
+      function pickWeighted(items, count) {
+        const pool = [];
+        items.forEach((item) => {
+          const weight = getRarityWeight(item.rarity || "common");
+          for (let i = 0; i < weight; i++) pool.push(item);
+        });
+        if (pool.length === 0) return [];
+        const results = [];
+        for (let i = 0; i < count; i++) {
+          if (pool.length === 0) break;
+          const idx = Math.floor(Math.random() * pool.length);
+          const selected = pool[idx];
+          results.push(selected);
+          const itemId = selected.id;
+          for (let j = pool.length - 1; j >= 0; j--) {
+            if (pool[j].id === itemId) pool.splice(j, 1);
+          }
+        }
+        return results;
+      }
+
+      function generatePack(type, tier) {
+        const tiers = {
+          small: { cost: 6, options: 2, picks: 1 },
+          medium: { cost: 8, options: 3, picks: 1 },
+          large: { cost: 10, options: 3, picks: 2 },
+        };
+        const t = tiers[tier];
+        let pool = [];
+        if (type === "contact") {
+          pool = CONTACTS.filter(
+            (c) => !state.player.addressBook.includes(c.id) && !c.noShop,
+          ).map((c) => ({ ...c, itemType: "contact" }));
+        } else if (type === "email") {
+          const sals = SALUTATIONS.filter(
+            (s) => !state.player.salutation || state.player.salutation.id !== s.id,
+          ).map((s) => ({ ...s, itemType: "salutation" }));
+          const offs = SIGNOFFS.filter(
+            (s) => !state.player.signOff || state.player.signOff.id !== s.id,
+          ).map((s) => ({ ...s, itemType: "signoff" }));
+          pool = [...sals, ...offs];
+        } else if (type === "dev") {
+          pool = getTrainingUpgrades().map((u) => ({ ...u, itemType: "dev" }));
+        } else if (type === "bcc") {
+          pool = BCC_CONTACTS.map((b) => ({ ...b, itemType: "bcc" }));
+        }
+
+        const options = pickWeighted(pool, t.options);
+        return {
+          id: `pack_${type}_${tier}_${Date.now()}_${Math.random()}`,
+          type,
+          tier,
+          name: `${tier.toUpperCase()} ${type.toUpperCase()} PACK`,
+          description: `Pick ${t.picks} of ${t.options} ${type} items.`,
+          cost: t.cost,
+          options: options.map((o) => ({ ...o })),
+          picks: t.picks,
+          purchased: false,
+        };
+      }
+
       function generateShopItems() {
-        // Seminars
-        const availCCs = CONTACTS.filter(
-          (c) => !state.player.addressBook.includes(c.id) && !c.noShop,
-        );
-        state.shop.seminars = shuffle([...availCCs])
-          .slice(0, 2)
-          .map((c) => ({ ...c, purchased: false }));
+        const p = state.player;
+        const contactPool = CONTACTS.filter(
+          (c) => !p.addressBook.includes(c.id) && !c.noShop,
+        ).map((c) => ({ ...c, itemType: "contact" }));
+        const sigPool = SIGNATURES.filter(
+          (s) => !p.signatures.some((sig) => sig.id === s.id),
+        ).map((s) => ({ ...s, itemType: "signature" }));
+        const salPool = SALUTATIONS.filter(
+          (s) => !p.salutation || p.salutation.id !== s.id,
+        ).map((s) => ({ ...s, itemType: "salutation" }));
+        const offPool = SIGNOFFS.filter(
+          (s) => !p.signOff || p.signOff.id !== s.id,
+        ).map((s) => ({ ...s, itemType: "signoff" }));
+        const bccPool = BCC_CONTACTS.map((b) => ({ ...b, itemType: "bcc" }));
 
-        // Signatures
-        state.shop.signatures = shuffle([...SIGNATURES])
-          .slice(0, 2)
-          .map((s) => ({ ...s, purchased: false }));
+        const allDirect = [
+          ...contactPool,
+          ...sigPool,
+          ...salPool,
+          ...offPool,
+          ...bccPool,
+        ];
+        state.shop.directItems = pickWeighted(allDirect, 3).map((item) => ({
+          ...item,
+          purchased: false,
+        }));
 
-        // Salutations
-        state.shop.salutations = shuffle([...SALUTATIONS])
-          .slice(0, 2)
-          .map((s) => ({ ...s, purchased: false }));
-
-        // Sign-offs
-        state.shop.signoffs = shuffle([...SIGNOFFS])
-          .slice(0, 2)
-          .map((s) => ({ ...s, purchased: false }));
-
-        // Promotions (Stats)
-        state.shop.promotions = shuffle([...getTrainingOffers()])
-          .slice(0, 1)
-          .map((p) => ({ ...p, purchased: false }));
-
-        // BCCs
-        state.shop.bccs = shuffle([...BCC_CONTACTS])
-          .slice(0, 2)
-          .map((b) => ({ ...b, purchased: false }));
+        const packTypes = ["contact", "email", "dev", "bcc"];
+        const packTiers = ["small", "medium", "large"];
+        state.shop.packs = [];
+        for (let i = 0; i < 2; i++) {
+          const type = packTypes[Math.floor(Math.random() * packTypes.length)];
+          const tier = packTiers[Math.floor(Math.random() * packTiers.length)];
+          state.shop.packs.push(generatePack(type, tier));
+        }
       }
 
       function endQuarter() {
@@ -5325,6 +5419,11 @@
           baseRepByQuarter[state.player.quarter] ?? baseRepByQuarter.Q3;
         const totalOptOutRep = state.removedByPlayer * 2;
         let bonusRep = 0;
+
+        if (state.expenseReportActive) {
+          bonusRep += Math.min(10, baseRep);
+        }
+
         const repStats = computeUnitStats(state.player);
         if (repStats.repBonus) {
           bonusRep +=
@@ -5617,7 +5716,7 @@
       }
 
       function createOwnedRow(item, type, onSell, options = {}) {
-        const cost = getItemCostByType(item.rarity || "common", type);
+        const cost = item.cost || getItemCostByType(item.rarity || "common", type);
         const refund = Math.floor(cost / 2);
         const actionLabel = options.actionLabel || "ARCHIVE";
         const setBadge = item.setId
@@ -5686,163 +5785,88 @@
         return parts.join(", ");
       }
 
+      function isItemOwned(item) {
+        if (item.itemType === "contact")
+          return state.player.addressBook.includes(item.id);
+        if (item.itemType === "signature")
+          return state.player.signatures.some((s) => s.id === item.id);
+        if (item.itemType === "salutation")
+          return state.player.salutation && state.player.salutation.id === item.id;
+        if (item.itemType === "signoff")
+          return state.player.signOff && state.player.signOff.id === item.id;
+        return false;
+      }
+
+      function hasSpaceForItem(item) {
+        if (item.itemType === "contact")
+          return state.player.addressBook.length < state.player.title.addressLimit;
+        if (item.itemType === "signature")
+          return state.player.signatures.length < state.player.title.sigLimit;
+        if (item.itemType === "salutation") return !state.player.salutation;
+        if (item.itemType === "signoff") return !state.player.signOff;
+        return true;
+      }
+
+      function buyDirectItem(item, cost) {
+        state.player.reputation -= cost;
+        item.purchased = true;
+        if (item.itemType === "contact") state.player.addressBook.push(item.id);
+        else if (item.itemType === "signature") state.player.signatures.push(item);
+        else if (item.itemType === "salutation") state.player.salutation = item;
+        else if (item.itemType === "signoff") state.player.signOff = item;
+        else if (item.itemType === "bcc") state.player.bccContacts.push(item);
+        playSound("connect");
+        updateShopUI();
+      }
+
+      function buyPack(pack) {
+        state.player.reputation -= pack.cost;
+        pack.purchased = true;
+        startPackOpening(pack);
+      }
+
       function updateShopUI() {
         document.getElementById("shop-reputation-display").innerText =
           `REP: ${state.player.reputation}`;
 
-        // Seminars
-        const semList = document.getElementById("shop-seminars");
-        semList.innerHTML = "";
-        const semHeader = semList.previousElementSibling;
-        semHeader.innerText = `Reach Out (Address Book: ${state.player.addressBook.length}/${state.player.title.addressLimit})`;
-
-        const contactCurrent = document.createElement("div");
-        contactCurrent.className = "space-y-1 mb-2";
-        const contactTitle = document.createElement("div");
-        contactTitle.className = "text-[10px] font-bold uppercase text-gray-500";
-        contactTitle.innerText = "Active Contacts";
-        contactCurrent.appendChild(contactTitle);
+        // --- OWNED ASSETS ---
+        const ownedContacts = document.getElementById("shop-owned-contacts");
+        ownedContacts.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Address Book (${state.player.addressBook.length}/${state.player.title.addressLimit})</div>`;
         if (state.player.addressBook.length === 0) {
-          const none = document.createElement("div");
-          none.className = "text-[10px] italic text-gray-400";
-          none.innerText = "No contacts on file.";
-          contactCurrent.appendChild(none);
+          ownedContacts.innerHTML += `<div class="text-[10px] italic text-gray-400">No contacts on file.</div>`;
         } else {
           state.player.addressBook.forEach((id) => {
             const c = CONTACTS.find((con) => con.id === id);
-            if (!c) return;
-            contactCurrent.appendChild(
-              createOwnedRow(
-                c,
-                "contact",
-                (refund) => {
+            if (c) {
+              ownedContacts.appendChild(
+                createOwnedRow(c, "contact", (refund) => {
                   state.player.addressBook = state.player.addressBook.filter(
                     (cid) => cid !== id,
                   );
                   state.player.reputation += refund;
-                },
-                { actionLabel: "ARCHIVE" },
-              ),
-            );
+                }),
+              );
+            }
           });
         }
-        semList.appendChild(contactCurrent);
 
-        state.shop.seminars.forEach((c) => {
-          const cost = getItemCostByType(c.rarity, "contact");
-          const owned = state.player.addressBook.includes(c.id);
-          const hasSpace =
-            state.player.addressBook.length < state.player.title.addressLimit;
-          semList.appendChild(
-            createShopCard(
-              c.name,
-              c.bonus,
-              cost,
-              () => {
-                if (owned) return;
-                if (!hasSpace) {
-                  alert("Address book full. Archive a contact to make space.");
-                  return;
-                }
-                playSound("connect");
-                state.player.reputation -= cost;
-                state.player.addressBook.push(c.id);
-                c.purchased = true;
-              },
-              {
-                purchased: owned,
-                canBuy: hasSpace,
-                badge: formatRarityBadge(c.rarity),
-                setId: c.setId,
-                actionLabel: "REACH OUT",
-                ownedLabel: "IN DIRECTORY",
-                spaceLabel: "FREE SLOT",
-                priceLabel: `REQ: ${cost} REP`,
-              },
-            ),
+        const ownedSigs = document.getElementById("shop-owned-signatures");
+        ownedSigs.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Signatures (${state.player.signatures.length}/${state.player.title.sigLimit})</div>`;
+        state.player.signatures.forEach((sig) => {
+          ownedSigs.appendChild(
+            createOwnedRow(sig, "signature", (refund) => {
+              state.player.signatures = state.player.signatures.filter(
+                (s) => s.id !== sig.id,
+              );
+              state.player.reputation += refund;
+            }),
           );
         });
 
-        // Signatures
-        const sigList = document.getElementById("shop-signatures");
-        sigList.innerHTML = "";
-        const sigHeader = sigList.previousElementSibling;
-        sigHeader.innerText = `Email Signatures (${state.player.signatures.length}/${state.player.title.sigLimit})`;
-        const sigCurrent = document.createElement("div");
-        sigCurrent.className = "space-y-1 mb-2";
-        const sigTitle = document.createElement("div");
-        sigTitle.className = "text-[10px] font-bold uppercase text-gray-500";
-        sigTitle.innerText = "Signatures on File";
-        sigCurrent.appendChild(sigTitle);
-        if (state.player.signatures.length === 0) {
-          const none = document.createElement("div");
-          none.className = "text-[10px] italic text-gray-400";
-          none.innerText = "No signatures on file.";
-          sigCurrent.appendChild(none);
-        } else {
-          state.player.signatures.forEach((sig) => {
-            sigCurrent.appendChild(
-              createOwnedRow(
-                sig,
-                "signature",
-                (refund) => {
-                  state.player.signatures = state.player.signatures.filter(
-                    (s) => s.id !== sig.id,
-                  );
-                  state.player.reputation += refund;
-                },
-                { actionLabel: "ARCHIVE" },
-              ),
-            );
-          });
-        }
-        sigList.appendChild(sigCurrent);
-
-        state.shop.signatures.forEach((s) => {
-          const cost = getItemCostByType(s.rarity, "signature");
-          const owned = state.player.signatures.some((sig) => sig.id === s.id);
-          const hasSpace =
-            state.player.signatures.length < state.player.title.sigLimit;
-          sigList.appendChild(
-            createShopCard(
-              s.name,
-              s.bonus,
-              cost,
-              () => {
-                if (owned) return;
-                if (!hasSpace) {
-                  alert("Signature slots full. Archive a signature to make space.");
-                  return;
-                }
-                state.player.reputation -= cost;
-                state.player.signatures.push(s);
-                s.purchased = true;
-              },
-              {
-                purchased: owned,
-                canBuy: hasSpace,
-                badge: formatRarityBadge(s.rarity),
-                setId: s.setId,
-                actionLabel: "APPLY",
-                ownedLabel: "ON FILE",
-                spaceLabel: "FREE SLOT",
-                priceLabel: `REQ: ${cost} REP`,
-              },
-            ),
-          );
-        });
-
-        // Salutations
-        const salList = document.getElementById("shop-salutations");
-        salList.innerHTML = "";
-        const currentSalWrap = document.createElement("div");
-        currentSalWrap.className = "space-y-1 mb-2";
-        const salTitle = document.createElement("div");
-        salTitle.className = "text-[10px] font-bold uppercase text-gray-500";
-        salTitle.innerText = "Greeting on File";
-        currentSalWrap.appendChild(salTitle);
+        const ownedEmailMeta = document.getElementById("shop-owned-email-meta");
+        ownedEmailMeta.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Active Salutation & Sign-off</div>`;
         if (state.player.salutation) {
-          currentSalWrap.appendChild(
+          ownedEmailMeta.appendChild(
             createOwnedRow(
               state.player.salutation,
               "salutation",
@@ -5853,56 +5877,9 @@
               { actionLabel: "CLEAR" },
             ),
           );
-        } else {
-          const none = document.createElement("div");
-          none.className = "text-[10px] italic text-gray-400";
-          none.innerText = "No greeting on file.";
-          currentSalWrap.appendChild(none);
         }
-        salList.appendChild(currentSalWrap);
-        state.shop.salutations.forEach((s) => {
-          const cost = getItemCostByType(s.rarity, "salutation");
-          const owned = state.player.salutation && state.player.salutation.id === s.id;
-          const hasSpace = !state.player.salutation;
-          salList.appendChild(
-            createShopCard(
-              s.name,
-              s.bonus,
-              cost,
-              () => {
-                if (!hasSpace) {
-                  alert("Greeting slot full. Clear your current greeting first.");
-                  return;
-                }
-                state.player.reputation -= cost;
-                state.player.salutation = s;
-                s.purchased = true;
-              },
-              {
-                purchased: owned,
-                canBuy: hasSpace,
-                badge: formatRarityBadge(s.rarity),
-                setId: s.setId,
-                actionLabel: "SET GREETING",
-                ownedLabel: "ACTIVE",
-                spaceLabel: "CLEAR FIRST",
-                priceLabel: `REQ: ${cost} REP`,
-              },
-            ),
-          );
-        });
-
-        // Sign-offs
-        const offList = document.getElementById("shop-signoffs");
-        offList.innerHTML = "";
-        const currentOffWrap = document.createElement("div");
-        currentOffWrap.className = "space-y-1 mb-2";
-        const offTitle = document.createElement("div");
-        offTitle.className = "text-[10px] font-bold uppercase text-gray-500";
-        offTitle.innerText = "Sign-off on File";
-        currentOffWrap.appendChild(offTitle);
         if (state.player.signOff) {
-          currentOffWrap.appendChild(
+          ownedEmailMeta.appendChild(
             createOwnedRow(
               state.player.signOff,
               "signoff",
@@ -5913,92 +5890,60 @@
               { actionLabel: "CLEAR" },
             ),
           );
-        } else {
-          const none = document.createElement("div");
-          none.className = "text-[10px] italic text-gray-400";
-          none.innerText = "No sign-off on file.";
-          currentOffWrap.appendChild(none);
         }
-        offList.appendChild(currentOffWrap);
-        state.shop.signoffs.forEach((s) => {
-          const cost = getItemCostByType(s.rarity, "signoff");
-          const owned = state.player.signOff && state.player.signOff.id === s.id;
-          const hasSpace = !state.player.signOff;
-          offList.appendChild(
-            createShopCard(
-              s.name,
-              s.bonus,
-              cost,
-              () => {
-                if (!hasSpace) {
-                  alert("Sign-off slot full. Clear your current sign-off first.");
-                  return;
-                }
-                state.player.reputation -= cost;
-                state.player.signOff = s;
-                s.purchased = true;
+
+        const ownedBccs = document.getElementById("shop-owned-bccs");
+        ownedBccs.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Consumable BCCs (${state.player.bccContacts.length})</div>`;
+        state.player.bccContacts.forEach((bcc, idx) => {
+          ownedBccs.appendChild(
+            createOwnedRow(
+              bcc,
+              "bcc",
+              (refund) => {
+                state.player.bccContacts.splice(idx, 1);
+                state.player.reputation += refund;
               },
+              { actionLabel: "DISCARD" },
+            ),
+          );
+        });
+
+        // --- DIRECT ITEMS ---
+        const directList = document.getElementById("shop-direct-items");
+        directList.innerHTML = "";
+        state.shop.directItems.forEach((item) => {
+          const cost = item.cost || getItemCostByType(item.rarity, item.itemType);
+          const owned = isItemOwned(item);
+          const canBuy = hasSpaceForItem(item);
+
+          directList.appendChild(
+            createShopCard(
+              item.name,
+              item.bonus || item.description || "",
+              cost,
+              () => buyDirectItem(item, cost),
               {
-                purchased: owned,
-                canBuy: hasSpace,
-                badge: formatRarityBadge(s.rarity),
-                setId: s.setId,
-                actionLabel: "SET SIGN-OFF",
-                ownedLabel: "ACTIVE",
-                spaceLabel: "CLEAR FIRST",
-                priceLabel: `REQ: ${cost} REP`,
+                purchased: item.purchased || owned,
+                canBuy: canBuy,
+                badge: formatRarityBadge(item.rarity),
+                setId: item.setId,
+                ownedLabel: owned ? "OWNED" : "PURCHASED",
               },
             ),
           );
         });
 
-        // Promotions (Stats)
-        const promList = document.getElementById("shop-promotions");
-        promList.innerHTML = "";
-        state.shop.promotions.forEach((p) => {
-          promList.appendChild(
-            createShopCard(
-              p.name,
-              p.bonus,
-              p.cost,
-              () => {
-                if (p.purchased) return;
-                state.player.reputation -= p.cost;
-                p.purchased = true;
-                startTraining(p);
-              },
+        // --- PACKS ---
+        const packList = document.getElementById("shop-packs");
+        packList.innerHTML = "";
+        state.shop.packs.forEach((pack) => {
+          packList.appendChild(
+            createShopCard(pack.name, pack.description, pack.cost, () =>
+              buyPack(pack),
               {
-                purchased: p.purchased,
-                actionLabel: "FILE CREDIT",
-                ownedLabel: "LOGGED",
-                priceLabel: `REQ: ${p.cost} REP`,
-              },
-            ),
-          );
-        });
-
-        // BCCs
-        const bccList = document.getElementById("shop-bccs");
-        bccList.innerHTML = "";
-        state.shop.bccs.forEach((b) => {
-          const cost =
-            b.rarity === "rare" ? 5 : b.rarity === "uncommon" ? 3 : 2;
-          bccList.appendChild(
-            createShopCard(
-              b.name,
-              b.bonus,
-              cost,
-              () => {
-                state.player.reputation -= cost;
-                state.player.bccContacts.push(b);
-                b.purchased = true;
-              },
-              {
-                purchased: b.purchased,
-                badge: formatRarityBadge(b.rarity),
-                actionLabel: "REQUEST",
-                ownedLabel: "ON FILE",
-                priceLabel: `REQ: ${cost} REP`,
+                purchased: pack.purchased,
+                actionLabel: "OPEN PACK",
+                ownedLabel: "OPENED",
               },
             ),
           );
@@ -6936,6 +6881,58 @@
             `Anyone targeting you will be redirected next turn.`,
             "italic text-gray-500 text-[10px]",
           );
+        } else if (bcc.effect === "doubleRep") {
+          state.expenseReportActive = true;
+          addEmailToLog(
+            "SYSTEM",
+            state.player.name,
+            "Expense Report Logged",
+            `Mission base reputation will be doubled (max +10 bonus).`,
+            "italic text-gray-500 text-[10px]",
+          );
+        } else if (bcc.effect === "contactRep") {
+          let total = 0;
+          state.player.buffs.forEach((b) => {
+            if (b.eff && b.eff.endRep) total += b.eff.endRep;
+          });
+          state.player.reputation += total;
+          addEmailToLog(
+            "SYSTEM",
+            state.player.name,
+            "Networking Success",
+            `Gained +${total} reputation from your current CC'd contacts.`,
+            "italic text-gray-500 text-[10px]",
+          );
+        } else if (bcc.effect === "trainContact") {
+          if (state.player.buffs.length > 0) {
+            const b =
+              state.player.buffs[
+                Math.floor(Math.random() * state.player.buffs.length)
+              ];
+            if (!b.eff) b.eff = {};
+            b.eff.singleDmg = (b.eff.singleDmg || 0) + 5;
+            b.eff.escalateDmg = (b.eff.escalateDmg || 0) + 3;
+            b.eff.maxHp = (b.eff.maxHp || 0) + 10;
+            state.player.hp = Math.min(
+              getUnitMaxHp(state.player),
+              state.player.hp + 10,
+            );
+            addEmailToLog(
+              "SYSTEM",
+              state.player.name,
+              "Mentorship Program",
+              `Trained <strong>${b.name}</strong>! They gained +5 reply to, +3 escalate, and +10 Max HP.`,
+              "italic text-gray-500 text-[10px]",
+            );
+          } else {
+            addEmailToLog(
+              "SYSTEM",
+              state.player.name,
+              "Mentorship Failed",
+              `No contacts currently CC'd to train.`,
+              "italic text-gray-500 text-[10px]",
+            );
+          }
         }
 
         state.ccPicksTaken++;
