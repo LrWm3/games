@@ -965,6 +965,16 @@
           <div class="font-bold text-[#000080]" id="training-name"></div>
           <div class="text-gray-600" id="training-subtitle"></div>
           <div id="training-options" class="space-y-2"></div>
+          <div class="mt-4 border-t border-gray-200 pt-2">
+            <button
+              id="toggle-pack-management"
+              onclick="togglePackManagement()"
+              class="text-[10px] font-bold text-blue-800 underline"
+            >
+              Manage Current Assets
+            </button>
+            <div id="pack-management-container" class="hidden mt-2 space-y-2 max-h-48 overflow-y-auto"></div>
+          </div>
         </div>
         <div class="p-2 flex justify-end bg-[#c0c0c0]">
           <button
@@ -4980,14 +4990,33 @@
       }
 
       function applyPackItem(item) {
+        if (item.itemType === "salutation" && state.player.salutation) {
+          sellItem("salutation", state.player.salutation);
+        }
+        if (item.itemType === "signoff" && state.player.signOff) {
+          sellItem("signoff", state.player.signOff);
+        }
+
         if (item.itemType === "contact") state.player.addressBook.push(item.id);
-        else if (item.itemType === "signature")
-          state.player.signatures.push(item);
+        else if (item.itemType === "signature") state.player.signatures.push(item);
         else if (item.itemType === "salutation") state.player.salutation = item;
         else if (item.itemType === "signoff") state.player.signOff = item;
         else if (item.itemType === "bcc") state.player.bccContacts.push(item);
         else if (item.itemType === "dev") item.apply();
         playSound("connect");
+      }
+
+      function togglePackManagement() {
+        const container = document.getElementById("pack-management-container");
+        const btn = document.getElementById("toggle-pack-management");
+        if (container.classList.contains("hidden")) {
+          container.classList.remove("hidden");
+          btn.innerText = "Hide Current Assets";
+          renderPackManagement();
+        } else {
+          container.classList.add("hidden");
+          btn.innerText = "Manage Current Assets";
+        }
       }
 
       function openPackModal() {
@@ -5054,6 +5083,7 @@
           };
           list.appendChild(btn);
         });
+      renderPackManagement();
         modal.classList.remove("hidden");
       }
 
@@ -5782,10 +5812,77 @@
         return div;
       }
 
+      function renderPackManagement() {
+        const container = document.getElementById("pack-management-container");
+        if (!container || container.classList.contains("hidden")) return;
+        container.innerHTML = "";
+
+        const section = (title, items, type, sellFn) => {
+          if (!items || (Array.isArray(items) && items.length === 0)) return;
+          const h = document.createElement("div");
+          h.className = "text-[10px] font-bold uppercase text-gray-500 mt-2";
+          h.innerText = title;
+          container.appendChild(h);
+          if (Array.isArray(items)) {
+            items.forEach((item) => {
+              container.appendChild(createOwnedRow(item, type, () => sellFn(item)));
+            });
+          } else {
+            container.appendChild(createOwnedRow(items, type, () => sellFn(items)));
+          }
+        };
+
+        section(
+          "Address Book",
+          state.player.addressBook.map((id) => CONTACTS.find((c) => c.id === id)).filter(Boolean),
+          "contact",
+          (it) => sellItem("contact", it)
+        );
+        section("Signatures", state.player.signatures, "signature", (it) => sellItem("signature", it));
+        section("Greeting", state.player.salutation, "salutation", (it) => sellItem("salutation", it));
+        section("Sign-off", state.player.signOff, "signoff", (it) => sellItem("signoff", it));
+      }
+
+      function sellItem(itemType, item) {
+        const cost = item.cost || getItemCostByType(item.rarity || "common", itemType);
+        const refund = Math.floor(cost / 2);
+        state.player.reputation += refund;
+
+        if (itemType === "salutation") state.player.salutation = null;
+        else if (itemType === "signoff") state.player.signOff = null;
+        else if (itemType === "signature") {
+          state.player.signatures = state.player.signatures.filter((s) => s.id !== item.id);
+        } else if (itemType === "contact") {
+          state.player.addressBook = state.player.addressBook.filter((id) => id !== item.id);
+        } else if (itemType === "bcc") {
+          const idx = state.player.bccContacts.findIndex((b) => b.id === item.id);
+          if (idx !== -1) state.player.bccContacts.splice(idx, 1);
+        }
+
+        playSound("trash");
+        updateUI();
+        if (!document.getElementById("shop-screen").classList.contains("hidden")) {
+          updateShopUI();
+        }
+        renderPackManagement();
+        saveGame();
+      }
+
       function createOwnedRow(item, type, onSell, options = {}) {
         const cost = item.cost || getItemCostByType(item.rarity || "common", type);
         const refund = Math.floor(cost / 2);
         const actionLabel = options.actionLabel || "ARCHIVE";
+
+        const typeLabels = {
+          contact: "Contact",
+          signature: "Signature",
+          salutation: "Greeting",
+          signoff: "Sign-off",
+          bcc: "BCC",
+        };
+        const typeLabel = typeLabels[type] || type;
+        const typeBadge = `<span class="bg-blue-800 text-white px-1 uppercase font-bold text-[8px] mr-1">${typeLabel}</span>`;
+
         const setBadge = item.setId
           ? `<button type="button" data-set-button data-set-id="${item.setId}" class="text-[9px] uppercase px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 font-bold">Set</button>`
           : "";
@@ -5795,7 +5892,10 @@
         div.innerHTML = `
                 <div class="flex flex-col gap-0.5">
                     <div class="flex items-center gap-2 text-[11px] font-bold">
-                        <span>${item.name}</span>
+                        <div class="flex items-center flex-wrap gap-1">
+                          ${typeBadge}
+                          <span>${item.name}</span>
+                        </div>
                         ${formatRarityBadge(item.rarity)}${setBadge}
                     </div>
                     <div class="text-[10px] italic text-gray-600">${item.bonus || ""}</div>
@@ -5869,14 +5969,22 @@
           return state.player.addressBook.length < state.player.title.addressLimit;
         if (item.itemType === "signature")
           return state.player.signatures.length < state.player.title.sigLimit;
-        if (item.itemType === "salutation") return !state.player.salutation;
-        if (item.itemType === "signoff") return !state.player.signOff;
+        if (item.itemType === "salutation") return true;
+        if (item.itemType === "signoff") return true;
         return true;
       }
 
       function buyDirectItem(item, cost) {
         state.player.reputation -= cost;
         item.purchased = true;
+
+        if (item.itemType === "salutation" && state.player.salutation) {
+          sellItem("salutation", state.player.salutation);
+        }
+        if (item.itemType === "signoff" && state.player.signOff) {
+          sellItem("signoff", state.player.signOff);
+        }
+
         if (item.itemType === "contact") state.player.addressBook.push(item.id);
         else if (item.itemType === "signature") state.player.signatures.push(item);
         else if (item.itemType === "salutation") state.player.salutation = item;
@@ -5913,12 +6021,7 @@
             const c = CONTACTS.find((con) => con.id === id);
             if (c) {
               ownedContacts.appendChild(
-                createOwnedRow(c, "contact", (refund) => {
-                  state.player.addressBook = state.player.addressBook.filter(
-                    (cid) => cid !== id,
-                  );
-                  state.player.reputation += refund;
-                }),
+                createOwnedRow(c, "contact", () => sellItem("contact", c)),
               );
             }
           });
@@ -5927,58 +6030,33 @@
         const ownedSigs = document.getElementById("shop-owned-signatures");
         ownedSigs.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Signatures (${state.player.signatures.length}/${state.player.title.sigLimit})</div>`;
         state.player.signatures.forEach((sig) => {
-          ownedSigs.appendChild(
-            createOwnedRow(sig, "signature", (refund) => {
-              state.player.signatures = state.player.signatures.filter(
-                (s) => s.id !== sig.id,
-              );
-              state.player.reputation += refund;
-            }),
-          );
+          ownedSigs.appendChild(createOwnedRow(sig, "signature", () => sellItem("signature", sig)));
         });
 
         const ownedEmailMeta = document.getElementById("shop-owned-email-meta");
         ownedEmailMeta.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Active Salutation & Sign-off</div>`;
         if (state.player.salutation) {
           ownedEmailMeta.appendChild(
-            createOwnedRow(
-              state.player.salutation,
-              "salutation",
-              (refund) => {
-                state.player.salutation = null;
-                state.player.reputation += refund;
-              },
-              { actionLabel: "CLEAR" },
-            ),
+            createOwnedRow(state.player.salutation, "salutation", () => sellItem("salutation", state.player.salutation), {
+              actionLabel: "CLEAR",
+            }),
           );
         }
         if (state.player.signOff) {
           ownedEmailMeta.appendChild(
-            createOwnedRow(
-              state.player.signOff,
-              "signoff",
-              (refund) => {
-                state.player.signOff = null;
-                state.player.reputation += refund;
-              },
-              { actionLabel: "CLEAR" },
-            ),
+            createOwnedRow(state.player.signOff, "signoff", () => sellItem("signoff", state.player.signOff), {
+              actionLabel: "CLEAR",
+            }),
           );
         }
 
         const ownedBccs = document.getElementById("shop-owned-bccs");
         ownedBccs.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Consumable BCCs (${state.player.bccContacts.length})</div>`;
-        state.player.bccContacts.forEach((bcc, idx) => {
+        state.player.bccContacts.forEach((bcc) => {
           ownedBccs.appendChild(
-            createOwnedRow(
-              bcc,
-              "bcc",
-              (refund) => {
-                state.player.bccContacts.splice(idx, 1);
-                state.player.reputation += refund;
-              },
-              { actionLabel: "DISCARD" },
-            ),
+            createOwnedRow(bcc, "bcc", () => sellItem("bcc", bcc), {
+              actionLabel: "DISCARD",
+            }),
           );
         });
 
