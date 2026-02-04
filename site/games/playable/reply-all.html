@@ -300,7 +300,7 @@
             </div>
           </div>
           <button
-            onclick="showShop()"
+            onclick="advanceToNextQuarter('shop-screen')"
             class="w-full py-2 retro-button font-bold text-sm"
           >
             GO TO PORTAL
@@ -327,7 +327,7 @@
             >REPUTATION: 0</span
           >
           <button
-            onclick="advanceToNextQuarter()"
+            onclick="showInbox()"
             class="retro-button text-black text-[10px] py-0 px-2 h-5"
           >
             NEXT QUARTER &gt;
@@ -557,7 +557,7 @@
         </p>
 
         <button
-          onclick="advanceToNextQuarter()"
+          onclick="completePromotion()"
           class="px-12 py-4 bg-[#000080] text-white font-bold hover:bg-blue-700 transition-colors shadow-lg"
         >
           ADVANCE TO NEXT QUARTER
@@ -4417,6 +4417,7 @@
         gameOver: false,
         removedByPlayer: 0,
         removedTotal: 0,
+        postPromotionScreen: null,
         ccPicksTaken: 0,
         ccPicksLeft: 0,
         shop: {
@@ -6019,6 +6020,7 @@
           gameOver: false,
           removedByPlayer: 0,
           removedTotal: 0,
+          postPromotionScreen: null,
           shop: {
             directItems: [],
             packs: [],
@@ -6032,7 +6034,7 @@
         showInbox();
       }
 
-      function advanceToNextQuarter() {
+      function advanceQuarter() {
         const quarters = ["Q3", "Q4", "Q1", "Q2"];
         let idx = quarters.indexOf(state.player.quarter);
         idx = (idx + 1) % quarters.length;
@@ -6041,18 +6043,42 @@
         if (state.player.quarter === "Q3") {
           state.player.year++;
         }
+        return state.player.quarter;
+      }
 
-        if (state.player.quarter === "Q2") {
-          showPromotion();
+      function goToPostQuarterScreen(targetScreen) {
+        if (targetScreen === "shop-screen") {
+          showShop();
         } else {
           showInbox();
         }
       }
 
+      function advanceToNextQuarter(targetScreen = "inbox-screen") {
+        const nextQuarter = advanceQuarter();
+        if (nextQuarter === "Q2") {
+          state.postPromotionScreen = targetScreen;
+          showPromotion();
+        } else {
+          goToPostQuarterScreen(targetScreen);
+        }
+      }
+
+      function completePromotion() {
+        const targetScreen = state.postPromotionScreen || "inbox-screen";
+        state.postPromotionScreen = null;
+        const nextQuarter = advanceQuarter();
+        if (nextQuarter === "Q2") {
+          showPromotion();
+          return;
+        }
+        goToPostQuarterScreen(targetScreen);
+      }
+
       function showPromotion() {
         // TODO - if max title reached, skip promotion
         if (state.player.year >= TITLES.length) {
-          advanceToNextQuarter();
+          completePromotion();
           return;
         }
         transitionTo("promotion-screen");
