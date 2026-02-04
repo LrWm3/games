@@ -1160,11 +1160,11 @@
           rarity: "common",
           departmentId: "marketing",
           employeeId: "telly_marketing",
-          bonus: "+3 reply to.",
+          bonus: "+12 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to generate a contact report for this thread.",
           eff: {
-            singleDmg: 3,
+            singleDmg: 12,
           },
           usedBy: null,
         },
@@ -1174,11 +1174,11 @@
           title: "The Baby",
           rarity: "rare",
           departmentId: "legal",
-          bonus: "Cuteness: 25% Distraction chance.",
+          bonus: "Cuteness: 40% Distraction chance.",
           loopInText:
             "Look at <strong>{name}</strong>! Isn't she adorable?",
           eff: {
-            dodge: 0.25,
+            dodge: 0.4,
             specialTriggerText: "Thread distracted by {name}'s cuteness! No standing lost.",
           },
           usedBy: null,
@@ -1190,11 +1190,11 @@
           title: "The Goodest Boy",
           rarity: "rare",
           departmentId: "facilities_and_administration",
-          bonus: "Good Boy: 50% chance to reply twice.",
+          bonus: "Good Boy: 100% chance to reply twice.",
           loopInText:
             "I'm looping in <strong>{name}</strong>! Who's a good boy?",
           eff: {
-            followUpChance: 0.5,
+            followUpChance: 1.0,
           },
           usedBy: null,
           noShop: true,
@@ -1206,11 +1206,12 @@
           rarity: "uncommon",
           departmentId: "legal",
           employeeId: "andrew_legal",
-          bonus: "Dry Wit: Reduce incoming damage by 2.",
+          bonus: "Dry Wit: Reduce incoming damage by 2 & +10 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to give us some perspective. He's a lawyer, but he's cool.",
           eff: {
             defFlat: 2,
+            singleDmg: 10,
           },
           usedBy: null,
         },
@@ -1220,11 +1221,12 @@
           title: "IT Specialist",
           rarity: "common",
           departmentId: "information_technology",
-          bonus: "+5 Credibility/turn.",
+          bonus: "+5 Credibility/turn & +8 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> because I think we need an {title} to help with the technical issues affecting others' replies in this thread.",
           eff: {
             heal: 5,
+            singleDmg: 8,
           },
           usedBy: null,
         },
@@ -1235,12 +1237,12 @@
           rarity: "uncommon",
           departmentId: "information_technology",
           employeeId: "colin_information_technology",
-          bonus: "Reply to +5 & Escalate +3.",
+          bonus: "Reply to +20 & Reply all +15.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep our technical support aligned and logged.",
           eff: {
-            singleDmg: 5,
-            replyAllDmg: 3,
+            singleDmg: 20,
+            replyAllDmg: 15,
           },
           usedBy: null,
         },
@@ -1251,11 +1253,12 @@
           rarity: "rare",
           departmentId: "executive_council_office",
           employeeId: "samantha_executive_council_office",
-          bonus: "Reduce incoming damage by 4.",
+          bonus: "Reduce incoming damage by 4 & +12 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to help frame this conversation around department wide resourcing.",
           eff: {
             defFlat: 4,
+            singleDmg: 12,
           },
           usedBy: null,
         },
@@ -1265,11 +1268,12 @@
           title: "Premier",
           rarity: "rare",
           departmentId: "executive_council_office",
-          bonus: "3x Leverage gain.",
+          bonus: "3x Leverage gain & +30 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep him in the loop on this initative.",
           eff: {
             levMult: 2,
+            singleDmg: 30,
           },
           usedBy: null,
         },
@@ -1294,11 +1298,11 @@
           title: "Director of Research",
           rarity: "uncommon",
           departmentId: "marketing",
-          bonus: "+8 reply to",
+          bonus: "+25 reply to",
           loopInText:
             "I'm looping in <strong>{name}</strong> to provide data‑driven context and keep claims grounded.",
           eff: {
-            singleDmg: 8,
+            singleDmg: 25,
           },
           usedBy: null,
         },
@@ -1308,12 +1312,13 @@
           title: "Marketing Advisor",
           rarity: "rare",
           departmentId: "executive_council_office",
-          bonus: "Reduce incoming damage by 3 & Self-Promote +5.",
+          bonus: "Reduce incoming damage by 3, Self-Promote +5 & +15 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to advise on our tactical approach and reduce reputational risk.",
           eff: {
             defFlat: 3,
             selfPromoteHeal: 5,
+            singleDmg: 15,
           },
           usedBy: null,
         },
@@ -1323,12 +1328,13 @@
           title: "Facilities Lead",
           rarity: "rare",
           departmentId: "facilities_and_administration",
-          bonus: "Reduce incoming damage by 2 & +3 Credibility/turn.",
+          bonus: "Reduce incoming damage by 2, +3 Credibility/turn & +10 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> ({title}) to handle the facilities impact.",
           eff: {
             defFlat: 2,
             heal: 3,
+            singleDmg: 10,
           },
           usedBy: null,
         },
@@ -1352,11 +1358,12 @@
           title: "Policy Analyst",
           rarity: "rare",
           departmentId: "policy",
-          bonus: "Reduce incoming damage by 3.",
+          bonus: "Reduce incoming damage by 3 & +12 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> from {department} to ensure this stays within policy guardrails.",
           eff: {
             defFlat: 3,
+            singleDmg: 12,
           },
           usedBy: null,
         },
@@ -1366,12 +1373,13 @@
           title: "Budget Controller",
           rarity: "uncommon",
           departmentId: "finance",
-          bonus: "+5 Max Credibility & +5 Credibility/turn.",
+          bonus: "+5 Max Credibility, +5 Credibility/turn & +10 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to track fiscal impact against budgetary constraints and keep the numbers straight.",
           eff: {
             maxHp: 5,
             heal: 5,
+            singleDmg: 10,
           },
           usedBy: null,
         },
@@ -1396,11 +1404,12 @@
           rarity: "rare",
           departmentId: "human_resources",
           employeeId: "karen_human_resources",
-          bonus: "Reduce incoming damage by 2.",
+          bonus: "Reduce incoming damage by 2 & +8 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> from {department} to keep this thread compliant with HR policy.",
           eff: {
             defFlat: 2,
+            singleDmg: 8,
           },
           usedBy: null,
         },
@@ -1411,11 +1420,11 @@
           rarity: "common",
           departmentId: "operations",
           employeeId: "avery_operations",
-          bonus: "+2 reply to & Self-Promote +5.",
+          bonus: "+15 reply to & Self-Promote +5.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to track operational impact and keep this moving.",
           eff: {
-            singleDmg: 2,
+            singleDmg: 15,
             selfPromoteHeal: 5,
           },
           usedBy: null,
@@ -1427,11 +1436,11 @@
           rarity: "common",
           departmentId: "marketing",
           employeeId: "malik_marketing",
-          bonus: "+1 all messages & Self-Promote +5.",
+          bonus: "+8 all messages & Self-Promote +5.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep brand alignment on this thread.",
           eff: {
-            globalDmg: 1,
+            globalDmg: 8,
             selfPromoteHeal: 5,
           },
           usedBy: null,
@@ -1443,11 +1452,12 @@
           rarity: "common",
           departmentId: "finance",
           employeeId: "priya_finance",
-          bonus: "+3 Credibility/turn.",
+          bonus: "+3 Credibility/turn & +8 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to monitor budget exposure and expected impact.",
           eff: {
             heal: 3,
+            singleDmg: 8,
           },
           usedBy: null,
         },
@@ -1458,13 +1468,14 @@
           rarity: "rare",
           departmentId: "operations",
           employeeId: "rory_operations",
-          bonus: "Reduce incoming damage by 1, +2 Credibility/turn & Self-Promote +5.",
+          bonus: "Reduce incoming damage by 1, +2 Credibility/turn, Self-Promote +5 & +10 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep the facilities schedule and shared space aligned.",
           eff: {
             defFlat: 1,
             heal: 2,
             selfPromoteHeal: 5,
+            singleDmg: 10,
           },
           usedBy: null,
         },
@@ -1490,11 +1501,12 @@
           rarity: "common",
           departmentId: "policy",
           employeeId: "christina_policy",
-          bonus: "Deflect +2.",
+          bonus: "Deflect +2 & +12 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to ensure we stay aligned with policy language.",
           eff: {
             deflect: 2,
+            singleDmg: 12,
           },
           usedBy: null,
         },
@@ -1505,11 +1517,12 @@
           rarity: "common",
           departmentId: "information_technology",
           employeeId: "fraser_information_technology",
-          bonus: "Deflect +2.",
+          bonus: "Deflect +2 & +12 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to support technical logging and incident tracking.",
           eff: {
             deflect: 2,
+            singleDmg: 12,
           },
           usedBy: null,
         },
@@ -1520,11 +1533,11 @@
           rarity: "common",
           departmentId: "m4_agency",
           employeeId: "anthony_m4_agency",
-          bonus: "+3 reply all",
+          bonus: "+25 reply all",
           loopInText:
             "I'm looping in <strong>{name}</strong> to manage the broader comms fallout.",
           eff: {
-            replyAllDmg: 3,
+            replyAllDmg: 25,
           },
           usedBy: null,
         },
@@ -1535,13 +1548,14 @@
           rarity: "uncommon",
           departmentId: "finance",
           employeeId: "jonah_finance",
-          bonus: "+5 Max Credibility, +2 Credibility/turn & Self-Promote +5.",
+          bonus: "+5 Max Credibility, +2 Credibility/turn, Self-Promote +5 & +12 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to provide a spend analysis and risk outlook.",
           eff: {
             maxHp: 5,
             heal: 2,
             selfPromoteHeal: 5,
+            singleDmg: 12,
           },
           usedBy: null,
         },
@@ -1552,11 +1566,12 @@
           rarity: "rare",
           departmentId: "legal",
           employeeId: "megan_legal",
-          bonus: "Reduce incoming damage by 3.",
+          bonus: "Reduce incoming damage by 3 & +15 reply to.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to confirm our legal footing.",
           eff: {
             defFlat: 3,
+            singleDmg: 15,
           },
           usedBy: null,
         },
@@ -1627,11 +1642,11 @@
           rarity: "rare",
           departmentId: "m4_agency",
           employeeId: "selina_m4_agency",
-          bonus: "+5 all messages",
+          bonus: "+25 all messages",
           loopInText:
             "I'm looping in <strong>{name}</strong> to stabilize the account and reframe the narrative.",
           eff: {
-            globalDmg: 5,
+            globalDmg: 25,
           },
           usedBy: null,
         },
@@ -1723,9 +1738,9 @@
         {
           id: "per_my_last",
           name: "Per my last email,",
-          bonus: "+10% reply to",
+          bonus: "+40% reply to",
           rarity: "uncommon",
-          singleDmgMult: 0.1,
+          singleDmgMult: 0.4,
         },
         {
           id: "best",
@@ -1752,9 +1767,9 @@
         {
           id: "renewable_energy",
           name: "Our office aspires to be powered by 100% renewable energy.",
-          bonus: "Dept splash +5.",
+          bonus: "Dept splash +25.",
           rarity: "rare",
-          replyDeptSplash: 5,
+          replyDeptSplash: 25,
         },
         {
           id: "environment_printing",
@@ -1775,17 +1790,17 @@
         {
           id: "double_espresso",
           name: "Powered by double espresso",
-          bonus: "+1 reply to",
+          bonus: "+12 reply to",
           rarity: "common",
           setId: "coffee_lovers",
-          singleDmg: 1,
+          singleDmg: 12,
         },
         {
           id: "disclaimer",
           name: "Standard Disclaimer Applied",
-          bonus: "+10% reply to",
+          bonus: "+30% reply to",
           rarity: "common",
-          singleDmgMult: 0.1,
+          singleDmgMult: 0.3,
         },
         {
           id: "breakroom",
@@ -1823,9 +1838,9 @@
         {
           id: "all",
           name: "All,",
-          bonus: "+1 reply to",
+          bonus: "+12 reply to",
           rarity: "common",
-          singleDmg: 1,
+          singleDmg: 12,
         },
         {
           id: "hello_team",
@@ -1838,9 +1853,9 @@
         {
           id: "all_stakeholders",
           name: "To all stakeholders,",
-          bonus: "+5 all messages",
+          bonus: "+30 all messages",
           rarity: "rare",
-          globalDmg: 5,
+          globalDmg: 30,
         },
         {
           id: "working_group",
@@ -1852,16 +1867,16 @@
         {
           id: "committee",
           name: "To the committee,",
-          bonus: "+2 reply all",
+          bonus: "+20 reply all",
           rarity: "uncommon",
-          replyAllDmg: 2,
+          replyAllDmg: 20,
         },
         {
           id: "team",
           name: "Team,",
-          bonus: "+2 reply to",
+          bonus: "+15 reply to",
           rarity: "common",
-          singleDmg: 2,
+          singleDmg: 15,
         },
         {
           id: "colleagues",
@@ -1880,9 +1895,9 @@
         {
           id: "formal",
           name: "To whom it may concern,",
-          bonus: "+5 reply to",
+          bonus: "+25 reply to",
           rarity: "rare",
-          singleDmg: 5,
+          singleDmg: 25,
         },
         {
           id: "morning",
@@ -1894,17 +1909,17 @@
         {
           id: "project_team",
           name: "To the Project Team,",
-          bonus: "+2 reply to",
+          bonus: "+15 reply to",
           rarity: "common",
-          singleDmg: 2,
+          singleDmg: 15,
         },
         {
           id: "sustainability_team",
           name: "To the Sustainability Team,",
-          bonus: "+5 all messages",
+          bonus: "+25 all messages",
           rarity: "uncommon",
           setId: "earth_set",
-          globalDmg: 5,
+          globalDmg: 25,
         },
         {
           id: "greetings",
@@ -1957,9 +1972,9 @@
         {
           id: "best_signoff",
           name: "Best,",
-          bonus: "+2 reply to",
+          bonus: "+18 reply to",
           rarity: "uncommon",
-          singleDmg: 2,
+          singleDmg: 18,
         },
         {
           id: "thank_you",
@@ -1978,9 +1993,9 @@
         {
           id: "for_your_awareness",
           name: "For your awareness,",
-          bonus: "+3 reply all",
+          bonus: "+30 reply all",
           rarity: "rare",
-          replyAllDmg: 3,
+          replyAllDmg: 30,
         },
         {
           id: "cheers",
@@ -1999,9 +2014,9 @@
         {
           id: "best_regards",
           name: "Best Regards,",
-          bonus: "+5 reply to",
+          bonus: "+25 reply to",
           rarity: "uncommon",
-          singleDmg: 5,
+          singleDmg: 25,
         },
         {
           id: "v_respectfully",
@@ -4186,9 +4201,9 @@
           signOff: null,
           bccContacts: [],
           departmentId: "executive_council_office",
-          singleDmg: 10,
-          escalateDmg: 5,
-          replyAllDmg: 20,
+          singleDmg: 25,
+          escalateDmg: 15,
+          replyAllDmg: 60,
           globalDmg: 0,
           singleDmgMult: 0,
           escalateDmgMult: 0,
