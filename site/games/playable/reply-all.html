@@ -8,6 +8,7 @@
     />
     <title>REPLY ALL</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@shopify/draggable@1.0.0-beta.11/lib/draggable.bundle.js"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;600;700&display=swap"
       rel="stylesheet"
@@ -97,6 +98,131 @@
       .scroll-container::-webkit-scrollbar-track {
         background: #dfdfdf;
       }
+
+      /* HR Portal Drawer Redesign */
+      #shop-drawer-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        height: 100%;
+        width: 320px;
+        background: var(--win-grey);
+        z-index: 1000;
+        transition: transform 0.3s ease-in-out;
+        transform: translateX(100%);
+        display: flex;
+        flex-direction: row;
+      }
+      #shop-drawer-panel.open {
+        transform: translateX(0);
+      }
+      .drawer-tabs {
+        width: 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding-top: 60px;
+        margin-left: -40px;
+      }
+      .drawer-tab {
+        width: 100px;
+        height: 38px;
+        background: var(--win-grey);
+        transform: rotate(-90deg) translate(-100%, 0);
+        transform-origin: top left;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        font-weight: bold;
+        text-transform: uppercase;
+        border: 2px solid var(--win-border-light);
+        border-bottom: 2px solid var(--win-border-dark);
+        border-right: none;
+        cursor: pointer;
+        white-space: nowrap;
+        box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+      }
+      .drawer-tab.active {
+        background: #dfdfdf;
+        border-right: none;
+        z-index: 1001;
+      }
+      .drawer-content {
+        flex-grow: 1;
+        background: #fdfdfd;
+        border-left: 2px solid var(--win-border-dark);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .drawer-header {
+        background: var(--win-blue);
+        color: white;
+        padding: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        font-weight: bold;
+      }
+      .drawer-body {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 12px;
+      }
+
+      .droppable-zone {
+        transition: all 0.2s ease;
+      }
+      .droppable-zone.hover {
+        background-color: rgba(59, 130, 246, 0.1) !important;
+        border-color: #3b82f6 !important;
+        transform: scale(1.02);
+      }
+
+      .email-template-container {
+        background: white;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        min-height: 400px;
+      }
+      .email-template-header {
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 8px;
+        margin-bottom: 12px;
+        font-size: 10px;
+        color: #64748b;
+      }
+      .drop-zone {
+        border: 2px dashed #cbd5e1;
+        border-radius: 4px;
+        padding: 8px;
+        margin: 4px 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 9px;
+        font-weight: bold;
+        color: #94a3b8;
+        min-height: 40px;
+      }
+
+      .draggable-mirror {
+        z-index: 2000;
+        pointer-events: none;
+        opacity: 0.8;
+        background: white;
+        padding: 8px;
+        border: 2px solid #3b82f6;
+        border-radius: 4px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        width: 150px;
+        text-align: center;
+        font-size: 10px;
+      }
       .scroll-container::-webkit-scrollbar-thumb {
         background: var(--win-grey);
         border: 2px solid var(--win-border-light);
@@ -145,137 +271,6 @@
           opacity: 1;
           transform: translateY(0);
         }
-      }
-
-      /* Shop Redesign Styles */
-      #shop-screen {
-        position: relative;
-        overflow-x: hidden;
-      }
-      #shop-drawers {
-        position: fixed;
-        right: 0;
-        top: 0;
-        height: 100%;
-        z-index: 200;
-        pointer-events: none;
-      }
-      #shop-drawer-panel {
-        position: absolute;
-        right: 0;
-        top: 0;
-        width: 320px;
-        background: var(--win-grey);
-        border-left: 2px solid var(--win-border-light);
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        pointer-events: auto;
-        transition: transform 0.3s ease;
-        transform: translateX(100%);
-        box-shadow: -5px 0 15px rgba(0,0,0,0.2);
-      }
-      @media (max-width: 640px) {
-        #shop-drawer-panel {
-          width: 85vw;
-        }
-      }
-      #shop-drawer-tabs {
-        position: absolute;
-        left: -32px;
-        top: 80px;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        pointer-events: auto;
-        width: 32px;
-      }
-      .drawer-tab {
-        writing-mode: vertical-lr;
-        padding: 12px 4px;
-        background: var(--win-grey);
-        border-top: 2px solid var(--win-border-light);
-        border-left: 2px solid var(--win-border-light);
-        border-bottom: 2px solid var(--win-border-dark);
-        border-right: 2px solid var(--win-border-dark);
-        cursor: pointer;
-        font-size: 9px;
-        font-weight: bold;
-        text-align: center;
-        user-select: none;
-        transition: background 0.2s;
-        white-space: nowrap;
-      }
-      .drawer-tab.active {
-        background: #dfdfdf;
-        border-top: 2px solid var(--win-border-dark);
-        border-left: 2px solid var(--win-border-dark);
-        border-bottom: 2px solid var(--win-border-light);
-        border-right: 2px solid var(--win-border-light);
-      }
-      #shop-drawer-panel.open {
-        transform: translateX(0);
-      }
-      .drawer-content {
-        flex-grow: 1;
-        overflow-y: auto;
-        padding: 12px;
-      }
-      .drop-zone {
-        border: 2px dashed #808080;
-        background: rgba(255,255,255,0.4);
-        min-height: 50px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 8px 0;
-        font-size: 11px;
-        font-weight: bold;
-        color: #444;
-        text-align: center;
-        transition: all 0.2s;
-        pointer-events: auto;
-      }
-      .drop-zone.active {
-        background: rgba(0,0,128,0.1);
-        border-color: #000080;
-        transform: scale(1.02);
-      }
-      .drop-zone.hover {
-        background: rgba(0,0,128,0.2);
-        border-style: solid;
-        color: #000080;
-      }
-      .email-template-container {
-        background: white;
-        border: 1px solid #808080;
-        box-shadow: inset 1px 1px 3px rgba(0,0,0,0.1);
-        padding: 12px;
-        font-family: sans-serif;
-        font-size: 12px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        min-height: 400px;
-      }
-      .email-template-header {
-        border-bottom: 1px solid #eee;
-        padding-bottom: 8px;
-        margin-bottom: 8px;
-        font-size: 10px;
-        color: #666;
-      }
-      .dragging-ghost {
-        position: fixed;
-        pointer-events: none;
-        z-index: 1000;
-        opacity: 0.9;
-        box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
-        transform: scale(1.05);
-        transition: transform 0.1s ease;
-      }
-      .dragging-returning {
-        transition: all 0.3s ease !important;
       }
 
       .email-header {
@@ -445,8 +440,24 @@
       id="shop-screen"
       class="hidden fixed inset-0 z-[130] bg-[#008080] p-4 flex flex-col items-center overflow-y-auto"
     >
+      <div id="shop-drawer-panel" class="retro-border">
+          <div class="drawer-tabs">
+              <div id="tab-resources" class="drawer-tab" onclick="openDrawer('resources')">Personnel & BCCs</div>
+              <div id="tab-template" class="drawer-tab" onclick="openDrawer('template')">Email Template</div>
+          </div>
+          <div class="drawer-content">
+              <div class="drawer-header">
+                  <span id="drawer-title">Inventory</span>
+                  <button onclick="closeDrawer()" class="retro-button text-black px-1">X</button>
+              </div>
+              <div id="drawer-body" class="drawer-body">
+                  <!-- Dynamic Content -->
+              </div>
+          </div>
+      </div>
+
       <div
-        class="bg-[#c0c0c0] retro-border w-full max-w-4xl shadow-2xl flex flex-col min-h-0"
+        class="bg-[#c0c0c0] retro-border w-full max-w-4xl shadow-2xl flex flex-col min-h-0 relative overflow-hidden"
       >
         <div
           class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold shrink-0"
@@ -480,6 +491,7 @@
               >
                 Individual Opportunities
               </h3>
+              <p class="text-[9px] text-gray-500 italic mb-1">Drag items to your drawer to acquire them.</p>
               <div id="shop-direct-items" class="grid grid-cols-1 gap-2"></div>
             </div>
             <!-- Development Packages -->
@@ -498,22 +510,6 @@
         >
           Corporate policy: Requests are logged. Archiving items returns partial
           reputation.
-        </div>
-      </div>
-      <!-- Drawers system -->
-      <div id="shop-drawers">
-        <div id="shop-drawer-panel">
-          <div id="shop-drawer-tabs">
-            <div id="tab-resources" class="drawer-tab" onclick="toggleDrawer('resources')">PERSONNEL & BCCs</div>
-            <div id="tab-template" class="drawer-tab" onclick="toggleDrawer('template')">EMAIL TEMPLATE</div>
-          </div>
-          <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold shrink-0">
-            <span id="drawer-title">ASSETS</span>
-            <button onclick="closeDrawer()" class="px-1">✕</button>
-          </div>
-          <div id="drawer-content-area" class="drawer-content scroll-container bg-[#dfdfdf]">
-            <!-- Content injected here -->
-          </div>
         </div>
       </div>
     </div>
@@ -1755,117 +1751,6 @@
           usedBy: null,
         },
       ];
-
-      let dragData = null;
-
-      function startDrag(e, item, sourceEl, onBuy) {
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
-
-        const rect = sourceEl.getBoundingClientRect();
-        dragData = {
-          item: item,
-          onBuy: onBuy,
-          sourceEl: sourceEl,
-          startX: e.clientX,
-          startY: e.clientY,
-          offsetX: e.clientX - rect.left,
-          offsetY: e.clientY - rect.top,
-          ghost: sourceEl.cloneNode(true),
-          pointerId: e.pointerId
-        };
-
-        dragData.ghost.classList.add('dragging-ghost');
-        dragData.ghost.style.touchAction = 'none';
-        dragData.ghost.style.width = rect.width + 'px';
-        dragData.ghost.style.left = rect.left + 'px';
-        dragData.ghost.style.top = rect.top + 'px';
-        document.body.appendChild(dragData.ghost);
-
-        // Auto-open drawer
-        if (['contact', 'bcc'].includes(item.itemType)) openDrawer('resources');
-        else if (['salutation', 'signoff', 'signature'].includes(item.itemType)) openDrawer('template');
-
-        sourceEl.setPointerCapture(e.pointerId);
-        // Using capture element for move/up to ensure events are caught during capture
-        sourceEl.addEventListener('pointermove', onPointerMove, { passive: false });
-        sourceEl.addEventListener('pointerup', onPointerUp);
-        sourceEl.addEventListener('pointercancel', onPointerUp);
-        sourceEl.addEventListener('lostpointercapture', onPointerUp);
-      }
-
-      function onPointerMove(e) {
-        if (!dragData) return;
-        if (e.pointerId !== dragData.pointerId) return;
-
-        // Prevent scrolling on touch devices
-        if (e.cancelable) e.preventDefault();
-
-        const x = e.clientX - dragData.offsetX;
-        const y = e.clientY - dragData.offsetY;
-        dragData.ghost.style.left = x + 'px';
-        dragData.ghost.style.top = y + 'px';
-
-        updateDropZones(e.clientX, e.clientY);
-      }
-
-      function updateDropZones(x, y) {
-        const zones = document.querySelectorAll('.drop-zone');
-        zones.forEach(zone => {
-          const rect = zone.getBoundingClientRect();
-          const isOver = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-          const accepts = zone.dataset.accept === dragData.item.itemType;
-
-          zone.classList.toggle('hover', isOver && accepts);
-          zone.classList.toggle('active', accepts);
-        });
-      }
-
-      function onPointerUp(e) {
-        if (!dragData) return;
-        if (e.pointerId !== dragData.pointerId) return;
-
-        const sourceEl = dragData.sourceEl;
-        sourceEl.removeEventListener('pointermove', onPointerMove);
-        sourceEl.removeEventListener('pointerup', onPointerUp);
-        sourceEl.removeEventListener('pointercancel', onPointerUp);
-        sourceEl.removeEventListener('lostpointercapture', onPointerUp);
-        try { sourceEl.releasePointerCapture(e.pointerId); } catch(e) {}
-
-        const x = e.clientX;
-        const y = e.clientY;
-
-        let success = false;
-        const zones = document.querySelectorAll('.drop-zone');
-        zones.forEach(zone => {
-          const rect = zone.getBoundingClientRect();
-          const isOver = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-          const accepts = zone.dataset.accept === dragData.item.itemType;
-
-          if (isOver && accepts) {
-            success = true;
-            dragData.onBuy();
-          }
-          zone.classList.remove('hover', 'active');
-        });
-
-        if (!success) {
-            const ghost = dragData.ghost;
-            ghost.classList.add('dragging-returning');
-            const rect = dragData.sourceEl.getBoundingClientRect();
-            ghost.style.left = rect.left + 'px';
-            ghost.style.top = rect.top + 'px';
-            ghost.style.opacity = '0.5';
-
-            setTimeout(() => {
-                if (ghost && ghost.parentNode) {
-                  document.body.removeChild(ghost);
-                }
-            }, 300);
-        } else {
-            if (dragData.ghost.parentNode) document.body.removeChild(dragData.ghost);
-        }
-        dragData = null;
-      }
 
       function inferContactRole(contact) {
         const title = (contact.title || "").toLowerCase();
@@ -4957,7 +4842,6 @@
           directItems: [],
           packs: [],
           rerollCount: 0,
-          activeDrawerTab: null,
         },
         pendingTraining: null,
         expenseReportActive: false,
@@ -5198,6 +5082,13 @@
         });
         const target = document.getElementById(screenId);
         if (target) target.classList.remove("hidden");
+
+        if (screenId === "shop-screen") {
+          updateShopUI();
+          initShopDraggable();
+        } else {
+          closeDrawer();
+        }
         saveGame();
       }
 
@@ -7116,133 +7007,9 @@
 
       function showShop() {
         state.shop.rerollCount = 0;
-        state.shop.activeDrawerTab = null;
         transitionTo("shop-screen");
         runUnitEffects(state.player, "shop_enter", {});
         updateShopUI();
-      }
-
-      function toggleDrawer(tabId) {
-        if (state.shop.activeDrawerTab === tabId) {
-          closeDrawer();
-        } else {
-          openDrawer(tabId);
-        }
-      }
-
-      function openDrawer(tabId) {
-        state.shop.activeDrawerTab = tabId;
-        const panel = document.getElementById("shop-drawer-panel");
-        if (panel) panel.classList.add("open");
-        updateShopUI();
-      }
-
-      function closeDrawer() {
-        state.shop.activeDrawerTab = null;
-        const panel = document.getElementById("shop-drawer-panel");
-        if (panel) panel.classList.remove("open");
-        updateShopUI();
-      }
-
-      function renderResourcesDrawer(container) {
-        container.innerHTML = "";
-
-        // Address Book Section
-        const addressLimit = getUnitAddressLimit(state.player);
-        const addrHeader = document.createElement("div");
-        addrHeader.className = "text-[10px] font-bold uppercase text-gray-500 mb-2";
-        addrHeader.innerText = `Address Book (${state.player.addressBook.length}/${addressLimit})`;
-        container.appendChild(addrHeader);
-
-        const addrDropZone = document.createElement("div");
-        addrDropZone.className = "drop-zone";
-        addrDropZone.dataset.accept = "contact";
-        addrDropZone.innerText = "DRAG CONTACT HERE";
-        container.appendChild(addrDropZone);
-
-        const addrList = document.createElement("div");
-        addrList.className = "space-y-2 mb-6";
-        if (state.player.addressBook.length === 0) {
-          addrList.innerHTML = '<div class="text-[10px] italic text-gray-400 text-center py-2">No contacts on file.</div>';
-        } else {
-          state.player.addressBook.forEach(id => {
-            const c = CONTACTS.find(con => con.id === id);
-            if (c) {
-              addrList.appendChild(createOwnedRow(c, "contact", () => sellItem('contact', c)));
-            }
-          });
-        }
-        container.appendChild(addrList);
-
-        // BCC Section
-        const bccLimit = computeUnitStats(state.player).bccLimit || 0;
-        const bccHeader = document.createElement("div");
-        bccHeader.className = "text-[10px] font-bold uppercase text-gray-500 mb-2 border-t border-gray-300 pt-4";
-        bccHeader.innerText = `Consumable BCCs (${state.player.bccContacts.length}/${bccLimit})`;
-        container.appendChild(bccHeader);
-
-        const bccDropZone = document.createElement("div");
-        bccDropZone.className = "drop-zone";
-        bccDropZone.dataset.accept = "bcc";
-        bccDropZone.innerText = "DRAG BCC HERE";
-        container.appendChild(bccDropZone);
-
-        const bccList = document.createElement("div");
-        bccList.className = "space-y-2";
-        if (state.player.bccContacts.length === 0) {
-          bccList.innerHTML = '<div class="text-[10px] italic text-gray-400 text-center py-2">No BCCs on file.</div>';
-        } else {
-          state.player.bccContacts.forEach((bcc, idx) => {
-            bccList.appendChild(createOwnedRow(bcc, "bcc", () => sellItem('bcc', bcc), { actionLabel: "DISCARD" }));
-          });
-        }
-        container.appendChild(bccList);
-      }
-
-      function renderEmailTemplateDrawer(container) {
-        const p = state.player;
-        container.innerHTML = `
-          <div class="email-template-container retro-border-inset">
-            <div class="email-template-header">
-              <div><strong>To:</strong> everyone@gov.org</div>
-              <div><strong>Subject:</strong> RE: Institutional Alignment</div>
-            </div>
-
-            <div id="drop-zone-salutation" class="drop-zone h-12" data-accept="salutation">
-              ${p.salutation ? `<div class="bg-blue-50 p-1 w-full text-center border border-blue-200 text-[#000080] font-bold">${p.salutation.name}</div>` : '[ DRAG GREETING HERE ]'}
-            </div>
-
-            <div class="flex-grow py-4 text-gray-300 italic text-[10px] select-none">
-              Please be advised that the quarterly strategy session has been
-              rescheduled. We remain committed to organizational excellence...
-            </div>
-
-            <div id="drop-zone-signoff" class="drop-zone h-12" data-accept="signoff">
-              ${p.signOff ? `<div class="bg-blue-50 p-1 w-full text-center border border-blue-200 text-[#000080] font-bold">${p.signOff.name}</div>` : '[ DRAG SIGN-OFF HERE ]'}
-            </div>
-
-            <div id="drop-zone-signature" class="drop-zone h-12" data-accept="signature">
-              [ DRAG NEW SIGNATURE HERE ]
-            </div>
-
-            <div id="drawer-owned-signatures" class="space-y-1 mt-2">
-              <div class="text-[9px] font-bold text-gray-400 uppercase">Active Signatures (${p.signatures.length}/${p.title.sigLimit})</div>
-            </div>
-          </div>
-        `;
-
-        const sigList = container.querySelector("#drawer-owned-signatures");
-        p.signatures.forEach(sig => {
-            const row = document.createElement("div");
-            row.className = "flex items-center justify-between bg-white border border-gray-200 p-1 text-[10px]";
-            row.innerHTML = `<span class="truncate">${sig.name}</span>`;
-            const delBtn = document.createElement("button");
-            delBtn.className = "text-red-600 font-bold ml-1 hover:bg-red-50 px-1";
-            delBtn.innerText = "✕";
-            delBtn.onclick = () => sellItem('signature', sig);
-            row.appendChild(delBtn);
-            sigList.appendChild(row);
-        });
       }
 
       function rerollShop() {
@@ -7336,7 +7103,6 @@
             directItems: [],
             packs: [],
             rerollCount: 0,
-            activeDrawerTab: null,
           },
           pendingTraining: null,
         };
@@ -7502,13 +7268,15 @@
 
       function createShopCard(name, desc, cost, onBuy, options = {}) {
         const div = document.createElement("div");
-        div.className = "p-2 bg-white retro-border flex flex-col gap-1";
+        div.className = "p-2 bg-white retro-border flex flex-col gap-1 draggable-item";
+        div.dataset.itemType = options.itemType;
+        div._onBuy = onBuy; // Store for draggable handler
+
         const canAfford = state.player.reputation >= cost;
         const purchased = options.purchased || false;
         const canBuy = options.canBuy ?? true;
         const badge = options.badge || "";
         const disabled = !canAfford || purchased || !canBuy;
-        const isDraggable = ["contact", "signature", "salutation", "signoff", "bcc"].includes(options.type) || ["contact", "signature", "salutation", "signoff", "bcc"].includes(options.itemType);
         const metaLabel = options.metaLabel || "";
         const label = purchased
           ? options.ownedLabel || "ON FILE"
@@ -7521,7 +7289,6 @@
         const typeBadge = options.typeLabel
           ? `<span class="bg-blue-800 text-white px-1 uppercase font-bold">${options.typeLabel}</span>`
           : "";
-
         div.innerHTML = `
                 <div class="flex justify-between font-bold text-[11px] gap-2">
                     <span class="truncate">${name}</span>
@@ -7530,24 +7297,10 @@
                 <div class="flex items-center gap-2 text-[9px]" data-badge>${typeBadge}</div>
                 ${metaLabel ? `<div class="text-[9px] uppercase text-gray-500">${metaLabel}</div>` : ""}
                 <div class="text-[10px] italic text-gray-600 leading-tight">${desc}</div>
-                ${isDraggable && !purchased && canBuy ? `
-                  <div class="mt-1 text-center py-1 border border-dashed border-gray-400 text-[9px] font-bold text-gray-500 uppercase select-none">Drag to Purchase</div>
-                ` : `
-                  <button data-buy class="mt-1 retro-button text-[10px] font-bold py-1 ${disabled ? "opacity-50" : ""}" ${disabled ? "disabled" : ""}>
-                      ${label}
-                  </button>
-                `}
+                <button data-buy class="mt-1 retro-button text-[10px] font-bold py-1 ${disabled ? "opacity-50" : ""}" ${disabled ? "disabled" : ""}>
+                    ${label}
+                </button>
             `;
-
-        if (isDraggable && !disabled) {
-          div.style.touchAction = "none";
-          div.style.cursor = "grab";
-          div.onpointerdown = (e) => {
-            if (options.item) {
-              startDrag(e, options.item, div, onBuy);
-            }
-          };
-        }
         const badgeWrap = div.querySelector("[data-badge]");
         if (badge) badgeWrap.insertAdjacentHTML("beforeend", badge);
         if (options.setId) {
@@ -8054,6 +7807,185 @@
         startPackOpening(pack);
       }
 
+      let droppableInstance = null;
+
+      function initShopDraggable() {
+        if (droppableInstance) {
+          droppableInstance.destroy();
+        }
+
+        const container = document.getElementById("shop-screen");
+        if (!container) return;
+
+        droppableInstance = new Draggable.Droppable(container, {
+          draggable: ".draggable-item",
+          droppable: ".droppable-zone",
+          mirror: {
+            constrainDimensions: true,
+            appendTo: "body",
+          },
+        });
+
+        droppableInstance.on("drag:start", (e) => {
+          const itemType = e.data.source.dataset.itemType;
+          if (["contact", "bcc"].includes(itemType)) openDrawer("resources");
+          else if (["salutation", "signoff", "signature"].includes(itemType))
+            openDrawer("template");
+        });
+
+        droppableInstance.on("droppable:over", (e) => {
+          const itemType = e.data.dragEvent.data.source.dataset.itemType;
+          const zoneType = e.data.droppable.dataset.accept;
+          if (itemType === zoneType) {
+            e.data.droppable.classList.add("hover");
+          } else {
+            e.cancel();
+          }
+        });
+
+        droppableInstance.on("droppable:out", (e) => {
+          e.data.droppable.classList.remove("hover");
+        });
+
+        droppableInstance.on("droppable:dropped", (e) => {
+          const source = e.data.dragEvent.data.source;
+          const itemType = source.dataset.itemType;
+          const zoneType = e.data.droppable.dataset.accept;
+
+          if (itemType === zoneType && source._onBuy) {
+            source._onBuy();
+            playSound("chime");
+          } else {
+            e.cancel();
+          }
+        });
+
+        droppableInstance.on("drag:stop", (e) => {
+          document
+            .querySelectorAll(".droppable-zone")
+            .forEach((z) => z.classList.remove("hover"));
+        });
+      }
+
+      function openDrawer(tabId) {
+        state.shop.activeDrawerTab = tabId;
+        const panel = document.getElementById("shop-drawer-panel");
+        if (panel) panel.classList.add("open");
+        updateShopUI();
+      }
+
+      function closeDrawer() {
+        state.shop.activeDrawerTab = null;
+        const panel = document.getElementById("shop-drawer-panel");
+        if (panel) panel.classList.remove("open");
+        updateShopUI();
+      }
+
+      function renderResourcesDrawer(container) {
+        container.innerHTML = "";
+
+        // Address Book Section
+        const addressLimit = getUnitAddressLimit(state.player);
+        const addrHeader = document.createElement("div");
+        addrHeader.className =
+          "text-[10px] font-bold uppercase text-gray-500 mb-2";
+        addrHeader.innerText = `Address Book (${state.player.addressBook.length}/${addressLimit})`;
+        container.appendChild(addrHeader);
+
+        const addrDropZone = document.createElement("div");
+        addrDropZone.className = "drop-zone droppable-zone";
+        addrDropZone.dataset.accept = "contact";
+        addrDropZone.innerText = "DRAG CONTACT HERE";
+        container.appendChild(addrDropZone);
+
+        const addrList = document.createElement("div");
+        addrList.className = "space-y-2 mb-6";
+        if (state.player.addressBook.length === 0) {
+          addrList.innerHTML =
+            '<div class="text-[10px] italic text-gray-400 text-center py-2">No contacts on file.</div>';
+        } else {
+          state.player.addressBook.forEach((id) => {
+            const c = CONTACTS.find((con) => con.id === id);
+            if (c) {
+              addrList.appendChild(
+                createOwnedRow(c, "contact", () => sellItem("contact", c)),
+              );
+            }
+          });
+        }
+        container.appendChild(addrList);
+
+        // BCC Section
+        const bccLimit = computeUnitStats(state.player).bccLimit || 0;
+        const bccHeader = document.createElement("div");
+        bccHeader.className =
+          "text-[10px] font-bold uppercase text-gray-500 mb-2 border-t border-gray-300 pt-4";
+        bccHeader.innerText = `Consumable BCCs (${state.player.bccContacts.length}/${bccLimit})`;
+        container.appendChild(bccHeader);
+
+        const bccDropZone = document.createElement("div");
+        bccDropZone.className = "drop-zone droppable-zone";
+        bccDropZone.dataset.accept = "bcc";
+        bccDropZone.innerText = "DRAG BCC HERE";
+        container.appendChild(bccDropZone);
+
+        const bccList = document.createElement("div");
+        bccList.className = "space-y-2";
+        if (state.player.bccContacts.length === 0) {
+          bccList.innerHTML =
+            '<div class="text-[10px] italic text-gray-400 text-center py-2">No BCCs on file.</div>';
+        } else {
+          state.player.bccContacts.forEach((bcc, idx) => {
+            bccList.appendChild(
+              createOwnedRow(bcc, "bcc", () => sellItem("bcc", bcc), {
+                actionLabel: "DISCARD",
+              }),
+            );
+          });
+        }
+        container.appendChild(bccList);
+      }
+
+      function renderEmailTemplateDrawer(container) {
+        const p = state.player;
+        container.innerHTML = `
+          <div class="email-template-container border border-gray-200 rounded p-4 bg-white shadow-inner">
+            <div class="email-template-header font-sans">
+              <div><strong>To:</strong> everyone@gov.org</div>
+              <div><strong>Subject:</strong> RE: Institutional Alignment</div>
+            </div>
+
+            <div id="drop-zone-salutation" class="drop-zone droppable-zone min-h-12 bg-gray-50 my-4" data-accept="salutation">
+              ${p.salutation ? `<div class="bg-blue-50 p-2 w-full text-center border border-blue-200 text-blue-800 font-bold text-[10px]">${p.salutation.name}</div>` : '[ DRAG GREETING HERE ]'}
+            </div>
+
+            <div class="flex-grow py-4 text-gray-400 italic text-[10px] select-none leading-relaxed">
+              Please be advised that the quarterly strategy session has been
+              rescheduled. We remain committed to organizational excellence...
+            </div>
+
+            <div id="drop-zone-signoff" class="drop-zone droppable-zone min-h-12 bg-gray-50 my-4" data-accept="signoff">
+              ${p.signOff ? `<div class="bg-blue-50 p-2 w-full text-center border border-blue-200 text-blue-800 font-bold text-[10px]">${p.signOff.name}</div>` : '[ DRAG SIGN-OFF HERE ]'}
+            </div>
+
+            <div id="drop-zone-signature" class="drop-zone droppable-zone min-h-12 bg-gray-50 my-4" data-accept="signature">
+              [ DRAG NEW SIGNATURE HERE ]
+            </div>
+
+            <div id="drawer-owned-signatures" class="space-y-1 mt-4 pt-4 border-t border-gray-100">
+              <div class="text-[9px] font-bold text-gray-400 uppercase mb-2">Active Signatures (${p.signatures.length}/${p.title.sigLimit})</div>
+            </div>
+          </div>
+        `;
+
+        const sigList = container.querySelector("#drawer-owned-signatures");
+        p.signatures.forEach((sig) => {
+          sigList.appendChild(
+            createOwnedRow(sig, "signature", () => sellItem("signature", sig)),
+          );
+        });
+      }
+
       function updateShopUI() {
         document.getElementById("shop-reputation-display").innerText =
           `REP: ${state.player.reputation}`;
@@ -8065,26 +7997,23 @@
           rerollBtn.disabled = state.player.reputation < cost;
         }
 
-        // --- DRAWER RENDERING ---
-        const drawerContentArea = document.getElementById("drawer-content-area");
-        const drawerTitle = document.getElementById("drawer-title");
-        if (drawerContentArea && drawerTitle) {
-          const tabs = ["resources", "template"];
-          tabs.forEach(t => {
-            const el = document.getElementById(`tab-${t}`);
-            if (el) el.classList.toggle('active', state.shop.activeDrawerTab === t);
-          });
+        // --- DRAWER CONTENT ---
+        const drawerBody = document.getElementById("drawer-body");
+        const activeTab = state.shop.activeDrawerTab || "resources";
 
-          if (state.shop.activeDrawerTab === "resources") {
-              drawerTitle.innerText = "PERSONNEL & BCCs";
-              renderResourcesDrawer(drawerContentArea);
-          } else if (state.shop.activeDrawerTab === "template") {
-              drawerTitle.innerText = "EMAIL TEMPLATE";
-              renderEmailTemplateDrawer(drawerContentArea);
-          } else {
-              drawerTitle.innerText = "ASSETS";
-              drawerContentArea.innerHTML = '<div class="text-[10px] text-center text-gray-500 mt-20 px-4">Drag items here to purchase, or select a tab to manage assets.</div>';
-          }
+        document
+          .querySelectorAll(".drawer-tab")
+          .forEach((t) => t.classList.remove("active"));
+        const activeTabEl = document.getElementById(`tab-${activeTab}`);
+        if (activeTabEl) activeTabEl.classList.add("active");
+
+        if (activeTab === "resources") {
+          renderResourcesDrawer(drawerBody);
+          document.getElementById("drawer-title").innerText =
+            "Personnel & BCCs";
+        } else {
+          renderEmailTemplateDrawer(drawerBody);
+          document.getElementById("drawer-title").innerText = "Email Template";
         }
 
         // --- DIRECT ITEMS ---
@@ -8129,6 +8058,7 @@
                 badge: formatRarityBadge(item.rarity),
                 setId: item.setId,
                 ownedLabel: owned ? "OWNED" : "PURCHASED",
+                itemType: item.itemType,
                 typeLabel: typeLabels[item.itemType] || item.itemType,
                 actionLabel: actionLabels[item.itemType] || "SUBMIT REQUEST",
                 spaceLabel: spaceLabels[item.itemType],
@@ -8136,8 +8066,6 @@
                   item.itemType === "contact"
                     ? getDepartmentName(item.departmentId) || ""
                     : "",
-                item: item,
-                itemType: item.itemType,
               },
             ),
           );
