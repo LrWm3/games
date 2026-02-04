@@ -1814,8 +1814,8 @@
           replyDeptCleave: true,
         },
         {
-          id: "good_afternoon",
-          name: "Good afternoon,",
+          id: "hello",
+          name: "Hello,",
           bonus: "On Deflect: +5 reply to and +3 escalate for this thread.",
           rarity: "common",
           deflectBoostSingle: 5,
@@ -1851,11 +1851,12 @@
           maxHp: 10,
         },
         {
-          id: "project_team",
-          name: "To the Project Team,",
-          bonus: "+2 reply to",
+          id: "good_afternoon",
+          name: "Good afternoon,",
+          bonus: "On Deflect: +5 reply to and +3 escalate for this thread.",
           rarity: "common",
-          singleDmg: 2,
+          deflectBoostSingle: 5,
+          deflectBoostEscalate: 3,
         },
         {
           id: "good_evening",
@@ -1863,6 +1864,13 @@
           bonus: "+50% leverage gain",
           rarity: "uncommon",
           levMult: 0.5,
+        },
+        {
+          id: "project_team",
+          name: "To the Project Team,",
+          bonus: "+2 reply to",
+          rarity: "common",
+          singleDmg: 2,
         },
         {
           id: "working_group",
@@ -4227,6 +4235,8 @@
           deflectPower: 3,
           deflect: 0,
           deflectCharge: 0,
+          deflectChargeReflect: 0,
+          deflectChargeReduce: 0,
           followUpChance: 0,
           replyDeptSplash: 0,
           escalateRecoverPerHit: 0,
@@ -4689,6 +4699,8 @@
         if (u.deflectPower == null) u.deflectPower = 5;
         if (u.deflect == null) u.deflect = 0;
         if (u.deflectCharge == null) u.deflectCharge = 0;
+        if (u.deflectChargeReflect == null) u.deflectChargeReflect = 0;
+        if (u.deflectChargeReduce == null) u.deflectChargeReduce = 0;
         if (u.followUpChance == null) u.followUpChance = 0;
         if (u.replyDeptSplash == null) u.replyDeptSplash = 0;
         if (u.escalateRecoverPerHit == null) u.escalateRecoverPerHit = 0;
@@ -4828,9 +4840,14 @@
         return computeUnitStats(u).maxHp;
       }
 
-      function getUnitDeflectPower(u) {
+      function getUnitDeflectReflect(u) {
         const stats = computeUnitStats(u);
-        return stats.deflectPower + stats.deflect;
+        return stats.deflectPower || 0;
+      }
+
+      function getUnitDeflectReduce(u) {
+        const stats = computeUnitStats(u);
+        return stats.deflect || 0;
       }
 
       function getUnitTotalHeal(u) {
@@ -4902,23 +4919,35 @@
         dmg = Math.floor(dmg * (1 - def));
 
         let blocked = 0;
-        if (target.deflectCharge && target.deflectCharge > 0 && dmg > 0) {
-          blocked = Math.min(target.deflectCharge, dmg);
-          dmg -= blocked;
-          target.deflectCharge = 0;
+        if (
+          (target.deflectChargeReduce > 0 ||
+            target.deflectChargeReflect > 0) &&
+          dmg > 0
+        ) {
+          const reducedBy = Math.min(target.deflectChargeReduce, dmg);
+          dmg -= reducedBy;
+          blocked += reducedBy;
         }
 
         target.hp -= dmg;
 
         let reflected = 0;
-        if (!options.ignoreReflect && blocked > 0 && attacker) {
-          reflected = blocked;
+        if (
+          !options.ignoreReflect &&
+          target.deflectChargeReflect > 0 &&
+          dmg > 0 &&
+          attacker
+        ) {
+          reflected = Math.min(target.deflectChargeReflect, dmg);
+          blocked += reflected;
           if (attacker.id === "player") {
             state.player.hp -= reflected;
           } else if (attacker.hp != null) {
             attacker.hp -= reflected;
           }
         }
+        target.deflectChargeReduce = 0;
+        target.deflectChargeReflect = 0;
 
         if (blocked > 0 && attacker && attacker.id === "player") {
           playSound("trash");
@@ -5382,6 +5411,8 @@
         p.ult = 0;
         p.buffs = []; // Reset combat buffs
         p.deflectCharge = 0;
+        p.deflectChargeReflect = 0;
+        p.deflectChargeReduce = 0;
         state.expenseReportActive = false;
         const baseStats = computeUnitStats(p);
         p.hp = getUnitMaxHp(p);
@@ -5406,6 +5437,8 @@
           clone.hp = clone.maxHp;
           clone.buffs = [];
           clone.deflectCharge = 0;
+          clone.deflectChargeReflect = 0;
+          clone.deflectChargeReduce = 0;
           clone._lineBags = {};
           // Filter lines based on missionId
           const missionLinesOnly = !!mission.onlyMissionLines;
@@ -5853,6 +5886,8 @@
             deflectPower: 3,
             deflect: 0,
             deflectCharge: 0,
+            deflectChargeReflect: 0,
+            deflectChargeReduce: 0,
             followUpChance: 0,
             replyDeptSplash: 0,
             escalateRecoverPerHit: 0,
@@ -6210,7 +6245,9 @@
           parts.push(`+${Math.round(effect.escalateDmgMult * 100)}% escalate`);
         if (effect.replyAllDmgMult)
           parts.push(`+${Math.round(effect.replyAllDmgMult * 100)}% reply all`);
-        if (effect.deflect) parts.push(`Deflect +${effect.deflect}`);
+        if (effect.deflectPower)
+          parts.push(`Deflect reflect +${effect.deflectPower}`);
+        if (effect.deflect) parts.push(`Deflect reduce +${effect.deflect}`);
         if (effect.selfPromoteHeal)
           parts.push(`Self-Promote +${effect.selfPromoteHeal}`);
         if (effect.replyDeptCleave)
@@ -6608,7 +6645,9 @@
         document.getElementById("promote-subtext").innerText =
           `+${Math.floor(selfPromoteHeal)} Cred, -1 Win`;
         document.getElementById("deflect-subtext").innerText =
-          `Block ${Math.floor(getUnitDeflectPower(p))}`;
+          `Reduce ${Math.floor(getUnitDeflectReduce(p))}, Reflect ${Math.floor(
+            getUnitDeflectReflect(p),
+          )}`;
         document.getElementById("ult-subtext").innerText =
           `-${Math.floor(replyAllDmg)} Cred to All`;
         document.getElementById("loop-subtext").innerText =
@@ -6893,7 +6932,8 @@
             "bg-orange-50 border-l-4 border-orange-500",
           );
         } else if (type === "DEFLECT") {
-          p.deflectCharge = getUnitDeflectPower(p);
+          p.deflectChargeReflect = getUnitDeflectReflect(p);
+          p.deflectChargeReduce = getUnitDeflectReduce(p);
           if (p.salutation && p.salutation.deflectBoostSingle) {
             p.singleDmg += p.salutation.deflectBoostSingle;
           }
@@ -6910,7 +6950,7 @@
             p.name,
             "everyone@gov.org",
             "Holding Response",
-            `${formatMessageBody(p, line)}<br><br><strong>Deflection Ready:</strong> ${p.deflectCharge}`,
+            `${formatMessageBody(p, line)}<br><br><strong>Deflection Ready:</strong> Reduce ${p.deflectChargeReduce}, Reflect ${p.deflectChargeReflect}`,
             "bg-blue-50 border-l-4 border-blue-500",
           );
         } else if (type === "PROMOTE") {
@@ -7123,7 +7163,11 @@
               );
             } else {
               const actionRoll = Math.random();
-              if (actionRoll < 0.15 && a.deflectCharge <= 0) {
+              if (
+                actionRoll < 0.15 &&
+                a.deflectChargeReduce <= 0 &&
+                a.deflectChargeReflect <= 0
+              ) {
                 if (
                   a.employeeId === "jen_lavallee" &&
                   a.name === "Jen LaVallee"
@@ -7181,7 +7225,8 @@
                     "bg-cyan-50 border-l-4 border-cyan-500",
                   );
                 } else {
-                  a.deflectCharge = getUnitDeflectPower(a);
+                  a.deflectChargeReflect = getUnitDeflectReflect(a);
+                  a.deflectChargeReduce = getUnitDeflectReduce(a);
                   const deflectLine = drawFromLineBag(
                     a,
                     "deflect",
@@ -7192,7 +7237,7 @@
                     a.name,
                     "everyone@gov.org",
                     "Holding Response",
-                    `${formatMessageBody(a, deflectLine)}<br><br><strong>Deflection Ready:</strong> ${a.deflectCharge}`,
+                    `${formatMessageBody(a, deflectLine)}<br><br><strong>Deflection Ready:</strong> Reduce ${a.deflectChargeReduce}, Reflect ${a.deflectChargeReflect}`,
                     "bg-blue-50",
                   );
                 }
