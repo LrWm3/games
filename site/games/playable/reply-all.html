@@ -1504,6 +1504,7 @@
             "I'm looping in <strong>{name}</strong> to ensure we stay aligned with policy language.",
           eff: {
             deflect: 2,
+            deflectPower: 2,
           },
           usedBy: null,
         },
@@ -1519,6 +1520,7 @@
             "I'm looping in <strong>{name}</strong> to support technical logging and incident tracking.",
           eff: {
             deflect: 2,
+            deflectPower: 2,
           },
           usedBy: null,
         },
@@ -1816,54 +1818,58 @@
         {
           id: "hello",
           name: "Hello,",
-          bonus: "On Deflect: +5 reply to and +3 escalate for this thread.",
-          rarity: "common",
-          deflectBoostSingle: 5,
-          deflectBoostEscalate: 3,
-        },
-        {
-          id: "all",
-          name: "All,",
-          bonus: "+1 reply to",
-          rarity: "common",
-          singleDmg: 1,
-        },
-        {
-          id: "hello_team",
-          name: "Hello team,",
           bonus: "Per CC: +5 reply to and +5 Max Credibility.",
           rarity: "common",
           ccScaleSingleDmg: 5,
           ccScaleMaxHp: 5,
         },
         {
-          id: "team",
-          name: "Team,",
-          bonus: "+2 reply to",
+          id: "all",
+          name: "All,",
+          bonus: "Per CC: +3 escalate and +2 deflect reduction.",
           rarity: "common",
-          singleDmg: 2,
+          ccScaleEscalateDmg: 3,
+          ccScaleDeflect: 2,
         },
         {
-          id: "morning",
-          name: "Good morning,",
+          id: "hello_team",
+          name: "Hello team,",
           bonus: "+10 Max Credibility",
           rarity: "common",
           maxHp: 10,
         },
         {
+          id: "team",
+          name: "Team,",
+          bonus: "Per CC: +7 deflect reflect and +1 deflect reduction.",
+          rarity: "common",
+          ccScaleDeflectPower: 7,
+          ccScaleDeflect: 1,
+        },
+        {
+          id: "morning",
+          name: "Good morning,",
+          bonus: "Per Sig: +3 reply to and +2 self-promote.",
+          rarity: "common",
+          sigScaleSingleDmg: 3,
+          sigScaleSelfPromoteHeal: 2,
+        },
+        {
           id: "good_afternoon",
           name: "Good afternoon,",
-          bonus: "On Deflect: +5 reply to and +3 escalate for this thread.",
+          bonus: "Per Sig: +2 escalate and +1 deflect.",
           rarity: "common",
-          deflectBoostSingle: 5,
-          deflectBoostEscalate: 3,
+          sigScaleEscalateDmg: 2,
+          sigScaleDeflect: 1,
+          sigScaleDeflectPower: 1,
         },
         {
           id: "good_evening",
           name: "Good evening,",
-          bonus: "+50% leverage gain",
+          bonus: "Per Sig: +5 reply to and -1 escalate.",
           rarity: "uncommon",
-          levMult: 0.5,
+          sigScaleSingleDmg: 5,
+          sigScaleEscalateDmg: -1,
         },
         {
           id: "project_team",
@@ -1878,6 +1884,7 @@
           bonus: "Deflect +2.",
           rarity: "uncommon",
           deflect: 2,
+          deflectPower: 2,
         },
         {
           id: "committee",
@@ -1892,6 +1899,7 @@
           bonus: "Deflect +1.",
           rarity: "uncommon",
           deflect: 1,
+          deflectPower: 1,
         },
         {
           id: "everyone",
@@ -1914,6 +1922,7 @@
           bonus: "Deflect +1.",
           rarity: "uncommon",
           deflect: 1,
+          deflectPower: 1,
         },
         {
           id: "all_stakeholders",
@@ -2018,6 +2027,7 @@
           bonus: "Deflect +2.",
           rarity: "uncommon",
           deflect: 2,
+          deflectPower: 2,
         },
         {
           id: "best_regards",
@@ -2033,6 +2043,7 @@
           rarity: "uncommon",
           setId: "earth_set",
           deflect: 2,
+          deflectPower: 2,
         },
         {
           id: "best_wishes",
@@ -2156,6 +2167,7 @@
             globalDmg: 5,
             defFlat: 3,
             deflect: 2,
+            deflectPower: 2,
             escalateRecoverPerHit: 10,
           },
         },
@@ -4782,14 +4794,37 @@
           });
         });
         if (u && u.salutation) {
+          const ccCount = Array.isArray(u.buffs)
+            ? u.buffs.filter((b) => b.usedBy === u.name).length
+            : 0;
+          const sigCount = Array.isArray(u.signatures) ? u.signatures.length : 0;
+
           const scaleSingle = u.salutation.ccScaleSingleDmg || 0;
           const scaleHp = u.salutation.ccScaleMaxHp || 0;
-          if (scaleSingle || scaleHp) {
-            const ccCount = Array.isArray(u.buffs)
-              ? u.buffs.filter((b) => b.usedBy === u.name).length
-              : 0;
+          const scaleEsc = u.salutation.ccScaleEscalateDmg || 0;
+          const scaleDef = u.salutation.ccScaleDeflect || 0;
+          const scaleDefPow = u.salutation.ccScaleDeflectPower || 0;
+
+          if (ccCount > 0) {
             stats.singleDmg += scaleSingle * ccCount;
             stats.maxHp += scaleHp * ccCount;
+            stats.escalateDmg += scaleEsc * ccCount;
+            stats.deflect += scaleDef * ccCount;
+            stats.deflectPower += scaleDefPow * ccCount;
+          }
+
+          const sigSingle = u.salutation.sigScaleSingleDmg || 0;
+          const sigEsc = u.salutation.sigScaleEscalateDmg || 0;
+          const sigSelf = u.salutation.sigScaleSelfPromoteHeal || 0;
+          const sigDef = u.salutation.sigScaleDeflect || 0;
+          const sigDefPow = u.salutation.sigScaleDeflectPower || 0;
+
+          if (sigCount > 0) {
+            stats.singleDmg += sigSingle * sigCount;
+            stats.escalateDmg += sigEsc * sigCount;
+            stats.selfPromoteHeal += sigSelf * sigCount;
+            stats.deflect += sigDef * sigCount;
+            stats.deflectPower += sigDefPow * sigCount;
           }
         }
         return stats;
@@ -6252,9 +6287,25 @@
           parts.push(`Self-Promote +${effect.selfPromoteHeal}`);
         if (effect.replyDeptCleave)
           parts.push(`Reply to hits entire target department`);
-        if (effect.ccScaleSingleDmg || effect.ccScaleMaxHp)
+        if (
+          effect.ccScaleSingleDmg ||
+          effect.ccScaleMaxHp ||
+          effect.ccScaleEscalateDmg ||
+          effect.ccScaleDeflect ||
+          effect.ccScaleDeflectPower
+        )
           parts.push(
-            `Per CC: +${effect.ccScaleSingleDmg || 0} reply to, +${effect.ccScaleMaxHp || 0} Max Cred`,
+            `Per CC: +${effect.ccScaleSingleDmg || 0} reply to, +${effect.ccScaleEscalateDmg || 0} escalate, +${effect.ccScaleMaxHp || 0} Max Cred, +${effect.ccScaleDeflect || 0} deflect reduce, +${effect.ccScaleDeflectPower || 0} deflect reflect`,
+          );
+        if (
+          effect.sigScaleSingleDmg ||
+          effect.sigScaleEscalateDmg ||
+          effect.sigScaleSelfPromoteHeal ||
+          effect.sigScaleDeflect ||
+          effect.sigScaleDeflectPower
+        )
+          parts.push(
+            `Per Sig: +${effect.sigScaleSingleDmg || 0} reply to, +${effect.sigScaleEscalateDmg || 0} escalate, +${effect.sigScaleSelfPromoteHeal || 0} self-promote, +${effect.sigScaleDeflect || 0} deflect reduce, +${effect.sigScaleDeflectPower || 0} deflect reflect`,
           );
         if (effect.deflectBoostSingle || effect.deflectBoostEscalate)
           parts.push(
