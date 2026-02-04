@@ -1820,16 +1820,20 @@
           name: "Hello,",
           bonus: "Per CC: +5 reply to and +5 Max Credibility.",
           rarity: "common",
-          ccScaleSingleDmg: 5,
-          ccScaleMaxHp: 5,
+          scalers: [
+            { source: "cc", stat: "singleDmg", per: 5 },
+            { source: "cc", stat: "maxHp", per: 5 },
+          ],
         },
         {
           id: "all",
           name: "All,",
           bonus: "Per CC: +3 escalate and +2 deflect reduction.",
           rarity: "common",
-          ccScaleEscalateDmg: 3,
-          ccScaleDeflect: 2,
+          scalers: [
+            { source: "cc", stat: "escalateDmg", per: 3 },
+            { source: "cc", stat: "deflect", per: 2 },
+          ],
         },
         {
           id: "hello_team",
@@ -1843,33 +1847,72 @@
           name: "Team,",
           bonus: "Per CC: +7 deflect reflect and +1 deflect reduction.",
           rarity: "common",
-          ccScaleDeflectPower: 7,
-          ccScaleDeflect: 1,
+          scalers: [
+            { source: "cc", stat: "deflectPower", per: 7 },
+            { source: "cc", stat: "deflect", per: 1 },
+          ],
         },
         {
           id: "morning",
           name: "Good morning,",
           bonus: "Per Sig: +3 reply to and +2 self-promote.",
           rarity: "common",
-          sigScaleSingleDmg: 3,
-          sigScaleSelfPromoteHeal: 2,
+          scalers: [
+            { source: "sig", stat: "singleDmg", per: 3 },
+            { source: "sig", stat: "selfPromoteHeal", per: 2 },
+          ],
+        },
+        {
+          id: "routine_update",
+          name: "Routine update,",
+          bonus: "Per Sig: +3 reply to and +2 self-promote.",
+          rarity: "common",
+          scalers: [
+            { source: "sig", stat: "singleDmg", per: 3 },
+            { source: "sig", stat: "selfPromoteHeal", per: 2 },
+          ],
         },
         {
           id: "good_afternoon",
           name: "Good afternoon,",
           bonus: "Per Sig: +2 escalate and +1 deflect.",
           rarity: "common",
-          sigScaleEscalateDmg: 2,
-          sigScaleDeflect: 1,
-          sigScaleDeflectPower: 1,
+          scalers: [
+            { source: "sig", stat: "escalateDmg", per: 2 },
+            { source: "sig", stat: "deflect", per: 1 },
+            { source: "sig", stat: "deflectPower", per: 1 },
+          ],
+        },
+        {
+          id: "operational_update",
+          name: "Operational update,",
+          bonus: "Per Sig: +2 escalate and +1 deflect.",
+          rarity: "common",
+          scalers: [
+            { source: "sig", stat: "escalateDmg", per: 2 },
+            { source: "sig", stat: "deflect", per: 1 },
+            { source: "sig", stat: "deflectPower", per: 1 },
+          ],
         },
         {
           id: "good_evening",
           name: "Good evening,",
           bonus: "Per Sig: +5 reply to and -1 escalate.",
           rarity: "uncommon",
-          sigScaleSingleDmg: 5,
-          sigScaleEscalateDmg: -1,
+          scalers: [
+            { source: "sig", stat: "singleDmg", per: 5 },
+            { source: "sig", stat: "escalateDmg", per: -1 },
+          ],
+        },
+        {
+          id: "status_update",
+          name: "Status update,",
+          bonus: "Per Sig: +5 reply to and -1 escalate.",
+          rarity: "common",
+          scalers: [
+            { source: "sig", stat: "singleDmg", per: 5 },
+            { source: "sig", stat: "escalateDmg", per: -1 },
+          ],
         },
         {
           id: "project_team",
@@ -4794,39 +4837,19 @@
             if (typeof value === "number") stats[field] += value;
           });
         });
-        if (u && u.salutation) {
+        if (u && u.salutation && Array.isArray(u.salutation.scalers)) {
           const ccCount = Array.isArray(u.buffs)
             ? u.buffs.filter((b) => b.usedBy === u.name).length
             : 0;
           const sigCount = Array.isArray(u.signatures) ? u.signatures.length : 0;
-
-          const scaleSingle = u.salutation.ccScaleSingleDmg || 0;
-          const scaleHp = u.salutation.ccScaleMaxHp || 0;
-          const scaleEsc = u.salutation.ccScaleEscalateDmg || 0;
-          const scaleDef = u.salutation.ccScaleDeflect || 0;
-          const scaleDefPow = u.salutation.ccScaleDeflectPower || 0;
-
-          if (ccCount > 0) {
-            stats.singleDmg += scaleSingle * ccCount;
-            stats.maxHp += scaleHp * ccCount;
-            stats.escalateDmg += scaleEsc * ccCount;
-            stats.deflect += scaleDef * ccCount;
-            stats.deflectPower += scaleDefPow * ccCount;
-          }
-
-          const sigSingle = u.salutation.sigScaleSingleDmg || 0;
-          const sigEsc = u.salutation.sigScaleEscalateDmg || 0;
-          const sigSelf = u.salutation.sigScaleSelfPromoteHeal || 0;
-          const sigDef = u.salutation.sigScaleDeflect || 0;
-          const sigDefPow = u.salutation.sigScaleDeflectPower || 0;
-
-          if (sigCount > 0) {
-            stats.singleDmg += sigSingle * sigCount;
-            stats.escalateDmg += sigEsc * sigCount;
-            stats.selfPromoteHeal += sigSelf * sigCount;
-            stats.deflect += sigDef * sigCount;
-            stats.deflectPower += sigDefPow * sigCount;
-          }
+          const counts = { cc: ccCount, sig: sigCount };
+          u.salutation.scalers.forEach((s) => {
+            if (!s || !s.source || !s.stat) return;
+            const count = counts[s.source] || 0;
+            if (!count) return;
+            const per = typeof s.per === "number" ? s.per : 0;
+            stats[s.stat] = (stats[s.stat] || 0) + per * count;
+          });
         }
         return stats;
       }
@@ -6294,26 +6317,29 @@
           parts.push(`Reply to hits entire target department`);
         if (effect.replySecondaryHalf)
           parts.push(`Reply to hits a random secondary for half damage`);
-        if (
-          effect.ccScaleSingleDmg ||
-          effect.ccScaleMaxHp ||
-          effect.ccScaleEscalateDmg ||
-          effect.ccScaleDeflect ||
-          effect.ccScaleDeflectPower
-        )
-          parts.push(
-            `Per CC: +${effect.ccScaleSingleDmg || 0} reply to, +${effect.ccScaleEscalateDmg || 0} escalate, +${effect.ccScaleMaxHp || 0} Max Cred, +${effect.ccScaleDeflect || 0} deflect reduce, +${effect.ccScaleDeflectPower || 0} deflect reflect`,
-          );
-        if (
-          effect.sigScaleSingleDmg ||
-          effect.sigScaleEscalateDmg ||
-          effect.sigScaleSelfPromoteHeal ||
-          effect.sigScaleDeflect ||
-          effect.sigScaleDeflectPower
-        )
-          parts.push(
-            `Per Sig: +${effect.sigScaleSingleDmg || 0} reply to, +${effect.sigScaleEscalateDmg || 0} escalate, +${effect.sigScaleSelfPromoteHeal || 0} self-promote, +${effect.sigScaleDeflect || 0} deflect reduce, +${effect.sigScaleDeflectPower || 0} deflect reflect`,
-          );
+        if (Array.isArray(effect.scalers) && effect.scalers.length) {
+          const buckets = {};
+          effect.scalers.forEach((s) => {
+            if (!s || !s.source || !s.stat) return;
+            const key = s.source;
+            if (!buckets[key]) buckets[key] = {};
+            buckets[key][s.stat] = (buckets[key][s.stat] || 0) + s.per;
+          });
+          Object.entries(buckets).forEach(([source, stats]) => {
+            const label = source === "cc" ? "Per CC" : "Per Sig";
+            const chunks = [];
+            if (stats.singleDmg) chunks.push(`${stats.singleDmg} reply to`);
+            if (stats.escalateDmg) chunks.push(`${stats.escalateDmg} escalate`);
+            if (stats.replyAllDmg) chunks.push(`${stats.replyAllDmg} reply all`);
+            if (stats.maxHp) chunks.push(`${stats.maxHp} Max Cred`);
+            if (stats.selfPromoteHeal)
+              chunks.push(`${stats.selfPromoteHeal} self-promote`);
+            if (stats.deflect) chunks.push(`${stats.deflect} deflect reduce`);
+            if (stats.deflectPower)
+              chunks.push(`${stats.deflectPower} deflect reflect`);
+            if (chunks.length) parts.push(`${label}: +${chunks.join(", +")}`);
+          });
+        }
         if (effect.deflectBoostSingle || effect.deflectBoostEscalate)
           parts.push(
             `On Deflect: +${effect.deflectBoostSingle || 0} reply to, +${effect.deflectBoostEscalate || 0} escalate`,
@@ -6672,6 +6698,7 @@
         const p = state.player;
         const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
         const totalMaxHp = getUnitMaxHp(p);
+        if (p.hp > totalMaxHp) p.hp = totalMaxHp;
         const hpPct = Math.max(0, (p.hp / totalMaxHp) * 100);
         const ultPct = Math.min(100, p.ult);
 
@@ -6737,7 +6764,9 @@
 
         sortedOpponents.forEach((o) => {
           const isActive = state.targetId === o.id;
-          const pct = Math.max(0, (o.hp / getUnitMaxHp(o)) * 100);
+          const oppMaxHp = getUnitMaxHp(o);
+          if (o.hp > oppMaxHp) o.hp = oppMaxHp;
+          const pct = Math.max(0, (o.hp / oppMaxHp) * 100);
           const pill = document.createElement("div");
           pill.onclick = () => {
             if (o.hp > 0) state.targetId = o.id;
@@ -6748,7 +6777,7 @@
           const lastPct = typeof o._lastHpPct === "number" ? o._lastHpPct : pct;
           pill.innerHTML = `<div class="flex justify-between font-bold text-[8px] truncate ${isActive ? "text-white" : "text-gray-800"}"><span class="mr-2">${o.name}</span><span>${o.hp > 0 ? o.wins + "w" : "UNSUBBED"}</span></div>
                                 <div class="h-1 w-full bg-gray-200 mt-0.5"><div class="h-full bg-red-500 transition-[width] duration-300 ease-out" data-opp-hp style="width: ${lastPct}%"></div></div>
-                                <div class="text-[8px] mt-0.5 ${textClass}">${Math.max(0, Math.ceil(o.hp))}/${getUnitMaxHp(o)} Cred</div>`;
+                                <div class="text-[8px] mt-0.5 ${textClass}">${Math.max(0, Math.ceil(o.hp))}/${oppMaxHp} Cred</div>`;
           oppContainer.appendChild(pill);
           const fill = pill.querySelector("[data-opp-hp]");
           if (fill) {
