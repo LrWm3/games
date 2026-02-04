@@ -1961,10 +1961,11 @@
         {
           id: "sustainability_team",
           name: "To the Sustainability Team,",
-          bonus: "+5 all messages",
+          bonus: "On Deflect procs: gain +5 Max Credibility permanently and +1 REP.",
           rarity: "uncommon",
           setId: "earth_set",
-          globalDmg: 5,
+          onDeflectProcMaxHp: 5,
+          onDeflectProcRep: 1,
         },
         {
           id: "greetings",
@@ -5138,6 +5139,20 @@
         target.deflectChargeReduce = 0;
         target.deflectChargeReflect = 0;
 
+        if (blocked > 0 && target && target.salutation) {
+          const bonusHp = target.salutation.onDeflectProcMaxHp || 0;
+          const bonusRep = target.salutation.onDeflectProcRep || 0;
+          if (bonusHp) {
+            target.maxHp = (target.maxHp || 0) + bonusHp;
+            if (target.hp < target.maxHp) {
+              target.hp = Math.min(target.maxHp, target.hp + bonusHp);
+            }
+          }
+          if (bonusRep && target.id === "player") {
+            state.player.reputation += bonusRep;
+          }
+        }
+
         if (blocked > 0 && attacker && attacker.id === "player") {
           playSound("trash");
         }
@@ -5837,6 +5852,22 @@
         return 10;
       }
 
+      const SHOP_DIRECT_TYPE_WEIGHTS = {
+        contact: 80,
+        signature: 60,
+        salutation: 40,
+        signoff: 40,
+        bcc: 30,
+        dev: 30,
+      };
+
+      const SHOP_PACK_TYPE_WEIGHTS = {
+        contact: 110,
+        email: 70,
+        dev: 60,
+        bcc: 40,
+      };
+
       function pickWeighted(items, count) {
         const pool = [];
         items.forEach((item) => {
@@ -5858,6 +5889,16 @@
         return results;
       }
 
+      function pickWeightedType(weightMap, options) {
+        const pool = [];
+        options.forEach((type) => {
+          const weight = weightMap[type] || 0;
+          for (let i = 0; i < weight; i++) pool.push(type);
+        });
+        if (pool.length === 0) return options[0] || null;
+        return pool[Math.floor(Math.random() * pool.length)];
+      }
+
       function generatePack(type, tier) {
         const tiers = {
           small: { cost: 6, options: 2, picks: 1 },
@@ -5866,6 +5907,7 @@
         };
         const t = tiers[tier];
         let pool = [];
+        let typedPools = null;
         if (type === "contact") {
           pool = CONTACTS.filter(
             (c) => !state.player.addressBook.includes(c.id) && !c.noShop,
@@ -5878,7 +5920,14 @@
           const offs = SIGNOFFS.filter(
             (s) => !state.player.signOff || state.player.signOff.id !== s.id,
           ).map((s) => ({ ...s, itemType: "signoff" }));
-          pool = [...sals, ...offs];
+          const sigs = SIGNATURES.filter(
+            (s) => !state.player.signatures.some((sig) => sig.id === s.id),
+          ).map((s) => ({ ...s, itemType: "signature" }));
+          typedPools = {
+            salutation: sals,
+            signoff: offs,
+            signature: sigs,
+          };
         } else if (type === "dev") {
           pool = getTrainingUpgrades().map((u) => ({ ...u, itemType: "dev" }));
         } else if (type === "bcc") {
@@ -5908,7 +5957,28 @@
           },
         };
 
-        const options = pickWeighted(pool, t.options);
+        let options = [];
+        if (type === "email" && typedPools) {
+          for (let i = 0; i < t.options; i++) {
+            const availableTypes = Object.keys(typedPools).filter(
+              (key) => typedPools[key].length > 0,
+            );
+            if (availableTypes.length === 0) break;
+            const pickedType = pickWeightedType(
+              SHOP_DIRECT_TYPE_WEIGHTS,
+              availableTypes,
+            );
+            if (!pickedType) break;
+            const picked = pickWeighted(typedPools[pickedType], 1)[0];
+            if (!picked) break;
+            options.push(picked);
+            typedPools[pickedType] = typedPools[pickedType].filter(
+              (item) => item.id !== picked.id,
+            );
+          }
+        } else {
+          options = pickWeighted(pool, t.options);
+        }
         return {
           id: `pack_${type}_${tier}_${Date.now()}_${Math.random()}`,
           type,
@@ -5939,24 +6009,57 @@
           (s) => !p.signOff || p.signOff.id !== s.id,
         ).map((s) => ({ ...s, itemType: "signoff" }));
         const bccPool = BCC_CONTACTS.map((b) => ({ ...b, itemType: "bcc" }));
-
-        const allDirect = [
-          ...contactPool,
-          ...sigPool,
-          ...salPool,
-          ...offPool,
-          ...bccPool,
-        ];
-        state.shop.directItems = pickWeighted(allDirect, 3).map((item) => ({
-          ...item,
-          purchased: false,
+        const devPool = getTrainingUpgrades().map((u) => ({
+          ...u,
+          itemType: "dev",
         }));
 
-        const packTypes = ["contact", "email", "dev", "bcc"];
+        const directPools = {
+          contact: contactPool,
+          signature: sigPool,
+          salutation: salPool,
+          signoff: offPool,
+          bcc: bccPool,
+          dev: devPool,
+        };
+        const directItems = [];
+        for (let i = 0; i < 3; i++) {
+          const availableTypes = Object.keys(directPools).filter(
+            (type) => directPools[type].length > 0,
+          );
+          if (availableTypes.length === 0) break;
+          const pickedType = pickWeightedType(
+            SHOP_DIRECT_TYPE_WEIGHTS,
+            availableTypes,
+          );
+          if (!pickedType) break;
+          const selected = pickWeighted(directPools[pickedType], 1)[0];
+          if (!selected) break;
+          directItems.push({ ...selected, purchased: false });
+          directPools[pickedType] = directPools[pickedType].filter(
+            (item) => item.id !== selected.id,
+          );
+        }
+        state.shop.directItems = directItems;
+
         const packTiers = ["small", "medium", "large"];
         state.shop.packs = [];
         for (let i = 0; i < 2; i++) {
-          const type = packTypes[Math.floor(Math.random() * packTypes.length)];
+          const packTypePools = {
+            contact: contactPool,
+            email: [...salPool, ...offPool],
+            dev: getTrainingUpgrades(),
+            bcc: bccPool,
+          };
+          const eligiblePackTypes = Object.keys(packTypePools).filter(
+            (type) => packTypePools[type].length > 0,
+          );
+          if (eligiblePackTypes.length === 0) break;
+          const type = pickWeightedType(
+            SHOP_PACK_TYPE_WEIGHTS,
+            eligiblePackTypes,
+          );
+          if (!type) break;
           const tier = packTiers[Math.floor(Math.random() * packTiers.length)];
           state.shop.packs.push(generatePack(type, tier));
         }
