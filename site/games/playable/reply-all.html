@@ -1683,18 +1683,42 @@
         },
       ];
 
+      // DESIGN ROLES (content + mechanics)
+      // Salutations (greetings):
+      // - The “entry rule.” Set the tone for the thread and its early constraints.
+      // - Effects should be front‑loaded: start-of-thread, CC-gating, action rules, time windows.
+      // - Can scale off CC count or sig count, but should rarely grant permanent growth.
+      // - Avoid persistent roster growth; keep them about thread setup and short-term play style.
+      //
+      // Signatures:
+      // - Stackable, small, composable effects that smooth early survival before CCs ramp.
+      // - Prefer immediate power/durability or mid‑thread action tweaks (reply/escalate/deflect).
+      // - Should avoid targeting player/CC permanent growth; if they grow, it’s self‑contained (e.g., per win).
+      // - May derive bonuses from contact composition (e.g., “per Legal CC”), but shouldn’t improve contacts.
+      // - Keep individual effects low magnitude and distinct to avoid stat mush.
+      //
+      // Sign‑offs:
+      // - The “exit rule.” End-of-thread or removal-based effects that shape long‑term progression.
+      // - Primary place for permanent growth, especially via CCs rather than the player directly.
+      // - Leverage/win/removal triggers are fair game; avoid early‑thread mechanics here.
+      //
+      // BCCs (Help Desk):
+      // - Tactical, consumable, immediate actions.
+      // - Primary path for one‑shot utility: resource creation, rerolls, CC upgrades, stat picks.
+      // - Should not create long‑term build identity on their own; they support the current thread/build.
       const SIGNATURES = [
         {
           id: "iphone",
           name: "Sent from my iPhone",
           rarity: "common",
-          repBonus: 1,
+          heal: 2,
+          addressLimit: 1,
         },
         {
           id: "regards",
           name: "Kind Regards,",
           rarity: "common",
-          maxHp: 10,
+          heal: 5,
         },
         {
           id: "coffee_break",
@@ -1708,64 +1732,166 @@
           name: "Powered by double espresso",
           rarity: "common",
           setId: "coffee_lovers",
-          singleDmg: 1,
+          effects: [
+            {
+              event: "reply_to",
+              type: "add_thread_bonus",
+              stats: { singleDmg: 1 },
+            },
+          ],
         },
         {
           id: "disclaimer",
           name: "Standard Disclaimer Applied",
           rarity: "common",
-          singleDmgMult: 0.1,
+          singleDmg: 1,
         },
         {
           id: "per_my_last",
           name: "Per my last email,",
           rarity: "uncommon",
-          singleDmgMult: 0.1,
+          followUpChance: 0.3,
         },
         {
           id: "wins_signature",
           name: "Win-Optimized Footer",
           rarity: "uncommon",
-          winScaleSingleDmg: 5,
-          winScaleSingleDmgMult: 0.5,
+          wins: 2,
         },
         {
           id: "best",
           name: "Best,",
           rarity: "uncommon",
           heal: 2,
-          selfPromoteHeal: 5,
+          selfPromoteHeal: 3,
         },
         {
           id: "environment_printing",
           name: "Please consider the environment before printing this email",
           rarity: "uncommon",
           setId: "earth_set",
-          heal: 3,
+          deflect: 2,
         },
         {
           id: "breakroom",
           name: "Sent from the breakroom",
           rarity: "uncommon",
-          heal: 2,
+          heal: 3,
         },
         {
           id: "thanks_advance",
           name: "Thanks in advance,",
           rarity: "rare",
-          levMult: 0.5,
+          bccLimit: 1,
         },
         {
           id: "encrypted",
           name: "Sent from my encrypted workstation",
           rarity: "rare",
-          defFlat: 2,
+          deptScalers: [
+            { departmentId: "legal", stat: "defFlat", per: 2 },
+          ],
         },
         {
           id: "renewable_energy",
           name: "Our office aspires to be powered by 100% renewable energy.",
           rarity: "rare",
-          replyDeptSplash: 5,
+        },
+        {
+          id: "ops_dispatch",
+          name: "Operations Desk | Dispatch Confirmed",
+          rarity: "common",
+          deptScalers: [
+            { departmentId: "operations", stat: "singleDmg", per: 1, step: 1 },
+          ],
+        },
+        {
+          id: "it_ticket",
+          name: "IT Service Desk | Ticket Resolved",
+          rarity: "common",
+          deptScalers: [
+            { departmentId: "information_technology", stat: "escalateDmg", per: 1, step: 1 },
+          ],
+        },
+        {
+          id: "eco_brief",
+          name: "Executive Council Office | Alignment Brief",
+          rarity: "uncommon",
+          deptScalers: [
+            { departmentId: "executive_council_office", stat: "globalDmg", per: 1, step: 2 },
+          ],
+        },
+        {
+          id: "facilities_notice",
+          name: "Facilities & Admin | Service Window Notice",
+          rarity: "common",
+          deptScalers: [
+            { departmentId: "facilities_and_administration", stat: "deflect", per: 1, step: 1 },
+          ],
+        },
+        {
+          id: "brand_brief",
+          name: "Brand Team | Brief Approved",
+          rarity: "common",
+          deptScalers: [
+            { departmentId: "marketing", stat: "singleDmg", per: 1, step: 1 },
+          ],
+        },
+        {
+          id: "public_facing",
+          name: "Constituent Services | Public Response Cleared",
+          rarity: "uncommon",
+          deptScalers: [
+            { departmentId: "constituent_services", stat: "globalDmg", per: 1, step: 2 },
+          ],
+        },
+        {
+          id: "policy_memo",
+          name: "Policy Unit | Internal Memo",
+          rarity: "common",
+          deptScalers: [
+            { departmentId: "policy", stat: "defFlat", per: 1, step: 1 },
+          ],
+        },
+        {
+          id: "budget_line",
+          name: "Finance | Budget Line Verified",
+          rarity: "uncommon",
+          deptScalers: [
+            { departmentId: "finance", stat: "maxHp", per: 3, step: 2 },
+          ],
+        },
+        {
+          id: "hr_record",
+          name: "Human Resources | File Noted",
+          rarity: "common",
+          deptScalers: [
+            { departmentId: "human_resources", stat: "deflect", per: 1, step: 1 },
+          ],
+        },
+        {
+          id: "legal_hold",
+          name: "Legal | Hold Notice Acknowledged",
+          rarity: "rare",
+          deptScalers: [
+            { departmentId: "legal", stat: "defFlat", per: 2, step: 2 },
+          ],
+        },
+        {
+          id: "m4_release",
+          name: "M4 Agency | Release Cleared",
+          rarity: "uncommon",
+          deptScalers: [
+            { departmentId: "m4_agency", stat: "escalateDmg", per: 2, step: 2 },
+          ],
+        },
+        {
+          id: "dt_sync",
+          name: "Digital Technology | Sync Complete",
+          rarity: "rare",
+          deptScalers: [
+            { departmentId: "digital_technology", stat: "followUpChance", per: 0.3, step: 2 },
+          ],
         },
       ];
 
@@ -4410,7 +4536,6 @@
           deflectChargeReflect: 0,
           deflectChargeReduce: 0,
           followUpChance: 0,
-          replyDeptSplash: 0,
           escalateRecoverPerHit: 0,
           bccLimit: 2,
           contactUpgrades: {},
@@ -4846,12 +4971,12 @@
         "deflectPower",
         "deflect",
         "followUpChance",
-        "replyDeptSplash",
         "escalateRecoverPerHit",
         "defFlat",
         "heal",
         "levMult",
         "repBonus",
+        "addressLimit",
         "numCCperCCaction",
         "bccLimit",
       ];
@@ -4871,13 +4996,13 @@
         if (u.deflectChargeReflect == null) u.deflectChargeReflect = 0;
         if (u.deflectChargeReduce == null) u.deflectChargeReduce = 0;
         if (u.followUpChance == null) u.followUpChance = 0;
-        if (u.replyDeptSplash == null) u.replyDeptSplash = 0;
         if (u.escalateRecoverPerHit == null) u.escalateRecoverPerHit = 0;
         if (u.selfPromoteHeal == null) u.selfPromoteHeal = 0;
         if (u.defFlat == null) u.defFlat = 0;
         if (u.heal == null) u.heal = 0;
         if (u.levMult == null) u.levMult = 0;
         if (u.repBonus == null) u.repBonus = 0;
+        if (u.addressLimit == null) u.addressLimit = 0;
         if (u.numCCperCCaction == null) u.numCCperCCaction = 1;
         if (u.bccLimit == null) u.bccLimit = 0;
         if (!Array.isArray(u.deflectLines) || u.deflectLines.length === 0) {
@@ -5036,6 +5161,12 @@
             if (typeof value === "number") stats[field] += value;
           });
         });
+        if (u && u.threadBonuses) {
+          STAT_FIELDS.forEach((field) => {
+            const value = u.threadBonuses[field];
+            if (typeof value === "number") stats[field] += value;
+          });
+        }
         if (u && u.salutation && Array.isArray(u.salutation.scalers)) {
           const ccCount = Array.isArray(u.buffs)
             ? u.buffs.filter((b) => b.usedBy === u.name).length
@@ -5048,6 +5179,29 @@
             if (!count) return;
             const per = typeof s.per === "number" ? s.per : 0;
             stats[s.stat] = (stats[s.stat] || 0) + per * count;
+          });
+        }
+        if (u && Array.isArray(u.buffs)) {
+          const deptCounts = {};
+          u.buffs
+            .filter((b) => b.usedBy === u.name)
+            .forEach((b) => {
+              if (!b.departmentId) return;
+              deptCounts[b.departmentId] =
+                (deptCounts[b.departmentId] || 0) + 1;
+            });
+          getUnitStatBlocks(u).forEach((block) => {
+            if (!block || !Array.isArray(block.deptScalers)) return;
+            block.deptScalers.forEach((s) => {
+              if (!s || !s.stat || !s.departmentId) return;
+              const count = deptCounts[s.departmentId] || 0;
+              if (!count) return;
+              const per = typeof s.per === "number" ? s.per : 0;
+              const step = typeof s.step === "number" && s.step > 0 ? s.step : 1;
+              const times = Math.floor(count / step);
+              if (!times) return;
+              stats[s.stat] = (stats[s.stat] || 0) + per * times;
+            });
           });
         }
         const salutationWindowStats = getSalutationWindowStats(u);
@@ -5214,12 +5368,13 @@
         return Math.max(0, Math.min(1, chance));
       }
 
-      function getUnitReplyDeptSplash(u) {
-        return computeUnitStats(u).replyDeptSplash;
-      }
-
       function getUnitEscalateRecover(u) {
         return computeUnitStats(u).escalateRecoverPerHit;
+      }
+
+      function getUnitAddressLimit(u) {
+        const limit = computeUnitStats(u).addressLimit;
+        return Math.max(0, Math.floor(limit));
       }
 
       function getUnitBounceDamage(u) {
@@ -5298,29 +5453,6 @@
 
         updateUI();
         return { dmg, blocked, reflected };
-      }
-
-      function applyDepartmentSplash(attacker, target, splashDamage) {
-        if (!splashDamage || !target || !target.departmentId)
-          return { total: 0, hits: 0 };
-        const units = [...opponents, state.player];
-        let total = 0;
-        let hits = 0;
-        units.forEach((u) => {
-          if (!u || u.hp <= 0) return;
-          if (u === target) return;
-          if (attacker && u === attacker) return;
-          if (u.departmentId !== target.departmentId) return;
-          const result = applyDamage(attacker, u, splashDamage, {
-            ignoreReflect: true,
-          });
-          total += result.dmg;
-          hits += 1;
-          if (u !== state.player && u.hp <= 0) {
-            handleOpponentDefeat(u, attacker && attacker.id === "player");
-          }
-        });
-        return { total, hits };
       }
 
       function applyDepartmentCleave(attacker, target, damage) {
@@ -5723,6 +5855,16 @@
         unit.signoffBonuses[sourceId] = next;
       }
 
+      function applyUnitThreadBonus(unit, stats) {
+        if (!unit || !stats) return;
+        if (!unit.threadBonuses) unit.threadBonuses = {};
+        Object.keys(stats).forEach((key) => {
+          const value = stats[key];
+          if (typeof value !== "number") return;
+          unit.threadBonuses[key] = (unit.threadBonuses[key] || 0) + value;
+        });
+      }
+
       function applySalutationPermanentBoost(unit, sourceId, stats) {
         if (!unit || !sourceId || !stats) return;
         if (!unit.salutationBonuses) unit.salutationBonuses = {};
@@ -5756,6 +5898,12 @@
           sources.push({ owner: unit.salutation, id: unit.salutation.id });
         if (unit.signOff && Array.isArray(unit.signOff.effects))
           sources.push({ owner: unit.signOff, id: unit.signOff.id });
+        if (Array.isArray(unit.signatures)) {
+          unit.signatures.forEach((sig) => {
+            if (Array.isArray(sig.effects))
+              sources.push({ owner: sig, id: sig.id });
+          });
+        }
         sources.forEach(({ owner, id }) => {
           owner.effects.forEach((effect) => {
             if (!effect || effect.event !== event) return;
@@ -5787,6 +5935,8 @@
               applyUnitPermanentBoost(unit, id, effect.stats || {});
             } else if (effect.type === "add_salutation_bonus") {
               applySalutationPermanentBoost(unit, id, effect.stats || {});
+            } else if (effect.type === "add_thread_bonus") {
+              applyUnitThreadBonus(unit, effect.stats || {});
             } else if (effect.type === "add_bcc") {
               if (unit.id !== "player") return;
               addRandomBccs(state.player, effect.count || 1);
@@ -6044,6 +6194,7 @@
         p.deflectCharge = 0;
         p.deflectChargeReflect = 0;
         p.deflectChargeReduce = 0;
+        p.threadBonuses = {};
         state.expenseReportActive = false;
         state.threadEffectFlags = {};
         const baseStats = computeUnitStats(p);
@@ -6073,6 +6224,7 @@
           clone.deflectCharge = 0;
           clone.deflectChargeReflect = 0;
           clone.deflectChargeReduce = 0;
+          clone.threadBonuses = {};
           clone._lineBags = {};
           // Filter lines based on missionId
           const missionLinesOnly = !!mission.onlyMissionLines;
@@ -6610,7 +6762,6 @@
             deflectChargeReflect: 0,
             deflectChargeReduce: 0,
           followUpChance: 0,
-          replyDeptSplash: 0,
           escalateRecoverPerHit: 0,
           bccLimit: 2,
           contactUpgrades: {},
@@ -7024,8 +7175,6 @@
         if (effect.defFlat) parts.push(`Reduce damage by ${effect.defFlat}`);
         if (effect.followUpChance)
           parts.push(`Follow-up +${Math.round(effect.followUpChance * 100)}%`);
-        if (effect.replyDeptSplash)
-          parts.push(`Dept splash +${effect.replyDeptSplash}`);
         if (effect.escalateRecoverPerHit)
           parts.push(`Escalate recover +${effect.escalateRecoverPerHit}`);
         if (effect.heal) parts.push(`+${effect.heal} Cred/turn`);
@@ -7067,8 +7216,8 @@
           parts.push(`+${Math.round(stats.followUpChance * 100)}% follow-up`);
         if (stats.dodge)
           parts.push(`+${Math.round(stats.dodge * 100)}% distraction`);
-        if (stats.replyDeptSplash)
-          parts.push(`Dept splash +${stats.replyDeptSplash}`);
+        if (stats.addressLimit)
+          parts.push(`+${stats.addressLimit} address limit`);
         if (stats.escalateRecoverPerHit)
           parts.push(`Escalate recover +${stats.escalateRecoverPerHit}`);
         if (stats.bccLimit) parts.push(`+${stats.bccLimit} BCC limit`);
@@ -7077,11 +7226,28 @@
         return parts.join(", ");
       }
 
+      function formatDeptScalersText(deptScalers) {
+        if (!Array.isArray(deptScalers) || deptScalers.length === 0) return "";
+        return deptScalers
+          .map((s) => {
+            if (!s || !s.departmentId || !s.stat) return "";
+            const dept = DEPARTMENT_BY_ID[s.departmentId]?.name || s.departmentId;
+            const per = typeof s.per === "number" ? s.per : 0;
+            if (!per) return "";
+            const step = typeof s.step === "number" && s.step > 0 ? s.step : 1;
+            const stepLabel = step === 1 ? "CC" : `${step} CCs`;
+            return `Per ${dept} ${stepLabel}: ${formatStatsText({ [s.stat]: per })}`;
+          })
+          .filter(Boolean)
+          .join(", ");
+      }
+
       function formatEffect(effect) {
         if (!effect) return "";
         const eventLabels = {
           thread_start: "On thread start",
           thread_end: "On thread end",
+          reply_to: "On Reply to",
           reply_all: "On Reply All",
           shop_enter: "On shop enter",
           bcc_use: "On BCC use",
@@ -7107,6 +7273,9 @@
         }
         if (effect.type === "add_salutation_bonus") {
           return `${eventText}: gain ${statsText} permanently`;
+        }
+        if (effect.type === "add_thread_bonus") {
+          return `${eventText}: gain ${statsText} this thread`;
         }
         if (effect.type === "add_bcc") {
           const count = effect.count || 1;
@@ -7164,6 +7333,8 @@
           const effText = formatStatsText(item.eff);
           if (effText) parts.push(effText);
         }
+        const deptText = formatDeptScalersText(item.deptScalers);
+        if (deptText) parts.push(deptText);
         if (item.winScaleSingleDmg)
           parts.push(`Per win remaining: +${item.winScaleSingleDmg} reply to`);
         if (item.winScaleSingleDmgMult)
@@ -7192,9 +7363,7 @@
 
       function hasSpaceForItem(item) {
         if (item.itemType === "contact")
-          return (
-            state.player.addressBook.length < state.player.title.addressLimit
-          );
+          return state.player.addressBook.length < getUnitAddressLimit(state.player);
         if (item.itemType === "signature")
           return state.player.signatures.length < state.player.title.sigLimit;
         if (item.itemType === "salutation") return true;
@@ -7254,7 +7423,8 @@
 
         // --- OWNED ASSETS ---
         const ownedContacts = document.getElementById("shop-owned-contacts");
-        ownedContacts.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Address Book (${state.player.addressBook.length}/${state.player.title.addressLimit})</div>`;
+        const addressLimit = getUnitAddressLimit(state.player);
+        ownedContacts.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Address Book (${state.player.addressBook.length}/${addressLimit})</div>`;
         if (state.player.addressBook.length === 0) {
           ownedContacts.innerHTML += `<div class="text-[10px] italic text-gray-400">No contacts on file.</div>`;
         } else {
@@ -7573,7 +7743,7 @@
         document.getElementById("ult-subtext").innerText =
           `-${Math.floor(replyAllDmg)} Cred to All`;
         document.getElementById("loop-subtext").innerText =
-          `${p.addressBook.length}/${p.title.addressLimit} Contacts`;
+          `${p.addressBook.length}/${getUnitAddressLimit(p)} Contacts`;
 
         document.getElementById("reply-all-btn").disabled = p.ult < 100;
         document.getElementById("attack-btn").disabled =
@@ -7776,8 +7946,6 @@
           const followUpHit =
             followUpChance > 0 && Math.random() < followUpChance;
           const followUpResult = followUpHit ? applyDamage(p, target, d) : null;
-          const splashDamage = getUnitReplyDeptSplash(p);
-          const splashResult = applyDepartmentSplash(p, target, splashDamage);
           const secondaryActive =
             p.salutation && p.salutation.replySecondaryHalf === true;
           const secondaryTarget = secondaryActive
@@ -7813,9 +7981,6 @@
             }
             body += ".";
           }
-          if (splashResult.hits > 0) {
-            body += `<br><br><strong>Department Splash:</strong> ${splashResult.hits} hit for ${splashResult.total}.`;
-          }
           if (cleaveResult.hits > 0) {
             body += `<br><br><strong>Department Cleave:</strong> ${cleaveResult.hits} hit for ${cleaveResult.total}.`;
           }
@@ -7835,6 +8000,7 @@
             body,
             "border-l-4 border-blue-600",
           );
+          runUnitEffects(p, "reply_to", { target, damage: d });
           if (target.hp <= 0) handleOpponentDefeat(target, true);
         } else if (type === "ESCALATE") {
           const d = getUnitDamage(p, "escalate");
@@ -8269,7 +8435,6 @@
                 const followUpChance = getUnitFollowUpChance(a);
                 const followUpHit =
                   followUpChance > 0 && Math.random() < followUpChance;
-                const splashDamage = getUnitReplyDeptSplash(a);
                 const bounceDamage = getUnitBounceDamage(a);
 
                 if (target.id === "player") {
@@ -8293,11 +8458,6 @@
                     const followUpResult = followUpHit
                       ? applyDamage(a, state.player, d)
                       : null;
-                    const splashResult = applyDepartmentSplash(
-                      a,
-                      state.player,
-                      splashDamage,
-                    );
                     const bounceTarget = bounceDamage
                       ? pickBounceTarget(a, state.player)
                       : null;
@@ -8311,9 +8471,6 @@
                     }
                     if (followUpResult) {
                       body += `<br><br><strong>Follow-up Reply:</strong> -${followUpResult.dmg}.`;
-                    }
-                    if (splashResult.hits > 0) {
-                      body += `<br><br><strong>Department Splash:</strong> ${splashResult.hits} hit for ${splashResult.total}.`;
                     }
                     if (bounceResult && bounceTarget) {
                       body += `<br><br><strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`;
@@ -8340,11 +8497,6 @@
                   const followUpResult = followUpHit
                     ? applyDamage(a, target, d)
                     : null;
-                  const splashResult = applyDepartmentSplash(
-                    a,
-                    target,
-                    splashDamage,
-                  );
                   const bounceTarget = bounceDamage
                     ? pickBounceTarget(a, target)
                     : null;
@@ -8358,9 +8510,6 @@
                   }
                   if (followUpResult) {
                     body += `<br><br><strong>Follow-up Reply:</strong> -${followUpResult.dmg}.`;
-                  }
-                  if (splashResult.hits > 0) {
-                    body += `<br><br><strong>Department Splash:</strong> ${splashResult.hits} hit for ${splashResult.total}.`;
                   }
                   if (bounceResult && bounceTarget) {
                     body += `<br><br><strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`;
@@ -8427,7 +8576,7 @@
       function renderAddressBook() {
         const list = document.getElementById("contact-list");
         list.innerHTML = "";
-        let titleText = `PERSONNEL DIRECTORY (${state.player.addressBook.length}/${state.player.title.addressLimit})`;
+        let titleText = `PERSONNEL DIRECTORY (${state.player.addressBook.length}/${getUnitAddressLimit(state.player)})`;
         if (state.ccPicksLeft > 1 || state.ccPicksTaken > 0) {
           titleText += ` - PICKS: ${state.ccPicksLeft}`;
         }
@@ -8666,7 +8815,7 @@
               picked,
               `I'm looping in <strong>${picked.name}</strong> (${picked.title}) to help clarify the organizational impact of this thread.`,
             );
-            if (p.addressBook.length < p.title.addressLimit) {
+            if (p.addressBook.length < getUnitAddressLimit(p)) {
               p.addressBook.push(picked.id);
               addEmailToLog(
                 p.name,
@@ -8680,7 +8829,7 @@
                 p.name,
                 "everyone@gov.org",
                 "Temporary Referral",
-                `${loopInText}<br><br>Your address book is at capacity (${p.title.addressLimit}). <strong>${picked.name}</strong> has been looped in for this thread only.`,
+                `${loopInText}<br><br>Your address book is at capacity (${getUnitAddressLimit(p)}). <strong>${picked.name}</strong> has been looped in for this thread only.`,
                 "bg-blue-100 font-bold border-l-4 border-blue-500",
               );
             }
