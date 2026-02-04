@@ -1944,30 +1944,48 @@
           bonus:
             "On Reply All: permanently add +0.25 reply to mult to a random CC.",
           rarity: "uncommon",
-          onReplyAllBoostCcSingleMult: 0.25,
+          effects: [
+            {
+              event: "reply_all",
+              type: "add_random_cc_bonus",
+              stats: { singleDmgMult: 0.25 },
+            },
+          ],
         },
         {
           id: "committee",
           name: "To the committee,",
           bonus: "On enter thread: gain 1 BCC if you have room.",
           rarity: "uncommon",
-          onEnterGainBcc: 1,
+          effects: [{ event: "thread_start", type: "add_bcc", count: 1 }],
         },
         {
           id: "colleagues",
           name: "Dear Colleagues,",
           bonus: "On CC: the contact gains +2 reply to permanently.",
           rarity: "uncommon",
-          onCcBoostSingle: 2,
+          effects: [
+            {
+              event: "cc_add",
+              type: "add_cc_bonus",
+              stats: { singleDmg: 2 },
+            },
+          ],
         },
         {
           id: "sustainability_team",
           name: "To the Sustainability Team,",
-          bonus: "On Deflect procs: gain +5 Max Credibility permanently and +1 REP.",
+          bonus:
+            "On Deflect procs: a random CC gains +5 Max Credibility and +1 REP permanently.",
           rarity: "uncommon",
           setId: "earth_set",
-          onDeflectProcMaxHp: 5,
-          onDeflectProcRep: 1,
+          effects: [
+            {
+              event: "deflect_proc",
+              type: "add_random_cc_bonus",
+              stats: { maxHp: 5, repBonus: 1 },
+            },
+          ],
         },
         {
           id: "greetings",
@@ -1975,22 +1993,28 @@
           bonus:
             "Gains +0.10 escalate mult for every 3 reputation held.",
           rarity: "rare",
-          repScaleEscalateMult: 0.10,
-          repScaleStep: 3,
+          effects: [
+            {
+              event: "rep_tick",
+              type: "rep_scale_salutation",
+              step: 3,
+              stats: { escalateDmgMult: 0.10 },
+            },
+          ],
         },
         {
           id: "all_stakeholders",
           name: "To all stakeholders,",
           bonus: "On Reply All: gain 1 BCC if you have room.",
           rarity: "rare",
-          onReplyAllGainBcc: 1,
+          effects: [{ event: "reply_all", type: "add_bcc", count: 1 }],
         },
         {
           id: "formal",
           name: "To whom it may concern,",
           bonus: "On enter shop: duplicate one random BCC you hold.",
           rarity: "rare",
-          onEnterShopDuplicateBcc: 1,
+          effects: [{ event: "shop_enter", type: "duplicate_bcc", count: 1 }],
         },
         {
           id: "everyone",
@@ -2006,7 +2030,16 @@
           name: "Dear Team,",
           bonus:
             "Every 2 wins remaining at thread end grants +1 defense and +2 deflect to a random CC.",
-          rarity: "rare"
+          rarity: "rare",
+          effects: [
+            {
+              event: "thread_end",
+              type: "add_random_cc_bonus_scaled",
+              scaleBy: "wins_remaining",
+              step: 2,
+              stats: { defFlat: 1, deflect: 2 },
+            },
+          ],
         }
       ];
 
@@ -2016,19 +2049,41 @@
           name: "Thanks,",
           bonus: "First contact you loop in per thread gains +5 reply to permanently.",
           rarity: "common",
+          effects: [
+            {
+              event: "cc_add",
+              type: "add_cc_bonus",
+              stats: { singleDmg: 5 },
+              oncePerThread: true,
+            },
+          ],
         },
         {
           id: "respectfully",
           name: "Respectfully,",
           bonus: "Ending the thread with full leverage grants +5 all messages permanently.",
           rarity: "common",
+          effects: [
+            {
+              event: "thread_end",
+              type: "add_signoff_bonus",
+              stats: { globalDmg: 5 },
+              requiresFullLeverage: true,
+            },
+          ],
         },
         {
           id: "regards_signoff",
           name: "Regards,",
           bonus: "Each stakeholder you take off the thread grants +2 reply to permanently.",
           rarity: "common",
-          onRemoveSingleDmg: 2,
+          effects: [
+            {
+              event: "remove_stakeholder",
+              type: "add_signoff_bonus",
+              stats: { singleDmg: 2 },
+            },
+          ],
         },
         {
           id: "kind_regards_signoff",
@@ -2036,9 +2091,13 @@
           bonus:
             "Each stakeholder you take off the thread grants +1 all messages, +1 deflect, +1 self-promote permanently.",
           rarity: "common",
-          onRemoveGlobalDmg: 1,
-          onRemoveDeflect: 1,
-          onRemoveSelfPromote: 1,
+          effects: [
+            {
+              event: "remove_stakeholder",
+              type: "add_signoff_bonus",
+              stats: { globalDmg: 1, deflect: 1, selfPromoteHeal: 1 },
+            },
+          ],
         },
         {
           id: "cheers",
@@ -2046,6 +2105,15 @@
           bonus:
             "Every 5 self-promotion beyond max credibility grants +5 Max Credibility (no heal).",
           rarity: "common",
+          effects: [
+            {
+              event: "promote_overflow",
+              type: "add_signoff_bonus_scaled",
+              scaleBy: "overflow",
+              step: 5,
+              stats: { maxHp: 5 },
+            },
+          ],
         },
         {
           id: "team_regards_signoff",
@@ -2053,7 +2121,13 @@
           bonus:
             "Each stakeholder you take off the thread grants +2 escalate permanently.",
           rarity: "common",
-          onRemoveEscalateDmg: 2,
+          effects: [
+            {
+              event: "remove_stakeholder",
+              type: "add_signoff_bonus",
+              stats: { escalateDmg: 2 },
+            },
+          ],
         },
         {
           id: "best_signoff",
@@ -2068,6 +2142,14 @@
           bonus:
             "Winning at full credibility grants +0.25 reply to and +0.25 escalate permanently.",
           rarity: "common",
+          effects: [
+            {
+              event: "thread_end",
+              type: "add_signoff_bonus",
+              stats: { singleDmgMult: 0.25, escalateDmgMult: 0.25 },
+              requiresHpFull: true,
+            },
+          ],
         },
         {
           id: "solidarity",
@@ -2075,7 +2157,14 @@
           bonus:
             "You may only CC until one stakeholder is removed. On win, all CCs gain +0.2 all messages permanently.",
           rarity: "uncommon",
-          onWinCcGlobalMult: 0.2,
+          effects: [
+            {
+              event: "thread_end",
+              type: "add_all_cc_bonus",
+              stats: { globalDmgMult: 0.2 },
+              scope: "addressBook",
+            },
+          ],
         },
         {
           id: "team_regards_signoff",
@@ -2083,6 +2172,13 @@
           bonus:
             "Each CC gains +0.1 all messages per other CC from the same department.",
           rarity: "uncommon",
+          effects: [
+            {
+              event: "thread_end",
+              type: "add_cc_bonus_by_dept_pairs",
+              stats: { globalDmgMult: 0.1 },
+            },
+          ],
         },
         {
           id: "yours_truly",
@@ -2097,6 +2193,15 @@
           bonus:
             "When buying Group Training, 50% chance to gain a free BCC (if space).",
           rarity: "uncommon",
+          effects: [
+            {
+              event: "pack_purchase",
+              type: "add_bcc",
+              count: 1,
+              chance: 0.5,
+              requiresPackType: "dev",
+            },
+          ],
         },
         {
           id: "with_appreciation",
@@ -2104,6 +2209,15 @@
           bonus:
             "For every 10 credibility you have at thread end, gain +2 reply to permanently.",
           rarity: "uncommon",
+          effects: [
+            {
+              event: "thread_end",
+              type: "add_signoff_bonus_scaled",
+              scaleBy: "hp",
+              step: 10,
+              stats: { singleDmg: 2 },
+            },
+          ],
         },
         {
           id: "sincerely",
@@ -2111,6 +2225,14 @@
           bonus:
             "Gain half REP. For every 3 REP not gained, your CCs gain +0.2 escalate permanently.",
           rarity: "uncommon",
+          effects: [
+            {
+              event: "rep_adjust",
+              type: "rep_half_to_cc_escalate",
+              step: 3,
+              stats: { escalateDmgMult: 0.2 },
+            },
+          ],
         },
         {
           id: "best_regards",
@@ -2118,7 +2240,13 @@
           bonus:
             "Each stakeholder you take off the thread grants +0.20 all messages to a random CC on the thread.",
           rarity: "uncommon",
-          onRemoveGlobalDmgMult: 0.2,
+          effects: [
+            {
+              event: "remove_stakeholder",
+              type: "add_random_cc_bonus",
+              stats: { globalDmgMult: 0.2 },
+            },
+          ],
         },
         {
           id: "solidarity_earth",
@@ -2127,7 +2255,13 @@
             "End of thread: for every same-department CC pair, gain +1 defense permanently.",
           rarity: "uncommon",
           setId: "earth_set",
-          onWinDeptPairDefense: 1,
+          effects: [
+            {
+              event: "thread_end",
+              type: "add_signoff_bonus_by_dept_pairs",
+              stats: { defFlat: 1 },
+            },
+          ],
         },
         {
           id: "best_wishes",
@@ -2135,8 +2269,13 @@
           bonus:
             "Whenever you use a BCC, a random CC gains +3 heal and +1 win when CC'd.",
           rarity: "uncommon",
-          onBccCcHeal: 3,
-          onBccCcWins: 1,
+          effects: [
+            {
+              event: "bcc_use",
+              type: "add_random_cc_bonus",
+              stats: { heal: 3, wins: 1 },
+            },
+          ],
         },
         {
           id: "for_group_awareness",
@@ -2151,6 +2290,13 @@
           name: "Very Respectfully,",
           bonus: "Each Deflect action grants +0.1 all messages permanently.",
           rarity: "rare",
+          effects: [
+            {
+              event: "deflect_action",
+              type: "add_signoff_bonus",
+              stats: { globalDmgMult: 0.1 },
+            },
+          ],
         },
       ];
 
@@ -2181,7 +2327,7 @@
           rarity: "uncommon",
           effect: "randomBccs",
           logText:
-            "Opened two additional help‑desk tickets to widen our escalation options.",
+            "Opened two additional help-desk tickets to widen our escalation options.",
         },
         {
           id: "signature_provision",
@@ -4348,9 +4494,7 @@
           escalateRecoverPerHit: 0,
           bccLimit: 2,
           contactUpgrades: {},
-          contactGreetingBoosts: {},
-          contactSignoffBoosts: {},
-          contactSalutationBoosts: {},
+          contactPermanentBoosts: {},
           salutationBonuses: {},
           signoffBonuses: {},
           attacks: [
@@ -4931,18 +5075,6 @@
         return hasAny ? filtered : null;
       }
 
-      function applyCheersOverhealBonus(unit, overflow) {
-        if (!unit || !unit.signOff || unit.signOff.id !== "cheers") return;
-        const steps = Math.floor(overflow / 5);
-        if (steps <= 0) return;
-        if (!unit.signoffBonuses) unit.signoffBonuses = {};
-        const current = unit.signoffBonuses.cheers || {};
-        unit.signoffBonuses.cheers = {
-          ...current,
-          maxHp: (current.maxHp || 0) + steps * 5,
-        };
-      }
-
       function getUnitRemainingWins(u) {
         if (!u) return 0;
         if (typeof u.currentWins === "number") return u.currentWins;
@@ -4972,28 +5104,7 @@
 
       function updateGreetingReputationScaling(player) {
         if (!player) return;
-        const salutation = player.salutation;
-        const trackedId = "greeting";
-        if (!player.salutationBonuses) player.salutationBonuses = {};
-        if (!salutation || salutation.id !== trackedId) {
-          if (player.salutationBonuses[trackedId]) {
-            delete player.salutationBonuses[trackedId];
-          }
-          return;
-        }
-        const step = salutation.repScaleStep || 3;
-        const per = salutation.repScaleEscalateMult || 0;
-        const target = Math.floor((player.reputation || 0) / step) * per;
-        const current =
-          (player.salutationBonuses[trackedId] &&
-            player.salutationBonuses[trackedId].escalateDmgMult) ||
-          0;
-        if (target > current) {
-          player.salutationBonuses[trackedId] = {
-            ...(player.salutationBonuses[trackedId] || {}),
-            escalateDmgMult: target,
-          };
-        }
+        runUnitEffects(player, "rep_tick", { rep: player.reputation || 0 });
       }
 
       function computeUnitStats(u) {
@@ -5246,47 +5357,7 @@
         target.deflectChargeReflect = 0;
 
         if (blocked > 0 && target && target.salutation) {
-          const bonusHp = target.salutation.onDeflectProcMaxHp || 0;
-          const bonusRep = target.salutation.onDeflectProcRep || 0;
-          if (
-            target.id === "player" &&
-            target.salutation.id === "sustainability_team"
-          ) {
-            const pool = state.player.buffs.filter(
-              (b) => b.usedBy === state.player.name,
-            );
-            if (pool.length > 0) {
-              const picked = pool[Math.floor(Math.random() * pool.length)];
-              picked.maxHp = (picked.maxHp || 0) + bonusHp;
-              if (picked.hp < picked.maxHp) {
-                picked.hp = Math.min(picked.maxHp, picked.hp + bonusHp);
-              }
-              picked.eff = {
-                ...(picked.eff || {}),
-                maxHp: (picked.eff?.maxHp || 0) + bonusHp,
-                repBonus: (picked.eff?.repBonus || 0) + bonusRep,
-              };
-              if (!state.player.contactSalutationBoosts)
-                state.player.contactSalutationBoosts = {};
-              const existing =
-                state.player.contactSalutationBoosts[picked.id] || {};
-              state.player.contactSalutationBoosts[picked.id] = {
-                ...existing,
-                maxHp: (existing.maxHp || 0) + bonusHp,
-                repBonus: (existing.repBonus || 0) + bonusRep,
-              };
-            }
-          } else {
-            if (bonusHp) {
-              target.maxHp = (target.maxHp || 0) + bonusHp;
-              if (target.hp < target.maxHp) {
-                target.hp = Math.min(target.maxHp, target.hp + bonusHp);
-              }
-            }
-            if (bonusRep && target.id === "player") {
-              state.player.reputation += bonusRep;
-            }
-          }
+          runUnitEffects(target, "deflect_proc", { attacker, target, blocked });
         }
 
         if (blocked > 0 && attacker && attacker.id === "player") {
@@ -5681,70 +5752,276 @@
         return added;
       }
 
+      function applyContactPermanentBoost(player, contactId, stats) {
+        if (!player || !contactId || !stats) return;
+        if (!player.contactPermanentBoosts)
+          player.contactPermanentBoosts = {};
+        const current = player.contactPermanentBoosts[contactId] || {};
+        const next = { ...current };
+        Object.keys(stats).forEach((key) => {
+          const value = stats[key];
+          if (typeof value !== "number") return;
+          next[key] = (next[key] || 0) + value;
+        });
+        player.contactPermanentBoosts[contactId] = next;
+      }
+
+      function applyBuffStats(buff, stats) {
+        if (!buff || !stats) return;
+        buff.eff = { ...(buff.eff || {}) };
+        Object.keys(stats).forEach((key) => {
+          const value = stats[key];
+          if (typeof value !== "number") return;
+          buff.eff[key] = (buff.eff[key] || 0) + value;
+        });
+      }
+
+      function applyRandomCcBoost(player, stats, applyImmediate = true) {
+        const pool = player.buffs.filter((b) => b.usedBy === player.name);
+        if (pool.length === 0) return null;
+        const picked = pool[Math.floor(Math.random() * pool.length)];
+        applyContactPermanentBoost(player, picked.id, stats);
+        if (applyImmediate) {
+          applyBuffStats(picked, stats);
+        }
+        return picked;
+      }
+
+      function applyUnitPermanentBoost(unit, sourceId, stats) {
+        if (!unit || !sourceId || !stats) return;
+        if (!unit.signoffBonuses) unit.signoffBonuses = {};
+        const current = unit.signoffBonuses[sourceId] || {};
+        const next = { ...current };
+        Object.keys(stats).forEach((key) => {
+          const value = stats[key];
+          if (typeof value !== "number") return;
+          next[key] = (next[key] || 0) + value;
+        });
+        unit.signoffBonuses[sourceId] = next;
+      }
+
+      function applySalutationPermanentBoost(unit, sourceId, stats) {
+        if (!unit || !sourceId || !stats) return;
+        if (!unit.salutationBonuses) unit.salutationBonuses = {};
+        const current = unit.salutationBonuses[sourceId] || {};
+        const next = { ...current };
+        Object.keys(stats).forEach((key) => {
+          const value = stats[key];
+          if (typeof value !== "number") return;
+          next[key] = (next[key] || 0) + value;
+        });
+        unit.salutationBonuses[sourceId] = next;
+      }
+
+      function setSalutationBonus(unit, sourceId, stats) {
+        if (!unit || !sourceId || !stats) return;
+        if (!unit.salutationBonuses) unit.salutationBonuses = {};
+        const next = { ...(unit.salutationBonuses[sourceId] || {}) };
+        Object.keys(stats).forEach((key) => {
+          const value = stats[key];
+          if (typeof value !== "number") return;
+          if (next[key] == null || value > next[key]) next[key] = value;
+        });
+        unit.salutationBonuses[sourceId] = next;
+      }
+
+      function runUnitEffects(unit, event, context = {}) {
+        if (!unit) return;
+        const results = {};
+        const sources = [];
+        if (unit.salutation && Array.isArray(unit.salutation.effects))
+          sources.push({ owner: unit.salutation, id: unit.salutation.id });
+        if (unit.signOff && Array.isArray(unit.signOff.effects))
+          sources.push({ owner: unit.signOff, id: unit.signOff.id });
+        sources.forEach(({ owner, id }) => {
+          owner.effects.forEach((effect) => {
+            if (!effect || effect.event !== event) return;
+            if (effect.requiresPackType && context.pack) {
+              if (context.pack.type !== effect.requiresPackType) return;
+            }
+            if (effect.requiresFullLeverage && unit.ult < 100) return;
+            if (
+              effect.requiresHpFull &&
+              unit.hp < getUnitMaxHp(unit)
+            )
+              return;
+            if (effect.chance != null && Math.random() > effect.chance) return;
+            if (effect.oncePerThread) {
+              if (!state.threadEffectFlags) state.threadEffectFlags = {};
+              const key = `${event}:${id}:${effect.type}`;
+              if (state.threadEffectFlags[key]) return;
+              state.threadEffectFlags[key] = true;
+            }
+            if (effect.type === "add_random_cc_bonus") {
+              if (unit.id !== "player") return;
+              applyRandomCcBoost(state.player, effect.stats || {}, true);
+            } else if (effect.type === "add_cc_bonus") {
+              if (unit.id !== "player") return;
+              if (!context.contact) return;
+              applyContactPermanentBoost(state.player, context.contact.id, effect.stats || {});
+              applyBuffStats(context.contact, effect.stats || {});
+            } else if (effect.type === "add_signoff_bonus") {
+              applyUnitPermanentBoost(unit, id, effect.stats || {});
+            } else if (effect.type === "add_salutation_bonus") {
+              applySalutationPermanentBoost(unit, id, effect.stats || {});
+            } else if (effect.type === "add_bcc") {
+              if (unit.id !== "player") return;
+              addRandomBccs(state.player, effect.count || 1);
+            } else if (effect.type === "duplicate_bcc") {
+              if (unit.id !== "player") return;
+              duplicateRandomOwnedBccs(state.player, effect.count || 1);
+            } else if (effect.type === "add_signoff_bonus_scaled") {
+              const step = effect.step || 1;
+              let base = 0;
+              if (effect.scaleBy === "hp") base = unit.hp || 0;
+              if (effect.scaleBy === "wins_remaining")
+                base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
+              if (effect.scaleBy === "overflow") base = context.overflow || 0;
+              const steps = Math.floor(base / step);
+              if (steps > 0) {
+                const scaled = {};
+                Object.keys(effect.stats || {}).forEach((key) => {
+                  const value = effect.stats[key];
+                  if (typeof value !== "number") return;
+                  scaled[key] = value * steps;
+                });
+                applyUnitPermanentBoost(unit, id, scaled);
+              }
+            } else if (effect.type === "add_random_cc_bonus_scaled") {
+              if (unit.id !== "player") return;
+              const step = effect.step || 1;
+              let base = 0;
+              if (effect.scaleBy === "wins_remaining")
+                base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
+              if (effect.scaleBy === "hp") base = unit.hp || 0;
+              const steps = Math.floor(base / step);
+              if (steps > 0) {
+                const scaled = {};
+                Object.keys(effect.stats || {}).forEach((key) => {
+                  const value = effect.stats[key];
+                  if (typeof value !== "number") return;
+                  scaled[key] = value * steps;
+                });
+                applyRandomCcBoost(state.player, scaled, true);
+              }
+            } else if (effect.type === "add_all_cc_bonus") {
+              if (unit.id !== "player") return;
+              const scope = effect.scope || "thread";
+              const ids =
+                scope === "addressBook"
+                  ? state.player.addressBook
+                  : state.player.buffs
+                      .filter((b) => b.usedBy === state.player.name)
+                      .map((b) => b.id);
+              ids.forEach((cid) => {
+                applyContactPermanentBoost(state.player, cid, effect.stats || {});
+                const buff = state.player.buffs.find(
+                  (b) => b.id === cid && b.usedBy === state.player.name,
+                );
+                if (buff) applyBuffStats(buff, effect.stats || {});
+              });
+            } else if (effect.type === "add_cc_bonus_by_dept_pairs") {
+              if (unit.id !== "player") return;
+              const playerCcs = state.player.buffs.filter(
+                (b) => b.usedBy === state.player.name,
+              );
+              const countsByDept = {};
+              playerCcs.forEach((b) => {
+                const dept = b.departmentId || "unknown";
+                countsByDept[dept] = (countsByDept[dept] || 0) + 1;
+              });
+              playerCcs.forEach((b) => {
+                const dept = b.departmentId || "unknown";
+                const sameDept = Math.max(0, (countsByDept[dept] || 0) - 1);
+                if (sameDept <= 0) return;
+                const scaled = {};
+                Object.keys(effect.stats || {}).forEach((key) => {
+                  const value = effect.stats[key];
+                  if (typeof value !== "number") return;
+                  scaled[key] = value * sameDept;
+                });
+                applyContactPermanentBoost(state.player, b.id, scaled);
+                applyBuffStats(b, scaled);
+              });
+            } else if (effect.type === "add_signoff_bonus_by_dept_pairs") {
+              const playerCcs = state.player.buffs.filter(
+                (b) => b.usedBy === state.player.name,
+              );
+              const countsByDept = {};
+              playerCcs.forEach((b) => {
+                const dept = b.departmentId || "unknown";
+                countsByDept[dept] = (countsByDept[dept] || 0) + 1;
+              });
+              let pairs = 0;
+              Object.values(countsByDept).forEach((count) => {
+                if (count >= 2) pairs += Math.floor((count * (count - 1)) / 2);
+              });
+              if (pairs > 0) {
+                const scaled = {};
+                Object.keys(effect.stats || {}).forEach((key) => {
+                  const value = effect.stats[key];
+                  if (typeof value !== "number") return;
+                  scaled[key] = value * pairs;
+                });
+                applyUnitPermanentBoost(unit, id, scaled);
+              }
+            } else if (effect.type === "rep_scale_salutation") {
+              const rep = typeof context.rep === "number" ? context.rep : 0;
+              const step = effect.step || 1;
+              const target = Math.floor(rep / step);
+              if (target <= 0) return;
+              const scaled = {};
+              Object.keys(effect.stats || {}).forEach((key) => {
+                const value = effect.stats[key];
+                if (typeof value !== "number") return;
+                scaled[key] = value * target;
+              });
+              setSalutationBonus(unit, id, scaled);
+            } else if (effect.type === "rep_half_to_cc_escalate") {
+              if (!context.summary) return;
+              const total = context.summary.totalRep || 0;
+              const repAward = Math.floor(total / 2);
+              const missed = total - repAward;
+              const step = effect.step || 1;
+              const steps = Math.floor(missed / step);
+              if (steps > 0) {
+                const scaled = {};
+                Object.keys(effect.stats || {}).forEach((key) => {
+                  const value = effect.stats[key];
+                  if (typeof value !== "number") return;
+                  scaled[key] = value * steps;
+                });
+                const playerCcs = state.player.buffs.filter(
+                  (b) => b.usedBy === state.player.name,
+                );
+                playerCcs.forEach((b) => {
+                  applyContactPermanentBoost(state.player, b.id, scaled);
+                  applyBuffStats(b, scaled);
+                });
+              }
+              results.repAward = repAward;
+            }
+          });
+        });
+        return results;
+      }
+
       function addContactBuff(target, contact, usedBy) {
         const buff = JSON.parse(JSON.stringify(contact));
         buff.usedBy = usedBy;
         if (usedBy === state.player.name) {
-          const greetingBoost = state.player.salutation?.onCcBoostSingle;
-          if (greetingBoost) {
-            if (!state.player.contactGreetingBoosts)
-              state.player.contactGreetingBoosts = {};
-            const existing = state.player.contactGreetingBoosts[buff.id] || 0;
-            state.player.contactGreetingBoosts[buff.id] =
-              existing + greetingBoost;
-          }
-          if (
-            state.player.signOff &&
-            state.player.signOff.id === "thanks" &&
-            !state.threadFirstContactBoosted
-          ) {
-            if (!state.player.contactSignoffBoosts)
-              state.player.contactSignoffBoosts = {};
-            const current = state.player.contactSignoffBoosts[buff.id] || {};
-            state.player.contactSignoffBoosts[buff.id] = {
-              ...current,
-              singleDmg: (current.singleDmg || 0) + 5,
-            };
-            state.threadFirstContactBoosted = true;
-          }
-          const greetingBonus =
-            state.player.contactGreetingBoosts &&
-            state.player.contactGreetingBoosts[buff.id];
-          if (greetingBonus) {
+          runUnitEffects(state.player, "cc_add", { contact: buff });
+          const permanentBoost =
+            state.player.contactPermanentBoosts &&
+            state.player.contactPermanentBoosts[buff.id];
+          if (permanentBoost) {
             const baseEff = buff.eff || {};
-            buff.eff = {
-              ...baseEff,
-              singleDmg: (baseEff.singleDmg || 0) + greetingBonus,
-            };
-          }
-          const signoffBonus =
-            state.player.contactSignoffBoosts &&
-            state.player.contactSignoffBoosts[buff.id];
-          if (signoffBonus) {
-            const baseEff = buff.eff || {};
-            buff.eff = {
-              ...baseEff,
-              singleDmg:
-                (baseEff.singleDmg || 0) + (signoffBonus.singleDmg || 0),
-              globalDmgMult:
-                (baseEff.globalDmgMult || 0) +
-                (signoffBonus.globalDmgMult || 0),
-              escalateDmgMult:
-                (baseEff.escalateDmgMult || 0) +
-                (signoffBonus.escalateDmgMult || 0),
-            };
-          }
-          const salutationBonus =
-            state.player.contactSalutationBoosts &&
-            state.player.contactSalutationBoosts[buff.id];
-          if (salutationBonus) {
-            const baseEff = buff.eff || {};
-            buff.eff = {
-              ...baseEff,
-              maxHp: (baseEff.maxHp || 0) + (salutationBonus.maxHp || 0),
-              repBonus:
-                (baseEff.repBonus || 0) + (salutationBonus.repBonus || 0),
-            };
+            buff.eff = { ...baseEff };
+            Object.keys(permanentBoost).forEach((key) => {
+              const value = permanentBoost[key];
+              if (typeof value !== "number") return;
+              buff.eff[key] = (buff.eff[key] || 0) + value;
+            });
           }
         }
         if (usedBy === state.player.name && state.player.contactUpgrades) {
@@ -5845,7 +6122,7 @@
         p.deflectChargeReflect = 0;
         p.deflectChargeReduce = 0;
         state.expenseReportActive = false;
-        state.threadFirstContactBoosted = false;
+        state.threadEffectFlags = {};
         const baseStats = computeUnitStats(p);
         p.hp = getUnitMaxHp(p);
         p.currentWins = Math.max(0, Math.floor(baseStats.wins));
@@ -5855,9 +6132,7 @@
 
         const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
 
-        if (p.salutation && p.salutation.onEnterGainBcc) {
-          addRandomBccs(p, p.salutation.onEnterGainBcc);
-        }
+        runUnitEffects(p, "thread_start", {});
 
         // Assemble opponents from EMPLOYEES and mission-specific data
         opponents = mission.opponents.map((missionOpponent) => {
@@ -6239,26 +6514,13 @@
         setTimeout(() => {
           transitionTo("summary-screen");
           const summary = computeSummary();
-          let repAward = summary.totalRep;
-          if (state.player.signOff && state.player.signOff.id === "sincerely") {
-            repAward = Math.floor(summary.totalRep / 2);
-            const missed = summary.totalRep - repAward;
-            const steps = Math.floor(missed / 3);
-            if (steps > 0) {
-              if (!state.player.contactSignoffBoosts)
-                state.player.contactSignoffBoosts = {};
-              state.player.buffs
-                .filter((b) => b.usedBy === state.player.name)
-                .forEach((b) => {
-                  const existing = state.player.contactSignoffBoosts[b.id] || {};
-                  state.player.contactSignoffBoosts[b.id] = {
-                    ...existing,
-                    escalateDmgMult:
-                      (existing.escalateDmgMult || 0) + steps * 0.2,
-                  };
-                });
-            }
-          }
+          const effectsResult = runUnitEffects(state.player, "rep_adjust", {
+            summary,
+          });
+          const repAward =
+            effectsResult && typeof effectsResult.repAward === "number"
+              ? effectsResult.repAward
+              : summary.totalRep;
           summary.totalRep = repAward;
           state.player.reputation += repAward;
 
@@ -6351,10 +6613,7 @@
       function showShop() {
         state.shop.rerollCount = 0;
         transitionTo("shop-screen");
-        const p = state.player;
-        if (p.salutation && p.salutation.onEnterShopDuplicateBcc) {
-          duplicateRandomOwnedBccs(p, p.salutation.onEnterShopDuplicateBcc);
-        }
+        runUnitEffects(state.player, "shop_enter", {});
         updateShopUI();
       }
 
@@ -6432,9 +6691,7 @@
           escalateRecoverPerHit: 0,
           bccLimit: 2,
           contactUpgrades: {},
-          contactGreetingBoosts: {},
-          contactSignoffBoosts: {},
-          contactSalutationBoosts: {},
+          contactPermanentBoosts: {},
           salutationBonuses: {},
           signoffBonuses: {},
           _lineBags: {},
@@ -6727,14 +6984,8 @@
           state.player.addressBook = state.player.addressBook.filter(
             (id) => id !== item.id,
           );
-          if (state.player.contactGreetingBoosts) {
-            delete state.player.contactGreetingBoosts[item.id];
-          }
-          if (state.player.contactSignoffBoosts) {
-            delete state.player.contactSignoffBoosts[item.id];
-          }
-          if (state.player.contactSalutationBoosts) {
-            delete state.player.contactSalutationBoosts[item.id];
+          if (state.player.contactPermanentBoosts) {
+            delete state.player.contactPermanentBoosts[item.id];
           }
         } else if (itemType === "bcc") {
           const idx = state.player.bccContacts.findIndex(
@@ -6927,14 +7178,7 @@
       function buyPack(pack) {
         state.player.reputation -= pack.cost;
         pack.purchased = true;
-        if (
-          pack.type === "dev" &&
-          state.player.signOff &&
-          state.player.signOff.id === "thank_you" &&
-          Math.random() < 0.5
-        ) {
-          addRandomBccs(state.player, 1);
-        }
+        runUnitEffects(state.player, "pack_purchase", { pack });
         startPackOpening(pack);
       }
 
@@ -7139,44 +7383,7 @@
         if (byPlayer) {
           state.removedByPlayer++;
           o.removedByPlayer = true;
-          const p = state.player;
-          if (p.signOff && p.signoffBonuses) {
-            const id = p.signOff.id;
-            if (id === "regards_signoff") {
-              const current = p.signoffBonuses[id] || {};
-              p.signoffBonuses[id] = {
-                ...current,
-                singleDmg: (current.singleDmg || 0) + 2,
-              };
-            } else if (id === "kind_regards_signoff") {
-              const current = p.signoffBonuses[id] || {};
-              p.signoffBonuses[id] = {
-                ...current,
-                globalDmg: (current.globalDmg || 0) + 1,
-                deflect: (current.deflect || 0) + 1,
-                selfPromoteHeal: (current.selfPromoteHeal || 0) + 1,
-              };
-            } else if (id === "team_regards_signoff") {
-              const current = p.signoffBonuses[id] || {};
-              p.signoffBonuses[id] = {
-                ...current,
-                escalateDmg: (current.escalateDmg || 0) + 2,
-              };
-            } else if (id === "best_regards") {
-              const pool = state.player.buffs.filter(
-                (b) => b.usedBy === p.name,
-              );
-              if (pool.length > 0) {
-                const picked = pool[Math.floor(Math.random() * pool.length)];
-                if (!p.contactSignoffBoosts) p.contactSignoffBoosts = {};
-                const existing = p.contactSignoffBoosts[picked.id] || {};
-                p.contactSignoffBoosts[picked.id] = {
-                  ...existing,
-                  globalDmgMult: (existing.globalDmgMult || 0) + 0.2,
-                };
-              }
-            }
-          }
+          runUnitEffects(state.player, "remove_stakeholder", { target: o });
         }
         addEmailToLog(
           o.name,
@@ -7190,122 +7397,7 @@
           if (next) state.targetId = next.id;
         }
         if (opponents.every((opp) => opp.hp <= 0)) {
-          const p = state.player;
-          if (
-            p.signOff &&
-            p.signOff.id === "warmly" &&
-            p.hp >= getUnitMaxHp(p)
-          ) {
-            if (!p.signoffBonuses) p.signoffBonuses = {};
-            const current = p.signoffBonuses.warmly || {};
-            p.signoffBonuses.warmly = {
-              ...current,
-              singleDmgMult: (current.singleDmgMult || 0) + 0.25,
-              escalateDmgMult: (current.escalateDmgMult || 0) + 0.25,
-            };
-          }
-          if (
-            p.signOff &&
-            p.signOff.id === "respectfully" &&
-            p.ult >= 100
-          ) {
-            if (!p.signoffBonuses) p.signoffBonuses = {};
-            const current = p.signoffBonuses[p.signOff.id] || {};
-            p.signoffBonuses[p.signOff.id] = {
-              ...current,
-              globalDmg: (current.globalDmg || 0) + 5,
-            };
-          }
-          if (p.signOff && p.signOff.id === "solidarity") {
-            if (!p.contactSignoffBoosts) p.contactSignoffBoosts = {};
-            state.player.addressBook.forEach((id) => {
-              const existing = p.contactSignoffBoosts[id] || {};
-              p.contactSignoffBoosts[id] = {
-                ...existing,
-                globalDmgMult: (existing.globalDmgMult || 0) + 0.2,
-              };
-            });
-          }
-          if (p.signOff && p.signOff.id === "solidarity_earth") {
-            const playerCcs = state.player.buffs.filter(
-              (b) => b.usedBy === p.name,
-            );
-            const countsByDept = {};
-            playerCcs.forEach((b) => {
-              const dept = b.departmentId || "unknown";
-              countsByDept[dept] = (countsByDept[dept] || 0) + 1;
-            });
-            let pairs = 0;
-            Object.values(countsByDept).forEach((count) => {
-              if (count >= 2) {
-                pairs += Math.floor((count * (count - 1)) / 2);
-              }
-            });
-            if (pairs > 0) {
-              if (!p.signoffBonuses) p.signoffBonuses = {};
-              const current = p.signoffBonuses[p.signOff.id] || {};
-              p.signoffBonuses[p.signOff.id] = {
-                ...current,
-                defFlat: (current.defFlat || 0) + pairs,
-              };
-            }
-          }
-          const winsRemaining =
-            typeof p.currentWins === "number" ? p.currentWins : 0;
-          const steps = Math.floor(winsRemaining / 2);
-          if (steps > 0 && p.salutation && p.salutation.id === "dear_team") {
-            const pool = state.player.buffs.filter(
-              (b) => b.usedBy === p.name,
-            );
-            if (pool.length > 0) {
-              const picked = pool[Math.floor(Math.random() * pool.length)];
-              if (!p.contactSignoffBoosts) p.contactSignoffBoosts = {};
-              const existing = p.contactSignoffBoosts[picked.id] || {};
-              p.contactSignoffBoosts[picked.id] = {
-                ...existing,
-                defFlat: (existing.defFlat || 0) + steps,
-                deflect: (existing.deflect || 0) + steps * 2,
-              };
-              picked.eff = {
-                ...(picked.eff || {}),
-                defFlat: (picked.eff?.defFlat || 0) + steps,
-                deflect: (picked.eff?.deflect || 0) + steps * 2,
-              };
-            }
-          }
-          if (p.signOff && p.signOff.id === "with_appreciation") {
-            const stepsByHp = Math.floor((p.hp || 0) / 10);
-            if (stepsByHp > 0) {
-              if (!p.signoffBonuses) p.signoffBonuses = {};
-              const current = p.signoffBonuses[p.signOff.id] || {};
-              p.signoffBonuses[p.signOff.id] = {
-                ...current,
-                singleDmg: (current.singleDmg || 0) + stepsByHp * 2,
-              };
-            }
-          }
-          if (p.signOff && p.signOff.id === "team_regards_signoff") {
-            if (!p.contactSignoffBoosts) p.contactSignoffBoosts = {};
-            const playerCcs = state.player.buffs.filter(
-              (b) => b.usedBy === p.name,
-            );
-            const countsByDept = {};
-            playerCcs.forEach((b) => {
-              const dept = b.departmentId || "unknown";
-              countsByDept[dept] = (countsByDept[dept] || 0) + 1;
-            });
-            playerCcs.forEach((b) => {
-              const dept = b.departmentId || "unknown";
-              const sameDept = Math.max(0, (countsByDept[dept] || 0) - 1);
-              if (sameDept <= 0) return;
-              const existing = p.contactSignoffBoosts[b.id] || {};
-              p.contactSignoffBoosts[b.id] = {
-                ...existing,
-                globalDmgMult:
-                  (existing.globalDmgMult || 0) + sameDept * 0.1,
-              };
-            });
-          }
+          runUnitEffects(state.player, "thread_end", {});
           state.gameOver = true;
           endQuarter();
         }
@@ -7741,14 +7833,7 @@
           if (p.salutation && p.salutation.deflectBoostEscalate) {
             p.escalateDmg += p.salutation.deflectBoostEscalate;
           }
-          if (p.signOff && p.signOff.id === "v_respectfully") {
-            if (!p.signoffBonuses) p.signoffBonuses = {};
-            const current = p.signoffBonuses[p.signOff.id] || {};
-            p.signoffBonuses[p.signOff.id] = {
-              ...current,
-              globalDmgMult: (current.globalDmgMult || 0) + 0.1,
-            };
-          }
+          runUnitEffects(p, "deflect_action", {});
           const line = drawFromLineBag(
             p,
             getPlayerLineBagKey("deflect", missionId, titleId),
@@ -7768,7 +7853,7 @@
           const promotePotential = p.hp + promoteHeal;
           const promoteOverflow = Math.max(0, promotePotential - totalMaxHp);
           p.hp = Math.min(totalMaxHp, promotePotential);
-          applyCheersOverhealBonus(p, promoteOverflow);
+          runUnitEffects(p, "promote_overflow", { overflow: promoteOverflow });
           const selfPromoteLine = drawFromLineBag(
             p,
             getPlayerLineBagKey("selfPromote", missionId, titleId),
@@ -7801,39 +7886,7 @@
             });
           }
           p.ult = 0;
-          if (p.salutation && p.salutation.onReplyAllGainBcc) {
-            addRandomBccs(p, p.salutation.onReplyAllGainBcc);
-          }
-          if (p.salutation && p.salutation.onReplyAllBoostSingleMult) {
-            if (!p.salutationBonuses) p.salutationBonuses = {};
-            const salId = p.salutation.id;
-            const current = p.salutationBonuses[salId] || {};
-            const next = {
-              ...current,
-              singleDmgMult:
-                (current.singleDmgMult || 0) +
-                p.salutation.onReplyAllBoostSingleMult,
-            };
-            p.salutationBonuses[salId] = next;
-          }
-          if (p.salutation && p.salutation.onReplyAllBoostCcSingleMult) {
-            const pool = state.player.buffs.filter(
-              (b) => b.usedBy === p.name,
-            );
-            if (pool.length > 0) {
-              const picked = pool[Math.floor(Math.random() * pool.length)];
-              if (!p.contactGreetingBoosts) p.contactGreetingBoosts = {};
-              const existing = p.contactGreetingBoosts[picked.id] || 0;
-              p.contactGreetingBoosts[picked.id] =
-                existing + p.salutation.onReplyAllBoostCcSingleMult;
-              picked.eff = {
-                ...(picked.eff || {}),
-                singleDmgMult:
-                  (picked.eff?.singleDmgMult || 0) +
-                  p.salutation.onReplyAllBoostCcSingleMult,
-              };
-            }
-          }
+          runUnitEffects(p, "reply_all", {});
           const replyAllLine = drawFromLineBag(
             p,
             getPlayerLineBagKey("replyAll", missionId, titleId),
@@ -8005,7 +8058,7 @@
               const promotePotential = a.hp + promoteHeal;
               const promoteOverflow = Math.max(0, promotePotential - aMaxHp);
               a.hp = Math.min(aMaxHp, promotePotential);
-              applyCheersOverhealBonus(a, promoteOverflow);
+              runUnitEffects(a, "promote_overflow", { overflow: promoteOverflow });
               const selfPromoteLine = drawFromLineBag(
                 a,
                 "selfPromote",
@@ -8430,28 +8483,7 @@
           "bg-yellow-100 border-l-4 border-yellow-600",
         );
 
-        if (state.player.signOff && state.player.signOff.id === "best_wishes") {
-          const pool = state.player.buffs.filter(
-            (b) => b.usedBy === state.player.name,
-          );
-          if (pool.length > 0) {
-            const picked = pool[Math.floor(Math.random() * pool.length)];
-            if (!state.player.contactSignoffBoosts)
-              state.player.contactSignoffBoosts = {};
-            const existing = state.player.contactSignoffBoosts[picked.id] || {};
-            state.player.contactSignoffBoosts[picked.id] = {
-              ...existing,
-              heal: (existing.heal || 0) + 3,
-              wins: (existing.wins || 0) + 1,
-            };
-            picked.eff = {
-              ...(picked.eff || {}),
-              heal: (picked.eff?.heal || 0) + 3,
-              wins: (picked.eff?.wins || 0) + 1,
-            };
-            picked.subtitle = picked.subtitle || "BCC Favored";
-          }
-        }
+        runUnitEffects(state.player, "bcc_use", { bcc });
 
         if (bcc.effect === "stun") {
           const target = opponents.find((o) => o.id === state.targetId);
