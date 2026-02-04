@@ -321,16 +321,9 @@
           class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold shrink-0"
         >
           <span>INTRA-NET: HR PORTAL & EMPLOYEE SERVICES</span>
-          <button
-            id="shop-reroll-btn"
-            onclick="rerollShop()"
-            class="retro-button text-black text-[10px] py-0 px-2 h-5 ml-auto mr-2"
-          >
-            Request alternate arrangements (5 REP)
-          </button>
           <span
             id="shop-reputation-display"
-            class="bg-yellow-400 text-black px-2 rounded-sm mr-4"
+            class="bg-yellow-400 text-black px-2 rounded-sm ml-auto mr-4"
             >REPUTATION: 0</span
           >
           <button
@@ -359,6 +352,13 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Individual Opportunities -->
             <div class="space-y-2">
+              <button
+                id="shop-reroll-btn"
+                onclick="rerollShop()"
+                class="retro-button text-black text-[10px] py-1 px-2 mb-2 w-full"
+              >
+                Request alternate arrangements (5 REP)
+              </button>
               <h3 class="text-xs font-bold uppercase border-b border-[#808080] pb-1">
                 Individual Opportunities (Direct)
               </h3>
@@ -5598,8 +5598,9 @@
         }
 
         const interestRep = Math.min(5, Math.floor(state.player.reputation / 5));
-        const totalRep = baseRep + totalOptOutRep + bonusRep + interestRep;
-        return { baseRep, bonusRep, totalRep, interestRep };
+        const flooredBonus = Math.floor(bonusRep);
+        const totalRep = baseRep + totalOptOutRep + flooredBonus + interestRep;
+        return { baseRep, bonusRep: flooredBonus, totalRep, interestRep };
       }
 
       function renderSummary(summary = computeSummary()) {
