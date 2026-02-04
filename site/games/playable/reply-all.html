@@ -3786,7 +3786,7 @@
           id: "holiday_reply_all",
           subject: "RE: Happy Holidays!",
           from: "announcements@gov.org",
-          turns: 12,
+          turns: 20,
           onlyMissionLines: true,
           intro:
             "Happy holidays everyone!<br><br>Thank you to everyone for attending the holiday party once again! We also want to wish Elliot well once again for winning the 'Cultural Award' for the year.",
@@ -3894,7 +3894,7 @@
           id: "thermostat_war",
           subject: "RE: Office Thermostat Dispute",
           from: "l.facilities@gov.org",
-          turns: 12,
+          turns: 16,
           intro:
             "Hi all,<br><br>Facilities here. We received multiple complaints about the floor thermostat. It looks like the setpoint has been toggled between 74°F and 96°F. <strong>{playerName}</strong>, your desk is listed at 74°F. My view is we should be aiming lower overall to bring down the oil bill for this place, but we need a consistent setting. The <strong>Marketing</strong> team (<strong>{opp1}</strong>, <strong>{opp2}</strong>) is pushing for 96°F. The <strong>Finance</strong> team (<strong>{opp3}</strong>, <strong>{opp4}</strong>) says the 96°F setting is unacceptable for reviews.<br><br>How does around 64°F sound?",
           opponents: [
@@ -3955,7 +3955,7 @@
           id: "intern_grievance",
           subject: "RE: Intern Grievance Collective",
           from: "hr.interns@gov.org",
-          turns: 12,
+          turns: 16,
           intro:
             "To the Permanent Staff,<br><br>We, the interns, have noticed a significant lack of 'Team Synergy' and 'Professional Courtesy'. <strong>{playerName}</strong>, your recent emails have been cited as 'aggressive'. <strong>Samantha</strong>, we are looping in our mentor <strong>Anneke</strong>. <strong>Shelia</strong>, we expect payroll to ensure our stipends to reflect the emotional labor of this thread.",
           opponents: [
@@ -3964,8 +3964,8 @@
               employeeId: "interns_human_resources",
               hp: 100,
               maxHp: 100,
-              singleDmg: 5,
-              wins: 5,
+              singleDmg: 15,
+              wins: 3,
               buffs: [],
               addressBook: [
                 "cc_telly_operations",
@@ -4014,7 +4014,7 @@
           id: "bankable_time_off",
           subject: "RE: Bankable Time Off Policy Dispute",
           from: "anneke.eco@gov.org",
-          turns: 12,
+          turns: 20,
           intro:
             "Hi all,<br><br>I'm trying to understand the request around bankable time off. <strong>IT</strong> is asking for parity, and <strong>Marketing</strong> is split on whether to push for both bankable time off and weekend accruals or keep the current arrangement. The team is also confused about why Marketing gets weekends bankable off the books.<br><br><strong>{playerName}</strong>, please lead this discussion. <strong>{opp0}</strong> and <strong>{opp1}</strong> from IT, please outline the impact. <strong>{opp2}</strong> and <strong>{opp3}</strong> from Marketing, please clarify what you want and what you are willing to risk. I'll try to map this to policy and fairness.",
           opponents: [
@@ -4078,7 +4078,7 @@
           id: "M015_MediaCrisis",
           subject: "CRITICAL: Budget Re-Forecasting & Ad Targeting Session",
           from: "taz@m4agency.com",
-          turns: 12,
+          turns: 16,
           intro:
             "Hey all,<br><br>There has been a <strong>significant overspend</strong> of the quarterly media budget earmarked for the strategic placement for the <strong>Measles Vaccination Initiative</strong>. During media plan implementation, an unforeseen configuration error on our end resulted in a demographic targeting misalignment—specifically, an overly focused optimization towards the <strong>equine sector</strong> executed entirely on day one. <strong>{playerName}</strong>, we need to leverage this emergency session to ensure continuity of service delivery.<br><strong>Selina</strong> and <strong>Anthony</strong> are here for support, and to use up our retainer. The objective is to devise a recovery plan that allows us to meet our six-week deliverable goals with additional budgetary approval, <strong>as the original $40,000 has been fully exhausted.</strong>",
           opponents: [
@@ -4115,20 +4115,20 @@
           id: "AI_Rollout",
           subject: "RE: Strategic AI Implementation Rollout",
           from: "j.lavallee@gov.org",
-          turns: 15,
-          intro: "Hello all,<br><br>I am Jen LaVallee, your new Deputy Minister of Digital Technology. I have been tasked with overseeing the 'AI Everywhere' rollout across our departments. <strong>{playerName}</strong>, I've heard you have concerns about balance. I assure you, balance is less efficient than total automation. I am looping in my initial suite of CCs to help you see the logic.<br><br>Let's find some 'efficiencies', shall we?",
+          turns: 40,
+          intro: "Hello all,<br><br>I am Jen LaVallee, your Deputy Minister of Digital Technology. I have been tasked with overseeing the 'AI Everywhere' rollout across our departments. <strong>{playerName}</strong>, I've heard you have concerns about balance. I assure you, balance is less efficient than total automation. I will show you what I mean to help you see the logic.<br><br>Let's find some 'efficiencies', shall we?",
           opponents: [
             {
               id: 30,
               employeeId: "jen_lavallee",
-              hp: 800,
-              maxHp: 800,
+              hp: 500,
+              maxHp: 500,
               defFlat: 5,
               selfPromoteHeal: 200,
               wins: 3,
               singleDmg: 40,
               escalateDmg: 30,
-              numCCperCCaction: 10,
+              numCCperCCaction: 8,
               hasDoneFirstTurn: false,
               addressBook: [
                 "cc_telly_operations",
