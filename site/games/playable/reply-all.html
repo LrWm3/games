@@ -456,7 +456,7 @@
             </div>
             <div class="flex justify-between">
               <span class="text-gray-500 uppercase">Period:</span>
-              <span id="lose-period" class="font-bold">Q3 - Year 1</span>
+              <span id="lose-period" class="font-bold">Q3 - YR 1</span>
             </div>
             <div class="flex justify-between">
               <span class="text-gray-500 uppercase">Total Reputation:</span>
@@ -649,7 +649,7 @@
           <span
             id="game-quarter-display"
             class="text-[10px] bg-white text-blue-900 px-1 font-bold"
-            >Q3 - YEAR 1</span
+            >Q3 - YR 1</span
           >
         </div>
         <div class="flex gap-1 pr-1">
@@ -5664,7 +5664,7 @@
         const p = state.player;
         document.getElementById("lose-title").innerText = p.title.name;
         document.getElementById("lose-period").innerText =
-          `${p.quarter} - Year ${p.year}`;
+          `${p.quarter} - YR ${p.year}`;
         document.getElementById("lose-total-rep").innerText = p.reputation;
         document.getElementById("lose-contacts").innerText =
           `${p.addressBook.length} Contacts`;
@@ -6342,7 +6342,7 @@
       function getMissionHeaderSubject(mission) {
         const subject = mission && mission.subject ? mission.subject : "Thread";
         const due = getMissionDeadlineTime(mission);
-        return `Outlook Express - [${subject} (resolution due by ${due})]`;
+        return `Outlook Express - [${subject} (${due})]`;
       }
 
       function getMissionSubSubject(mission) {
@@ -6410,7 +6410,7 @@
         document.getElementById("win-btn").disabled = p.currentWins <= 0;
 
         document.getElementById("game-quarter-display").innerText =
-          `${p.quarter} - YEAR ${p.year}`;
+          `${p.quarter} - YR ${p.year}`;
         document.getElementById("status-bar-name").innerText =
           `${p.name} (${p.title.name})`;
         const statsModal = document.getElementById("stats-modal");
