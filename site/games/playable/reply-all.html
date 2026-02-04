@@ -359,21 +359,21 @@
                 onclick="rerollShop()"
                 class="retro-button text-black text-[10px] py-1 px-2 mb-2 w-full"
               >
-                Request alternate arrangements (5 REP)
+                Request Alternates (5 REP)
               </button>
               <h3
                 class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
               >
-                Individual Opportunities (Direct)
+                Individual Opportunities
               </h3>
               <div id="shop-direct-items" class="grid grid-cols-1 gap-2"></div>
             </div>
-            <!-- Development Packs -->
+            <!-- Development Packages -->
             <div class="space-y-2">
               <h3
                 class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
               >
-                Development Packs
+                Group Trainings
               </h3>
               <div id="shop-packs" class="grid grid-cols-1 gap-2"></div>
             </div>
@@ -2058,38 +2058,38 @@
         {
           id: "warmly",
           name: "Warmly,",
-          bonus: "+10 Max Credibility",
+          bonus:
+            "Winning at full credibility grants +0.25 reply to and +0.25 escalate permanently.",
           rarity: "common",
-          maxHp: 10,
         },
         {
           id: "solidarity",
           name: "In solidarity,",
-          bonus: "+2 Credibility/turn",
+          bonus:
+            "You may only CC until one stakeholder is removed. On win, all CCs gain +0.2 all messages permanently.",
           rarity: "uncommon",
-          heal: 2,
+          onWinCcGlobalMult: 0.2,
         },
         {
           id: "team_regards_signoff",
           name: "Regards team,",
-          bonus: "+2 Credibility/turn & Self-Promote +5",
+          bonus:
+            "Each CC gains +0.1 all messages per other CC from the same department.",
           rarity: "uncommon",
-          heal: 2,
-          selfPromoteHeal: 5,
         },
         {
           id: "yours_truly",
           name: "Yours truly,",
-          bonus: "+75% leverage gain",
+          bonus: "+100% leverage gain",
           rarity: "uncommon",
-          levMult: 0.75,
+          levMult: 1.0,
         },
         {
           id: "thank_you",
           name: "Thank you,",
-          bonus: "+10% reputation gains",
+          bonus:
+            "When buying Group Training, 50% chance to gain a free BCC (if space).",
           rarity: "uncommon",
-          repBonus: 0.1,
         },
         {
           id: "with_appreciation",
@@ -2129,11 +2129,12 @@
           levMult: 0.5,
         },
         {
-          id: "for_your_awareness",
-          name: "For your awareness,",
-          bonus: "+3 escalate",
+          id: "for_group_awareness",
+          name: "For group awareness,",
+          bonus: "Reply to disabled. Reply to damage is added to Escalate.",
           rarity: "rare",
-          escalateDmg: 3,
+          disableReplyTo: true,
+          addSingleToEscalate: true,
         },
         {
           id: "v_respectfully",
@@ -2189,7 +2190,7 @@
           rarity: "rare",
           effect: "contactUpgradeHp",
           logText:
-            "Approved a resilience coaching plan for one CC’d contact.",
+            "Approved a resilience coaching plan for one CC'd contact.",
         },
         {
           id: "headhunter",
@@ -2218,6 +2219,16 @@
           effect: "contactUpgradeEscalate",
           logText:
             "Issued a broadcast readiness training order for one CC'd contact.",
+        },
+        {
+          id: "recognition_award",
+          name: "Recognition Award",
+          bonus:
+            "Upgrades a CC'd contact to grant +3 REP if they were CC'd at thread end.",
+          rarity: "rare",
+          effect: "contactUpgradeRep",
+          logText:
+            "Filed a recognition award for one CC'd contact's thread support.",
         },
         {
           id: "executive_review",
@@ -5143,7 +5154,14 @@
         const base = stats[fields.dmg] || 0;
         const flat = stats.globalDmg || 0;
         const mult = 1 + (stats.globalDmgMult || 0) + (stats[fields.mult] || 0);
-        return Math.floor((base + flat) * mult);
+        let total = Math.floor((base + flat) * mult);
+        if (type === "escalate" && u && u.signOff?.addSingleToEscalate) {
+          const singleBase = stats.singleDmg || 0;
+          const singleMult = 1 + (stats.singleDmgMult || 0);
+          const singleComponent = Math.floor(singleBase * singleMult);
+          total += singleComponent;
+        }
+        return total;
       }
 
       function getUnitFlatDef(u) {
@@ -5642,8 +5660,11 @@
           ) {
             if (!state.player.contactSignoffBoosts)
               state.player.contactSignoffBoosts = {};
-            const current = state.player.contactSignoffBoosts[buff.id] || 0;
-            state.player.contactSignoffBoosts[buff.id] = current + 5;
+            const current = state.player.contactSignoffBoosts[buff.id] || {};
+            state.player.contactSignoffBoosts[buff.id] = {
+              ...current,
+              singleDmg: (current.singleDmg || 0) + 5,
+            };
             state.threadFirstContactBoosted = true;
           }
           const greetingBonus =
@@ -5663,7 +5684,11 @@
             const baseEff = buff.eff || {};
             buff.eff = {
               ...baseEff,
-              singleDmg: (baseEff.singleDmg || 0) + signoffBonus,
+              singleDmg:
+                (baseEff.singleDmg || 0) + (signoffBonus.singleDmg || 0),
+              globalDmgMult:
+                (baseEff.globalDmgMult || 0) +
+                (signoffBonus.globalDmgMult || 0),
             };
           }
         }
@@ -6187,11 +6212,14 @@
 
         const repStats = computeUnitStats(state.player);
         if (repStats.repBonus) {
-          bonusRep +=
-            (state.removedTotal -
-              opponents.filter((o) => o.hp > 0).length -
-              state.removedByPlayer) *
-            repStats.repBonus;
+          bonusRep += repStats.repBonus;
+        }
+
+        const ccRepBonus = state.player.buffs
+          .filter((b) => b.usedBy === state.player.name && b.repBonus)
+          .reduce((sum, b) => sum + b.repBonus, 0);
+        if (ccRepBonus) {
+          bonusRep += ccRepBonus;
         }
 
         const interestRep = Math.min(
@@ -6819,6 +6847,14 @@
       function buyPack(pack) {
         state.player.reputation -= pack.cost;
         pack.purchased = true;
+        if (
+          pack.type === "dev" &&
+          state.player.signOff &&
+          state.player.signOff.id === "thank_you" &&
+          Math.random() < 0.5
+        ) {
+          addRandomBccs(state.player, 1);
+        }
         startPackOpening(pack);
       }
 
@@ -7064,6 +7100,19 @@
           const p = state.player;
           if (
             p.signOff &&
+            p.signOff.id === "warmly" &&
+            p.hp >= getUnitMaxHp(p)
+          ) {
+            if (!p.signoffBonuses) p.signoffBonuses = {};
+            const current = p.signoffBonuses.warmly || {};
+            p.signoffBonuses.warmly = {
+              ...current,
+              singleDmgMult: (current.singleDmgMult || 0) + 0.25,
+              escalateDmgMult: (current.escalateDmgMult || 0) + 0.25,
+            };
+          }
+          if (
+            p.signOff &&
             p.signOff.id === "respectfully" &&
             p.ult >= 100
           ) {
@@ -7073,6 +7122,38 @@
               ...current,
               globalDmg: (current.globalDmg || 0) + 5,
             };
+          }
+          if (p.signOff && p.signOff.id === "solidarity") {
+            if (!p.contactSignoffBoosts) p.contactSignoffBoosts = {};
+            state.player.addressBook.forEach((id) => {
+              const existing = p.contactSignoffBoosts[id] || {};
+              p.contactSignoffBoosts[id] = {
+                ...existing,
+                globalDmgMult: (existing.globalDmgMult || 0) + 0.2,
+              };
+            });
+          }
+          if (p.signOff && p.signOff.id === "team_regards_signoff") {
+            if (!p.contactSignoffBoosts) p.contactSignoffBoosts = {};
+            const playerCcs = state.player.buffs.filter(
+              (b) => b.usedBy === p.name,
+            );
+            const countsByDept = {};
+            playerCcs.forEach((b) => {
+              const dept = b.departmentId || "unknown";
+              countsByDept[dept] = (countsByDept[dept] || 0) + 1;
+            });
+            playerCcs.forEach((b) => {
+              const dept = b.departmentId || "unknown";
+              const sameDept = Math.max(0, (countsByDept[dept] || 0) - 1);
+              if (sameDept <= 0) return;
+              const existing = p.contactSignoffBoosts[b.id] || {};
+              p.contactSignoffBoosts[b.id] = {
+                ...existing,
+                globalDmgMult:
+                  (existing.globalDmgMult || 0) + sameDept * 0.1,
+              };
+            });
           }
           state.gameOver = true;
           endQuarter();
@@ -7173,8 +7254,11 @@
         const singleDmg = getUnitDamage(p, "single");
         const escalateDmg = getUnitDamage(p, "escalate");
         const replyAllDmg = getUnitDamage(p, "replyAll");
-        document.getElementById("attack-subtext").innerText =
-          `-${Math.floor(singleDmg)} Cred to Target`;
+        const replyDisabled =
+          p.signOff && p.signOff.disableReplyTo === true;
+        document.getElementById("attack-subtext").innerText = replyDisabled
+          ? "Disabled by sign-off"
+          : `-${Math.floor(singleDmg)} Cred to Target`;
         document.getElementById("escalate-subtext").innerText =
           `-${Math.floor(escalateDmg)} Cred to All`;
         const selfPromoteHeal = getUnitSelfPromoteHeal(p, 20);
@@ -7190,6 +7274,8 @@
           `${p.addressBook.length}/${p.title.addressLimit} Contacts`;
 
         document.getElementById("reply-all-btn").disabled = p.ult < 100;
+        document.getElementById("attack-btn").disabled =
+          replyDisabled || state.isProcessing;
         document.getElementById("win-btn").disabled = p.currentWins <= 0;
 
         document.getElementById("game-quarter-display").innerText =
@@ -7348,6 +7434,12 @@
 
       function performAction(type) {
         if (state.isProcessing || state.gameOver) return;
+        if (
+          type === "ATTACK" &&
+          state.player.signOff &&
+          state.player.signOff.disableReplyTo
+        )
+          return;
         state.isProcessing = true;
         state.turn++;
         const target = opponents.find((o) => o.id === state.targetId);
@@ -8069,12 +8161,18 @@
           if (!c) return;
           const isUsed = isContactInLoop(c.id);
           const isImplicated = isContactImplicated(c);
-          const isDisabled = isUsed || isImplicated;
+          const solidarityLocked =
+            state.player.signOff &&
+            state.player.signOff.id === "solidarity" &&
+            state.removedByPlayer > 0;
+          const isDisabled = isUsed || isImplicated || solidarityLocked;
           const usedByName = isUsed ? getContactUsedBy(c.id) : null;
           const statusText = isImplicated
             ? "IMPLICATED"
             : isUsed
               ? `IN LOOP (${usedByName === state.player.name ? "YOU" : usedByName || "OTHER"})`
+              : solidarityLocked
+                ? "LOCKED"
               : "AVAIL";
           const setBadge = c.setId
             ? `<button type="button" data-set-button data-set-id="${c.setId}" class="text-[9px] uppercase px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 font-bold">Set</button>`
@@ -8212,7 +8310,8 @@
         } else if (
           bcc.effect === "contactUpgradeHp" ||
           bcc.effect === "contactUpgradeSingle" ||
-          bcc.effect === "contactUpgradeEscalate"
+          bcc.effect === "contactUpgradeEscalate" ||
+          bcc.effect === "contactUpgradeRep"
         ) {
           const pool = state.player.buffs.filter(
             (b) => b.usedBy === state.player.name,
@@ -8244,6 +8343,11 @@
               upgrade = {
                 subtitle: "Escalation Trained",
                 eff: { escalateDmg: 3 },
+              };
+            } else if (bcc.effect === "contactUpgradeRep") {
+              upgrade = {
+                subtitle: "Recognition Awarded",
+                eff: { repBonus: 3 },
               };
             }
             if (upgrade) {
