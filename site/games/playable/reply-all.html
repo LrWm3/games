@@ -2090,6 +2090,14 @@
           effect: "trainContact",
           logText: "I've initiated a mentorship review to upskill our CC'd personnel.",
         },
+        {
+          id: "headhunter",
+          name: "Headhunter Referral",
+          bonus: "Gain a random contact permanently if you have space, and immediately loop them into this thread.",
+          rarity: "rare",
+          effect: "randomContact",
+          logText: "I've reached out to a headhunter to bring in some fresh perspective.",
+        },
       ];
 
       const SET_DEFS = [
@@ -7353,6 +7361,45 @@
               state.player.name,
               "Mentorship Failed",
               `No contacts currently CC'd to train.`,
+              "italic text-gray-500 text-[10px]",
+            );
+          }
+        } else if (bcc.effect === "randomContact") {
+          const p = state.player;
+          const pool = CONTACTS.filter(
+            (c) => !p.addressBook.includes(c.id) && !c.noShop,
+          );
+          const picked = pickWeighted(pool, 1)[0];
+          if (picked) {
+            addContactBuff(p, picked, p.name);
+            const loopInText = formatLoopInText(
+              picked,
+              `I'm looping in <strong>${picked.name}</strong> (${picked.title}) to help clarify the organizational impact of this thread.`,
+            );
+            if (p.addressBook.length < p.title.addressLimit) {
+              p.addressBook.push(picked.id);
+              addEmailToLog(
+                p.name,
+                "everyone@gov.org",
+                "New Referral",
+                `${loopInText}<br><br><strong>${picked.name}</strong> has been permanently added to your address book.`,
+                "bg-blue-100 font-bold border-l-4 border-blue-500",
+              );
+            } else {
+              addEmailToLog(
+                p.name,
+                "everyone@gov.org",
+                "Temporary Referral",
+                `${loopInText}<br><br>Your address book is at capacity (${p.title.addressLimit}). <strong>${picked.name}</strong> has been looped in for this thread only.`,
+                "bg-blue-100 font-bold border-l-4 border-blue-500",
+              );
+            }
+          } else {
+            addEmailToLog(
+              "SYSTEM",
+              p.name,
+              "No Referrals Available",
+              "There are no new contacts currently available for referral.",
               "italic text-gray-500 text-[10px]",
             );
           }
