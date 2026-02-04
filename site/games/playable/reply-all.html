@@ -8482,17 +8482,25 @@
                 const idx = Math.floor(Math.random() * pool.length);
                 picks.push(pool.splice(idx, 1)[0]);
               }
-              picks.forEach((cid) => {
-                const c = CONTACTS.find((con) => con.id === cid);
-                if (c) addContactBuff(a, c, a.name);
+              picks.forEach((cid, j) => {
+                setTimeout(() => {
+                  const c = CONTACTS.find((con) => con.id === cid);
+                  if (!c) return;
+                  addContactBuff(a, c, a.name);
+                  const loopInText = formatLoopInText(
+                    c,
+                    `I'm looping in <strong>${c.name}</strong> to ensure this thread remains within professional guidelines.`,
+                  );
+                  addEmailToLog(
+                    a.name,
+                    "everyone@gov.org",
+                    "Looping in Support",
+                    loopInText,
+                    "bg-blue-50",
+                  );
+                }, j * 220);
               });
-              addEmailToLog(
-                a.name,
-                "everyone@gov.org",
-                "Consensus Algorithm Initiated",
-                `${a.name} loops in 10 contacts to ensure "maximum consensus".`,
-                "bg-blue-50 border-l-4 border-blue-500",
-              );
+              return;
             }
 
             let pool = [
