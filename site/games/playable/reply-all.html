@@ -4132,7 +4132,7 @@
           from: "a.ops@gov.org",
           turns: 12,
           intro:
-            "Hi all,<br><br>We have a triple booking for the main conference room this morning. <strong>{playerName}</strong>, you have it booked for an internal process audit. <strong>{opp0}</strong> and <strong>{opp1}</strong> from Operations flagged a safety walkthrough and vendor briefing. <strong>{opp2}</strong> and <strong>{opp3}</strong> from Finance flagged payroll finalization and budget reconciliation. <strong>{opp4}</strong>, thanks for the initial booking—please stand by while we sort this out.<br><br>Please reply with your priority and availability.",
+            "Hi all,<br><br>We have a triple booking for the main conference room this morning.<br><br><strong>{playerName}</strong>, you have it booked for an internal process audit.<br><br><strong>{opp0}</strong> and <strong>{opp1}</strong> from Operations flagged a safety walkthrough and vendor briefing. <strong>{opp2}</strong> and <strong>{opp3}</strong> from Finance flagged payroll finalization and budget reconciliation.<br><br><strong>{opp4}</strong>, we see your booking was the one that went through first.<br><br>We need to figure out who is taking this meeting room.",
           opponents: [
             {
               id: 9,
@@ -7236,7 +7236,10 @@
             buckets[key][s.stat] = (buckets[key][s.stat] || 0) + s.per;
           });
           Object.entries(buckets).forEach(([source, stats]) => {
-            const label = source === "cc" ? "Per CC" : "Per Sig";
+            const label =
+              source === "cc"
+                ? "Per CC"
+                : "For each signature you have";
             const chunks = [];
             if (stats.singleDmg) chunks.push(`${stats.singleDmg} reply to`);
             if (stats.escalateDmg) chunks.push(`${stats.escalateDmg} escalate`);
@@ -7246,7 +7249,7 @@
             if (stats.deflect) chunks.push(`${stats.deflect} deflect reduce`);
             if (stats.deflectPower)
               chunks.push(`${stats.deflectPower} deflect reflect`);
-            if (chunks.length) parts.push(`${label}: +${chunks.join(", +")}`);
+            if (chunks.length) parts.push(`${label}, +${chunks.join(", +")}`);
           });
         }
         if (effect.deflectBoostSingle || effect.deflectBoostEscalate)
@@ -7356,7 +7359,12 @@
           return `${eventText}: gain ${statsText} permanently`;
         }
         if (effect.type === "add_thread_bonus") {
-          return `${eventText}: gain ${statsText} this thread`;
+          const eventLabel = eventText.replace("On ", "On '") + "'";
+          const statsLabel = statsText
+            .replace(/\+(\d+)\s+reply to/gi, "+$1 Reply To")
+            .replace(/\+(\d+)\s+escalate/gi, "+$1 Escalate")
+            .replace(/\+(\d+)\s+all messages/gi, "+$1 to your messages");
+          return `${eventLabel}, gain ${statsLabel} until the end of this thread`;
         }
         if (effect.type === "add_bcc") {
           const count = effect.count || 1;
