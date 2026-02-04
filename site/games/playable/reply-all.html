@@ -1809,18 +1809,17 @@
         {
           id: "hi_all",
           name: "Hi all,",
-          bonus: "+10 Max Credibility",
+          bonus: "Reply to hits all stakeholders in the target's department.",
           rarity: "common",
-          maxHp: 10,
+          replyDeptCleave: true,
         },
         {
           id: "good_afternoon",
           name: "Good afternoon,",
-          bonus: "+5 Max Credibility, +1 Credibility/turn & Self-Promote +5",
+          bonus: "On Deflect: +5 reply to and +3 escalate for this thread.",
           rarity: "common",
-          maxHp: 5,
-          heal: 1,
-          selfPromoteHeal: 5,
+          deflectBoostSingle: 5,
+          deflectBoostEscalate: 3,
         },
         {
           id: "all",
@@ -1832,10 +1831,10 @@
         {
           id: "hello_team",
           name: "Hello team,",
-          bonus: "+1 Credibility/turn & Self-Promote +5",
+          bonus: "Per CC: +5 reply to and +5 Max Credibility.",
           rarity: "common",
-          heal: 1,
-          selfPromoteHeal: 5,
+          ccScaleSingleDmg: 5,
+          ccScaleMaxHp: 5,
         },
         {
           id: "team",
@@ -4770,6 +4769,17 @@
             if (typeof value === "number") stats[field] += value;
           });
         });
+        if (u && u.salutation) {
+          const scaleSingle = u.salutation.ccScaleSingleDmg || 0;
+          const scaleHp = u.salutation.ccScaleMaxHp || 0;
+          if (scaleSingle || scaleHp) {
+            const ccCount = Array.isArray(u.buffs)
+              ? u.buffs.filter((b) => b.usedBy === u.name).length
+              : 0;
+            stats.singleDmg += scaleSingle * ccCount;
+            stats.maxHp += scaleHp * ccCount;
+          }
+        }
         return stats;
       }
 
@@ -4944,6 +4954,27 @@
           const result = applyDamage(attacker, u, splashDamage, {
             ignoreReflect: true,
           });
+          total += result.dmg;
+          hits += 1;
+          if (u !== state.player && u.hp <= 0) {
+            handleOpponentDefeat(u, attacker && attacker.id === "player");
+          }
+        });
+        return { total, hits };
+      }
+
+      function applyDepartmentCleave(attacker, target, damage) {
+        if (!damage || !target || !target.departmentId)
+          return { total: 0, hits: 0 };
+        const units = [...opponents, state.player];
+        let total = 0;
+        let hits = 0;
+        units.forEach((u) => {
+          if (!u || u.hp <= 0) return;
+          if (u === target) return;
+          if (attacker && u === attacker) return;
+          if (u.departmentId !== target.departmentId) return;
+          const result = applyDamage(attacker, u, damage);
           total += result.dmg;
           hits += 1;
           if (u !== state.player && u.hp <= 0) {
@@ -6182,6 +6213,16 @@
         if (effect.deflect) parts.push(`Deflect +${effect.deflect}`);
         if (effect.selfPromoteHeal)
           parts.push(`Self-Promote +${effect.selfPromoteHeal}`);
+        if (effect.replyDeptCleave)
+          parts.push(`Reply to hits entire target department`);
+        if (effect.ccScaleSingleDmg || effect.ccScaleMaxHp)
+          parts.push(
+            `Per CC: +${effect.ccScaleSingleDmg || 0} reply to, +${effect.ccScaleMaxHp || 0} Max Cred`,
+          );
+        if (effect.deflectBoostSingle || effect.deflectBoostEscalate)
+          parts.push(
+            `On Deflect: +${effect.deflectBoostSingle || 0} reply to, +${effect.deflectBoostEscalate || 0} escalate`,
+          );
         if (effect.defFlat) parts.push(`Reduce damage by ${effect.defFlat}`);
         if (effect.followUpChance)
           parts.push(`Follow-up +${Math.round(effect.followUpChance * 100)}%`);
@@ -6752,6 +6793,11 @@
           }
 
           const result = applyDamage(p, target, d);
+          const cleaveActive =
+            p.salutation && p.salutation.replyDeptCleave === true;
+          const cleaveResult = cleaveActive
+            ? applyDepartmentCleave(p, target, d)
+            : { hits: 0, total: 0 };
           let levGain = getPlayerLeverageGain(20);
           p.ult += levGain;
 
@@ -6790,6 +6836,9 @@
           }
           if (splashResult.hits > 0) {
             body += `<br><br><strong>Department Splash:</strong> ${splashResult.hits} hit for ${splashResult.total}.`;
+          }
+          if (cleaveResult.hits > 0) {
+            body += `<br><br><strong>Department Cleave:</strong> ${cleaveResult.hits} hit for ${cleaveResult.total}.`;
           }
           if (bounceResult && bounceTarget) {
             body += `<br><br><strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`;
@@ -6845,6 +6894,12 @@
           );
         } else if (type === "DEFLECT") {
           p.deflectCharge = getUnitDeflectPower(p);
+          if (p.salutation && p.salutation.deflectBoostSingle) {
+            p.singleDmg += p.salutation.deflectBoostSingle;
+          }
+          if (p.salutation && p.salutation.deflectBoostEscalate) {
+            p.escalateDmg += p.salutation.deflectBoostEscalate;
+          }
           const line = drawFromLineBag(
             p,
             getPlayerLineBagKey("deflect", missionId, titleId),
