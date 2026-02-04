@@ -5334,6 +5334,28 @@
         if (u.title) pushSource(`Title: ${u.title.name}`, u.title);
         if (u.salutation)
           pushSource(`Greeting: ${u.salutation.name}`, u.salutation);
+        if (u.salutation && Array.isArray(u.salutation.scalers)) {
+          const ccCount = Array.isArray(u.buffs)
+            ? u.buffs.filter((b) => b.usedBy === u.name).length
+            : 0;
+          const sigCount = Array.isArray(u.signatures) ? u.signatures.length : 0;
+          const counts = { cc: ccCount, sig: sigCount };
+          const scalerStats = {};
+          u.salutation.scalers.forEach((s) => {
+            if (!s || !s.source || !s.stat) return;
+            const count = counts[s.source] || 0;
+            if (!count) return;
+            const per = typeof s.per === "number" ? s.per : 0;
+            if (!per) return;
+            scalerStats[s.stat] = (scalerStats[s.stat] || 0) + per * count;
+          });
+          if (Object.keys(scalerStats).length) {
+            sources.push({
+              label: `Greeting scaling (${ccCount} CC, ${sigCount} sig)`,
+              stats: scalerStats,
+            });
+          }
+        }
         const salutationWindowStats = getSalutationWindowStats(u);
         if (salutationWindowStats && u.salutation) {
           sources.push({
@@ -5365,6 +5387,43 @@
         }
         if (Array.isArray(u.signatures)) {
           u.signatures.forEach((s) => pushSource(`Signature: ${s.name}`, s));
+          if (Array.isArray(u.buffs)) {
+            const deptCounts = {};
+            u.buffs
+              .filter((b) => b.usedBy === u.name)
+              .forEach((b) => {
+                if (!b.departmentId) return;
+                deptCounts[b.departmentId] =
+                  (deptCounts[b.departmentId] || 0) + 1;
+              });
+            u.signatures.forEach((s) => {
+              if (!Array.isArray(s.deptScalers)) return;
+              const stats = {};
+              s.deptScalers.forEach((scaler) => {
+                if (!scaler || !scaler.departmentId || !scaler.stat) return;
+                const count = deptCounts[scaler.departmentId] || 0;
+                if (!count) return;
+                const per =
+                  typeof scaler.per === "number" ? scaler.per : 0;
+                const step =
+                  typeof scaler.step === "number" && scaler.step > 0
+                    ? scaler.step
+                    : 1;
+                const times = Math.floor(count / step);
+                if (!times) return;
+                stats[scaler.stat] = (stats[scaler.stat] || 0) + per * times;
+              });
+              if (Object.keys(stats).length) {
+                sources.push({
+                  label: `Signature scaling: ${s.name}`,
+                  stats,
+                });
+              }
+            });
+          }
+        }
+        if (u.threadBonuses && Object.keys(u.threadBonuses).length) {
+          sources.push({ label: "Thread bonuses", stats: u.threadBonuses });
         }
         if (Array.isArray(u.buffs)) {
           u.buffs.forEach((b) => {
@@ -7334,11 +7393,11 @@
           reply_to: "On Reply to",
           reply_all: "On Reply All",
           shop_enter: "On shop enter",
-          bcc_use: "On BCC use",
+          bcc_use: "On BCC",
           deflect_action: "On Deflect",
           deflect_proc: "On Being Hit While Deflecting",
           remove_stakeholder: "On stakeholder removed",
-          cc_add: "On CC",
+          cc_add: "On Contact added",
           pack_purchase: "On pack purchase",
           promote_overflow: "On self-promote overflow",
           rep_adjust: "On REP adjust",
