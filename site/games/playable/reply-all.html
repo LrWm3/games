@@ -1619,40 +1619,17 @@
         },
       ];
 
-      const CONTACT_ROLE_STATS = {
-        assistant: { singleDmg: 2 },
-        associate: { globalDmg: 2 },
-        manager: { selfPromoteHeal: 5, globalDmg: 2 },
-        director: { escalateDmg: 2 },
-        executive: { maxHp: 10, singleDmg: 5 },
-        chief: { singleDmg: 5 },
-      };
-
-      const CONTACT_DEPT_TRIGGERS = {
-        operations: { event: "cc_add", mult: 4, oncePerThread: true },
-        information_technology: { event: "deflect_proc", mult: 3 },
-        executive_council_office: {
-          event: "escalate",
-          mult: 4,
-        },
-        facilities_and_administration: { event: "deflect_proc", mult: 3 },
-        marketing: { event: "reply_to", mult: 1.0 },
-        constituent_services: { event: "remove_stakeholder", mult: 3 },
-        policy: { event: "reply_all", mult: 5 },
-        finance: { event: "escalate", mult: 2 },
-        human_resources: { event: "cc_add", mult: 0.5, oncePerThread: true },
-        legal: { event: "deflect_proc", mult: 3 },
-        m4_agency: { event: "reply_all", mult: 5 },
-        digital_technology: { event: "reply_to", mult: 0.5 },
-      };
-
       function inferContactRole(contact) {
         const title = (contact.title || "").toLowerCase();
         if (title.includes("chief") || title.includes("premier")) return "chief";
         if (title.includes("director")) return "director";
         if (title.includes("executive") || title.includes("advisor"))
           return "executive";
-        if (title.includes("manager") || title.includes("lead") || title.includes("counsel"))
+        if (
+          title.includes("manager") ||
+          title.includes("lead") ||
+          title.includes("counsel")
+        )
           return "manager";
         if (
           title.includes("analyst") ||
@@ -1665,31 +1642,9 @@
         return "assistant";
       }
 
-      function scaleStats(stats, mult) {
-        if (!stats) return {};
-        const out = {};
-        Object.keys(stats).forEach((key) => {
-          const value = stats[key];
-          if (typeof value !== "number") return;
-          out[key] = value * mult;
-        });
-        return out;
-      }
-
       CONTACTS.forEach((contact) => {
-        const role = contact.role || inferContactRole(contact);
-        contact.role = role;
-        const trigger = CONTACT_DEPT_TRIGGERS[contact.departmentId];
-        const baseStats = CONTACT_ROLE_STATS[role];
-        if (!trigger || !baseStats) return;
-        const scaledStats = scaleStats(baseStats, trigger.mult || 1);
-        if (!Array.isArray(contact.effects)) contact.effects = [];
-        contact.effects.push({
-          event: trigger.event,
-          type: "add_thread_bonus",
-          stats: scaledStats,
-          oncePerThread: !!trigger.oncePerThread,
-        });
+        if (contact.role) return;
+        contact.role = inferContactRole(contact);
       });
 
       const TITLES = [
@@ -5538,10 +5493,9 @@
         if (
           !options.ignoreReflect &&
           target.deflectChargeReflect > 0 &&
-          dmg > 0 &&
           attacker
         ) {
-          reflected = Math.min(target.deflectChargeReflect, dmg);
+          reflected = target.deflectChargeReflect;
           blocked += reflected;
           if (attacker.id === "player") {
             state.player.hp -= reflected;
@@ -6771,7 +6725,7 @@
         };
         const baseRep =
           baseRepByQuarter[state.player.quarter] ?? baseRepByQuarter.Q3;
-        const totalOptOutRep = state.removedByPlayer * 1;
+        const totalOptOutRep = 0;
         let bonusRep = 0;
 
         if (state.expenseReportActive) {
@@ -6795,8 +6749,16 @@
           Math.floor(state.player.reputation / 5),
         );
         const flooredBonus = Math.floor(bonusRep);
-        const totalRep = baseRep + totalOptOutRep + flooredBonus + interestRep;
-        return { baseRep, bonusRep: flooredBonus, totalRep, interestRep };
+        const winsRep = Math.max(0, state.player.currentWins || 0) * 2;
+        const totalRep =
+          baseRep + totalOptOutRep + flooredBonus + interestRep + winsRep;
+        return {
+          baseRep,
+          bonusRep: flooredBonus,
+          totalRep,
+          interestRep,
+          winsRep,
+        };
       }
 
       function renderSummary(summary = computeSummary()) {
@@ -6818,6 +6780,14 @@
           });
         } else {
           optOutList.classList.add("hidden");
+        }
+
+        if (summary.winsRep) {
+          const div = document.createElement("div");
+          div.className = "flex justify-between text-[10px] text-gray-600 italic";
+          div.innerHTML = `<span>Wins remaining bonus</span><span>+${summary.winsRep}</span>`;
+          optOutList.appendChild(div);
+          optOutList.classList.remove("hidden");
         }
 
         document.getElementById("summary-base-rep").innerText =
@@ -7109,6 +7079,7 @@
         const canBuy = options.canBuy ?? true;
         const badge = options.badge || "";
         const disabled = !canAfford || purchased || !canBuy;
+        const metaLabel = options.metaLabel || "";
         const label = purchased
           ? options.ownedLabel || "ON FILE"
           : !canBuy
@@ -7126,6 +7097,7 @@
                     <span class="text-blue-700 font-mono">${priceLabel}</span>
                 </div>
                 <div class="flex items-center gap-2 text-[9px]" data-badge>${typeBadge}</div>
+                ${metaLabel ? `<div class="text-[9px] uppercase text-gray-500">${metaLabel}</div>` : ""}
                 <div class="text-[10px] italic text-gray-600 leading-tight">${desc}</div>
                 <button data-buy class="mt-1 retro-button text-[10px] font-bold py-1 ${disabled ? "opacity-50" : ""}" ${disabled ? "disabled" : ""}>
                     ${label}
@@ -7338,7 +7310,12 @@
             if (stats.deflect) chunks.push(`${stats.deflect} deflect reduce`);
             if (stats.deflectPower)
               chunks.push(`${stats.deflectPower} deflect reflect`);
-            if (chunks.length) parts.push(`${label}, +${chunks.join(", +")}`);
+            if (chunks.length) {
+              const formatted = chunks.map((chunk) =>
+                chunk.trim().startsWith("-") ? chunk : `+${chunk}`,
+              );
+              parts.push(`${label}, ${formatted.join(", ")}`);
+            }
           });
         }
         if (effect.deflectBoostSingle || effect.deflectBoostEscalate)
@@ -7749,6 +7726,10 @@
                 typeLabel: typeLabels[item.itemType] || item.itemType,
                 actionLabel: actionLabels[item.itemType] || "SUBMIT REQUEST",
                 spaceLabel: spaceLabels[item.itemType],
+                metaLabel:
+                  item.itemType === "contact"
+                    ? getDepartmentName(item.departmentId) || ""
+                    : "",
               },
             ),
           );
@@ -8879,7 +8860,10 @@
             : "";
           const btn = document.createElement("div");
           btn.className = `p-2 border border-gray-300 flex flex-col ${isDisabled ? "opacity-40 grayscale bg-gray-100" : "cursor-pointer hover:bg-blue-50"}`;
-          btn.innerHTML = `<div class="flex justify-between font-bold text-[#000080] text-xs"><span>${c.name} - ${c.title}</span><span class="text-[9px]">${statusText}</span></div><div class="flex items-center gap-2 text-[10px] italic">${getItemBonusText(c) || ""}${setBadge}</div>`;
+          const deptLabel = c.departmentId
+            ? (DEPARTMENT_BY_ID[c.departmentId]?.name || c.departmentId)
+            : "Department N/A";
+          btn.innerHTML = `<div class="flex justify-between font-bold text-[#000080] text-xs"><span>${c.name} - ${c.title}</span><span class="text-[9px]">${statusText}</span></div><div class="text-[9px] uppercase text-gray-500">${deptLabel}</div><div class="flex items-center gap-2 text-[10px] italic">${getItemBonusText(c) || ""}${setBadge}</div>`;
           btn.querySelectorAll("[data-set-button]").forEach((setBtn) => {
             setBtn.addEventListener("click", (e) => {
               e.stopPropagation();
