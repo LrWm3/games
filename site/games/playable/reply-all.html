@@ -2052,69 +2052,87 @@
 
       const BCC_CONTACTS = [
         {
-          id: "recall",
-          name: "Recall Message",
-          bonus: "Instantly stun current target for 1 turn.",
-          rarity: "common",
-          effect: "stun",
-          logText: "I've recalled this message to ensure accuracy.",
-        },
-        {
           id: "expense_report",
           name: "Expense Report",
           bonus: "Doubles mission base rep (max +10 bonus).",
           rarity: "common",
           effect: "doubleRep",
           logText:
-            "I've submitted an expense report for this initiative's overhead.",
-        },
-        {
-          id: "urgent",
-          name: "Urgent Flag",
-          bonus: "Next reply to deals 2x damage.",
-          rarity: "uncommon",
-          effect: "doubleDmg",
-          logText:
-            "I've flagged this thread as [URGENT] to expedite a resolution.",
+            "Filed an internal expense memo to offset the reputational cost of this thread.",
         },
         {
           id: "networking_event",
           name: "Networking Event",
           bonus:
             "Gain reputation equal to the total sell value of your current CCs (Max 30).",
-          rarity: "uncommon",
+          rarity: "rare",
           effect: "contactRep",
           logText:
-            "How {playerName} uses AI to expedite their workflows will be featured in our upcoming newsletter!",
+            "Booked a slot on the internal newsletter to highlight this collaboration and reclaim goodwill.",
         },
         {
-          id: "redirect",
-          name: "Redirect Message",
-          bonus: "Current target attacks another random opponent next turn.",
-          rarity: "rare",
-          effect: "redirect",
+          id: "bcc_rollout",
+          name: "BCC Rollout",
+          bonus: "Creates up to two random BCCs if space allows.",
+          rarity: "uncommon",
+          effect: "randomBccs",
           logText:
-            "I'm redirecting this thread to the relevant departmental stakeholders.",
+            "Opened two additional help‑desk tickets to widen our escalation options.",
+        },
+        {
+          id: "signature_provision",
+          name: "Signature Provisioning",
+          bonus: "Adds a random signature if space allows.",
+          rarity: "common",
+          effect: "randomSignature",
+          logText:
+            "Requested a standardized signature package from IT services.",
         },
         {
           id: "mentorship",
-          name: "Mentorship Program",
-          bonus:
-            "Trains a random contact in your loop for reply to damage, escalate, and max health.",
+          name: "Credibility Coaching",
+          bonus: "Upgrades a CC'd contact with +10 Max Credibility.",
           rarity: "rare",
-          effect: "trainContact",
+          effect: "contactUpgradeHp",
           logText:
-            "I've initiated a mentorship review to upskill our CC'd personnel.",
+            "Approved a resilience coaching plan for one CC’d contact.",
         },
         {
           id: "headhunter",
           name: "Headhunter Referral",
           bonus:
             "Gain a random contact permanently if you have space, and immediately loop them into this thread.",
-          rarity: "rare",
+          rarity: "common",
           effect: "randomContact",
           logText:
-            "I've reached out to a headhunter to bring in some fresh perspective.",
+            "Engaged a headhunter to fast-track a specialist into this thread.",
+        },
+        {
+          id: "reply_precision",
+          name: "Reply Precision Training",
+          bonus: "Upgrades a CC'd contact with +5 reply to.",
+          rarity: "common",
+          effect: "contactUpgradeSingle",
+          logText:
+            "Issued a precision-reply training order for one CC'd contact.",
+        },
+        {
+          id: "broadcast_training",
+          name: "Broadcast Training",
+          bonus: "Upgrades a CC'd contact with +3 reply all.",
+          rarity: "common",
+          effect: "contactUpgradeReplyAll",
+          logText:
+            "Issued a broadcast readiness training order for one CC'd contact.",
+        },
+        {
+          id: "executive_review",
+          name: "Executive Review",
+          bonus: "Opens a 2-of-3 stat bonus selection.",
+          rarity: "rare",
+          effect: "statPack",
+          logText:
+            "Opened an executive review to authorize targeted performance adjustments.",
         },
       ];
 
@@ -4213,6 +4231,8 @@
           followUpChance: 0,
           replyDeptSplash: 0,
           escalateRecoverPerHit: 0,
+          bccLimit: 2,
+          contactUpgrades: {},
           attacks: [
             "I believe we need to circle back to your recent comments. My focus is on department output, and I suggest yours should be too.",
             "I've already addressed this in my previous email, but for the sake of clarity, I'll repeat it: This is not my responsibility.",
@@ -4653,6 +4673,7 @@
         "endRep",
         "numCCperCCaction",
         "bounceBase",
+        "bccLimit",
       ];
 
       function applyUnitDefaults(u) {
@@ -4681,6 +4702,7 @@
         if (u.endRep == null) u.endRep = 0;
         if (u.numCCperCCaction == null) u.numCCperCCaction = 1;
         if (u.bounceBase == null) u.bounceBase = 0;
+        if (u.bccLimit == null) u.bccLimit = 0;
         if (!Array.isArray(u.deflectLines) || u.deflectLines.length === 0) {
           u.deflectLines = [
             "I'm pausing to document this thread before responding further.",
@@ -5048,7 +5070,9 @@
         const deptName = getDepartmentName(contact.departmentId);
         document.getElementById("cc-profile-title").innerText = "CC Profile";
         document.getElementById("cc-profile-name").innerText = contact.name;
-        document.getElementById("cc-profile-role").innerText = contact.title;
+        const subtitle = contact.subtitle ? ` • ${contact.subtitle}` : "";
+        document.getElementById("cc-profile-role").innerText =
+          `${contact.title || ""}${subtitle}`;
         document.getElementById("cc-profile-dept").innerText = deptName
           ? `Department: ${deptName}`
           : "Department: N/A";
@@ -5120,9 +5144,17 @@
           state.player.signatures.push(item);
         else if (item.itemType === "salutation") state.player.salutation = item;
         else if (item.itemType === "signoff") state.player.signOff = item;
-        else if (item.itemType === "bcc") state.player.bccContacts.push(item);
+        else if (item.itemType === "bcc") {
+          const limit = computeUnitStats(state.player).bccLimit || 0;
+          if (state.player.bccContacts.length >= limit) {
+            alert("BCC capacity reached. Discard a BCC to make space.");
+            return false;
+          }
+          state.player.bccContacts.push(item);
+        }
         else if (item.itemType === "dev") item.apply();
         playSound("connect");
+        return true;
       }
 
       function togglePackManagement() {
@@ -5179,6 +5211,9 @@
 
           const badge = opt.rarity ? formatRarityBadge(opt.rarity) : "";
           const bonusDesc = opt.bonus || describeEffect(opt.eff || opt);
+          const isBcc = opt.itemType === "bcc";
+          const bccLimit = computeUnitStats(state.player).bccLimit || 0;
+          const bccFull = isBcc && state.player.bccContacts.length >= bccLimit;
 
           btn.innerHTML = `
                 <div class="flex justify-between items-center">
@@ -5187,9 +5222,14 @@
                 </div>
                 <div class="text-[10px] italic text-gray-600">${bonusDesc}</div>
             `;
+          if (bccFull) {
+            btn.classList.add("opacity-50");
+            btn.disabled = true;
+          }
 
           btn.onclick = () => {
-            applyPackItem(opt);
+            const applied = applyPackItem(opt);
+            if (!applied) return;
             pending.picksLeft -= 1;
             pending.options = pending.options.filter((id) => id !== opt.id);
             saveGame();
@@ -5216,6 +5256,13 @@
       function addContactBuff(target, contact, usedBy) {
         const buff = JSON.parse(JSON.stringify(contact));
         buff.usedBy = usedBy;
+        if (usedBy === state.player.name && state.player.contactUpgrades) {
+          const upgrade = state.player.contactUpgrades[buff.id];
+          if (upgrade) {
+            buff.eff = { ...(buff.eff || {}), ...(upgrade.eff || {}) };
+            buff.subtitle = upgrade.subtitle || buff.subtitle;
+          }
+        }
         target.buffs.push(buff);
         if (buff.eff && buff.eff.maxHp) {
           target.hp = Math.min(
@@ -5440,6 +5487,14 @@
 
       function getTrainingOffers() {
         return [
+          {
+            id: "bcc_stat_boost",
+            name: "Executive Stat Review",
+            bonus: "Pick 2 of 3 upgrades",
+            cost: 0,
+            optionsCount: 3,
+            picks: 2,
+          },
           {
             id: "training_lnl",
             name: "Attend Lunch & Learn",
@@ -5770,6 +5825,8 @@
             followUpChance: 0,
             replyDeptSplash: 0,
             escalateRecoverPerHit: 0,
+            bccLimit: 2,
+            contactUpgrades: {},
             _lineBags: {},
           },
           currentMissionIndex: 0,
@@ -6081,6 +6138,7 @@
                         <div class="flex items-center flex-wrap gap-1">
                           ${typeBadge}
                           <span>${item.name}</span>
+                          ${item.subtitle ? `<span class="text-[9px] uppercase text-emerald-700 bg-emerald-100 px-1 rounded-sm">${item.subtitle}</span>` : ""}
                         </div>
                         ${formatRarityBadge(item.rarity)}${setBadge}
                     </div>
@@ -6159,6 +6217,10 @@
           return state.player.signatures.length < state.player.title.sigLimit;
         if (item.itemType === "salutation") return true;
         if (item.itemType === "signoff") return true;
+        if (item.itemType === "bcc") {
+          const limit = computeUnitStats(state.player).bccLimit || 0;
+          return state.player.bccContacts.length < limit;
+        }
         return true;
       }
 
@@ -6178,7 +6240,14 @@
           state.player.signatures.push(item);
         else if (item.itemType === "salutation") state.player.salutation = item;
         else if (item.itemType === "signoff") state.player.signOff = item;
-        else if (item.itemType === "bcc") state.player.bccContacts.push(item);
+        else if (item.itemType === "bcc") {
+          const limit = computeUnitStats(state.player).bccLimit || 0;
+          if (state.player.bccContacts.length >= limit) {
+            alert("BCC capacity reached. Discard a BCC to make space.");
+            return;
+          }
+          state.player.bccContacts.push(item);
+        }
         playSound("connect");
         updateShopUI();
       }
@@ -6252,7 +6321,8 @@
         }
 
         const ownedBccs = document.getElementById("shop-owned-bccs");
-        ownedBccs.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Consumable BCCs (${state.player.bccContacts.length})</div>`;
+        const bccLimit = computeUnitStats(state.player).bccLimit || 0;
+        ownedBccs.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Consumable BCCs (${state.player.bccContacts.length}/${bccLimit})</div>`;
         state.player.bccContacts.forEach((bcc) => {
           ownedBccs.appendChild(
             createOwnedRow(bcc, "bcc", () => sellItem("bcc", bcc), {
@@ -6285,6 +6355,9 @@
             signoff: "SET SIGN-OFF",
             bcc: "REQUEST",
           };
+          const spaceLabels = {
+            bcc: "FREE SLOT",
+          };
 
           directList.appendChild(
             createShopCard(
@@ -6300,6 +6373,7 @@
                 ownedLabel: owned ? "OWNED" : "PURCHASED",
                 typeLabel: typeLabels[item.itemType] || item.itemType,
                 actionLabel: actionLabels[item.itemType] || "SUBMIT REQUEST",
+                spaceLabel: spaceLabels[item.itemType],
               },
             ),
           );
@@ -6593,7 +6667,8 @@
             pill.className =
               "bg-blue-800 text-white px-1 text-[9px] rounded-sm hover:bg-blue-700";
             pill.type = "button";
-            pill.innerHTML = `${b.name} (by ${b.usedBy})`;
+            const subtitle = b.subtitle ? ` • ${b.subtitle}` : "";
+            pill.innerHTML = `${b.name}${subtitle} (by ${b.usedBy})`;
             pill.onclick = () => openCcProfile(b);
             container.appendChild(pill);
           });
@@ -7445,35 +7520,55 @@
             `Gained +${total} reputation from your current CC'd contacts' sell value (capped at 30).`,
             "italic text-gray-500 text-[10px]",
           );
-        } else if (bcc.effect === "trainContact") {
-          if (state.player.buffs.length > 0) {
-            const b =
-              state.player.buffs[
-                Math.floor(Math.random() * state.player.buffs.length)
-              ];
-            if (!b.eff) b.eff = {};
-            b.eff.singleDmg = (b.eff.singleDmg || 0) + 5;
-            b.eff.escalateDmg = (b.eff.escalateDmg || 0) + 3;
-            b.eff.maxHp = (b.eff.maxHp || 0) + 10;
-            state.player.hp = Math.min(
-              getUnitMaxHp(state.player),
-              state.player.hp + 10,
-            );
+        } else if (
+          bcc.effect === "contactUpgradeHp" ||
+          bcc.effect === "contactUpgradeSingle" ||
+          bcc.effect === "contactUpgradeReplyAll"
+        ) {
+          const pool = state.player.buffs.filter(
+            (b) => b.usedBy === state.player.name,
+          );
+          const target = pool.length
+            ? pool[Math.floor(Math.random() * pool.length)]
+            : null;
+          if (!target) {
             addEmailToLog(
               "SYSTEM",
               state.player.name,
-              "Mentorship Program",
-              `Trained <strong>${b.name}</strong>! They gained +5 reply to, +3 escalate, and +10 Max HP.`,
+              "Upgrade Failed",
+              "No CC'd contacts available to upgrade.",
               "italic text-gray-500 text-[10px]",
             );
           } else {
-            addEmailToLog(
-              "SYSTEM",
-              state.player.name,
-              "Mentorship Failed",
-              `No contacts currently CC'd to train.`,
-              "italic text-gray-500 text-[10px]",
-            );
+            let upgrade = null;
+            if (bcc.effect === "contactUpgradeHp") {
+              upgrade = {
+                subtitle: "Credibility Trained",
+                eff: { maxHp: 10 },
+              };
+            } else if (bcc.effect === "contactUpgradeSingle") {
+              upgrade = {
+                subtitle: "Reply Precision",
+                eff: { singleDmg: 3 },
+              };
+            } else if (bcc.effect === "contactUpgradeReplyAll") {
+              upgrade = {
+                subtitle: "Broadcast Trained",
+                eff: { replyAllDmg: 3 },
+              };
+            }
+            if (upgrade) {
+              state.player.contactUpgrades[target.id] = upgrade;
+              target.eff = { ...(target.eff || {}), ...(upgrade.eff || {}) };
+              target.subtitle = upgrade.subtitle;
+              addEmailToLog(
+                "SYSTEM",
+                state.player.name,
+                "Contact Upgraded",
+                `<strong>${target.name}</strong> is now ${upgrade.subtitle}.`,
+                "italic text-gray-500 text-[10px]",
+              );
+            }
           }
         } else if (bcc.effect === "randomContact") {
           const p = state.player;
@@ -7513,6 +7608,82 @@
               "There are no new contacts currently available for referral.",
               "italic text-gray-500 text-[10px]",
             );
+          }
+        }
+        else if (bcc.effect === "randomBccs") {
+          const limit = computeUnitStats(state.player).bccLimit || 0;
+          const slots = Math.max(0, limit - state.player.bccContacts.length);
+          if (slots <= 0) {
+            addEmailToLog(
+              "SYSTEM",
+              state.player.name,
+              "BCC Capacity Reached",
+              "No additional BCC capacity is available.",
+              "italic text-gray-500 text-[10px]",
+            );
+          } else {
+            const owned = new Set(state.player.bccContacts.map((b) => b.id));
+            const pool = BCC_CONTACTS.filter(
+              (b) => b.id !== bcc.id && !owned.has(b.id),
+            );
+            const count = Math.min(2, slots, pool.length);
+            const picked = pickWeighted(pool, count);
+            picked.forEach((b) => state.player.bccContacts.push({ ...b }));
+            addEmailToLog(
+              "SYSTEM",
+              state.player.name,
+              "BCC Rollout Complete",
+              picked.length
+                ? `Added ${picked.length} new BCC${picked.length > 1 ? "s" : ""}: ${picked
+                    .map((b) => b.name)
+                    .join(", ")}.`
+                : "No eligible BCCs were available to add.",
+              "italic text-gray-500 text-[10px]",
+            );
+          }
+        } else if (bcc.effect === "statPack") {
+          const upgrades = getTrainingUpgrades();
+          const picks = pickWeighted(upgrades, 3);
+          state.pendingTraining = {
+            offerId: "bcc_stat_boost",
+            options: picks.map((u) => u.id),
+            picksLeft: 2,
+            isPack: false,
+          };
+          saveGame();
+          openPackModal();
+        } else if (bcc.effect === "randomSignature") {
+          const limit = state.player.title.sigLimit;
+          if (state.player.signatures.length >= limit) {
+            addEmailToLog(
+              "SYSTEM",
+              state.player.name,
+              "Signature Provisioning Failed",
+              "Signature capacity reached. Archive a signature to make space.",
+              "italic text-gray-500 text-[10px]",
+            );
+          } else {
+            const owned = new Set(state.player.signatures.map((s) => s.id));
+            const pool = SIGNATURES.filter((s) => !owned.has(s.id));
+            const picked = pickWeighted(pool, 1)[0];
+            if (picked) {
+              state.player.signatures.push(picked);
+              addEmailToLog(
+                "SYSTEM",
+                state.player.name,
+                "Signature Provisioned",
+                `Added signature: <strong>${picked.name}</strong>.`,
+                "italic text-gray-500 text-[10px]",
+              );
+            } else {
+              addEmailToLog(
+                "SYSTEM",
+                state.player.name,
+                "Signature Provisioning Failed",
+                "No eligible signatures available.",
+                "italic text-gray-500 text-[10px]",
+              );
+            }
           }
         }
 
