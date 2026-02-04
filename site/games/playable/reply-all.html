@@ -1629,15 +1629,14 @@
         operations: { event: "cc_add", mult: 4, oncePerThread: true },
         information_technology: { event: "deflect_proc", mult: 3 },
         executive_council_office: {
-          event: "thread_start",
+          event: "escalate",
           mult: 4,
-          oncePerThread: true,
         },
         facilities_and_administration: { event: "deflect_proc", mult: 3 },
         marketing: { event: "reply_to", mult: 1.0 },
         constituent_services: { event: "remove_stakeholder", mult: 3 },
         policy: { event: "reply_all", mult: 5 },
-        finance: { event: "thread_start", mult: 2, oncePerThread: true },
+        finance: { event: "escalate", mult: 2 },
         human_resources: { event: "cc_add", mult: 0.5, oncePerThread: true },
         legal: { event: "deflect_proc", mult: 3 },
         m4_agency: { event: "reply_all", mult: 5 },
@@ -1973,14 +1972,12 @@
         {
           id: "hi_all",
           name: "Hi all,",
-          bonus: "Reply to hits all stakeholders in the target's department.",
           rarity: "common",
           replyDeptCleave: true,
         },
         {
           id: "hello",
           name: "Hello,",
-          bonus: "Per CC: +5 reply to and +5 Max Credibility.",
           rarity: "common",
           scalers: [
             { source: "cc", stat: "singleDmg", per: 5 },
@@ -1990,7 +1987,6 @@
         {
           id: "all",
           name: "All,",
-          bonus: "Per CC: +3 escalate and +2 deflect reduction.",
           rarity: "common",
           scalers: [
             { source: "cc", stat: "escalateDmg", per: 3 },
@@ -2000,7 +1996,6 @@
         {
           id: "hello_team",
           name: "Hello Team,",
-          bonus: "Per CC: +5 escalate and -2 self-promote.",
           rarity: "common",
           scalers: [
             { source: "cc", stat: "escalateDmg", per: 5 },
@@ -2010,7 +2005,6 @@
         {
           id: "team",
           name: "Team,",
-          bonus: "Per CC: +7 deflect reflect and +1 deflect reduction.",
           rarity: "common",
           scalers: [
             { source: "cc", stat: "deflectPower", per: 7 },
@@ -2020,8 +2014,6 @@
         {
           id: "morning",
           name: "Good morning,",
-          bonus:
-            "Until 10AM: +15 reply to, double reply to damage, +30 max credibility.",
           rarity: "common",
           statWindows: [
             {
@@ -2034,7 +2026,6 @@
         {
           id: "routine_update",
           name: "Routine update,",
-          bonus: "Per Sig: +3 reply to and +2 self-promote.",
           rarity: "common",
           scalers: [
             { source: "sig", stat: "singleDmg", per: 3 },
@@ -2044,8 +2035,6 @@
         {
           id: "good_afternoon",
           name: "Good afternoon,",
-          bonus:
-            "From 10AM to 12PM: +30 reply to, double reply to damage, +60 max credibility.",
           rarity: "common",
           statWindows: [
             {
@@ -2058,7 +2047,6 @@
         {
           id: "operational_update",
           name: "Operational update,",
-          bonus: "Per Sig: +2 escalate and +1 deflect.",
           rarity: "common",
           scalers: [
             { source: "sig", stat: "escalateDmg", per: 2 },
@@ -2069,8 +2057,6 @@
         {
           id: "good_evening",
           name: "Good evening,",
-          bonus:
-            "From 1PM onward: +60 reply to, double reply to damage, +120 max credibility.",
           rarity: "uncommon",
           statWindows: [
             {
@@ -2083,7 +2069,6 @@
         {
           id: "status_update",
           name: "Status update,",
-          bonus: "Per Sig: +5 reply to and -1 escalate.",
           rarity: "common",
           scalers: [
             { source: "sig", stat: "singleDmg", per: 5 },
@@ -2093,8 +2078,6 @@
         {
           id: "project_team",
           name: "To the Project Team,",
-          bonus:
-            "Reply to hits a random secondary stakeholder for half damage.",
           rarity: "common",
           replySecondaryHalf: true,
         },
@@ -4132,7 +4115,7 @@
           from: "a.ops@gov.org",
           turns: 12,
           intro:
-            "Hi all,<br><br>We have a triple booking for the main conference room this morning.<br><br><strong>{playerName}</strong>, you have it booked for an internal process audit.<br><br><strong>{opp0}</strong> and <strong>{opp1}</strong> from Operations flagged a safety walkthrough and vendor briefing. <strong>{opp2}</strong> and <strong>{opp3}</strong> from Finance flagged payroll finalization and budget reconciliation.<br><br><strong>{opp4}</strong>, we see your booking was the one that went through first.<br><br>We need to figure out who is taking this meeting room.",
+            "Hi all,<br><br>We have a triple booking for the main conference room this morning.<br><br><strong>{playerName}</strong>, you have it booked for an internal process audit.<br><strong>{opp0}</strong> and <strong>{opp1}</strong> from Operations flagged a safety walkthrough and vendor briefing.<br><strong>{opp2}</strong> and <strong>{opp3}</strong> from Finance flagged payroll finalization and budget reconciliation.<br><strong>{opp4}</strong>, we see your booking was the one that went through first.<br><br>We need to figure out who is taking this meeting room.",
           opponents: [
             {
               id: 9,
@@ -5065,7 +5048,7 @@
         if (u.maxHp == null) u.maxHp = 0;
         if (u.wins == null) u.wins = 0;
         if (u.deflectPower == null) u.deflectPower = 5;
-        if (u.deflect == null) u.deflect = 5;
+        if (u.deflect == null || u.deflect === 0) u.deflect = 5;
         if (u.deflectCharge == null) u.deflectCharge = 0;
         if (u.deflectChargeReflect == null) u.deflectChargeReflect = 0;
         if (u.deflectChargeReduce == null) u.deflectChargeReduce = 0;
@@ -5864,17 +5847,29 @@
             "w-full retro-border text-left p-2 bg-white hover:bg-blue-50 flex flex-col gap-1";
 
           const badge = opt.rarity ? formatRarityBadge(opt.rarity) : "";
-        const bonusDesc =
-          getItemBonusText(opt) ||
-          opt.picksText ||
-          describeEffect(opt.eff || opt);
+          const typeLabels = {
+            contact: "Contact",
+            signature: "Signature",
+            salutation: "Greeting",
+            signoff: "Sign-off",
+            bcc: "BCC",
+            dev: "Training",
+          };
+          const typeLabel = typeLabels[opt.itemType] || "Item";
+          const bonusDesc =
+            getItemBonusText(opt) ||
+            opt.picksText ||
+            describeEffect(opt.eff || opt);
           const isBcc = opt.itemType === "bcc";
           const bccLimit = computeUnitStats(state.player).bccLimit || 0;
           const bccFull = isBcc && state.player.bccContacts.length >= bccLimit;
 
           btn.innerHTML = `
                 <div class="flex justify-between items-center">
-                    <span class="font-bold">${opt.name}</span>
+                    <div class="flex items-center gap-2">
+                      <span class="bg-blue-800 text-white px-1 uppercase font-bold text-[8px]">${typeLabel}</span>
+                      <span class="font-bold">${opt.name}</span>
+                    </div>
                     ${badge}
                 </div>
                 <div class="text-[10px] italic text-gray-600">${bonusDesc}</div>
@@ -7286,6 +7281,21 @@
           parts.push(`Reply to hits entire target department`);
         if (effect.replySecondaryHalf)
           parts.push(`Reply to hits a random secondary for half damage`);
+        if (Array.isArray(effect.statWindows) && effect.statWindows.length) {
+          effect.statWindows.forEach((win) => {
+            if (!win || !win.stats) return;
+            const start = typeof win.start === "number" ? win.start : null;
+            const end = typeof win.end === "number" ? win.end : null;
+            const windowText =
+              start == null
+                ? "Time window"
+                : end == null
+                  ? `From ${formatMinutesClock(start)} onward`
+                  : `From ${formatMinutesClock(start)} to ${formatMinutesClock(end)}`;
+            const windowStats = formatStatsText(win.stats);
+            if (windowStats) parts.push(`${windowText}: ${windowStats}`);
+          });
+        }
         if (Array.isArray(effect.scalers) && effect.scalers.length) {
           const buckets = {};
           effect.scalers.forEach((s) => {
@@ -7329,6 +7339,18 @@
         const mult = 1 + value;
         const label = `x${mult.toFixed(decimals)}`;
         return prefix ? `${prefix} ${label}` : label;
+      }
+
+      function formatMinutesClock(minutes) {
+        const total = Math.max(0, Math.floor(minutes || 0));
+        let h = Math.floor(total / 60);
+        const m = total % 60;
+        const suffix = h >= 12 ? "PM" : "AM";
+        if (h > 12) h -= 12;
+        if (h === 0) h = 12;
+        return `${h.toString().padStart(2, "0")}:${m
+          .toString()
+          .padStart(2, "0")} ${suffix}`;
       }
 
       function formatStatsText(stats) {
@@ -7392,6 +7414,7 @@
           thread_end: "On thread end",
           reply_to: "On Reply to",
           reply_all: "On Reply All",
+          escalate: "On Escalate",
           shop_enter: "On shop enter",
           bcc_use: "On BCC",
           deflect_action: "On Deflect",
@@ -7412,10 +7435,12 @@
           return `${eventText}: CC gains ${statsText}`;
         }
         if (effect.type === "add_signoff_bonus") {
-          return `${eventText}: gain ${statsText} permanently`;
+          const cleaned = statsText.replace(/adds\s+(x[\d.]+)/gi, "$1");
+          return `${eventText}: gain ${cleaned} permanently`;
         }
         if (effect.type === "add_salutation_bonus") {
-          return `${eventText}: gain ${statsText} permanently`;
+          const cleaned = statsText.replace(/adds\s+(x[\d.]+)/gi, "$1");
+          return `${eventText}: gain ${cleaned} permanently`;
         }
         if (effect.type === "add_thread_bonus") {
           const eventLabel = eventText.replace("On ", "On '") + "'";
@@ -7423,7 +7448,8 @@
             .replace(/\+(\d+)\s+reply to/gi, "+$1 Reply To")
             .replace(/\+(\d+)\s+escalate/gi, "+$1 Escalate")
             .replace(/\+(\d+)\s+all messages/gi, "+$1 to your messages");
-          return `${eventLabel}, gain ${statsLabel} until the end of this thread`;
+          const onceText = effect.oncePerThread ? " (once per thread)" : "";
+          return `${eventLabel}${onceText}, gain ${statsLabel} until the end of this thread`;
         }
         if (effect.type === "add_bcc") {
           const count = effect.count || 1;
@@ -7490,6 +7516,21 @@
             `Per win remaining: ${formatMultiplier(item.winScaleSingleDmgMult) } reply to`,
           );
         if (parts.length) return parts.join(" • ");
+        if (
+          item.scalers ||
+          item.statWindows ||
+          item.replyDeptCleave ||
+          item.replySecondaryHalf ||
+          item.deflectBoostSingle ||
+          item.deflectBoostEscalate ||
+          item.disableReplyTo ||
+          item.addSingleToEscalate ||
+          item.replyAllPerActive ||
+          item.escalatePerActive
+        ) {
+          const desc = describeEffect(item);
+          if (desc) return desc;
+        }
         if (item.bonus) return item.bonus;
         if (typeof item.getBonusText === "function") return item.getBonusText();
         return "No listed effect.";
@@ -7514,7 +7555,7 @@
           return state.player.addressBook.length < getUnitAddressLimit(state.player);
         if (item.itemType === "signature")
           return state.player.signatures.length < state.player.title.sigLimit;
-        if (item.itemType === "salutation") return true;
+        if (item.itemType === "salutation") return !state.player.salutation;
         if (item.itemType === "signoff") return true;
         if (item.itemType === "bcc") {
           const limit = computeUnitStats(state.player).bccLimit || 0;
@@ -7658,6 +7699,7 @@
           };
           const spaceLabels = {
             bcc: "FREE SLOT",
+            salutation: "ALREADY SET",
           };
 
           directList.appendChild(
@@ -7712,6 +7754,30 @@
         header.innerText = `${p.name} (${p.title ? p.title.name : "Unranked"})`;
 
         totalsEl.innerHTML = "";
+        const summaryItems = [
+          {
+            label: "Greeting",
+            value: p.salutation ? p.salutation.name : "None",
+          },
+          {
+            label: "Sign-off",
+            value: p.signOff ? p.signOff.name : "None",
+          },
+          {
+            label: "Signatures",
+            value:
+              p.signatures && p.signatures.length
+                ? p.signatures.map((s) => s.name).join(", ")
+                : "None",
+          },
+        ];
+        summaryItems.forEach((item) => {
+          const div = document.createElement("div");
+          div.className =
+            "col-span-2 flex justify-between bg-white retro-border px-2 py-1";
+          div.innerHTML = `<span class="uppercase text-gray-500">${item.label}</span><span class="text-[10px]">${item.value}</span>`;
+          totalsEl.appendChild(div);
+        });
         STAT_FIELDS.forEach((field) => {
           const value = totals[field];
           if (!value) return;
@@ -8199,6 +8265,7 @@
             body,
             "bg-orange-50 border-l-4 border-orange-500",
           );
+          runUnitEffects(p, "escalate", {});
           defeated.forEach((o) => handleOpponentDefeat(o, true));
         } else if (type === "DEFLECT") {
           p.deflectChargeReflect = getUnitDeflectReflect(p);
