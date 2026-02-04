@@ -1837,10 +1837,13 @@
         },
         {
           id: "hello_team",
-          name: "Hello team,",
-          bonus: "+10 Max Credibility",
+          name: "Hello Team,",
+          bonus: "Per CC: +5 escalate and -2 self-promote.",
           rarity: "common",
-          maxHp: 10,
+          scalers: [
+            { source: "cc", stat: "escalateDmg", per: 5 },
+            { source: "cc", stat: "selfPromoteHeal", per: -2 },
+          ],
         },
         {
           id: "team",
@@ -1855,11 +1858,15 @@
         {
           id: "morning",
           name: "Good morning,",
-          bonus: "Per Sig: +3 reply to and +2 self-promote.",
+          bonus:
+            "Until 10AM: +15 reply to, double reply to damage, +30 max credibility.",
           rarity: "common",
-          scalers: [
-            { source: "sig", stat: "singleDmg", per: 3 },
-            { source: "sig", stat: "selfPromoteHeal", per: 2 },
+          statWindows: [
+            {
+              start: 0,
+              end: 10 * 60,
+              stats: { singleDmg: 15, singleDmgMult: 1, maxHp: 30 },
+            },
           ],
         },
         {
@@ -1875,12 +1882,15 @@
         {
           id: "good_afternoon",
           name: "Good afternoon,",
-          bonus: "Per Sig: +2 escalate and +1 deflect.",
+          bonus:
+            "From 10AM to 12PM: +30 reply to, double reply to damage, +60 max credibility.",
           rarity: "common",
-          scalers: [
-            { source: "sig", stat: "escalateDmg", per: 2 },
-            { source: "sig", stat: "deflect", per: 1 },
-            { source: "sig", stat: "deflectPower", per: 1 },
+          statWindows: [
+            {
+              start: 10 * 60,
+              end: 12 * 60,
+              stats: { singleDmg: 30, singleDmgMult: 1, maxHp: 60 },
+            },
           ],
         },
         {
@@ -1897,11 +1907,15 @@
         {
           id: "good_evening",
           name: "Good evening,",
-          bonus: "Per Sig: +5 reply to and -1 escalate.",
+          bonus:
+            "From 1PM onward: +60 reply to, double reply to damage, +120 max credibility.",
           rarity: "uncommon",
-          scalers: [
-            { source: "sig", stat: "singleDmg", per: 5 },
-            { source: "sig", stat: "escalateDmg", per: -1 },
+          statWindows: [
+            {
+              start: 13 * 60,
+              end: null,
+              stats: { singleDmg: 60, singleDmgMult: 1, maxHp: 120 },
+            },
           ],
         },
         {
@@ -4828,6 +4842,31 @@
         return blocks;
       }
 
+      function getSalutationWindowStats(u) {
+        if (!u || !u.salutation || !Array.isArray(u.salutation.statWindows))
+          return null;
+        const timeMinutes = getAdjustedTurnMinutes(state.turn);
+        const matches = u.salutation.statWindows.filter((win) => {
+          if (!win || !win.stats) return false;
+          const start =
+            typeof win.start === "number" ? win.start : Number.NEGATIVE_INFINITY;
+          const end =
+            typeof win.end === "number" ? win.end : Number.POSITIVE_INFINITY;
+          return timeMinutes >= start && timeMinutes <= end;
+        });
+        if (!matches.length) return null;
+        const stats = {};
+        matches.forEach((win) => {
+          STAT_FIELDS.forEach((field) => {
+            const value = win.stats[field];
+            if (typeof value === "number") {
+              stats[field] = (stats[field] || 0) + value;
+            }
+          });
+        });
+        return Object.keys(stats).length ? stats : null;
+      }
+
       function computeUnitStats(u) {
         const stats = Object.fromEntries(STAT_FIELDS.map((f) => [f, 0]));
         getUnitStatBlocks(u).forEach((block) => {
@@ -4849,6 +4888,13 @@
             if (!count) return;
             const per = typeof s.per === "number" ? s.per : 0;
             stats[s.stat] = (stats[s.stat] || 0) + per * count;
+          });
+        }
+        const salutationWindowStats = getSalutationWindowStats(u);
+        if (salutationWindowStats) {
+          STAT_FIELDS.forEach((field) => {
+            const value = salutationWindowStats[field];
+            if (typeof value === "number") stats[field] += value;
           });
         }
         return stats;
@@ -4879,6 +4925,13 @@
         if (u.title) pushSource(`Title: ${u.title.name}`, u.title);
         if (u.salutation)
           pushSource(`Greeting: ${u.salutation.name}`, u.salutation);
+        const salutationWindowStats = getSalutationWindowStats(u);
+        if (salutationWindowStats && u.salutation) {
+          sources.push({
+            label: `Greeting window: ${u.salutation.name}`,
+            stats: salutationWindowStats,
+          });
+        }
         if (u.signOff) pushSource(`Sign-off: ${u.signOff.name}`, u.signOff);
         if (Array.isArray(u.signatures)) {
           u.signatures.forEach((s) => pushSource(`Signature: ${s.name}`, s));
@@ -6656,6 +6709,16 @@
         return `${h.toString().padStart(2, "0")}:${m
           .toString()
           .padStart(2, "0")} ${suffix}`;
+      }
+
+      function getAdjustedTurnMinutes(turn) {
+        const baseMinutes = 9 * 60;
+        const totalMinutes = baseMinutes + Math.max(0, turn) * 15;
+        const breakStart = 12 * 60;
+        const breakEnd = 13 * 60 + 15;
+        return totalMinutes > breakStart
+          ? totalMinutes + (breakEnd - breakStart)
+          : totalMinutes;
       }
 
       function getMissionDueTurn(mission) {
