@@ -2001,6 +2001,13 @@
           escalatePerActive: true,
           replyAllPerActive: true,
         },
+        {
+          id: "dear_team",
+          name: "Dear Team,",
+          bonus:
+            "No effect",
+          rarity: "rare"
+        }
       ];
 
       const SIGNOFFS = [
@@ -2094,44 +2101,48 @@
         {
           id: "with_appreciation",
           name: "With appreciation,",
-          bonus: "No combat bonus.",
+          bonus:
+            "Every 2 wins remaining at thread end grants +1 defense and +2 deflect permanently.",
           rarity: "uncommon",
+          onWinWinsToDefense: 0.5,
         },
         {
           id: "sincerely",
           name: "Sincerely,",
-          bonus: "Deflect +2.",
+          bonus:
+            "Gain half REP. For every 3 REP not gained, your CCs gain +0.2 escalate permanently.",
           rarity: "uncommon",
-          deflect: 2,
-          deflectPower: 2,
         },
         {
           id: "best_regards",
           name: "Best Regards,",
-          bonus: "+5 reply to",
+          bonus:
+            "Each stakeholder you take off the thread grants +0.20 all messages to a random CC on the thread.",
           rarity: "uncommon",
-          singleDmg: 5,
+          onRemoveGlobalDmgMult: 0.2,
         },
         {
           id: "solidarity_earth",
           name: "In solidarity with the Earth",
-          bonus: "Deflect +2.",
+          bonus:
+            "End of thread: for every same-department CC pair, gain +1 defense permanently.",
           rarity: "uncommon",
           setId: "earth_set",
-          deflect: 2,
-          deflectPower: 2,
+          onWinDeptPairDefense: 1,
         },
         {
           id: "best_wishes",
           name: "Best wishes,",
-          bonus: "50% Leverage gain",
+          bonus:
+            "Whenever you use a BCC, a random CC gains +3 heal and +1 win when CC'd.",
           rarity: "uncommon",
-          levMult: 0.5,
+          onBccCcHeal: 3,
+          onBccCcWins: 1,
         },
         {
           id: "for_group_awareness",
           name: "For group awareness,",
-          bonus: "Reply to disabled. Reply to damage is added to Escalate.",
+          bonus: "Reply to disabled. Reply to is added to Escalate.",
           rarity: "rare",
           disableReplyTo: true,
           addSingleToEscalate: true,
@@ -5689,6 +5700,9 @@
               globalDmgMult:
                 (baseEff.globalDmgMult || 0) +
                 (signoffBonus.globalDmgMult || 0),
+              escalateDmgMult:
+                (baseEff.escalateDmgMult || 0) +
+                (signoffBonus.escalateDmgMult || 0),
             };
           }
         }
@@ -6184,7 +6198,28 @@
         setTimeout(() => {
           transitionTo("summary-screen");
           const summary = computeSummary();
-          state.player.reputation += summary.totalRep;
+          let repAward = summary.totalRep;
+          if (state.player.signOff && state.player.signOff.id === "sincerely") {
+            repAward = Math.floor(summary.totalRep / 2);
+            const missed = summary.totalRep - repAward;
+            const steps = Math.floor(missed / 3);
+            if (steps > 0) {
+              if (!state.player.contactSignoffBoosts)
+                state.player.contactSignoffBoosts = {};
+              state.player.buffs
+                .filter((b) => b.usedBy === state.player.name)
+                .forEach((b) => {
+                  const existing = state.player.contactSignoffBoosts[b.id] || {};
+                  state.player.contactSignoffBoosts[b.id] = {
+                    ...existing,
+                    escalateDmgMult:
+                      (existing.escalateDmgMult || 0) + steps * 0.2,
+                  };
+                });
+            }
+          }
+          summary.totalRep = repAward;
+          state.player.reputation += repAward;
 
           // Advance mission index
           state.currentMissionIndex =
@@ -7082,6 +7117,19 @@
                 ...current,
                 escalateDmg: (current.escalateDmg || 0) + 2,
               };
+            } else if (id === "best_regards") {
+              const pool = state.player.buffs.filter(
+                (b) => b.usedBy === p.name,
+              );
+              if (pool.length > 0) {
+                const picked = pool[Math.floor(Math.random() * pool.length)];
+                if (!p.contactSignoffBoosts) p.contactSignoffBoosts = {};
+                const existing = p.contactSignoffBoosts[picked.id] || {};
+                p.contactSignoffBoosts[picked.id] = {
+                  ...existing,
+                  globalDmgMult: (existing.globalDmgMult || 0) + 0.2,
+                };
+              }
             }
           }
         }
@@ -7132,6 +7180,44 @@
                 globalDmgMult: (existing.globalDmgMult || 0) + 0.2,
               };
             });
+          }
+          if (p.signOff && p.signOff.id === "solidarity_earth") {
+            const playerCcs = state.player.buffs.filter(
+              (b) => b.usedBy === p.name,
+            );
+            const countsByDept = {};
+            playerCcs.forEach((b) => {
+              const dept = b.departmentId || "unknown";
+              countsByDept[dept] = (countsByDept[dept] || 0) + 1;
+            });
+            let pairs = 0;
+            Object.values(countsByDept).forEach((count) => {
+              if (count >= 2) {
+                pairs += Math.floor((count * (count - 1)) / 2);
+              }
+            });
+            if (pairs > 0) {
+              if (!p.signoffBonuses) p.signoffBonuses = {};
+              const current = p.signoffBonuses[p.signOff.id] || {};
+              p.signoffBonuses[p.signOff.id] = {
+                ...current,
+                defFlat: (current.defFlat || 0) + pairs,
+              };
+            }
+          }
+          if (p.signOff && p.signOff.id === "with_appreciation") {
+            const winsRemaining =
+              typeof p.currentWins === "number" ? p.currentWins : 0;
+            const steps = Math.floor(winsRemaining / 2);
+            if (steps > 0) {
+              if (!p.signoffBonuses) p.signoffBonuses = {};
+              const current = p.signoffBonuses[p.signOff.id] || {};
+              p.signoffBonuses[p.signOff.id] = {
+                ...current,
+                defFlat: (current.defFlat || 0) + steps,
+                deflect: (current.deflect || 0) + steps * 2,
+              };
+            }
           }
           if (p.signOff && p.signOff.id === "team_regards_signoff") {
             if (!p.contactSignoffBoosts) p.contactSignoffBoosts = {};
@@ -8252,6 +8338,29 @@
           `[PRIVATE MESSAGE] Sent: ${logContent}`,
           "bg-yellow-100 border-l-4 border-yellow-600",
         );
+
+        if (state.player.signOff && state.player.signOff.id === "best_wishes") {
+          const pool = state.player.buffs.filter(
+            (b) => b.usedBy === state.player.name,
+          );
+          if (pool.length > 0) {
+            const picked = pool[Math.floor(Math.random() * pool.length)];
+            if (!state.player.contactSignoffBoosts)
+              state.player.contactSignoffBoosts = {};
+            const existing = state.player.contactSignoffBoosts[picked.id] || {};
+            state.player.contactSignoffBoosts[picked.id] = {
+              ...existing,
+              heal: (existing.heal || 0) + 3,
+              wins: (existing.wins || 0) + 1,
+            };
+            picked.eff = {
+              ...(picked.eff || {}),
+              heal: (picked.eff?.heal || 0) + 3,
+              wins: (picked.eff?.wins || 0) + 1,
+            };
+            picked.subtitle = picked.subtitle || "BCC Favored";
+          }
+        }
 
         if (bcc.effect === "stun") {
           const target = opponents.find((o) => o.id === state.targetId);
