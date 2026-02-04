@@ -157,40 +157,13 @@
         right: 0;
         top: 0;
         height: 100%;
-        display: flex;
         z-index: 200;
         pointer-events: none;
       }
-      #shop-drawer-tabs {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        margin-top: 80px;
-        pointer-events: auto;
-      }
-      .drawer-tab {
-        writing-mode: vertical-lr;
-        padding: 12px 6px;
-        background: var(--win-grey);
-        border-top: 2px solid var(--win-border-light);
-        border-left: 2px solid var(--win-border-light);
-        border-bottom: 2px solid var(--win-border-dark);
-        border-right: 2px solid var(--win-border-dark);
-        cursor: pointer;
-        font-size: 10px;
-        font-weight: bold;
-        text-align: center;
-        user-select: none;
-        transition: background 0.2s;
-      }
-      .drawer-tab.active {
-        background: #dfdfdf;
-        border-top: 2px solid var(--win-border-dark);
-        border-left: 2px solid var(--win-border-dark);
-        border-bottom: 2px solid var(--win-border-light);
-        border-right: 2px solid var(--win-border-light);
-      }
       #shop-drawer-panel {
+        position: absolute;
+        right: 0;
+        top: 0;
         width: 320px;
         background: var(--win-grey);
         border-left: 2px solid var(--win-border-light);
@@ -201,6 +174,44 @@
         transition: transform 0.3s ease;
         transform: translateX(100%);
         box-shadow: -5px 0 15px rgba(0,0,0,0.2);
+      }
+      @media (max-width: 640px) {
+        #shop-drawer-panel {
+          width: 85vw;
+        }
+      }
+      #shop-drawer-tabs {
+        position: absolute;
+        left: -32px;
+        top: 80px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        pointer-events: auto;
+        width: 32px;
+      }
+      .drawer-tab {
+        writing-mode: vertical-lr;
+        padding: 12px 4px;
+        background: var(--win-grey);
+        border-top: 2px solid var(--win-border-light);
+        border-left: 2px solid var(--win-border-light);
+        border-bottom: 2px solid var(--win-border-dark);
+        border-right: 2px solid var(--win-border-dark);
+        cursor: pointer;
+        font-size: 9px;
+        font-weight: bold;
+        text-align: center;
+        user-select: none;
+        transition: background 0.2s;
+        white-space: nowrap;
+      }
+      .drawer-tab.active {
+        background: #dfdfdf;
+        border-top: 2px solid var(--win-border-dark);
+        border-left: 2px solid var(--win-border-dark);
+        border-bottom: 2px solid var(--win-border-light);
+        border-right: 2px solid var(--win-border-light);
       }
       #shop-drawer-panel.open {
         transform: translateX(0);
@@ -1749,7 +1760,7 @@
       let dragData = null;
 
       function startDrag(e, item, sourceEl, onBuy) {
-        if (e.button !== 0) return;
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
 
         const rect = sourceEl.getBoundingClientRect();
         dragData = {
@@ -1765,6 +1776,7 @@
         };
 
         dragData.ghost.classList.add('dragging-ghost');
+        dragData.ghost.style.touchAction = 'none';
         dragData.ghost.style.width = rect.width + 'px';
         dragData.ghost.style.left = rect.left + 'px';
         dragData.ghost.style.top = rect.top + 'px';
@@ -1776,12 +1788,17 @@
         else if (item.itemType === 'bcc') openDrawer('bcc');
 
         sourceEl.setPointerCapture(e.pointerId);
-        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointermove', onPointerMove, { passive: false });
         window.addEventListener('pointerup', onPointerUp);
+        sourceEl.addEventListener('lostpointercapture', onPointerUp);
       }
 
       function onPointerMove(e) {
         if (!dragData) return;
+        if (e.pointerId !== dragData.pointerId) return;
+
+        // Prevent scrolling on touch devices
+        if (e.cancelable) e.preventDefault();
 
         const x = e.clientX - dragData.offsetX;
         const y = e.clientY - dragData.offsetY;
@@ -1805,9 +1822,11 @@
 
       function onPointerUp(e) {
         if (!dragData) return;
+        if (e.pointerId !== dragData.pointerId) return;
 
         window.removeEventListener('pointermove', onPointerMove);
         window.removeEventListener('pointerup', onPointerUp);
+        dragData.sourceEl.removeEventListener('lostpointercapture', onPointerUp);
 
         const x = e.clientX;
         const y = e.clientY;
