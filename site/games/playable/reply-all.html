@@ -502,12 +502,11 @@
       </div>
       <!-- Drawers system -->
       <div id="shop-drawers">
-        <div id="shop-drawer-tabs">
-          <div id="tab-address" class="drawer-tab" onclick="toggleDrawer('address')">ADDRESS BOOK</div>
-          <div id="tab-template" class="drawer-tab" onclick="toggleDrawer('template')">EMAIL TEMPLATE</div>
-          <div id="tab-bcc" class="drawer-tab" onclick="toggleDrawer('bcc')">BCCs</div>
-        </div>
         <div id="shop-drawer-panel">
+          <div id="shop-drawer-tabs">
+            <div id="tab-resources" class="drawer-tab" onclick="toggleDrawer('resources')">PERSONNEL & BCCs</div>
+            <div id="tab-template" class="drawer-tab" onclick="toggleDrawer('template')">EMAIL TEMPLATE</div>
+          </div>
           <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold shrink-0">
             <span id="drawer-title">ASSETS</span>
             <button onclick="closeDrawer()" class="px-1">✕</button>
@@ -1783,13 +1782,14 @@
         document.body.appendChild(dragData.ghost);
 
         // Auto-open drawer
-        if (item.itemType === 'contact') openDrawer('address');
+        if (['contact', 'bcc'].includes(item.itemType)) openDrawer('resources');
         else if (['salutation', 'signoff', 'signature'].includes(item.itemType)) openDrawer('template');
-        else if (item.itemType === 'bcc') openDrawer('bcc');
 
         sourceEl.setPointerCapture(e.pointerId);
-        window.addEventListener('pointermove', onPointerMove, { passive: false });
-        window.addEventListener('pointerup', onPointerUp);
+        // Using capture element for move/up to ensure events are caught during capture
+        sourceEl.addEventListener('pointermove', onPointerMove, { passive: false });
+        sourceEl.addEventListener('pointerup', onPointerUp);
+        sourceEl.addEventListener('pointercancel', onPointerUp);
         sourceEl.addEventListener('lostpointercapture', onPointerUp);
       }
 
@@ -1824,9 +1824,12 @@
         if (!dragData) return;
         if (e.pointerId !== dragData.pointerId) return;
 
-        window.removeEventListener('pointermove', onPointerMove);
-        window.removeEventListener('pointerup', onPointerUp);
-        dragData.sourceEl.removeEventListener('lostpointercapture', onPointerUp);
+        const sourceEl = dragData.sourceEl;
+        sourceEl.removeEventListener('pointermove', onPointerMove);
+        sourceEl.removeEventListener('pointerup', onPointerUp);
+        sourceEl.removeEventListener('pointercancel', onPointerUp);
+        sourceEl.removeEventListener('lostpointercapture', onPointerUp);
+        try { sourceEl.releasePointerCapture(e.pointerId); } catch(e) {}
 
         const x = e.clientX;
         const y = e.clientY;
@@ -1846,22 +1849,22 @@
         });
 
         if (!success) {
-            dragData.ghost.classList.add('dragging-returning');
+            const ghost = dragData.ghost;
+            ghost.classList.add('dragging-returning');
             const rect = dragData.sourceEl.getBoundingClientRect();
-            dragData.ghost.style.left = rect.left + 'px';
-            dragData.ghost.style.top = rect.top + 'px';
-            dragData.ghost.style.opacity = '0.5';
+            ghost.style.left = rect.left + 'px';
+            ghost.style.top = rect.top + 'px';
+            ghost.style.opacity = '0.5';
 
             setTimeout(() => {
-                if (dragData && dragData.ghost && dragData.ghost.parentNode) {
-                  document.body.removeChild(dragData.ghost);
+                if (ghost && ghost.parentNode) {
+                  document.body.removeChild(ghost);
                 }
-                dragData = null;
             }, 300);
         } else {
             if (dragData.ghost.parentNode) document.body.removeChild(dragData.ghost);
-            dragData = null;
         }
+        dragData = null;
       }
 
       function inferContactRole(contact) {
@@ -7141,63 +7144,59 @@
         updateShopUI();
       }
 
-      function renderAddressBookDrawer(container) {
-        const addressLimit = getUnitAddressLimit(state.player);
+      function renderResourcesDrawer(container) {
         container.innerHTML = "";
 
-        const header = document.createElement("div");
-        header.className = "text-[10px] font-bold uppercase text-gray-500 mb-2";
-        header.innerText = `Address Book (${state.player.addressBook.length}/${addressLimit})`;
-        container.appendChild(header);
+        // Address Book Section
+        const addressLimit = getUnitAddressLimit(state.player);
+        const addrHeader = document.createElement("div");
+        addrHeader.className = "text-[10px] font-bold uppercase text-gray-500 mb-2";
+        addrHeader.innerText = `Address Book (${state.player.addressBook.length}/${addressLimit})`;
+        container.appendChild(addrHeader);
 
-        const dropZone = document.createElement("div");
-        dropZone.id = "drawer-drop-zone-contact";
-        dropZone.className = "drop-zone";
-        dropZone.dataset.accept = "contact";
-        dropZone.innerText = "DRAG CONTACT HERE TO HIRE";
-        container.appendChild(dropZone);
+        const addrDropZone = document.createElement("div");
+        addrDropZone.className = "drop-zone";
+        addrDropZone.dataset.accept = "contact";
+        addrDropZone.innerText = "DRAG CONTACT HERE";
+        container.appendChild(addrDropZone);
 
-        const list = document.createElement("div");
-        list.className = "space-y-2";
+        const addrList = document.createElement("div");
+        addrList.className = "space-y-2 mb-6";
         if (state.player.addressBook.length === 0) {
-          list.innerHTML = '<div class="text-[10px] italic text-gray-400 text-center py-4">No contacts on file.</div>';
+          addrList.innerHTML = '<div class="text-[10px] italic text-gray-400 text-center py-2">No contacts on file.</div>';
         } else {
           state.player.addressBook.forEach(id => {
             const c = CONTACTS.find(con => con.id === id);
             if (c) {
-              list.appendChild(createOwnedRow(c, "contact", () => sellItem('contact', c)));
+              addrList.appendChild(createOwnedRow(c, "contact", () => sellItem('contact', c)));
             }
           });
         }
-        container.appendChild(list);
-      }
+        container.appendChild(addrList);
 
-      function renderBccDrawer(container) {
+        // BCC Section
         const bccLimit = computeUnitStats(state.player).bccLimit || 0;
-        container.innerHTML = "";
+        const bccHeader = document.createElement("div");
+        bccHeader.className = "text-[10px] font-bold uppercase text-gray-500 mb-2 border-t border-gray-300 pt-4";
+        bccHeader.innerText = `Consumable BCCs (${state.player.bccContacts.length}/${bccLimit})`;
+        container.appendChild(bccHeader);
 
-        const header = document.createElement("div");
-        header.className = "text-[10px] font-bold uppercase text-gray-500 mb-2";
-        header.innerText = `Consumable BCCs (${state.player.bccContacts.length}/${bccLimit})`;
-        container.appendChild(header);
+        const bccDropZone = document.createElement("div");
+        bccDropZone.className = "drop-zone";
+        bccDropZone.dataset.accept = "bcc";
+        bccDropZone.innerText = "DRAG BCC HERE";
+        container.appendChild(bccDropZone);
 
-        const dropZone = document.createElement("div");
-        dropZone.id = "drawer-drop-zone-bcc";
-        dropZone.className = "drop-zone";
-        dropZone.dataset.accept = "bcc";
-        dropZone.innerText = "DRAG BCC HERE TO REQUEST";
-        container.appendChild(dropZone);
-
-        const list = document.createElement("div");
-        list.className = "space-y-2";
+        const bccList = document.createElement("div");
+        bccList.className = "space-y-2";
         if (state.player.bccContacts.length === 0) {
-          list.innerHTML = '<div class="text-[10px] italic text-gray-400 text-center py-4">No BCCs on file.</div>';
+          bccList.innerHTML = '<div class="text-[10px] italic text-gray-400 text-center py-2">No BCCs on file.</div>';
         } else {
           state.player.bccContacts.forEach((bcc, idx) => {
-            list.appendChild(createOwnedRow(bcc, "bcc", () => sellItem('bcc', bcc), { actionLabel: "DISCARD" }));
+            bccList.appendChild(createOwnedRow(bcc, "bcc", () => sellItem('bcc', bcc), { actionLabel: "DISCARD" }));
           });
         }
-        container.appendChild(list);
+        container.appendChild(bccList);
       }
 
       function renderEmailTemplateDrawer(container) {
@@ -8070,21 +8069,18 @@
         const drawerContentArea = document.getElementById("drawer-content-area");
         const drawerTitle = document.getElementById("drawer-title");
         if (drawerContentArea && drawerTitle) {
-          const tabs = ["address", "template", "bcc"];
+          const tabs = ["resources", "template"];
           tabs.forEach(t => {
             const el = document.getElementById(`tab-${t}`);
             if (el) el.classList.toggle('active', state.shop.activeDrawerTab === t);
           });
 
-          if (state.shop.activeDrawerTab === "address") {
-              drawerTitle.innerText = "ADDRESS BOOK";
-              renderAddressBookDrawer(drawerContentArea);
+          if (state.shop.activeDrawerTab === "resources") {
+              drawerTitle.innerText = "PERSONNEL & BCCs";
+              renderResourcesDrawer(drawerContentArea);
           } else if (state.shop.activeDrawerTab === "template") {
               drawerTitle.innerText = "EMAIL TEMPLATE";
               renderEmailTemplateDrawer(drawerContentArea);
-          } else if (state.shop.activeDrawerTab === "bcc") {
-              drawerTitle.innerText = "BCCs";
-              renderBccDrawer(drawerContentArea);
           } else {
               drawerTitle.innerText = "ASSETS";
               drawerContentArea.innerHTML = '<div class="text-[10px] text-center text-gray-500 mt-20 px-4">Drag items here to purchase, or select a tab to manage assets.</div>';
