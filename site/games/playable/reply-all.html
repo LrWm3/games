@@ -1942,9 +1942,9 @@
           id: "working_group",
           name: "To the working group,",
           bonus:
-            "On Reply All: permanently add +0.25 reply to mult to this greeting.",
+            "On Reply All: permanently add +0.25 reply to mult to a random CC.",
           rarity: "uncommon",
-          onReplyAllBoostSingleMult: 0.25,
+          onReplyAllBoostCcSingleMult: 0.25,
         },
         {
           id: "committee",
@@ -1973,9 +1973,9 @@
           id: "greetings",
           name: "Greetings,",
           bonus:
-            "Gains +0.25 escalate mult for every 3 reputation held (resets if lost).",
-          rarity: "uncommon",
-          repScaleEscalateMult: 0.25,
+            "Gains +0.10 escalate mult for every 3 reputation held.",
+          rarity: "rare",
+          repScaleEscalateMult: 0.10,
           repScaleStep: 3,
         },
         {
@@ -2005,7 +2005,7 @@
           id: "dear_team",
           name: "Dear Team,",
           bonus:
-            "No effect",
+            "Every 2 wins remaining at thread end grants +1 defense and +2 deflect to a random CC.",
           rarity: "rare"
         }
       ];
@@ -2102,9 +2102,8 @@
           id: "with_appreciation",
           name: "With appreciation,",
           bonus:
-            "Every 2 wins remaining at thread end grants +1 defense and +2 deflect permanently.",
+            "For every 10 credibility you have at thread end, gain +2 reply to permanently.",
           rarity: "uncommon",
-          onWinWinsToDefense: 0.5,
         },
         {
           id: "sincerely",
@@ -2150,9 +2149,8 @@
         {
           id: "v_respectfully",
           name: "Very Respectfully,",
-          bonus: "+150% Leverage gain",
+          bonus: "Each Deflect action grants +0.1 all messages permanently.",
           rarity: "rare",
-          levMult: 1.5,
         },
       ];
 
@@ -4352,6 +4350,7 @@
           contactUpgrades: {},
           contactGreetingBoosts: {},
           contactSignoffBoosts: {},
+          contactSalutationBoosts: {},
           salutationBonuses: {},
           signoffBonuses: {},
           attacks: [
@@ -5249,14 +5248,44 @@
         if (blocked > 0 && target && target.salutation) {
           const bonusHp = target.salutation.onDeflectProcMaxHp || 0;
           const bonusRep = target.salutation.onDeflectProcRep || 0;
-          if (bonusHp) {
-            target.maxHp = (target.maxHp || 0) + bonusHp;
-            if (target.hp < target.maxHp) {
-              target.hp = Math.min(target.maxHp, target.hp + bonusHp);
+          if (
+            target.id === "player" &&
+            target.salutation.id === "sustainability_team"
+          ) {
+            const pool = state.player.buffs.filter(
+              (b) => b.usedBy === state.player.name,
+            );
+            if (pool.length > 0) {
+              const picked = pool[Math.floor(Math.random() * pool.length)];
+              picked.maxHp = (picked.maxHp || 0) + bonusHp;
+              if (picked.hp < picked.maxHp) {
+                picked.hp = Math.min(picked.maxHp, picked.hp + bonusHp);
+              }
+              picked.eff = {
+                ...(picked.eff || {}),
+                maxHp: (picked.eff?.maxHp || 0) + bonusHp,
+                repBonus: (picked.eff?.repBonus || 0) + bonusRep,
+              };
+              if (!state.player.contactSalutationBoosts)
+                state.player.contactSalutationBoosts = {};
+              const existing =
+                state.player.contactSalutationBoosts[picked.id] || {};
+              state.player.contactSalutationBoosts[picked.id] = {
+                ...existing,
+                maxHp: (existing.maxHp || 0) + bonusHp,
+                repBonus: (existing.repBonus || 0) + bonusRep,
+              };
             }
-          }
-          if (bonusRep && target.id === "player") {
-            state.player.reputation += bonusRep;
+          } else {
+            if (bonusHp) {
+              target.maxHp = (target.maxHp || 0) + bonusHp;
+              if (target.hp < target.maxHp) {
+                target.hp = Math.min(target.maxHp, target.hp + bonusHp);
+              }
+            }
+            if (bonusRep && target.id === "player") {
+              state.player.reputation += bonusRep;
+            }
           }
         }
 
@@ -5703,6 +5732,18 @@
               escalateDmgMult:
                 (baseEff.escalateDmgMult || 0) +
                 (signoffBonus.escalateDmgMult || 0),
+            };
+          }
+          const salutationBonus =
+            state.player.contactSalutationBoosts &&
+            state.player.contactSalutationBoosts[buff.id];
+          if (salutationBonus) {
+            const baseEff = buff.eff || {};
+            buff.eff = {
+              ...baseEff,
+              maxHp: (baseEff.maxHp || 0) + (salutationBonus.maxHp || 0),
+              repBonus:
+                (baseEff.repBonus || 0) + (salutationBonus.repBonus || 0),
             };
           }
         }
@@ -6393,6 +6434,7 @@
           contactUpgrades: {},
           contactGreetingBoosts: {},
           contactSignoffBoosts: {},
+          contactSalutationBoosts: {},
           salutationBonuses: {},
           signoffBonuses: {},
           _lineBags: {},
@@ -6690,6 +6732,9 @@
           }
           if (state.player.contactSignoffBoosts) {
             delete state.player.contactSignoffBoosts[item.id];
+          }
+          if (state.player.contactSalutationBoosts) {
+            delete state.player.contactSalutationBoosts[item.id];
           }
         } else if (itemType === "bcc") {
           const idx = state.player.bccContacts.findIndex(
@@ -7205,17 +7250,37 @@
               };
             }
           }
+          const winsRemaining =
+            typeof p.currentWins === "number" ? p.currentWins : 0;
+          const steps = Math.floor(winsRemaining / 2);
+          if (steps > 0 && p.salutation && p.salutation.id === "dear_team") {
+            const pool = state.player.buffs.filter(
+              (b) => b.usedBy === p.name,
+            );
+            if (pool.length > 0) {
+              const picked = pool[Math.floor(Math.random() * pool.length)];
+              if (!p.contactSignoffBoosts) p.contactSignoffBoosts = {};
+              const existing = p.contactSignoffBoosts[picked.id] || {};
+              p.contactSignoffBoosts[picked.id] = {
+                ...existing,
+                defFlat: (existing.defFlat || 0) + steps,
+                deflect: (existing.deflect || 0) + steps * 2,
+              };
+              picked.eff = {
+                ...(picked.eff || {}),
+                defFlat: (picked.eff?.defFlat || 0) + steps,
+                deflect: (picked.eff?.deflect || 0) + steps * 2,
+              };
+            }
+          }
           if (p.signOff && p.signOff.id === "with_appreciation") {
-            const winsRemaining =
-              typeof p.currentWins === "number" ? p.currentWins : 0;
-            const steps = Math.floor(winsRemaining / 2);
-            if (steps > 0) {
+            const stepsByHp = Math.floor((p.hp || 0) / 10);
+            if (stepsByHp > 0) {
               if (!p.signoffBonuses) p.signoffBonuses = {};
               const current = p.signoffBonuses[p.signOff.id] || {};
               p.signoffBonuses[p.signOff.id] = {
                 ...current,
-                defFlat: (current.defFlat || 0) + steps,
-                deflect: (current.deflect || 0) + steps * 2,
+                singleDmg: (current.singleDmg || 0) + stepsByHp * 2,
               };
             }
           }
@@ -7676,6 +7741,14 @@
           if (p.salutation && p.salutation.deflectBoostEscalate) {
             p.escalateDmg += p.salutation.deflectBoostEscalate;
           }
+          if (p.signOff && p.signOff.id === "v_respectfully") {
+            if (!p.signoffBonuses) p.signoffBonuses = {};
+            const current = p.signoffBonuses[p.signOff.id] || {};
+            p.signoffBonuses[p.signOff.id] = {
+              ...current,
+              globalDmgMult: (current.globalDmgMult || 0) + 0.1,
+            };
+          }
           const line = drawFromLineBag(
             p,
             getPlayerLineBagKey("deflect", missionId, titleId),
@@ -7742,6 +7815,24 @@
                 p.salutation.onReplyAllBoostSingleMult,
             };
             p.salutationBonuses[salId] = next;
+          }
+          if (p.salutation && p.salutation.onReplyAllBoostCcSingleMult) {
+            const pool = state.player.buffs.filter(
+              (b) => b.usedBy === p.name,
+            );
+            if (pool.length > 0) {
+              const picked = pool[Math.floor(Math.random() * pool.length)];
+              if (!p.contactGreetingBoosts) p.contactGreetingBoosts = {};
+              const existing = p.contactGreetingBoosts[picked.id] || 0;
+              p.contactGreetingBoosts[picked.id] =
+                existing + p.salutation.onReplyAllBoostCcSingleMult;
+              picked.eff = {
+                ...(picked.eff || {}),
+                singleDmgMult:
+                  (picked.eff?.singleDmgMult || 0) +
+                  p.salutation.onReplyAllBoostCcSingleMult,
+              };
+            }
           }
           const replyAllLine = drawFromLineBag(
             p,
