@@ -1939,32 +1939,24 @@
         {
           id: "working_group",
           name: "To the working group,",
-          bonus: "Deflect +2.",
+          bonus:
+            "On Reply All: permanently add +0.25 reply to mult to this greeting.",
           rarity: "uncommon",
-          deflect: 2,
-          deflectPower: 2,
+          onReplyAllBoostSingleMult: 0.25,
         },
         {
           id: "committee",
           name: "To the committee,",
-          bonus: "+2 reply all",
+          bonus: "On enter thread: gain 1 BCC if you have room.",
           rarity: "uncommon",
-          replyAllDmg: 2,
+          onEnterGainBcc: 1,
         },
         {
           id: "colleagues",
           name: "Dear Colleagues,",
-          bonus: "Deflect +1.",
+          bonus: "On CC: the contact gains +2 reply to permanently.",
           rarity: "uncommon",
-          deflect: 1,
-          deflectPower: 1,
-        },
-        {
-          id: "everyone",
-          name: "Everyone,",
-          bonus: "+50% Leverage gain",
-          rarity: "uncommon",
-          levMult: 0.5,
+          onCcBoostSingle: 2,
         },
         {
           id: "sustainability_team",
@@ -1977,24 +1969,34 @@
         {
           id: "greetings",
           name: "Greetings,",
-          bonus: "Deflect +1.",
+          bonus:
+            "Gains +0.25 escalate mult for every 3 reputation held (resets if lost).",
           rarity: "uncommon",
-          deflect: 1,
-          deflectPower: 1,
+          repScaleEscalateMult: 0.25,
+          repScaleStep: 3,
         },
         {
           id: "all_stakeholders",
           name: "To all stakeholders,",
-          bonus: "+5 all messages",
+          bonus: "On Reply All: gain 1 BCC if you have room.",
           rarity: "rare",
-          globalDmg: 5,
+          onReplyAllGainBcc: 1,
         },
         {
           id: "formal",
           name: "To whom it may concern,",
-          bonus: "+5 reply to",
+          bonus: "On enter shop: duplicate one random BCC you hold.",
           rarity: "rare",
-          singleDmg: 5,
+          onEnterShopDuplicateBcc: 1,
+        },
+        {
+          id: "everyone",
+          name: "Everyone,",
+          bonus:
+            "Escalate and Reply All affect all stakeholders once per active stakeholder.",
+          rarity: "rare",
+          escalatePerActive: true,
+          replyAllPerActive: true,
         },
       ];
 
@@ -4312,6 +4314,8 @@
           escalateRecoverPerHit: 0,
           bccLimit: 2,
           contactUpgrades: {},
+          contactGreetingBoosts: {},
+          salutationBonuses: {},
           attacks: [
             "I believe we need to circle back to your recent comments. My focus is on department output, and I suggest yours should be too.",
             "I've already addressed this in my previous email, but for the sake of clarity, I'll repeat it: This is not my responsibility.",
@@ -4868,6 +4872,48 @@
         return Object.keys(stats).length ? stats : null;
       }
 
+      function getSalutationPersistentStats(u) {
+        if (!u || !u.salutation || !u.salutationBonuses) return null;
+        const stats = u.salutationBonuses[u.salutation.id];
+        if (!stats) return null;
+        const filtered = {};
+        let hasAny = false;
+        STAT_FIELDS.forEach((field) => {
+          const value = stats[field];
+          if (typeof value === "number" && value !== 0) {
+            filtered[field] = value;
+            hasAny = true;
+          }
+        });
+        return hasAny ? filtered : null;
+      }
+
+      function updateGreetingReputationScaling(player) {
+        if (!player) return;
+        const salutation = player.salutation;
+        const trackedId = "greeting";
+        if (!player.salutationBonuses) player.salutationBonuses = {};
+        if (!salutation || salutation.id !== trackedId) {
+          if (player.salutationBonuses[trackedId]) {
+            delete player.salutationBonuses[trackedId];
+          }
+          return;
+        }
+        const step = salutation.repScaleStep || 3;
+        const per = salutation.repScaleEscalateMult || 0;
+        const target = Math.floor((player.reputation || 0) / step) * per;
+        const current =
+          (player.salutationBonuses[trackedId] &&
+            player.salutationBonuses[trackedId].escalateDmgMult) ||
+          0;
+        if (target > current) {
+          player.salutationBonuses[trackedId] = {
+            ...(player.salutationBonuses[trackedId] || {}),
+            escalateDmgMult: target,
+          };
+        }
+      }
+
       function computeUnitStats(u) {
         const stats = Object.fromEntries(STAT_FIELDS.map((f) => [f, 0]));
         getUnitStatBlocks(u).forEach((block) => {
@@ -4895,6 +4941,13 @@
         if (salutationWindowStats) {
           STAT_FIELDS.forEach((field) => {
             const value = salutationWindowStats[field];
+            if (typeof value === "number") stats[field] += value;
+          });
+        }
+        const salutationPersistentStats = getSalutationPersistentStats(u);
+        if (salutationPersistentStats) {
+          STAT_FIELDS.forEach((field) => {
+            const value = salutationPersistentStats[field];
             if (typeof value === "number") stats[field] += value;
           });
         }
@@ -4931,6 +4984,13 @@
           sources.push({
             label: `Greeting window: ${u.salutation.name}`,
             stats: salutationWindowStats,
+          });
+        }
+        const salutationPersistentStats = getSalutationPersistentStats(u);
+        if (salutationPersistentStats && u.salutation) {
+          sources.push({
+            label: `Greeting progress: ${u.salutation.name}`,
+            stats: salutationPersistentStats,
           });
         }
         if (u.signOff) pushSource(`Sign-off: ${u.signOff.name}`, u.signOff);
@@ -4979,11 +5039,23 @@
           escalate: { dmg: "escalateDmg", mult: "escalateDmgMult" },
           replyAll: { dmg: "replyAllDmg", mult: "replyAllDmgMult" },
         };
+        if (type === "replyAll") {
+          const singleBase = stats.singleDmg || 0;
+          const escalateBase = stats.escalateDmg || 0;
+          const singleMult = 1 + (stats.singleDmgMult || 0);
+          const escalateMult = 1 + (stats.escalateDmgMult || 0);
+          const globalFlat = stats.globalDmg || 0;
+          const total =
+            (singleBase * singleMult) / 4 +
+            (escalateBase * escalateMult) / 2 +
+            globalFlat;
+          return Math.floor(total);
+        }
         const fields = fieldMap[type] || fieldMap.single;
         const base = stats[fields.dmg] || 0;
         const flat = stats.globalDmg || 0;
         const mult = 1 + (stats.globalDmgMult || 0) + (stats[fields.mult] || 0);
-        return (base + flat) * mult;
+        return Math.floor((base + flat) * mult);
       }
 
       function getUnitFlatDef(u) {
@@ -5430,9 +5502,61 @@
         document.getElementById("training-modal").classList.add("hidden");
       }
 
+      function addRandomBccs(player, count) {
+        const limit = computeUnitStats(player).bccLimit || 0;
+        const slots = Math.max(0, limit - player.bccContacts.length);
+        if (slots <= 0) return [];
+        const owned = new Set(player.bccContacts.map((b) => b.id));
+        const pool = BCC_CONTACTS.filter((b) => !owned.has(b.id));
+        const picks = Math.min(count, slots, pool.length);
+        if (picks <= 0) return [];
+        const picked = pickWeighted(pool, picks);
+        picked.forEach((b) => player.bccContacts.push({ ...b }));
+        return picked;
+      }
+
+      function duplicateRandomOwnedBccs(player, count) {
+        const limit = computeUnitStats(player).bccLimit || 0;
+        const slots = Math.max(0, limit - player.bccContacts.length);
+        if (slots <= 0) return [];
+        const pool = player.bccContacts;
+        if (!pool.length) return [];
+        const picks = Math.min(count, slots);
+        const added = [];
+        for (let i = 0; i < picks; i++) {
+          const picked = pool[Math.floor(Math.random() * pool.length)];
+          if (picked) {
+            const clone = { ...picked };
+            player.bccContacts.push(clone);
+            added.push(clone);
+          }
+        }
+        return added;
+      }
+
       function addContactBuff(target, contact, usedBy) {
         const buff = JSON.parse(JSON.stringify(contact));
         buff.usedBy = usedBy;
+        if (usedBy === state.player.name) {
+          const greetingBoost = state.player.salutation?.onCcBoostSingle;
+          if (greetingBoost) {
+            if (!state.player.contactGreetingBoosts)
+              state.player.contactGreetingBoosts = {};
+            const existing = state.player.contactGreetingBoosts[buff.id] || 0;
+            state.player.contactGreetingBoosts[buff.id] =
+              existing + greetingBoost;
+          }
+          const greetingBonus =
+            state.player.contactGreetingBoosts &&
+            state.player.contactGreetingBoosts[buff.id];
+          if (greetingBonus) {
+            const baseEff = buff.eff || {};
+            buff.eff = {
+              ...baseEff,
+              singleDmg: (baseEff.singleDmg || 0) + greetingBonus,
+            };
+          }
+        }
         if (usedBy === state.player.name && state.player.contactUpgrades) {
           const upgrade = state.player.contactUpgrades[buff.id];
           if (upgrade) {
@@ -5539,6 +5663,10 @@
         CONTACTS.forEach((c) => (c.usedBy = null));
 
         const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
+
+        if (p.salutation && p.salutation.onEnterGainBcc) {
+          addRandomBccs(p, p.salutation.onEnterGainBcc);
+        }
 
         // Assemble opponents from EMPLOYEES and mission-specific data
         opponents = mission.opponents.map((missionOpponent) => {
@@ -5931,6 +6059,10 @@
       function showShop() {
         state.shop.rerollCount = 0;
         transitionTo("shop-screen");
+        const p = state.player;
+        if (p.salutation && p.salutation.onEnterShopDuplicateBcc) {
+          duplicateRandomOwnedBccs(p, p.salutation.onEnterShopDuplicateBcc);
+        }
         updateShopUI();
       }
 
@@ -6005,12 +6137,14 @@
             deflectCharge: 0,
             deflectChargeReflect: 0,
             deflectChargeReduce: 0,
-            followUpChance: 0,
-            replyDeptSplash: 0,
-            escalateRecoverPerHit: 0,
-            bccLimit: 2,
-            contactUpgrades: {},
-            _lineBags: {},
+          followUpChance: 0,
+          replyDeptSplash: 0,
+          escalateRecoverPerHit: 0,
+          bccLimit: 2,
+          contactUpgrades: {},
+          contactGreetingBoosts: {},
+          salutationBonuses: {},
+          _lineBags: {},
           },
           currentMissionIndex: 0,
           targetId: 1,
@@ -6300,6 +6434,9 @@
           state.player.addressBook = state.player.addressBook.filter(
             (id) => id !== item.id,
           );
+          if (state.player.contactGreetingBoosts) {
+            delete state.player.contactGreetingBoosts[item.id];
+          }
         } else if (itemType === "bcc") {
           const idx = state.player.bccContacts.findIndex(
             (b) => b.id === item.id,
@@ -6785,6 +6922,7 @@
       function updateUI() {
         if (state.gameOver) return;
         const p = state.player;
+        updateGreetingReputationScaling(p);
         const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
         const totalMaxHp = getUnitMaxHp(p);
         if (p.hp > totalMaxHp) p.hp = totalMaxHp;
@@ -7084,18 +7222,26 @@
           const d = getUnitDamage(p, "escalate");
           let totalBlocked = 0;
           let totalRecovered = 0;
+          const defeated = new Set();
           const recoverPerHit = getUnitEscalateRecover(p);
-          opponents.forEach((o) => {
-            if (o.hp > 0) {
-              const result = applyDamage(p, o, d);
-              totalBlocked += result.blocked;
-              if (recoverPerHit > 0) {
-                totalRecovered += recoverPerHit;
-                p.hp = Math.min(totalMaxHp, p.hp + recoverPerHit);
+          const activeOpponents = opponents.filter((o) => o.hp > 0);
+          const waves =
+            p.salutation && p.salutation.escalatePerActive
+              ? Math.max(1, activeOpponents.length)
+              : 1;
+          for (let wave = 0; wave < waves; wave++) {
+            activeOpponents.forEach((o) => {
+              if (o.hp > 0) {
+                const result = applyDamage(p, o, d);
+                totalBlocked += result.blocked;
+                if (recoverPerHit > 0) {
+                  totalRecovered += recoverPerHit;
+                  p.hp = Math.min(totalMaxHp, p.hp + recoverPerHit);
+                }
+                if (o.hp <= 0) defeated.add(o);
               }
-              if (o.hp <= 0) handleOpponentDefeat(o, true);
-            }
-          });
+            });
+          }
           let levGain = getPlayerLeverageGain(10);
           p.ult += levGain;
           const line = drawFromLineBag(
@@ -7118,6 +7264,7 @@
             body,
             "bg-orange-50 border-l-4 border-orange-500",
           );
+          defeated.forEach((o) => handleOpponentDefeat(o, true));
         } else if (type === "DEFLECT") {
           p.deflectChargeReflect = getUnitDeflectReflect(p);
           p.deflectChargeReduce = getUnitDeflectReduce(p);
@@ -7160,14 +7307,37 @@
         } else if (type === "ULT") {
           const d = getUnitDamage(p, "replyAll");
           let totalBlocked = 0;
-          opponents.forEach((o) => {
-            if (o.hp > 0) {
-              const result = applyDamage(p, o, d);
-              totalBlocked += result.blocked;
-              if (o.hp <= 0) handleOpponentDefeat(o, true);
-            }
-          });
+          const defeated = new Set();
+          const activeOpponents = opponents.filter((o) => o.hp > 0);
+          const waves =
+            p.salutation && p.salutation.replyAllPerActive
+              ? Math.max(1, activeOpponents.length)
+              : 1;
+          for (let wave = 0; wave < waves; wave++) {
+            activeOpponents.forEach((o) => {
+              if (o.hp > 0) {
+                const result = applyDamage(p, o, d);
+                totalBlocked += result.blocked;
+                if (o.hp <= 0) defeated.add(o);
+              }
+            });
+          }
           p.ult = 0;
+          if (p.salutation && p.salutation.onReplyAllGainBcc) {
+            addRandomBccs(p, p.salutation.onReplyAllGainBcc);
+          }
+          if (p.salutation && p.salutation.onReplyAllBoostSingleMult) {
+            if (!p.salutationBonuses) p.salutationBonuses = {};
+            const salId = p.salutation.id;
+            const current = p.salutationBonuses[salId] || {};
+            const next = {
+              ...current,
+              singleDmgMult:
+                (current.singleDmgMult || 0) +
+                p.salutation.onReplyAllBoostSingleMult,
+            };
+            p.salutationBonuses[salId] = next;
+          }
           const replyAllLine = drawFromLineBag(
             p,
             getPlayerLineBagKey("replyAll", missionId, titleId),
@@ -7188,6 +7358,7 @@
             replyBody,
             "bg-yellow-50 font-bold border-l-4 border-yellow-500",
           );
+          defeated.forEach((o) => handleOpponentDefeat(o, true));
         }
 
         updateUI();
