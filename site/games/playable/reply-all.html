@@ -2007,40 +2007,53 @@
         {
           id: "thanks",
           name: "Thanks,",
-          bonus: "+10 Max Credibility",
+          bonus: "First contact you loop in per thread gains +5 reply to permanently.",
           rarity: "common",
-          maxHp: 10,
         },
         {
           id: "respectfully",
           name: "Respectfully,",
-          bonus: "+10 Max Credibility",
+          bonus: "Ending the thread with full leverage grants +5 all messages permanently.",
           rarity: "common",
-          maxHp: 10,
         },
         {
           id: "regards_signoff",
           name: "Regards,",
-          bonus: "+5 Max Credibility, +1 Credibility/turn & Self-Promote +5",
+          bonus: "Each stakeholder you take off the thread grants +2 reply to permanently.",
           rarity: "common",
-          maxHp: 5,
-          heal: 1,
-          selfPromoteHeal: 5,
+          onRemoveSingleDmg: 2,
         },
         {
           id: "kind_regards_signoff",
           name: "Kind regards,",
-          bonus: "+2 Credibility/turn & Self-Promote +5",
+          bonus:
+            "Each stakeholder you take off the thread grants +1 all messages, +1 deflect, +1 self-promote permanently.",
           rarity: "common",
-          heal: 2,
-          selfPromoteHeal: 5,
+          onRemoveGlobalDmg: 1,
+          onRemoveDeflect: 1,
+          onRemoveSelfPromote: 1,
         },
         {
           id: "cheers",
           name: "Cheers,",
-          bonus: "+2 Credibility/turn",
+          bonus:
+            "Every 5 self-promotion beyond max credibility grants +5 Max Credibility (no heal).",
           rarity: "common",
-          heal: 2,
+        },
+        {
+          id: "team_regards_signoff",
+          name: "Team regards,",
+          bonus:
+            "Each stakeholder you take off the thread grants +2 escalate permanently.",
+          rarity: "common",
+          onRemoveEscalateDmg: 2,
+        },
+        {
+          id: "best_signoff",
+          name: "Best,",
+          bonus: "+2 reply to",
+          rarity: "common",
+          singleDmg: 2,
         },
         {
           id: "warmly",
@@ -2053,7 +2066,7 @@
           id: "solidarity",
           name: "In solidarity,",
           bonus: "+2 Credibility/turn",
-          rarity: "common",
+          rarity: "uncommon",
           heal: 2,
         },
         {
@@ -2070,13 +2083,6 @@
           bonus: "+75% leverage gain",
           rarity: "uncommon",
           levMult: 0.75,
-        },
-        {
-          id: "best_signoff",
-          name: "Best,",
-          bonus: "+2 reply to",
-          rarity: "uncommon",
-          singleDmg: 2,
         },
         {
           id: "thank_you",
@@ -4323,7 +4329,9 @@
           bccLimit: 2,
           contactUpgrades: {},
           contactGreetingBoosts: {},
+          contactSignoffBoosts: {},
           salutationBonuses: {},
+          signoffBonuses: {},
           attacks: [
             "I believe we need to circle back to your recent comments. My focus is on department output, and I suggest yours should be too.",
             "I've already addressed this in my previous email, but for the sake of clarity, I'll repeat it: This is not my responsibility.",
@@ -4886,6 +4894,34 @@
         return hasAny ? filtered : null;
       }
 
+      function getSignoffPersistentStats(u) {
+        if (!u || !u.signOff || !u.signoffBonuses) return null;
+        const stats = u.signoffBonuses[u.signOff.id];
+        if (!stats) return null;
+        const filtered = {};
+        let hasAny = false;
+        STAT_FIELDS.forEach((field) => {
+          const value = stats[field];
+          if (typeof value === "number" && value !== 0) {
+            filtered[field] = value;
+            hasAny = true;
+          }
+        });
+        return hasAny ? filtered : null;
+      }
+
+      function applyCheersOverhealBonus(unit, overflow) {
+        if (!unit || !unit.signOff || unit.signOff.id !== "cheers") return;
+        const steps = Math.floor(overflow / 5);
+        if (steps <= 0) return;
+        if (!unit.signoffBonuses) unit.signoffBonuses = {};
+        const current = unit.signoffBonuses.cheers || {};
+        unit.signoffBonuses.cheers = {
+          ...current,
+          maxHp: (current.maxHp || 0) + steps * 5,
+        };
+      }
+
       function getUnitRemainingWins(u) {
         if (!u) return 0;
         if (typeof u.currentWins === "number") return u.currentWins;
@@ -4976,6 +5012,13 @@
             if (typeof value === "number") stats[field] += value;
           });
         }
+        const signoffPersistentStats = getSignoffPersistentStats(u);
+        if (signoffPersistentStats) {
+          STAT_FIELDS.forEach((field) => {
+            const value = signoffPersistentStats[field];
+            if (typeof value === "number") stats[field] += value;
+          });
+        }
         const winScaleStats = getUnitWinScaleStats(u);
         if (winScaleStats) {
           STAT_FIELDS.forEach((field) => {
@@ -5033,6 +5076,13 @@
           });
         }
         if (u.signOff) pushSource(`Sign-off: ${u.signOff.name}`, u.signOff);
+        const signoffPersistentStats = getSignoffPersistentStats(u);
+        if (signoffPersistentStats && u.signOff) {
+          sources.push({
+            label: `Sign-off progress: ${u.signOff.name}`,
+            stats: signoffPersistentStats,
+          });
+        }
         if (Array.isArray(u.signatures)) {
           u.signatures.forEach((s) => pushSource(`Signature: ${s.name}`, s));
         }
@@ -5585,6 +5635,17 @@
             state.player.contactGreetingBoosts[buff.id] =
               existing + greetingBoost;
           }
+          if (
+            state.player.signOff &&
+            state.player.signOff.id === "thanks" &&
+            !state.threadFirstContactBoosted
+          ) {
+            if (!state.player.contactSignoffBoosts)
+              state.player.contactSignoffBoosts = {};
+            const current = state.player.contactSignoffBoosts[buff.id] || 0;
+            state.player.contactSignoffBoosts[buff.id] = current + 5;
+            state.threadFirstContactBoosted = true;
+          }
           const greetingBonus =
             state.player.contactGreetingBoosts &&
             state.player.contactGreetingBoosts[buff.id];
@@ -5593,6 +5654,16 @@
             buff.eff = {
               ...baseEff,
               singleDmg: (baseEff.singleDmg || 0) + greetingBonus,
+            };
+          }
+          const signoffBonus =
+            state.player.contactSignoffBoosts &&
+            state.player.contactSignoffBoosts[buff.id];
+          if (signoffBonus) {
+            const baseEff = buff.eff || {};
+            buff.eff = {
+              ...baseEff,
+              singleDmg: (baseEff.singleDmg || 0) + signoffBonus,
             };
           }
         }
@@ -5694,6 +5765,7 @@
         p.deflectChargeReflect = 0;
         p.deflectChargeReduce = 0;
         state.expenseReportActive = false;
+        state.threadFirstContactBoosted = false;
         const baseStats = computeUnitStats(p);
         p.hp = getUnitMaxHp(p);
         p.currentWins = Math.max(0, Math.floor(baseStats.wins));
@@ -6257,7 +6329,9 @@
           bccLimit: 2,
           contactUpgrades: {},
           contactGreetingBoosts: {},
+          contactSignoffBoosts: {},
           salutationBonuses: {},
+          signoffBonuses: {},
           _lineBags: {},
           },
           currentMissionIndex: 0,
@@ -6550,6 +6624,9 @@
           );
           if (state.player.contactGreetingBoosts) {
             delete state.player.contactGreetingBoosts[item.id];
+          }
+          if (state.player.contactSignoffBoosts) {
+            delete state.player.contactSignoffBoosts[item.id];
           }
         } else if (itemType === "bcc") {
           const idx = state.player.bccContacts.findIndex(
@@ -6946,6 +7023,31 @@
         if (byPlayer) {
           state.removedByPlayer++;
           o.removedByPlayer = true;
+          const p = state.player;
+          if (p.signOff && p.signoffBonuses) {
+            const id = p.signOff.id;
+            if (id === "regards_signoff") {
+              const current = p.signoffBonuses[id] || {};
+              p.signoffBonuses[id] = {
+                ...current,
+                singleDmg: (current.singleDmg || 0) + 2,
+              };
+            } else if (id === "kind_regards_signoff") {
+              const current = p.signoffBonuses[id] || {};
+              p.signoffBonuses[id] = {
+                ...current,
+                globalDmg: (current.globalDmg || 0) + 1,
+                deflect: (current.deflect || 0) + 1,
+                selfPromoteHeal: (current.selfPromoteHeal || 0) + 1,
+              };
+            } else if (id === "team_regards_signoff") {
+              const current = p.signoffBonuses[id] || {};
+              p.signoffBonuses[id] = {
+                ...current,
+                escalateDmg: (current.escalateDmg || 0) + 2,
+              };
+            }
+          }
         }
         addEmailToLog(
           o.name,
@@ -6959,6 +7061,19 @@
           if (next) state.targetId = next.id;
         }
         if (opponents.every((opp) => opp.hp <= 0)) {
+          const p = state.player;
+          if (
+            p.signOff &&
+            p.signOff.id === "respectfully" &&
+            p.ult >= 100
+          ) {
+            if (!p.signoffBonuses) p.signoffBonuses = {};
+            const current = p.signoffBonuses[p.signOff.id] || {};
+            p.signoffBonuses[p.signOff.id] = {
+              ...current,
+              globalDmg: (current.globalDmg || 0) + 5,
+            };
+          }
           state.gameOver = true;
           endQuarter();
         }
@@ -7399,7 +7514,10 @@
         } else if (type === "PROMOTE") {
           p.currentWins--;
           const promoteHeal = getUnitSelfPromoteHeal(p, 20);
-          p.hp = Math.min(totalMaxHp, p.hp + promoteHeal);
+          const promotePotential = p.hp + promoteHeal;
+          const promoteOverflow = Math.max(0, promotePotential - totalMaxHp);
+          p.hp = Math.min(totalMaxHp, promotePotential);
+          applyCheersOverhealBonus(p, promoteOverflow);
           const selfPromoteLine = drawFromLineBag(
             p,
             getPlayerLineBagKey("selfPromote", missionId, titleId),
@@ -7614,7 +7732,11 @@
             } else if (roll < 0.3 && a.hp < 20 && a.wins > 0) {
               a.wins--;
               const promoteHeal = getUnitSelfPromoteHeal(a, 15);
-              a.hp = Math.min(getUnitMaxHp(a), a.hp + promoteHeal);
+              const aMaxHp = getUnitMaxHp(a);
+              const promotePotential = a.hp + promoteHeal;
+              const promoteOverflow = Math.max(0, promotePotential - aMaxHp);
+              a.hp = Math.min(aMaxHp, promotePotential);
+              applyCheersOverhealBonus(a, promoteOverflow);
               const selfPromoteLine = drawFromLineBag(
                 a,
                 "selfPromote",
