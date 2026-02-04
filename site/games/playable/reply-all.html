@@ -147,6 +147,126 @@
         }
       }
 
+      /* Shop Redesign Styles */
+      #shop-screen {
+        position: relative;
+        overflow-x: hidden;
+      }
+      #shop-drawers {
+        position: fixed;
+        right: 0;
+        top: 0;
+        height: 100%;
+        display: flex;
+        z-index: 200;
+        pointer-events: none;
+      }
+      #shop-drawer-tabs {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin-top: 80px;
+        pointer-events: auto;
+      }
+      .drawer-tab {
+        writing-mode: vertical-lr;
+        padding: 12px 6px;
+        background: var(--win-grey);
+        border-top: 2px solid var(--win-border-light);
+        border-left: 2px solid var(--win-border-light);
+        border-bottom: 2px solid var(--win-border-dark);
+        border-right: 2px solid var(--win-border-dark);
+        cursor: pointer;
+        font-size: 10px;
+        font-weight: bold;
+        text-align: center;
+        user-select: none;
+        transition: background 0.2s;
+      }
+      .drawer-tab.active {
+        background: #dfdfdf;
+        border-top: 2px solid var(--win-border-dark);
+        border-left: 2px solid var(--win-border-dark);
+        border-bottom: 2px solid var(--win-border-light);
+        border-right: 2px solid var(--win-border-light);
+      }
+      #shop-drawer-panel {
+        width: 320px;
+        background: var(--win-grey);
+        border-left: 2px solid var(--win-border-light);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        pointer-events: auto;
+        transition: transform 0.3s ease;
+        transform: translateX(100%);
+        box-shadow: -5px 0 15px rgba(0,0,0,0.2);
+      }
+      #shop-drawer-panel.open {
+        transform: translateX(0);
+      }
+      .drawer-content {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 12px;
+      }
+      .drop-zone {
+        border: 2px dashed #808080;
+        background: rgba(255,255,255,0.4);
+        min-height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 8px 0;
+        font-size: 11px;
+        font-weight: bold;
+        color: #444;
+        text-align: center;
+        transition: all 0.2s;
+        pointer-events: auto;
+      }
+      .drop-zone.active {
+        background: rgba(0,0,128,0.1);
+        border-color: #000080;
+        transform: scale(1.02);
+      }
+      .drop-zone.hover {
+        background: rgba(0,0,128,0.2);
+        border-style: solid;
+        color: #000080;
+      }
+      .email-template-container {
+        background: white;
+        border: 1px solid #808080;
+        box-shadow: inset 1px 1px 3px rgba(0,0,0,0.1);
+        padding: 12px;
+        font-family: sans-serif;
+        font-size: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 400px;
+      }
+      .email-template-header {
+        border-bottom: 1px solid #eee;
+        padding-bottom: 8px;
+        margin-bottom: 8px;
+        font-size: 10px;
+        color: #666;
+      }
+      .dragging-ghost {
+        position: fixed;
+        pointer-events: none;
+        z-index: 1000;
+        opacity: 0.9;
+        box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
+        transform: scale(1.05);
+        transition: transform 0.1s ease;
+      }
+      .dragging-returning {
+        transition: all 0.3s ease !important;
+      }
+
       .email-header {
         background: #e8e8e8;
         border-bottom: 1px solid #ccc;
@@ -334,23 +454,6 @@
           </button>
         </div>
         <div class="bg-[#f0f0f0] p-4 flex-grow overflow-y-auto space-y-6">
-          <!-- Active Employee Assets -->
-          <div class="space-y-4">
-            <h3
-              class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
-            >
-              Active Employee Assets
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div id="shop-owned-contacts" class="space-y-2"></div>
-              <div class="space-y-4">
-                <div id="shop-owned-signatures" class="space-y-2"></div>
-                <div id="shop-owned-email-meta" class="space-y-2"></div>
-                <div id="shop-owned-bccs" class="space-y-2"></div>
-              </div>
-            </div>
-          </div>
-
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Individual Opportunities -->
             <div class="space-y-2">
@@ -384,6 +487,23 @@
         >
           Corporate policy: Requests are logged. Archiving items returns partial
           reputation.
+        </div>
+      </div>
+      <!-- Drawers system -->
+      <div id="shop-drawers">
+        <div id="shop-drawer-tabs">
+          <div id="tab-address" class="drawer-tab" onclick="toggleDrawer('address')">ADDRESS BOOK</div>
+          <div id="tab-template" class="drawer-tab" onclick="toggleDrawer('template')">EMAIL TEMPLATE</div>
+          <div id="tab-bcc" class="drawer-tab" onclick="toggleDrawer('bcc')">BCCs</div>
+        </div>
+        <div id="shop-drawer-panel">
+          <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold shrink-0">
+            <span id="drawer-title">ASSETS</span>
+            <button onclick="closeDrawer()" class="px-1">✕</button>
+          </div>
+          <div id="drawer-content-area" class="drawer-content scroll-container bg-[#dfdfdf]">
+            <!-- Content injected here -->
+          </div>
         </div>
       </div>
     </div>
@@ -1625,6 +1745,105 @@
           usedBy: null,
         },
       ];
+
+      let dragData = null;
+
+      function startDrag(e, item, sourceEl, onBuy) {
+        if (e.button !== 0) return;
+
+        const rect = sourceEl.getBoundingClientRect();
+        dragData = {
+          item: item,
+          onBuy: onBuy,
+          sourceEl: sourceEl,
+          startX: e.clientX,
+          startY: e.clientY,
+          offsetX: e.clientX - rect.left,
+          offsetY: e.clientY - rect.top,
+          ghost: sourceEl.cloneNode(true),
+          pointerId: e.pointerId
+        };
+
+        dragData.ghost.classList.add('dragging-ghost');
+        dragData.ghost.style.width = rect.width + 'px';
+        dragData.ghost.style.left = rect.left + 'px';
+        dragData.ghost.style.top = rect.top + 'px';
+        document.body.appendChild(dragData.ghost);
+
+        // Auto-open drawer
+        if (item.itemType === 'contact') openDrawer('address');
+        else if (['salutation', 'signoff', 'signature'].includes(item.itemType)) openDrawer('template');
+        else if (item.itemType === 'bcc') openDrawer('bcc');
+
+        sourceEl.setPointerCapture(e.pointerId);
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+      }
+
+      function onPointerMove(e) {
+        if (!dragData) return;
+
+        const x = e.clientX - dragData.offsetX;
+        const y = e.clientY - dragData.offsetY;
+        dragData.ghost.style.left = x + 'px';
+        dragData.ghost.style.top = y + 'px';
+
+        updateDropZones(e.clientX, e.clientY);
+      }
+
+      function updateDropZones(x, y) {
+        const zones = document.querySelectorAll('.drop-zone');
+        zones.forEach(zone => {
+          const rect = zone.getBoundingClientRect();
+          const isOver = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+          const accepts = zone.dataset.accept === dragData.item.itemType;
+
+          zone.classList.toggle('hover', isOver && accepts);
+          zone.classList.toggle('active', accepts);
+        });
+      }
+
+      function onPointerUp(e) {
+        if (!dragData) return;
+
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+
+        const x = e.clientX;
+        const y = e.clientY;
+
+        let success = false;
+        const zones = document.querySelectorAll('.drop-zone');
+        zones.forEach(zone => {
+          const rect = zone.getBoundingClientRect();
+          const isOver = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+          const accepts = zone.dataset.accept === dragData.item.itemType;
+
+          if (isOver && accepts) {
+            success = true;
+            dragData.onBuy();
+          }
+          zone.classList.remove('hover', 'active');
+        });
+
+        if (!success) {
+            dragData.ghost.classList.add('dragging-returning');
+            const rect = dragData.sourceEl.getBoundingClientRect();
+            dragData.ghost.style.left = rect.left + 'px';
+            dragData.ghost.style.top = rect.top + 'px';
+            dragData.ghost.style.opacity = '0.5';
+
+            setTimeout(() => {
+                if (dragData && dragData.ghost && dragData.ghost.parentNode) {
+                  document.body.removeChild(dragData.ghost);
+                }
+                dragData = null;
+            }, 300);
+        } else {
+            if (dragData.ghost.parentNode) document.body.removeChild(dragData.ghost);
+            dragData = null;
+        }
+      }
 
       function inferContactRole(contact) {
         const title = (contact.title || "").toLowerCase();
@@ -4716,6 +4935,7 @@
           directItems: [],
           packs: [],
           rerollCount: 0,
+          activeDrawerTab: null,
         },
         pendingTraining: null,
         expenseReportActive: false,
@@ -6874,9 +7094,137 @@
 
       function showShop() {
         state.shop.rerollCount = 0;
+        state.shop.activeDrawerTab = null;
         transitionTo("shop-screen");
         runUnitEffects(state.player, "shop_enter", {});
         updateShopUI();
+      }
+
+      function toggleDrawer(tabId) {
+        if (state.shop.activeDrawerTab === tabId) {
+          closeDrawer();
+        } else {
+          openDrawer(tabId);
+        }
+      }
+
+      function openDrawer(tabId) {
+        state.shop.activeDrawerTab = tabId;
+        const panel = document.getElementById("shop-drawer-panel");
+        if (panel) panel.classList.add("open");
+        updateShopUI();
+      }
+
+      function closeDrawer() {
+        state.shop.activeDrawerTab = null;
+        const panel = document.getElementById("shop-drawer-panel");
+        if (panel) panel.classList.remove("open");
+        updateShopUI();
+      }
+
+      function renderAddressBookDrawer(container) {
+        const addressLimit = getUnitAddressLimit(state.player);
+        container.innerHTML = "";
+
+        const header = document.createElement("div");
+        header.className = "text-[10px] font-bold uppercase text-gray-500 mb-2";
+        header.innerText = `Address Book (${state.player.addressBook.length}/${addressLimit})`;
+        container.appendChild(header);
+
+        const dropZone = document.createElement("div");
+        dropZone.id = "drawer-drop-zone-contact";
+        dropZone.className = "drop-zone";
+        dropZone.dataset.accept = "contact";
+        dropZone.innerText = "DRAG CONTACT HERE TO HIRE";
+        container.appendChild(dropZone);
+
+        const list = document.createElement("div");
+        list.className = "space-y-2";
+        if (state.player.addressBook.length === 0) {
+          list.innerHTML = '<div class="text-[10px] italic text-gray-400 text-center py-4">No contacts on file.</div>';
+        } else {
+          state.player.addressBook.forEach(id => {
+            const c = CONTACTS.find(con => con.id === id);
+            if (c) {
+              list.appendChild(createOwnedRow(c, "contact", () => sellItem('contact', c)));
+            }
+          });
+        }
+        container.appendChild(list);
+      }
+
+      function renderBccDrawer(container) {
+        const bccLimit = computeUnitStats(state.player).bccLimit || 0;
+        container.innerHTML = "";
+
+        const header = document.createElement("div");
+        header.className = "text-[10px] font-bold uppercase text-gray-500 mb-2";
+        header.innerText = `Consumable BCCs (${state.player.bccContacts.length}/${bccLimit})`;
+        container.appendChild(header);
+
+        const dropZone = document.createElement("div");
+        dropZone.id = "drawer-drop-zone-bcc";
+        dropZone.className = "drop-zone";
+        dropZone.dataset.accept = "bcc";
+        dropZone.innerText = "DRAG BCC HERE TO REQUEST";
+        container.appendChild(dropZone);
+
+        const list = document.createElement("div");
+        list.className = "space-y-2";
+        if (state.player.bccContacts.length === 0) {
+          list.innerHTML = '<div class="text-[10px] italic text-gray-400 text-center py-4">No BCCs on file.</div>';
+        } else {
+          state.player.bccContacts.forEach((bcc, idx) => {
+            list.appendChild(createOwnedRow(bcc, "bcc", () => sellItem('bcc', bcc), { actionLabel: "DISCARD" }));
+          });
+        }
+        container.appendChild(list);
+      }
+
+      function renderEmailTemplateDrawer(container) {
+        const p = state.player;
+        container.innerHTML = `
+          <div class="email-template-container retro-border-inset">
+            <div class="email-template-header">
+              <div><strong>To:</strong> everyone@gov.org</div>
+              <div><strong>Subject:</strong> RE: Institutional Alignment</div>
+            </div>
+
+            <div id="drop-zone-salutation" class="drop-zone h-12" data-accept="salutation">
+              ${p.salutation ? `<div class="bg-blue-50 p-1 w-full text-center border border-blue-200 text-[#000080] font-bold">${p.salutation.name}</div>` : '[ DRAG GREETING HERE ]'}
+            </div>
+
+            <div class="flex-grow py-4 text-gray-300 italic text-[10px] select-none">
+              Please be advised that the quarterly strategy session has been
+              rescheduled. We remain committed to organizational excellence...
+            </div>
+
+            <div id="drop-zone-signoff" class="drop-zone h-12" data-accept="signoff">
+              ${p.signOff ? `<div class="bg-blue-50 p-1 w-full text-center border border-blue-200 text-[#000080] font-bold">${p.signOff.name}</div>` : '[ DRAG SIGN-OFF HERE ]'}
+            </div>
+
+            <div id="drop-zone-signature" class="drop-zone h-12" data-accept="signature">
+              [ DRAG NEW SIGNATURE HERE ]
+            </div>
+
+            <div id="drawer-owned-signatures" class="space-y-1 mt-2">
+              <div class="text-[9px] font-bold text-gray-400 uppercase">Active Signatures (${p.signatures.length}/${p.title.sigLimit})</div>
+            </div>
+          </div>
+        `;
+
+        const sigList = container.querySelector("#drawer-owned-signatures");
+        p.signatures.forEach(sig => {
+            const row = document.createElement("div");
+            row.className = "flex items-center justify-between bg-white border border-gray-200 p-1 text-[10px]";
+            row.innerHTML = `<span class="truncate">${sig.name}</span>`;
+            const delBtn = document.createElement("button");
+            delBtn.className = "text-red-600 font-bold ml-1 hover:bg-red-50 px-1";
+            delBtn.innerText = "✕";
+            delBtn.onclick = () => sellItem('signature', sig);
+            row.appendChild(delBtn);
+            sigList.appendChild(row);
+        });
       }
 
       function rerollShop() {
@@ -6970,6 +7318,7 @@
             directItems: [],
             packs: [],
             rerollCount: 0,
+            activeDrawerTab: null,
           },
           pendingTraining: null,
         };
@@ -7141,6 +7490,7 @@
         const canBuy = options.canBuy ?? true;
         const badge = options.badge || "";
         const disabled = !canAfford || purchased || !canBuy;
+        const isDraggable = ["contact", "signature", "salutation", "signoff", "bcc"].includes(options.type) || ["contact", "signature", "salutation", "signoff", "bcc"].includes(options.itemType);
         const metaLabel = options.metaLabel || "";
         const label = purchased
           ? options.ownedLabel || "ON FILE"
@@ -7153,6 +7503,7 @@
         const typeBadge = options.typeLabel
           ? `<span class="bg-blue-800 text-white px-1 uppercase font-bold">${options.typeLabel}</span>`
           : "";
+
         div.innerHTML = `
                 <div class="flex justify-between font-bold text-[11px] gap-2">
                     <span class="truncate">${name}</span>
@@ -7161,10 +7512,24 @@
                 <div class="flex items-center gap-2 text-[9px]" data-badge>${typeBadge}</div>
                 ${metaLabel ? `<div class="text-[9px] uppercase text-gray-500">${metaLabel}</div>` : ""}
                 <div class="text-[10px] italic text-gray-600 leading-tight">${desc}</div>
-                <button data-buy class="mt-1 retro-button text-[10px] font-bold py-1 ${disabled ? "opacity-50" : ""}" ${disabled ? "disabled" : ""}>
-                    ${label}
-                </button>
+                ${isDraggable && !purchased && canBuy ? `
+                  <div class="mt-1 text-center py-1 border border-dashed border-gray-400 text-[9px] font-bold text-gray-500 uppercase select-none">Drag to Purchase</div>
+                ` : `
+                  <button data-buy class="mt-1 retro-button text-[10px] font-bold py-1 ${disabled ? "opacity-50" : ""}" ${disabled ? "disabled" : ""}>
+                      ${label}
+                  </button>
+                `}
             `;
+
+        if (isDraggable && !disabled) {
+          div.style.touchAction = "none";
+          div.style.cursor = "grab";
+          div.onpointerdown = (e) => {
+            if (options.item) {
+              startDrag(e, options.item, div, onBuy);
+            }
+          };
+        }
         const badgeWrap = div.querySelector("[data-badge]");
         if (badge) badgeWrap.insertAdjacentHTML("beforeend", badge);
         if (options.setId) {
@@ -7682,68 +8047,30 @@
           rerollBtn.disabled = state.player.reputation < cost;
         }
 
-        // --- OWNED ASSETS ---
-        const ownedContacts = document.getElementById("shop-owned-contacts");
-        const addressLimit = getUnitAddressLimit(state.player);
-        ownedContacts.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Address Book (${state.player.addressBook.length}/${addressLimit})</div>`;
-        if (state.player.addressBook.length === 0) {
-          ownedContacts.innerHTML += `<div class="text-[10px] italic text-gray-400">No contacts on file.</div>`;
-        } else {
-          state.player.addressBook.forEach((id) => {
-            const c = CONTACTS.find((con) => con.id === id);
-            if (c) {
-              ownedContacts.appendChild(
-                createOwnedRow(c, "contact", () => sellItem("contact", c)),
-              );
-            }
+        // --- DRAWER RENDERING ---
+        const drawerContentArea = document.getElementById("drawer-content-area");
+        const drawerTitle = document.getElementById("drawer-title");
+        if (drawerContentArea && drawerTitle) {
+          const tabs = ["address", "template", "bcc"];
+          tabs.forEach(t => {
+            const el = document.getElementById(`tab-${t}`);
+            if (el) el.classList.toggle('active', state.shop.activeDrawerTab === t);
           });
-        }
 
-        const ownedSigs = document.getElementById("shop-owned-signatures");
-        ownedSigs.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Signatures (${state.player.signatures.length}/${state.player.title.sigLimit})</div>`;
-        state.player.signatures.forEach((sig) => {
-          ownedSigs.appendChild(
-            createOwnedRow(sig, "signature", () => sellItem("signature", sig)),
-          );
-        });
-
-        const ownedEmailMeta = document.getElementById("shop-owned-email-meta");
-        ownedEmailMeta.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Active Salutation & Sign-off</div>`;
-        if (state.player.salutation) {
-          ownedEmailMeta.appendChild(
-            createOwnedRow(
-              state.player.salutation,
-              "salutation",
-              () => sellItem("salutation", state.player.salutation),
-              {
-                actionLabel: "CLEAR",
-              },
-            ),
-          );
+          if (state.shop.activeDrawerTab === "address") {
+              drawerTitle.innerText = "ADDRESS BOOK";
+              renderAddressBookDrawer(drawerContentArea);
+          } else if (state.shop.activeDrawerTab === "template") {
+              drawerTitle.innerText = "EMAIL TEMPLATE";
+              renderEmailTemplateDrawer(drawerContentArea);
+          } else if (state.shop.activeDrawerTab === "bcc") {
+              drawerTitle.innerText = "BCCs";
+              renderBccDrawer(drawerContentArea);
+          } else {
+              drawerTitle.innerText = "ASSETS";
+              drawerContentArea.innerHTML = '<div class="text-[10px] text-center text-gray-500 mt-20 px-4">Drag items here to purchase, or select a tab to manage assets.</div>';
+          }
         }
-        if (state.player.signOff) {
-          ownedEmailMeta.appendChild(
-            createOwnedRow(
-              state.player.signOff,
-              "signoff",
-              () => sellItem("signoff", state.player.signOff),
-              {
-                actionLabel: "CLEAR",
-              },
-            ),
-          );
-        }
-
-        const ownedBccs = document.getElementById("shop-owned-bccs");
-        const bccLimit = computeUnitStats(state.player).bccLimit || 0;
-        ownedBccs.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Consumable BCCs (${state.player.bccContacts.length}/${bccLimit})</div>`;
-        state.player.bccContacts.forEach((bcc) => {
-          ownedBccs.appendChild(
-            createOwnedRow(bcc, "bcc", () => sellItem("bcc", bcc), {
-              actionLabel: "DISCARD",
-            }),
-          );
-        });
 
         // --- DIRECT ITEMS ---
         const directList = document.getElementById("shop-direct-items");
@@ -7794,6 +8121,8 @@
                   item.itemType === "contact"
                     ? getDepartmentName(item.departmentId) || ""
                     : "",
+                item: item,
+                itemType: item.itemType,
               },
             ),
           );
