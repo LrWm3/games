@@ -1616,6 +1616,80 @@
         },
       ];
 
+      const CONTACT_ROLE_STATS = {
+        assistant: { singleDmg: 3 },
+        associate: { globalDmg: 1 },
+        manager: { selfPromoteHeal: 5, globalDmg: 2 },
+        director: { escalateDmg: 2 },
+        executive: { maxHp: 10, singleDmg: 5 },
+        chief: { singleDmg: 5 },
+      };
+
+      const CONTACT_DEPT_TRIGGERS = {
+        operations: { event: "cc_add", mult: 0.8, oncePerThread: true },
+        information_technology: { event: "deflect_proc", mult: 1.2 },
+        executive_council_office: {
+          event: "thread_start",
+          mult: 1.1,
+          oncePerThread: true,
+        },
+        facilities_and_administration: { event: "deflect_proc", mult: 1.1 },
+        marketing: { event: "reply_to", mult: 1.0 },
+        constituent_services: { event: "remove_stakeholder", mult: 1.0 },
+        policy: { event: "reply_all", mult: 0.9 },
+        finance: { event: "thread_start", mult: 1.1, oncePerThread: true },
+        human_resources: { event: "cc_add", mult: 0.8, oncePerThread: true },
+        legal: { event: "deflect_proc", mult: 1.3 },
+        m4_agency: { event: "reply_all", mult: 1.0 },
+        digital_technology: { event: "reply_to", mult: 1.1 },
+      };
+
+      function inferContactRole(contact) {
+        const title = (contact.title || "").toLowerCase();
+        if (title.includes("chief") || title.includes("premier")) return "chief";
+        if (title.includes("director")) return "director";
+        if (title.includes("executive") || title.includes("advisor"))
+          return "executive";
+        if (title.includes("manager") || title.includes("lead") || title.includes("counsel"))
+          return "manager";
+        if (
+          title.includes("analyst") ||
+          title.includes("coordinator") ||
+          title.includes("specialist") ||
+          title.includes("officer") ||
+          title.includes("support")
+        )
+          return "associate";
+        return "assistant";
+      }
+
+      function scaleStats(stats, mult) {
+        if (!stats) return {};
+        const out = {};
+        Object.keys(stats).forEach((key) => {
+          const value = stats[key];
+          if (typeof value !== "number") return;
+          out[key] = value * mult;
+        });
+        return out;
+      }
+
+      CONTACTS.forEach((contact) => {
+        const role = contact.role || inferContactRole(contact);
+        contact.role = role;
+        const trigger = CONTACT_DEPT_TRIGGERS[contact.departmentId];
+        const baseStats = CONTACT_ROLE_STATS[role];
+        if (!trigger || !baseStats) return;
+        const scaledStats = scaleStats(baseStats, trigger.mult || 1);
+        if (!Array.isArray(contact.effects)) contact.effects = [];
+        contact.effects.push({
+          event: trigger.event,
+          type: "add_thread_bonus",
+          stats: scaledStats,
+          oncePerThread: !!trigger.oncePerThread,
+        });
+      });
+
       const TITLES = [
         {
           name: "Cubicle Resident",
@@ -5903,6 +5977,11 @@
             if (Array.isArray(sig.effects))
               sources.push({ owner: sig, id: sig.id });
           });
+        }
+        if (Array.isArray(unit.buffs)) {
+          unit.buffs
+            .filter((b) => b.usedBy === unit.name && Array.isArray(b.effects))
+            .forEach((b) => sources.push({ owner: b, id: b.id }));
         }
         sources.forEach(({ owner, id }) => {
           owner.effects.forEach((effect) => {
