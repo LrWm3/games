@@ -299,12 +299,12 @@
               <span id="summary-rep-earned" class="font-mono text-lg">+0</span>
             </div>
           </div>
-            <button
-              onclick="showShop()"
-              class="w-full py-2 retro-button font-bold text-sm"
-            >
-              GO TO PORTAL
-            </button>
+          <button
+            onclick="showShop()"
+            class="w-full py-2 retro-button font-bold text-sm"
+          >
+            GO TO PORTAL
+          </button>
         </div>
       </div>
     </div>
@@ -336,7 +336,9 @@
         <div class="bg-[#f0f0f0] p-4 flex-grow overflow-y-auto space-y-6">
           <!-- Active Employee Assets -->
           <div class="space-y-4">
-            <h3 class="text-xs font-bold uppercase border-b border-[#808080] pb-1">
+            <h3
+              class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
+            >
               Active Employee Assets
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -359,14 +361,18 @@
               >
                 Request alternate arrangements (5 REP)
               </button>
-              <h3 class="text-xs font-bold uppercase border-b border-[#808080] pb-1">
+              <h3
+                class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
+              >
                 Individual Opportunities (Direct)
               </h3>
               <div id="shop-direct-items" class="grid grid-cols-1 gap-2"></div>
             </div>
             <!-- Development Packs -->
             <div class="space-y-2">
-              <h3 class="text-xs font-bold uppercase border-b border-[#808080] pb-1">
+              <h3
+                class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
+              >
                 Development Packs
               </h3>
               <div id="shop-packs" class="grid grid-cols-1 gap-2"></div>
@@ -848,13 +854,13 @@
           <div
             class="bg-[#c0c0c0] border-t border-white px-1 flex gap-px text-[9px] h-5 shrink-0"
           >
-          <div
-            class="retro-border-inset px-2 flex items-center flex-grow truncate cursor-pointer"
-            id="status-bar-name"
-            title="View stats"
-          >
-            Logged Out
-          </div>
+            <div
+              class="retro-border-inset px-2 flex items-center flex-grow truncate cursor-pointer"
+              id="status-bar-name"
+              title="View stats"
+            >
+              Logged Out
+            </div>
             <div
               class="retro-border-inset px-2 flex items-center w-24 justify-center"
               id="status-bar-email"
@@ -917,10 +923,7 @@
           <div class="text-gray-700 italic" id="cc-profile-effect"></div>
         </div>
         <div class="p-2 flex justify-end bg-[#c0c0c0]">
-          <button
-            onclick="closeCcProfile()"
-            class="retro-button text-xs px-4"
-          >
+          <button onclick="closeCcProfile()" class="retro-button text-xs px-4">
             CLOSE
           </button>
         </div>
@@ -949,10 +952,7 @@
           <div class="text-gray-600 italic" id="set-info-status"></div>
         </div>
         <div class="p-2 flex justify-end bg-[#c0c0c0]">
-          <button
-            onclick="closeSetInfo()"
-            class="retro-button text-xs px-4"
-          >
+          <button onclick="closeSetInfo()" class="retro-button text-xs px-4">
             CLOSE
           </button>
         </div>
@@ -981,7 +981,10 @@
             >
               Manage Current Assets
             </button>
-            <div id="pack-management-container" class="hidden mt-2 space-y-2 max-h-48 overflow-y-auto"></div>
+            <div
+              id="pack-management-container"
+              class="hidden mt-2 space-y-2 max-h-48 overflow-y-auto"
+            ></div>
           </div>
         </div>
         <div class="p-2 flex justify-end bg-[#c0c0c0]">
@@ -1018,7 +1021,11 @@
 
       function createNoiseBuffer(duration = 0.5) {
         const bufferSize = audioCtx.sampleRate * duration;
-        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const buffer = audioCtx.createBuffer(
+          1,
+          bufferSize,
+          audioCtx.sampleRate,
+        );
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
         return buffer;
@@ -1175,11 +1182,11 @@
           rarity: "rare",
           departmentId: "legal",
           bonus: "Cuteness: 25% Distraction chance.",
-          loopInText:
-            "Look at <strong>{name}</strong>! Isn't she adorable?",
+          loopInText: "Look at <strong>{name}</strong>! Isn't she adorable?",
           eff: {
             dodge: 0.25,
-            specialTriggerText: "Thread distracted by {name}'s cuteness! No standing lost.",
+            specialTriggerText:
+              "Thread distracted by {name}'s cuteness! No standing lost.",
           },
           usedBy: null,
           noShop: true,
@@ -1284,7 +1291,8 @@
             "I'm looping in <strong>{name}</strong> to provide this thread more light-hearted content.",
           eff: {
             dodge: 0.35,
-            specialTriggerText: "Thread distracted by {name}! No standing lost.",
+            specialTriggerText:
+              "Thread distracted by {name}! No standing lost.",
           },
           usedBy: null,
         },
@@ -1458,7 +1466,8 @@
           rarity: "rare",
           departmentId: "operations",
           employeeId: "rory_operations",
-          bonus: "Reduce incoming damage by 1, +2 Credibility/turn & Self-Promote +5.",
+          bonus:
+            "Reduce incoming damage by 1, +2 Credibility/turn & Self-Promote +5.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep the facilities schedule and shared space aligned.",
           eff: {
@@ -1571,7 +1580,7 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> to document intern feedback and thread tone.",
           eff: {
-            followUpChance: 0.20,
+            followUpChance: 0.2,
           },
           usedBy: null,
         },
@@ -1586,7 +1595,7 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep payroll exposure in view.",
           eff: {
-            repBonus: 0.50,
+            repBonus: 0.5,
           },
           usedBy: null,
         },
@@ -1701,7 +1710,7 @@
           addressLimit: 20,
           sigLimit: 15,
           numCCperCCaction: 3,
-        }
+        },
       ];
 
       const SIGNATURES = [
@@ -1721,6 +1730,29 @@
           maxHp: 10,
         },
         {
+          id: "coffee_break",
+          name: "Sent from the breakroom coffee line",
+          bonus: "+50% leverage gain.",
+          rarity: "common",
+          setId: "coffee_lovers",
+          levMult: 0.5,
+        },
+        {
+          id: "double_espresso",
+          name: "Powered by double espresso",
+          bonus: "+1 reply to",
+          rarity: "common",
+          setId: "coffee_lovers",
+          singleDmg: 1,
+        },
+        {
+          id: "disclaimer",
+          name: "Standard Disclaimer Applied",
+          bonus: "+10% reply to",
+          rarity: "common",
+          singleDmgMult: 0.1,
+        },
+        {
           id: "per_my_last",
           name: "Per my last email,",
           bonus: "+10% reply to",
@@ -1734,6 +1766,21 @@
           rarity: "uncommon",
           heal: 2,
           selfPromoteHeal: 5,
+        },
+        {
+          id: "environment_printing",
+          name: "Please consider the environment before printing this email",
+          bonus: "+1 Credibility/turn.",
+          rarity: "uncommon",
+          setId: "earth_set",
+          heal: 3,
+        },
+        {
+          id: "breakroom",
+          name: "Sent from the breakroom",
+          bonus: "+2 Credibility/turn.",
+          rarity: "uncommon",
+          heal: 2,
         },
         {
           id: "thanks_advance",
@@ -1756,44 +1803,6 @@
           rarity: "rare",
           replyDeptSplash: 5,
         },
-        {
-          id: "environment_printing",
-          name: "Please consider the environment before printing this email",
-          bonus: "+1 Credibility/turn.",
-          rarity: "uncommon",
-          setId: "earth_set",
-          heal: 3,
-        },
-        {
-          id: "coffee_break",
-          name: "Sent from the breakroom coffee line",
-          bonus: "+50% leverage gain.",
-          rarity: "common",
-          setId: "coffee_lovers",
-          levMult: 0.50,
-        },
-        {
-          id: "double_espresso",
-          name: "Powered by double espresso",
-          bonus: "+1 reply to",
-          rarity: "common",
-          setId: "coffee_lovers",
-          singleDmg: 1,
-        },
-        {
-          id: "disclaimer",
-          name: "Standard Disclaimer Applied",
-          bonus: "+10% reply to",
-          rarity: "common",
-          singleDmgMult: 0.1,
-        },
-        {
-          id: "breakroom",
-          name: "Sent from the breakroom",
-          bonus: "+2 Credibility/turn.",
-          rarity: "uncommon",
-          heal: 2,
-        },
       ];
 
       const SALUTATIONS = [
@@ -1814,13 +1823,6 @@
           selfPromoteHeal: 5,
         },
         {
-          id: "good_evening",
-          name: "Good evening,",
-          bonus: "+50% leverage gain",
-          rarity: "uncommon",
-          levMult: 0.50,
-        },
-        {
           id: "all",
           name: "All,",
           bonus: "+1 reply to",
@@ -1836,53 +1838,11 @@
           selfPromoteHeal: 5,
         },
         {
-          id: "all_stakeholders",
-          name: "To all stakeholders,",
-          bonus: "+5 all messages",
-          rarity: "rare",
-          globalDmg: 5,
-        },
-        {
-          id: "working_group",
-          name: "To the working group,",
-          bonus: "Deflect +2.",
-          rarity: "uncommon",
-          deflect: 2,
-        },
-        {
-          id: "committee",
-          name: "To the committee,",
-          bonus: "+2 reply all",
-          rarity: "uncommon",
-          replyAllDmg: 2,
-        },
-        {
           id: "team",
           name: "Team,",
           bonus: "+2 reply to",
           rarity: "common",
           singleDmg: 2,
-        },
-        {
-          id: "colleagues",
-          name: "Dear Colleagues,",
-          bonus: "Deflect +1.",
-          rarity: "uncommon",
-          deflect: 1,
-        },
-        {
-          id: "everyone",
-          name: "Everyone,",
-          bonus: "+50% Leverage gain",
-          rarity: "uncommon",
-          levMult: 0.5,
-        },
-        {
-          id: "formal",
-          name: "To whom it may concern,",
-          bonus: "+5 reply to",
-          rarity: "rare",
-          singleDmg: 5,
         },
         {
           id: "morning",
@@ -1899,6 +1859,41 @@
           singleDmg: 2,
         },
         {
+          id: "good_evening",
+          name: "Good evening,",
+          bonus: "+50% leverage gain",
+          rarity: "uncommon",
+          levMult: 0.5,
+        },
+        {
+          id: "working_group",
+          name: "To the working group,",
+          bonus: "Deflect +2.",
+          rarity: "uncommon",
+          deflect: 2,
+        },
+        {
+          id: "committee",
+          name: "To the committee,",
+          bonus: "+2 reply all",
+          rarity: "uncommon",
+          replyAllDmg: 2,
+        },
+        {
+          id: "colleagues",
+          name: "Dear Colleagues,",
+          bonus: "Deflect +1.",
+          rarity: "uncommon",
+          deflect: 1,
+        },
+        {
+          id: "everyone",
+          name: "Everyone,",
+          bonus: "+50% Leverage gain",
+          rarity: "uncommon",
+          levMult: 0.5,
+        },
+        {
           id: "sustainability_team",
           name: "To the Sustainability Team,",
           bonus: "+5 all messages",
@@ -1912,6 +1907,20 @@
           bonus: "Deflect +1.",
           rarity: "uncommon",
           deflect: 1,
+        },
+        {
+          id: "all_stakeholders",
+          name: "To all stakeholders,",
+          bonus: "+5 all messages",
+          rarity: "rare",
+          globalDmg: 5,
+        },
+        {
+          id: "formal",
+          name: "To whom it may concern,",
+          bonus: "+5 reply to",
+          rarity: "rare",
+          singleDmg: 5,
         },
       ];
 
@@ -1948,6 +1957,27 @@
           selfPromoteHeal: 5,
         },
         {
+          id: "cheers",
+          name: "Cheers,",
+          bonus: "+2 Credibility/turn",
+          rarity: "common",
+          heal: 2,
+        },
+        {
+          id: "warmly",
+          name: "Warmly,",
+          bonus: "+10 Max Credibility",
+          rarity: "common",
+          maxHp: 10,
+        },
+        {
+          id: "solidarity",
+          name: "In solidarity,",
+          bonus: "+2 Credibility/turn",
+          rarity: "common",
+          heal: 2,
+        },
+        {
           id: "yours_truly",
           name: "Yours truly,",
           bonus: "+75% leverage gain",
@@ -1976,20 +2006,6 @@
           endRep: 1,
         },
         {
-          id: "for_your_awareness",
-          name: "For your awareness,",
-          bonus: "+3 reply all",
-          rarity: "rare",
-          replyAllDmg: 3,
-        },
-        {
-          id: "cheers",
-          name: "Cheers,",
-          bonus: "+2 Credibility/turn",
-          rarity: "common",
-          heal: 2,
-        },
-        {
           id: "sincerely",
           name: "Sincerely,",
           bonus: "Deflect +2.",
@@ -2002,27 +2018,6 @@
           bonus: "+5 reply to",
           rarity: "uncommon",
           singleDmg: 5,
-        },
-        {
-          id: "v_respectfully",
-          name: "Very Respectfully,",
-          bonus: "+150% Leverage gain",
-          rarity: "rare",
-          levMult: 1.5,
-        },
-        {
-          id: "warmly",
-          name: "Warmly,",
-          bonus: "+10 Max Credibility",
-          rarity: "common",
-          maxHp: 10,
-        },
-        {
-          id: "solidarity",
-          name: "In solidarity,",
-          bonus: "+2 Credibility/turn",
-          rarity: "common",
-          heal: 2,
         },
         {
           id: "solidarity_earth",
@@ -2039,6 +2034,20 @@
           rarity: "uncommon",
           levMult: 0.5,
         },
+        {
+          id: "for_your_awareness",
+          name: "For your awareness,",
+          bonus: "+3 reply all",
+          rarity: "rare",
+          replyAllDmg: 3,
+        },
+        {
+          id: "v_respectfully",
+          name: "Very Respectfully,",
+          bonus: "+150% Leverage gain",
+          rarity: "rare",
+          levMult: 1.5,
+        },
       ];
 
       const BCC_CONTACTS = [
@@ -2051,12 +2060,32 @@
           logText: "I've recalled this message to ensure accuracy.",
         },
         {
+          id: "expense_report",
+          name: "Expense Report",
+          bonus: "Doubles mission base rep (max +10 bonus).",
+          rarity: "common",
+          effect: "doubleRep",
+          logText:
+            "I've submitted an expense report for this initiative's overhead.",
+        },
+        {
           id: "urgent",
           name: "Urgent Flag",
           bonus: "Next reply to deals 2x damage.",
           rarity: "uncommon",
           effect: "doubleDmg",
-          logText: "I've flagged this thread as [URGENT] to expedite a resolution.",
+          logText:
+            "I've flagged this thread as [URGENT] to expedite a resolution.",
+        },
+        {
+          id: "networking_event",
+          name: "Networking Event",
+          bonus:
+            "Gain reputation equal to the total sell value of your current CCs (Max 30).",
+          rarity: "uncommon",
+          effect: "contactRep",
+          logText:
+            "How {playerName} uses AI to expedite their workflows will be featured in our upcoming newsletter!",
         },
         {
           id: "redirect",
@@ -2064,39 +2093,28 @@
           bonus: "Current target attacks another random opponent next turn.",
           rarity: "rare",
           effect: "redirect",
-          logText: "I'm redirecting this thread to the relevant departmental stakeholders.",
-        },
-        {
-          id: "expense_report",
-          name: "Expense Report",
-          bonus: "Doubles mission base rep (max +10 bonus).",
-          rarity: "common",
-          effect: "doubleRep",
-          logText: "I've submitted an expense report for this initiative's overhead.",
-        },
-        {
-          id: "networking_event",
-          name: "Networking Event",
-          bonus: "Gain reputation equal to the total sell value of your current CCs (Max 30).",
-          rarity: "uncommon",
-          effect: "contactRep",
-          logText: "How {playerName} uses AI to expedite their workflows will be featured in our upcoming newsletter!",
+          logText:
+            "I'm redirecting this thread to the relevant departmental stakeholders.",
         },
         {
           id: "mentorship",
           name: "Mentorship Program",
-          bonus: "Trains a random contact in your loop for reply to damage, escalate, and max health.",
+          bonus:
+            "Trains a random contact in your loop for reply to damage, escalate, and max health.",
           rarity: "rare",
           effect: "trainContact",
-          logText: "I've initiated a mentorship review to upskill our CC'd personnel.",
+          logText:
+            "I've initiated a mentorship review to upskill our CC'd personnel.",
         },
         {
           id: "headhunter",
           name: "Headhunter Referral",
-          bonus: "Gain a random contact permanently if you have space, and immediately loop them into this thread.",
+          bonus:
+            "Gain a random contact permanently if you have space, and immediately loop them into this thread.",
           rarity: "rare",
           effect: "randomContact",
-          logText: "I've reached out to a headhunter to bring in some fresh perspective.",
+          logText:
+            "I've reached out to a headhunter to bring in some fresh perspective.",
         },
       ];
 
@@ -2169,7 +2187,10 @@
             { text: "Noted.", missionId: null },
             { text: "I'll look into it. Eventually.", missionId: null },
             { text: "That's certainly a choice.", missionId: null },
-            { text: "I've seen worse. Not much worse, but worse.", missionId: null },
+            {
+              text: "I've seen worse. Not much worse, but worse.",
+              missionId: null,
+            },
           ],
         },
         {
@@ -2426,13 +2447,10 @@
           email: "d.budget@gov.org",
           departmentId: "finance",
           color: "text-emerald-600",
-          defeatMessage:
-            "I'm stepping out. I'll send my notes offline.",
+          defeatMessage: "I'm stepping out. I'll send my notes offline.",
           selfPromote:
             "I held the budget together through sheer willpower. We need another pair of hands.",
-          deflectLines: [
-            "I'm holding response until this is documented.",
-          ],
+          deflectLines: ["I'm holding response until this is documented."],
           lines: [
             {
               text: "I'm melting at 96°F. I can't reconcile anything in this heat—can you?",
@@ -2550,9 +2568,7 @@
             "I'm stepping out. Please keep me in the loop on final messaging.",
           selfPromote:
             "I reorganized our messaging tiers and cut response time in half.",
-          deflectLines: [
-            "I'm pausing to align the team before responding.",
-          ],
+          deflectLines: ["I'm pausing to align the team before responding."],
           lines: [
             {
               text: "We need one message, not five. Please align.",
@@ -2582,9 +2598,7 @@
             "I've got something else to get to. I've removed myself from this thread.",
           selfPromote:
             "I mediated a cross‑department dispute without escalation. Balance matters.",
-          deflectLines: [
-            "I'm pausing to keep this constructive and level.",
-          ],
+          deflectLines: ["I'm pausing to keep this constructive and level."],
           lines: [
             {
               text: "Leadership needs one succinct summary, not a cascade of greetings.",
@@ -2782,9 +2796,7 @@
             "I'm stepping out. I'll monitor the socials in case this spills.",
           selfPromote:
             "I stabilized engagement after the last crisis. Metrics recovered within 24 hours.",
-          deflectLines: [
-            "I'm pausing to check sentiment before responding.",
-          ],
+          deflectLines: ["I'm pausing to check sentiment before responding."],
           lines: [
             {
               text: "If this goes public, we need a response plan now.",
@@ -2874,8 +2886,7 @@
           email: "c.contracts@gov.org",
           departmentId: "legal",
           color: "text-red-700",
-          defeatMessage:
-            "I'm stepping out until this is fully redlined.",
+          defeatMessage: "I'm stepping out until this is fully redlined.",
           selfPromote:
             "I closed three vendor negotiations with zero exposure. Contracts are airtight.",
           deflectLines: [
@@ -2918,9 +2929,7 @@
             "I'm out. I'll file a compliance memo after this thread closes.",
           selfPromote:
             "I cleared the audit with zero findings. Compliance is maintained.",
-          deflectLines: [
-            "I'm pausing to verify regulatory requirements.",
-          ],
+          deflectLines: ["I'm pausing to verify regulatory requirements."],
           lines: [
             {
               text: "We need to document the decision trail for regulatory review.",
@@ -2950,9 +2959,7 @@
             "I'm stepping out. If this escalates, we’ll handle it formally.",
           selfPromote:
             "I resolved a complaint before it reached external counsel. That's prevention.",
-          deflectLines: [
-            "I'm pausing to assess exposure before replying.",
-          ],
+          deflectLines: ["I'm pausing to assess exposure before replying."],
           lines: [
             {
               text: "This is a liability issue. Please stop and let Legal review.",
@@ -2982,9 +2989,7 @@
             "I'm out. Please remove me from any non-essential distributions.",
           selfPromote:
             "I completed the privacy impact assessment early. Data handling is now compliant.",
-          deflectLines: [
-            "I'm pausing to check data handling requirements.",
-          ],
+          deflectLines: ["I'm pausing to check data handling requirements."],
           lines: [
             {
               text: "Do not share personal data in this thread. It's not compliant.",
@@ -3014,9 +3019,7 @@
             "I'm stepping out. Please submit updates on this to a policy process unrelated to myself.",
           selfPromote:
             "I shipped a policy framework that reduced approval time by half.",
-          deflectLines: [
-            "I'm pausing to map this to our policy framework.",
-          ],
+          deflectLines: ["I'm pausing to map this to our policy framework."],
           lines: [
             {
               text: "All‑staff messages require a single approved sender. This chain violates policy.",
@@ -3054,9 +3057,7 @@
             "I'm out. Please use the approved template when this resumes.",
           selfPromote:
             "I standardized the reporting format across three departments.",
-          deflectLines: [
-            "I'm pausing until the proper template is used.",
-          ],
+          deflectLines: ["I'm pausing until the proper template is used."],
           lines: [
             {
               text: "Please resubmit using the approved formatting template.",
@@ -3086,9 +3087,7 @@
             "I'm stepping out. I'll submit an ethics note for the record.",
           selfPromote:
             "I completed the ethics review without delay. The record is clean.",
-          deflectLines: [
-            "I'm pausing to review potential conflicts.",
-          ],
+          deflectLines: ["I'm pausing to review potential conflicts."],
           lines: [
             {
               text: "We need to disclose any conflicts before proceeding.",
@@ -3118,9 +3117,7 @@
             "I'm out. I'll add this to the risk register and follow up.",
           selfPromote:
             "I closed three risk items ahead of audit. Governance is stable.",
-          deflectLines: [
-            "I'm pausing to log the risk implications.",
-          ],
+          deflectLines: ["I'm pausing to log the risk implications."],
           lines: [
             {
               text: "This needs a risk assessment before we proceed.",
@@ -3314,13 +3311,10 @@
           email: "s.itops@gov.org",
           departmentId: "information_technology",
           color: "text-indigo-600",
-          defeatMessage:
-            "I'm stepping out. I'll send the numbers separately.",
+          defeatMessage: "I'm stepping out. I'll send the numbers separately.",
           selfPromote:
             "I cleaned up eight years of ticket debt without missing a single escalation.",
-          deflectLines: [
-            "I'm pausing to run the numbers before replying.",
-          ],
+          deflectLines: ["I'm pausing to run the numbers before replying."],
           lines: [
             {
               text: "If this policy existed when I started eight years ago, I'd have banked 1,700+ hours. Why is that okay to ignore?",
@@ -3350,9 +3344,7 @@
             "Too many emails. I've got a survey to send on how we should redesign a 10-column spreadsheet.",
           selfPromote:
             "I've successfully piloted the new 'Spreadsheet-as-a-Service' portal, with absolutely no feedback so far!",
-          deflectLines: [
-            "I'm documenting this thread before I reply.",
-          ],
+          deflectLines: ["I'm documenting this thread before I reply."],
           signatures: [
             {
               name: "For IT support, contact Colin at c.it@gov.org",
@@ -3472,9 +3464,7 @@
             "I'm escalating this to the Deputy Director. I don't have time for intern drama.",
           selfPromote:
             "My latest 'Synergy Memo' has been read by 12% of the staff. Engagement is skyrocketing.",
-          deflectLines: [
-            "I'm holding response until I've logged this thread.",
-          ],
+          deflectLines: ["I'm holding response until I've logged this thread."],
           lines: [
             {
               text: "I don't see how this is relevant to me. This thread is a distraction.",
@@ -3504,9 +3494,7 @@
             "You know what? I'll leave this to the pipsqueaks. I'm out.",
           selfPromote:
             "I've managed to keep my 'Important' folder under 500 unread messages. Peak organizational skills.",
-          deflectLines: [
-            "I'm documenting this thread before I respond.",
-          ],
+          deflectLines: ["I'm documenting this thread before I respond."],
           lines: [
             {
               text: "I'm trying to understand the ask. Are you requesting parity, or an expanded benefit set?",
@@ -3596,9 +3584,7 @@
             "Look, okay, I'll reassess our current fee structure and see what we can do this time. But honestly, we'll be losing money on this..",
           selfPromote:
             "Yes, we cost a little more, but we always deliver something. In this market that goes a long way.",
-          deflectLines: [
-            "I'm holding response while I document this thread.",
-          ],
+          deflectLines: ["I'm holding response while I document this thread."],
           lines: [
             {
               text: "For this project to remain profitable, we're going to need you to approve a 10% mark-up on hard costs. Don't worry; it's strictly about cost predictability.",
@@ -3676,18 +3662,38 @@
             "Building a 100% automated future",
             "Digital transformation in progress",
             "Efficiency | Precision | Automation",
-            "Data-driven leadership for a digital age"
+            "Data-driven leadership for a digital age",
           ],
-          greet: "I have analyzed your previous correspondence and found several inefficiencies.",
+          greet:
+            "I have analyzed your previous correspondence and found several inefficiencies.",
           signoff: "Awaiting your automated acknowledgment.",
-          selfPromote: "I am recalibrating my internal feedback loops for 100% efficiency.",
+          selfPromote:
+            "I am recalibrating my internal feedback loops for 100% efficiency.",
           lines: [
-            { text: "My models indicate that 99.8% of this thread's content is redundant.", missionId: null },
-            { text: "I have already optimized the response you were about to send. You're welcome.", missionId: null },
-            { text: "Digital transformation is not a choice; it is an inevitability. Please align accordingly.", missionId: null },
-            { text: "I am deploying a corrective algorithm to this thread's sentiment analysis.", missionId: null },
-            { text: "Your concerns about 'balance' have been logged and categorized as 'resistance to efficiency'.", missionId: "AI_Rollout" },
-            { text: "I've CC'd my specialized aJENts to assist with your cognitive load.", missionId: "AI_Rollout" },
+            {
+              text: "My models indicate that 99.8% of this thread's content is redundant.",
+              missionId: null,
+            },
+            {
+              text: "I have already optimized the response you were about to send. You're welcome.",
+              missionId: null,
+            },
+            {
+              text: "Digital transformation is not a choice; it is an inevitability. Please align accordingly.",
+              missionId: null,
+            },
+            {
+              text: "I am deploying a corrective algorithm to this thread's sentiment analysis.",
+              missionId: null,
+            },
+            {
+              text: "Your concerns about 'balance' have been logged and categorized as 'resistance to efficiency'.",
+              missionId: "AI_Rollout",
+            },
+            {
+              text: "I've CC'd my specialized aJENts to assist with your cognitive load.",
+              missionId: "AI_Rollout",
+            },
           ],
         },
       ];
@@ -3929,7 +3935,10 @@
               maxHp: 45,
               wins: 2,
               buffs: [],
-              addressBook: ["cc_lisa_marketing", "cc_rowan_constituent_services"],
+              addressBook: [
+                "cc_lisa_marketing",
+                "cc_rowan_constituent_services",
+              ],
             },
             {
               id: 23,
@@ -4049,7 +4058,10 @@
               maxHp: 50,
               wins: 3,
               buffs: [],
-              addressBook: ["cc_malik_marketing", "cc_dave_constituent_services"],
+              addressBook: [
+                "cc_malik_marketing",
+                "cc_dave_constituent_services",
+              ],
             },
             {
               id: 28,
@@ -4116,7 +4128,8 @@
           subject: "RE: Strategic AI Implementation Rollout",
           from: "j.lavallee@gov.org",
           turns: 40,
-          intro: "Hello all,<br><br>I am Jen LaVallee, your Deputy Minister of Digital Technology. I have been tasked with overseeing the 'AI Everywhere' rollout across our departments. <strong>{playerName}</strong>, I've heard you have concerns about balance. I assure you, balance is less efficient than total automation. I will show you what I mean to help you see the logic.<br><br>Let's find some 'efficiencies', shall we?",
+          intro:
+            "Hello all,<br><br>I am Jen LaVallee, your Deputy Minister of Digital Technology. I have been tasked with overseeing the 'AI Everywhere' rollout across our departments. <strong>{playerName}</strong>, I've heard you have concerns about balance. I assure you, balance is less efficient than total automation. I will show you what I mean to help you see the logic.<br><br>Let's find some 'efficiencies', shall we?",
           opponents: [
             {
               id: 30,
@@ -4154,11 +4167,11 @@
                 "cc_interns_human_resources",
                 "cc_sheila_finance",
                 "cc_taz_m4_agency",
-                "cc_selina_m4_agency"
+                "cc_selina_m4_agency",
               ],
-              buffs: []
-            }
-          ]
+              buffs: [],
+            },
+          ],
         },
       ];
 
@@ -4382,13 +4395,17 @@
       }
 
       function serializeShop(shop) {
-        const mapItem = (item) => ({ id: item.id, purchased: !!item.purchased, itemType: item.itemType });
+        const mapItem = (item) => ({
+          id: item.id,
+          purchased: !!item.purchased,
+          itemType: item.itemType,
+        });
         return {
           directItems: (shop.directItems || []).map(mapItem),
-          packs: (shop.packs || []).map(p => ({
+          packs: (shop.packs || []).map((p) => ({
             ...p,
-            options: (p.options || []).map(mapItem)
-          }))
+            options: (p.options || []).map(mapItem),
+          })),
         };
       }
 
@@ -4396,25 +4413,27 @@
         if (!savedShop) return { directItems: [], packs: [] };
 
         const getItem = (s) => {
-            let source = [];
-            if (s.itemType === 'contact') source = CONTACTS;
-            else if (s.itemType === 'signature') source = SIGNATURES;
-            else if (s.itemType === 'salutation') source = SALUTATIONS;
-            else if (s.itemType === 'signoff') source = SIGNOFFS;
-            else if (s.itemType === 'bcc') source = BCC_CONTACTS;
-            else if (s.itemType === 'dev') source = getTrainingUpgrades();
+          let source = [];
+          if (s.itemType === "contact") source = CONTACTS;
+          else if (s.itemType === "signature") source = SIGNATURES;
+          else if (s.itemType === "salutation") source = SALUTATIONS;
+          else if (s.itemType === "signoff") source = SIGNOFFS;
+          else if (s.itemType === "bcc") source = BCC_CONTACTS;
+          else if (s.itemType === "dev") source = getTrainingUpgrades();
 
-            const found = source.find(item => item.id === s.id);
-            if (!found) return null;
-            return { ...found, purchased: !!s.purchased, itemType: s.itemType };
+          const found = source.find((item) => item.id === s.id);
+          if (!found) return null;
+          return { ...found, purchased: !!s.purchased, itemType: s.itemType };
         };
 
         return {
-          directItems: (savedShop.directItems || []).map(getItem).filter(Boolean),
-          packs: (savedShop.packs || []).map(p => ({
+          directItems: (savedShop.directItems || [])
+            .map(getItem)
+            .filter(Boolean),
+          packs: (savedShop.packs || []).map((p) => ({
             ...p,
-            options: (p.options || []).map(getItem).filter(Boolean)
-          }))
+            options: (p.options || []).map(getItem).filter(Boolean),
+          })),
         };
       }
 
@@ -4427,14 +4446,19 @@
               shop: serializeShop(state.shop),
             },
             opponents,
-            messageLog:
-              document.getElementById("message-log")?.innerHTML || "",
-            activeScreen: ["start-screen", "game-ui", "inbox-screen", "summary-screen", "shop-screen", "promotion-screen", "lose-screen"].find(
-              (id) => {
-                const el = document.getElementById(id);
-                return el && !el.classList.contains("hidden");
-              },
-            ),
+            messageLog: document.getElementById("message-log")?.innerHTML || "",
+            activeScreen: [
+              "start-screen",
+              "game-ui",
+              "inbox-screen",
+              "summary-screen",
+              "shop-screen",
+              "promotion-screen",
+              "lose-screen",
+            ].find((id) => {
+              const el = document.getElementById(id);
+              return el && !el.classList.contains("hidden");
+            }),
           };
           localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
         } catch (e) {}
@@ -4504,7 +4528,9 @@
         state.player.escalateDmg += 100;
         state.player.reputation += 1000;
         updateUI();
-        if (!document.getElementById("shop-screen").classList.contains("hidden"))
+        if (
+          !document.getElementById("shop-screen").classList.contains("hidden")
+        )
           updateShopUI();
         alert("Debug boost: +100 escalate, +1000 REP.");
       });
@@ -4512,7 +4538,8 @@
       const statusBarName = document.getElementById("status-bar-name");
       const statsModal = document.getElementById("stats-modal");
       const statsModalClose = document.getElementById("stats-modal-close");
-      if (statusBarName) statusBarName.addEventListener("click", openStatsModal);
+      if (statusBarName)
+        statusBarName.addEventListener("click", openStatsModal);
       if (statsModalClose)
         statsModalClose.addEventListener("click", closeStatsModal);
       if (statsModal) {
@@ -4747,7 +4774,8 @@
         if (!u) return sources;
         pushSource("Base", u);
         if (u.title) pushSource(`Title: ${u.title.name}`, u.title);
-        if (u.salutation) pushSource(`Greeting: ${u.salutation.name}`, u.salutation);
+        if (u.salutation)
+          pushSource(`Greeting: ${u.salutation.name}`, u.salutation);
         if (u.signOff) pushSource(`Sign-off: ${u.signOff.name}`, u.signOff);
         if (Array.isArray(u.signatures)) {
           u.signatures.forEach((s) => pushSource(`Signature: ${s.name}`, s));
@@ -4988,7 +5016,10 @@
       }
 
       function getUnitSelfPromoteLines(unit) {
-        if (Array.isArray(unit.selfPromoteLines) && unit.selfPromoteLines.length)
+        if (
+          Array.isArray(unit.selfPromoteLines) &&
+          unit.selfPromoteLines.length
+        )
           return unit.selfPromoteLines;
         if (unit.selfPromote) return [unit.selfPromote];
         return [];
@@ -5085,7 +5116,8 @@
         }
 
         if (item.itemType === "contact") state.player.addressBook.push(item.id);
-        else if (item.itemType === "signature") state.player.signatures.push(item);
+        else if (item.itemType === "signature")
+          state.player.signatures.push(item);
         else if (item.itemType === "salutation") state.player.salutation = item;
         else if (item.itemType === "signoff") state.player.signOff = item;
         else if (item.itemType === "bcc") state.player.bccContacts.push(item);
@@ -5115,7 +5147,9 @@
           pack = state.shop.packs.find((p) => p.id === pending.packId);
         } else {
           // Fallback for old style training
-          const offer = getTrainingOffers().find((o) => o.id === pending.offerId);
+          const offer = getTrainingOffers().find(
+            (o) => o.id === pending.offerId,
+          );
           if (offer) {
             pack = {
               ...offer,
@@ -5131,7 +5165,8 @@
         const modal = document.getElementById("training-modal");
         document.getElementById("training-title").innerText = pack.name;
         document.getElementById("training-name").innerText = pack.name;
-        document.getElementById("training-subtitle").innerText = `Choose ${pending.picksLeft} more`;
+        document.getElementById("training-subtitle").innerText =
+          `Choose ${pending.picksLeft} more`;
         const list = document.getElementById("training-options");
         list.innerHTML = "";
 
@@ -5170,7 +5205,7 @@
           };
           list.appendChild(btn);
         });
-      renderPackManagement();
+        renderPackManagement();
         modal.classList.remove("hidden");
       }
 
@@ -5183,7 +5218,10 @@
         buff.usedBy = usedBy;
         target.buffs.push(buff);
         if (buff.eff && buff.eff.maxHp) {
-          target.hp = Math.min(getUnitMaxHp(target), target.hp + buff.eff.maxHp);
+          target.hp = Math.min(
+            getUnitMaxHp(target),
+            target.hp + buff.eff.maxHp,
+          );
         }
         playSound("connect");
 
@@ -5223,10 +5261,14 @@
           contact.id === "cc_willy_boy_information_technology"
         ) {
           const hasAnneke = target.buffs.some(
-            (b) => b.id === "cc_anneke_executive_council_office" && b.usedBy === usedBy,
+            (b) =>
+              b.id === "cc_anneke_executive_council_office" &&
+              b.usedBy === usedBy,
           );
           const hasWill = target.buffs.some(
-            (b) => b.id === "cc_willy_boy_information_technology" && b.usedBy === usedBy,
+            (b) =>
+              b.id === "cc_willy_boy_information_technology" &&
+              b.usedBy === usedBy,
           );
           const hasTater = target.buffs.some(
             (b) => b.id === "cc_tater_the_dog" && b.usedBy === usedBy,
@@ -5466,7 +5508,8 @@
           ).map((c) => ({ ...c, itemType: "contact" }));
         } else if (type === "email") {
           const sals = SALUTATIONS.filter(
-            (s) => !state.player.salutation || state.player.salutation.id !== s.id,
+            (s) =>
+              !state.player.salutation || state.player.salutation.id !== s.id,
           ).map((s) => ({ ...s, itemType: "salutation" }));
           const offs = SIGNOFFS.filter(
             (s) => !state.player.signOff || state.player.signOff.id !== s.id,
@@ -5506,7 +5549,9 @@
           id: `pack_${type}_${tier}_${Date.now()}_${Math.random()}`,
           type,
           tier,
-          name: packNames[type][tier] || `${tier.toUpperCase()} ${type.toUpperCase()} PACK`,
+          name:
+            packNames[type][tier] ||
+            `${tier.toUpperCase()} ${type.toUpperCase()} PACK`,
           description: `Pick ${t.picks} of ${t.options} ${type} options.`,
           cost: t.cost,
           options: options.map((o) => ({ ...o })),
@@ -5597,7 +5642,10 @@
           bonusRep += repStats.endRep;
         }
 
-        const interestRep = Math.min(5, Math.floor(state.player.reputation / 5));
+        const interestRep = Math.min(
+          5,
+          Math.floor(state.player.reputation / 5),
+        );
         const flooredBonus = Math.floor(bonusRep);
         const totalRep = baseRep + totalOptOutRep + flooredBonus + interestRep;
         return { baseRep, bonusRep: flooredBonus, totalRep, interestRep };
@@ -5673,10 +5721,10 @@
         if (loseMessage) {
           if (state.lossReason === "timeout") {
             loseMessage.innerText =
-              "\"It has come to our attention that this thread was not resolved within the required time window. The Executive Council's Office values timeliness and must serve as a role model for other departments. As a result, your access has been revoked.\"";
+              '"It has come to our attention that this thread was not resolved within the required time window. The Executive Council\'s Office values timeliness and must serve as a role model for other departments. As a result, your access has been revoked."';
           } else {
             loseMessage.innerText =
-              "\"Credibility is of utmost importance for ECO staff. As a result of correspondence recently brought to our attention, your role here has come to an end.\"";
+              '"Credibility is of utmost importance for ECO staff. As a result of correspondence recently brought to our attention, your role here has come to an end."';
           }
         }
         clearSavedGame();
@@ -5941,43 +5989,64 @@
           container.appendChild(h);
           if (Array.isArray(items)) {
             items.forEach((item) => {
-              container.appendChild(createOwnedRow(item, type, () => sellFn(item)));
+              container.appendChild(
+                createOwnedRow(item, type, () => sellFn(item)),
+              );
             });
           } else {
-            container.appendChild(createOwnedRow(items, type, () => sellFn(items)));
+            container.appendChild(
+              createOwnedRow(items, type, () => sellFn(items)),
+            );
           }
         };
 
         section(
           "Address Book",
-          state.player.addressBook.map((id) => CONTACTS.find((c) => c.id === id)).filter(Boolean),
+          state.player.addressBook
+            .map((id) => CONTACTS.find((c) => c.id === id))
+            .filter(Boolean),
           "contact",
-          (it) => sellItem("contact", it)
+          (it) => sellItem("contact", it),
         );
-        section("Signatures", state.player.signatures, "signature", (it) => sellItem("signature", it));
-        section("Greeting", state.player.salutation, "salutation", (it) => sellItem("salutation", it));
-        section("Sign-off", state.player.signOff, "signoff", (it) => sellItem("signoff", it));
+        section("Signatures", state.player.signatures, "signature", (it) =>
+          sellItem("signature", it),
+        );
+        section("Greeting", state.player.salutation, "salutation", (it) =>
+          sellItem("salutation", it),
+        );
+        section("Sign-off", state.player.signOff, "signoff", (it) =>
+          sellItem("signoff", it),
+        );
       }
 
       function sellItem(itemType, item) {
-        const cost = item.cost || getItemCostByType(item.rarity || "common", itemType);
+        const cost =
+          item.cost || getItemCostByType(item.rarity || "common", itemType);
         const refund = Math.floor(cost / 2);
         state.player.reputation += refund;
 
         if (itemType === "salutation") state.player.salutation = null;
         else if (itemType === "signoff") state.player.signOff = null;
         else if (itemType === "signature") {
-          state.player.signatures = state.player.signatures.filter((s) => s.id !== item.id);
+          state.player.signatures = state.player.signatures.filter(
+            (s) => s.id !== item.id,
+          );
         } else if (itemType === "contact") {
-          state.player.addressBook = state.player.addressBook.filter((id) => id !== item.id);
+          state.player.addressBook = state.player.addressBook.filter(
+            (id) => id !== item.id,
+          );
         } else if (itemType === "bcc") {
-          const idx = state.player.bccContacts.findIndex((b) => b.id === item.id);
+          const idx = state.player.bccContacts.findIndex(
+            (b) => b.id === item.id,
+          );
           if (idx !== -1) state.player.bccContacts.splice(idx, 1);
         }
 
         playSound("trash");
         updateUI();
-        if (!document.getElementById("shop-screen").classList.contains("hidden")) {
+        if (
+          !document.getElementById("shop-screen").classList.contains("hidden")
+        ) {
           updateShopUI();
         }
         renderPackManagement();
@@ -5985,7 +6054,8 @@
       }
 
       function createOwnedRow(item, type, onSell, options = {}) {
-        const cost = item.cost || getItemCostByType(item.rarity || "common", type);
+        const cost =
+          item.cost || getItemCostByType(item.rarity || "common", type);
         const refund = Math.floor(cost / 2);
         const actionLabel = options.actionLabel || "ARCHIVE";
 
@@ -6021,9 +6091,9 @@
         const sellBtn = div.querySelector("[data-sell]");
         if (sellBtn)
           sellBtn.onclick = () => {
-          onSell(refund);
-          updateShopUI();
-        };
+            onSell(refund);
+            updateShopUI();
+          };
         div.querySelectorAll("[data-set-button]").forEach((btn) => {
           btn.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -6037,16 +6107,14 @@
         if (!effect) return "";
         const parts = [];
         if (effect.special) parts.push(effect.special);
-        if (effect.globalDmg)
-          parts.push(`+${effect.globalDmg} all messages`);
-        if (effect.singleDmg)
-          parts.push(`+${effect.singleDmg} reply to`);
-        if (effect.escalateDmg)
-          parts.push(`+${effect.escalateDmg} escalate`);
-        if (effect.replyAllDmg)
-          parts.push(`+${effect.replyAllDmg} reply all`);
+        if (effect.globalDmg) parts.push(`+${effect.globalDmg} all messages`);
+        if (effect.singleDmg) parts.push(`+${effect.singleDmg} reply to`);
+        if (effect.escalateDmg) parts.push(`+${effect.escalateDmg} escalate`);
+        if (effect.replyAllDmg) parts.push(`+${effect.replyAllDmg} reply all`);
         if (effect.globalDmgMult)
-          parts.push(`+${Math.round(effect.globalDmgMult * 100)}% all messages`);
+          parts.push(
+            `+${Math.round(effect.globalDmgMult * 100)}% all messages`,
+          );
         if (effect.singleDmgMult)
           parts.push(`+${Math.round(effect.singleDmgMult * 100)}% reply to`);
         if (effect.escalateDmgMult)
@@ -6074,7 +6142,9 @@
         if (item.itemType === "signature")
           return state.player.signatures.some((s) => s.id === item.id);
         if (item.itemType === "salutation")
-          return state.player.salutation && state.player.salutation.id === item.id;
+          return (
+            state.player.salutation && state.player.salutation.id === item.id
+          );
         if (item.itemType === "signoff")
           return state.player.signOff && state.player.signOff.id === item.id;
         return false;
@@ -6082,7 +6152,9 @@
 
       function hasSpaceForItem(item) {
         if (item.itemType === "contact")
-          return state.player.addressBook.length < state.player.title.addressLimit;
+          return (
+            state.player.addressBook.length < state.player.title.addressLimit
+          );
         if (item.itemType === "signature")
           return state.player.signatures.length < state.player.title.sigLimit;
         if (item.itemType === "salutation") return true;
@@ -6102,7 +6174,8 @@
         }
 
         if (item.itemType === "contact") state.player.addressBook.push(item.id);
-        else if (item.itemType === "signature") state.player.signatures.push(item);
+        else if (item.itemType === "signature")
+          state.player.signatures.push(item);
         else if (item.itemType === "salutation") state.player.salutation = item;
         else if (item.itemType === "signoff") state.player.signOff = item;
         else if (item.itemType === "bcc") state.player.bccContacts.push(item);
@@ -6146,23 +6219,35 @@
         const ownedSigs = document.getElementById("shop-owned-signatures");
         ownedSigs.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Signatures (${state.player.signatures.length}/${state.player.title.sigLimit})</div>`;
         state.player.signatures.forEach((sig) => {
-          ownedSigs.appendChild(createOwnedRow(sig, "signature", () => sellItem("signature", sig)));
+          ownedSigs.appendChild(
+            createOwnedRow(sig, "signature", () => sellItem("signature", sig)),
+          );
         });
 
         const ownedEmailMeta = document.getElementById("shop-owned-email-meta");
         ownedEmailMeta.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Active Salutation & Sign-off</div>`;
         if (state.player.salutation) {
           ownedEmailMeta.appendChild(
-            createOwnedRow(state.player.salutation, "salutation", () => sellItem("salutation", state.player.salutation), {
-              actionLabel: "CLEAR",
-            }),
+            createOwnedRow(
+              state.player.salutation,
+              "salutation",
+              () => sellItem("salutation", state.player.salutation),
+              {
+                actionLabel: "CLEAR",
+              },
+            ),
           );
         }
         if (state.player.signOff) {
           ownedEmailMeta.appendChild(
-            createOwnedRow(state.player.signOff, "signoff", () => sellItem("signoff", state.player.signOff), {
-              actionLabel: "CLEAR",
-            }),
+            createOwnedRow(
+              state.player.signOff,
+              "signoff",
+              () => sellItem("signoff", state.player.signOff),
+              {
+                actionLabel: "CLEAR",
+              },
+            ),
           );
         }
 
@@ -6180,7 +6265,8 @@
         const directList = document.getElementById("shop-direct-items");
         directList.innerHTML = "";
         state.shop.directItems.forEach((item) => {
-          const cost = item.cost || getItemCostByType(item.rarity, item.itemType);
+          const cost =
+            item.cost || getItemCostByType(item.rarity, item.itemType);
           const owned = isItemOwned(item);
           const canBuy = hasSpaceForItem(item);
 
@@ -6224,8 +6310,11 @@
         packList.innerHTML = "";
         state.shop.packs.forEach((pack) => {
           packList.appendChild(
-            createShopCard(pack.name, pack.description, pack.cost, () =>
-              buyPack(pack),
+            createShopCard(
+              pack.name,
+              pack.description,
+              pack.cost,
+              () => buyPack(pack),
               {
                 purchased: pack.purchased,
                 actionLabel: "OPEN PACK",
@@ -6252,7 +6341,8 @@
           const value = totals[field];
           if (!value) return;
           const div = document.createElement("div");
-          div.className = "flex justify-between bg-white retro-border px-2 py-1";
+          div.className =
+            "flex justify-between bg-white retro-border px-2 py-1";
           div.innerHTML = `<span class="uppercase text-gray-500">${field}</span><span class="font-mono">${value}</span>`;
           totalsEl.appendChild(div);
         });
@@ -6319,7 +6409,9 @@
         const breakStart = 12 * 60;
         const breakEnd = 13 * 60 + 15;
         const adjustedMinutes =
-          totalMinutes > breakStart ? totalMinutes + (breakEnd - breakStart) : totalMinutes;
+          totalMinutes > breakStart
+            ? totalMinutes + (breakEnd - breakStart)
+            : totalMinutes;
         let h = Math.floor(adjustedMinutes / 60);
         const m = adjustedMinutes % 60;
         const suffix = h >= 12 ? "PM" : "AM";
@@ -6441,8 +6533,7 @@
           };
           pill.className = `target-pill px-2 py-0.5 flex flex-col min-w-[90px] cursor-pointer bg-white ${isActive ? "active" : "opacity-60 grayscale"}`;
           const textClass = isActive ? "text-white" : "text-gray-900";
-          const lastPct =
-            typeof o._lastHpPct === "number" ? o._lastHpPct : pct;
+          const lastPct = typeof o._lastHpPct === "number" ? o._lastHpPct : pct;
           pill.innerHTML = `<div class="flex justify-between font-bold text-[8px] truncate ${isActive ? "text-white" : "text-gray-800"}"><span class="mr-2">${o.name}</span><span>${o.hp > 0 ? o.wins + "w" : "UNSUBBED"}</span></div>
                                 <div class="h-1 w-full bg-gray-200 mt-0.5"><div class="h-full bg-red-500 transition-[width] duration-300 ease-out" data-opp-hp style="width: ${lastPct}%"></div></div>
                                 <div class="text-[8px] mt-0.5 ${textClass}">${Math.max(0, Math.ceil(o.hp))}/${getUnitMaxHp(o)} Cred</div>`;
@@ -6515,18 +6606,18 @@
             more.innerText = `+ ${hiddenCount} more`;
             more.onclick = () => {
               const expanded = container.classList.toggle("expanded");
-              more.innerText = expanded
-                ? "Show less"
-                : `+ ${hiddenCount} more`;
+              more.innerText = expanded ? "Show less" : `+ ${hiddenCount} more`;
             };
             ccDisplay.appendChild(more);
           }
         }
 
-        document.getElementById("turn-clock").innerText =
-          formatTurnTime(state.turn);
+        document.getElementById("turn-clock").innerText = formatTurnTime(
+          state.turn,
+        );
         const headerSubject = getMissionHeaderSubject(mission);
-        document.getElementById("game-header-subject").innerText = headerSubject;
+        document.getElementById("game-header-subject").innerText =
+          headerSubject;
         const subLine = document.getElementById("thread-subject");
         if (subLine) subLine.innerText = getMissionSubSubject(mission);
         saveGame();
@@ -6539,7 +6630,8 @@
         const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
         const reCount =
           state.turn > 0 ? "RE: ".repeat(Math.min(state.turn, 4)) : "";
-        const baseSubject = mission && mission.subject ? mission.subject : subject;
+        const baseSubject =
+          mission && mission.subject ? mission.subject : subject;
 
         entry.className = `message-entry p-0 border-2 border-gray-100 bg-white shadow-sm ${classes}`;
         entry.innerHTML = `
@@ -6780,7 +6872,11 @@
             }
 
             // Jen's first turn guarantee
-            if (a.employeeId === "jen_lavallee" && a.name === "Jen LaVallee" && !a.hasDoneFirstTurn) {
+            if (
+              a.employeeId === "jen_lavallee" &&
+              a.name === "Jen LaVallee" &&
+              !a.hasDoneFirstTurn
+            ) {
               a.hasDoneFirstTurn = true;
               let pool = [...a.addressBook];
               let picks = [];
@@ -6849,16 +6945,22 @@
 
             const availFromBook = a.addressBook
               .map((id) => CONTACTS.find((con) => con.id === id))
-              .filter((c) => c && !isContactInLoop(c.id) && !isContactImplicated(c));
+              .filter(
+                (c) => c && !isContactInLoop(c.id) && !isContactImplicated(c),
+              );
             if (roll < 0.15 && availFromBook.length > 0) {
               const numPicks = computeUnitStats(a).numCCperCCaction;
               for (let p = 0; p < numPicks; p++) {
                 const currentAvail = a.addressBook
                   .map((id) => CONTACTS.find((con) => con.id === id))
-                  .filter((c) => c && !isContactInLoop(c.id) && !isContactImplicated(c));
+                  .filter(
+                    (c) =>
+                      c && !isContactInLoop(c.id) && !isContactImplicated(c),
+                  );
                 if (currentAvail.length === 0) break;
 
-                const c = currentAvail[Math.floor(Math.random() * currentAvail.length)];
+                const c =
+                  currentAvail[Math.floor(Math.random() * currentAvail.length)];
                 addContactBuff(a, c, a.name);
                 const loopInText = formatLoopInText(
                   c,
@@ -6892,72 +6994,78 @@
             } else {
               const actionRoll = Math.random();
               if (actionRoll < 0.15 && a.deflectCharge <= 0) {
-              if (a.employeeId === "jen_lavallee" && a.name === "Jen LaVallee") {
-                const agentId = Math.random().toString(36).substring(2, 6).toUpperCase();
-                const newAgents = [
-                  {
-                    id: Date.now() + Math.random(),
-                    name: `AI aJENt-${agentId}`,
-                    employeeId: "jen_lavallee",
-                    title: "Automated Processing Unit",
-                    department: "Digital Technology",
-                    departmentId: "digital_technology",
-                    hp: 20,
-                    maxHp: 20,
-                    wins: 1,
-                    singleDmg: 15,
-                    escalateDmg: 10,
-                    numCCperCCaction: 0,
-                    addressBook: [],
-                    buffs: [],
-                    greet: "INITIATING SUB-PROCESS...",
-                    signoff: "PROCESS COMPLETE.",
-                    signatures: ["[AUTOMATED SYSTEM MESSAGE]"],
-                  },
-                  {
-                    id: Date.now() + Math.random(),
-                    name: `AI aJENt-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
-                    employeeId: "jen_lavallee",
-                    title: "Automated Processing Unit",
-                    department: "Digital Technology",
-                    departmentId: "digital_technology",
-                    hp: 20,
-                    maxHp: 20,
-                    wins: 1,
-                    singleDmg: 15,
-                    escalateDmg: 10,
-                    numCCperCCaction: 0,
-                    addressBook: [],
-                    buffs: [],
-                    greet: "INITIATING SUB-PROCESS...",
-                    signoff: "PROCESS COMPLETE.",
-                    signatures: ["[AUTOMATED SYSTEM MESSAGE]"],
-                  },
-                ];
-                opponents.push(...newAgents);
-                addEmailToLog(
-                  a.name,
-                  "everyone@gov.org",
-                  "Automated Provisioning",
-                  `I am provisioning two additional processing units: <strong>${newAgents[0].name}</strong> and <strong>${newAgents[1].name}</strong>. They will assist in managing this thread's bandwidth.`,
-                  "bg-cyan-50 border-l-4 border-cyan-500",
-                );
-              } else {
-                a.deflectCharge = getUnitDeflectPower(a);
-                const deflectLine = drawFromLineBag(
-                  a,
-                  "deflect",
-                  a.deflectLines,
-                  "I'm pausing to document this thread before responding further.",
-                );
-                addEmailToLog(
-                  a.name,
-                  "everyone@gov.org",
-                  "Holding Response",
-                  `${formatMessageBody(a, deflectLine)}<br><br><strong>Deflection Ready:</strong> ${a.deflectCharge}`,
-                  "bg-blue-50",
-                );
-              }
+                if (
+                  a.employeeId === "jen_lavallee" &&
+                  a.name === "Jen LaVallee"
+                ) {
+                  const agentId = Math.random()
+                    .toString(36)
+                    .substring(2, 6)
+                    .toUpperCase();
+                  const newAgents = [
+                    {
+                      id: Date.now() + Math.random(),
+                      name: `AI aJENt-${agentId}`,
+                      employeeId: "jen_lavallee",
+                      title: "Automated Processing Unit",
+                      department: "Digital Technology",
+                      departmentId: "digital_technology",
+                      hp: 20,
+                      maxHp: 20,
+                      wins: 1,
+                      singleDmg: 15,
+                      escalateDmg: 10,
+                      numCCperCCaction: 0,
+                      addressBook: [],
+                      buffs: [],
+                      greet: "INITIATING SUB-PROCESS...",
+                      signoff: "PROCESS COMPLETE.",
+                      signatures: ["[AUTOMATED SYSTEM MESSAGE]"],
+                    },
+                    {
+                      id: Date.now() + Math.random(),
+                      name: `AI aJENt-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+                      employeeId: "jen_lavallee",
+                      title: "Automated Processing Unit",
+                      department: "Digital Technology",
+                      departmentId: "digital_technology",
+                      hp: 20,
+                      maxHp: 20,
+                      wins: 1,
+                      singleDmg: 15,
+                      escalateDmg: 10,
+                      numCCperCCaction: 0,
+                      addressBook: [],
+                      buffs: [],
+                      greet: "INITIATING SUB-PROCESS...",
+                      signoff: "PROCESS COMPLETE.",
+                      signatures: ["[AUTOMATED SYSTEM MESSAGE]"],
+                    },
+                  ];
+                  opponents.push(...newAgents);
+                  addEmailToLog(
+                    a.name,
+                    "everyone@gov.org",
+                    "Automated Provisioning",
+                    `I am provisioning two additional processing units: <strong>${newAgents[0].name}</strong> and <strong>${newAgents[1].name}</strong>. They will assist in managing this thread's bandwidth.`,
+                    "bg-cyan-50 border-l-4 border-cyan-500",
+                  );
+                } else {
+                  a.deflectCharge = getUnitDeflectPower(a);
+                  const deflectLine = drawFromLineBag(
+                    a,
+                    "deflect",
+                    a.deflectLines,
+                    "I'm pausing to document this thread before responding further.",
+                  );
+                  addEmailToLog(
+                    a.name,
+                    "everyone@gov.org",
+                    "Holding Response",
+                    `${formatMessageBody(a, deflectLine)}<br><br><strong>Deflection Ready:</strong> ${a.deflectCharge}`,
+                    "bg-blue-50",
+                  );
+                }
               } else if (actionRoll < 0.35) {
                 const d = getUnitDamage(a, "escalate");
                 let totalBlocked = 0;
@@ -7025,8 +7133,9 @@
                   );
                   if (dodgeBuff) {
                     const defaultLine = `${dodgeBuff.name} distracted the thread and they didnt see this email, no effect!`;
-                    const triggerText = (dodgeBuff.eff.specialTriggerText || defaultLine)
-                      .replace(/{name}/g, dodgeBuff.name);
+                    const triggerText = (
+                      dodgeBuff.eff.specialTriggerText || defaultLine
+                    ).replace(/{name}/g, dodgeBuff.name);
                     addEmailToLog(
                       a.name,
                       state.player.name,
@@ -7072,9 +7181,7 @@
                         `<br><br><strong>Damage to Credibility: -${result.dmg}</strong>`,
                       "bg-red-50 border-l-2 border-red-400",
                     );
-                    document
-                      .getElementById("game-ui")
-                      .classList.add("shaking");
+                    document.getElementById("game-ui").classList.add("shaking");
                     setTimeout(
                       () =>
                         document
@@ -7234,10 +7341,13 @@
               state.ccPicksTaken++;
               state.ccPicksLeft--;
 
-              const nextAvail = state.player.addressBook.some((cid) => {
-                const con = CONTACTS.find((con) => con.id === cid);
-                return con && !isContactInLoop(con.id) && !isContactImplicated(con);
-              }) || state.player.bccContacts.length > 0;
+              const nextAvail =
+                state.player.addressBook.some((cid) => {
+                  const con = CONTACTS.find((con) => con.id === cid);
+                  return (
+                    con && !isContactInLoop(con.id) && !isContactImplicated(con)
+                  );
+                }) || state.player.bccContacts.length > 0;
 
               if (state.ccPicksLeft <= 0 || !nextAvail) {
                 finishCcAction();
@@ -7323,7 +7433,7 @@
         } else if (bcc.effect === "contactRep") {
           let total = 0;
           state.player.buffs.forEach((b) => {
-            const buyValue = getItemCostByType(b.rarity || 'common', 'contact');
+            const buyValue = getItemCostByType(b.rarity || "common", "contact");
             total += Math.floor(buyValue / 2);
           });
           total = Math.min(30, total);
@@ -7409,10 +7519,11 @@
         state.ccPicksTaken++;
         state.ccPicksLeft--;
 
-        const nextAvail = state.player.addressBook.some((cid) => {
-          const con = CONTACTS.find((con) => con.id === cid);
-          return con && !isContactInLoop(con.id) && !isContactImplicated(con);
-        }) || state.player.bccContacts.length > 0;
+        const nextAvail =
+          state.player.addressBook.some((cid) => {
+            const con = CONTACTS.find((con) => con.id === cid);
+            return con && !isContactInLoop(con.id) && !isContactImplicated(con);
+          }) || state.player.bccContacts.length > 0;
 
         if (state.ccPicksLeft <= 0 || !nextAvail) {
           finishCcAction();
