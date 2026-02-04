@@ -1704,6 +1704,8 @@
         }
       ];
 
+      const BCC_LIMIT = 3;
+
       const SIGNATURES = [
         {
           id: "iphone",
@@ -5139,15 +5141,21 @@
           if (!pending.options.includes(opt.id)) return;
 
           const btn = document.createElement("button");
+          const hasSpace = hasSpaceForItem(opt);
           btn.className =
             "w-full retro-border text-left p-2 bg-white hover:bg-blue-50 flex flex-col gap-1";
+          if (!hasSpace) {
+            btn.disabled = true;
+            btn.classList.add("opacity-50", "cursor-not-allowed");
+          }
 
           const badge = opt.rarity ? formatRarityBadge(opt.rarity) : "";
           const bonusDesc = opt.bonus || describeEffect(opt.eff || opt);
+          const fullLabel = !hasSpace ? `<span class="text-red-600"> [FULL]</span>` : "";
 
           btn.innerHTML = `
                 <div class="flex justify-between items-center">
-                    <span class="font-bold">${opt.name}</span>
+                    <span class="font-bold">${opt.name}${fullLabel}</span>
                     ${badge}
                 </div>
                 <div class="text-[10px] italic text-gray-600">${bonusDesc}</div>
@@ -5933,7 +5941,7 @@
         if (!container || container.classList.contains("hidden")) return;
         container.innerHTML = "";
 
-        const section = (title, items, type, sellFn) => {
+        const section = (title, items, type, sellFn, options = {}) => {
           if (!items || (Array.isArray(items) && items.length === 0)) return;
           const h = document.createElement("div");
           h.className = "text-[10px] font-bold uppercase text-gray-500 mt-2";
@@ -5941,10 +5949,10 @@
           container.appendChild(h);
           if (Array.isArray(items)) {
             items.forEach((item) => {
-              container.appendChild(createOwnedRow(item, type, () => sellFn(item)));
+              container.appendChild(createOwnedRow(item, type, () => sellFn(item), options));
             });
           } else {
-            container.appendChild(createOwnedRow(items, type, () => sellFn(items)));
+            container.appendChild(createOwnedRow(items, type, () => sellFn(items), options));
           }
         };
 
@@ -5955,8 +5963,9 @@
           (it) => sellItem("contact", it)
         );
         section("Signatures", state.player.signatures, "signature", (it) => sellItem("signature", it));
-        section("Greeting", state.player.salutation, "salutation", (it) => sellItem("salutation", it));
-        section("Sign-off", state.player.signOff, "signoff", (it) => sellItem("signoff", it));
+        section("Greeting", state.player.salutation, "salutation", (it) => sellItem("salutation", it), { actionLabel: "CLEAR" });
+        section("Sign-off", state.player.signOff, "signoff", (it) => sellItem("signoff", it), { actionLabel: "CLEAR" });
+        section("Active BCCs", state.player.bccContacts, "bcc", (it) => sellItem("bcc", it), { actionLabel: "DISCARD" });
       }
 
       function sellItem(itemType, item) {
@@ -5981,6 +5990,7 @@
           updateShopUI();
         }
         renderPackManagement();
+        if (state.pendingTraining) openPackModal();
         saveGame();
       }
 
@@ -6087,6 +6097,8 @@
           return state.player.signatures.length < state.player.title.sigLimit;
         if (item.itemType === "salutation") return true;
         if (item.itemType === "signoff") return true;
+        if (item.itemType === "bcc")
+          return state.player.bccContacts.length < BCC_LIMIT;
         return true;
       }
 
@@ -6167,7 +6179,7 @@
         }
 
         const ownedBccs = document.getElementById("shop-owned-bccs");
-        ownedBccs.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Consumable BCCs (${state.player.bccContacts.length})</div>`;
+        ownedBccs.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Consumable BCCs (${state.player.bccContacts.length}/${BCC_LIMIT})</div>`;
         state.player.bccContacts.forEach((bcc) => {
           ownedBccs.appendChild(
             createOwnedRow(bcc, "bcc", () => sellItem("bcc", bcc), {
