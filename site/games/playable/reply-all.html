@@ -397,12 +397,15 @@
         <div
           class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
         >
-          <span>PLAYER STAT SUMMARY</span>
+          <span>EMPLOYEE FILE</span>
           <button id="stats-modal-close" class="px-1">✕</button>
         </div>
         <div class="p-3 text-[10px] text-gray-800 space-y-3">
           <div id="stats-modal-header" class="text-[11px] font-bold"></div>
-          <div class="grid grid-cols-2 gap-2" id="stats-modal-totals"></div>
+          <div
+            class="grid grid-cols-1 sm:grid-cols-2 gap-2"
+            id="stats-modal-totals"
+          ></div>
           <div>
             <div class="text-[10px] font-bold uppercase text-gray-500 mb-1">
               Sources
@@ -1817,7 +1820,7 @@
           id: "disclaimer",
           name: "Standard Disclaimer Applied",
           rarity: "common",
-          singleDmg: 1,
+          singleDmg: 3,
         },
         {
           id: "per_my_last",
@@ -1830,13 +1833,6 @@
           name: "Win-Optimized Footer",
           rarity: "uncommon",
           wins: 2,
-        },
-        {
-          id: "best",
-          name: "Best,",
-          rarity: "uncommon",
-          heal: 2,
-          selfPromoteHeal: 3,
         },
         {
           id: "environment_printing",
@@ -2254,9 +2250,16 @@
         {
           id: "best_signoff",
           name: "Best,",
-          bonus: "+2 reply to",
           rarity: "common",
-          singleDmg: 2,
+          effects: [
+            {
+              event: "thread_end",
+              type: "add_thread_bonus_scaled",
+              scaleBy: "wins_remaining",
+              step: 1,
+              stats: { repBonus: 3 },
+            },
+          ],
         },
         {
           id: "warmly",
@@ -6072,6 +6075,23 @@
               applySalutationPermanentBoost(unit, id, effect.stats || {});
             } else if (effect.type === "add_thread_bonus") {
               applyUnitThreadBonus(unit, effect.stats || {});
+            } else if (effect.type === "add_thread_bonus_scaled") {
+              const step = effect.step || 1;
+              let base = 0;
+              if (effect.scaleBy === "wins_remaining")
+                base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
+              if (effect.scaleBy === "hp") base = unit.hp || 0;
+              if (effect.scaleBy === "overflow") base = context.overflow || 0;
+              const steps = Math.floor(base / step);
+              if (steps > 0) {
+                const scaled = {};
+                Object.keys(effect.stats || {}).forEach((key) => {
+                  const value = effect.stats[key];
+                  if (typeof value !== "number") return;
+                  scaled[key] = value * steps;
+                });
+                applyUnitThreadBonus(unit, scaled);
+              }
             } else if (effect.type === "add_bcc") {
               if (unit.id !== "player") return;
               addRandomBccs(state.player, effect.count || 1);
@@ -7451,6 +7471,17 @@
           const onceText = effect.oncePerThread ? " (once per thread)" : "";
           return `${eventLabel}${onceText}, gain ${statsLabel} until the end of this thread`;
         }
+        if (effect.type === "add_thread_bonus_scaled") {
+          const eventLabel = eventText.replace("On ", "On '") + "'";
+          const scaleLabel =
+            effect.scaleBy === "wins_remaining"
+              ? "wins remaining"
+              : effect.scaleBy === "hp"
+                ? "cred"
+                : "points";
+          const step = effect.step || 1;
+          return `${eventLabel}, every ${step} ${scaleLabel} grants ${statsText} until the end of this thread`;
+        }
         if (effect.type === "add_bcc") {
           const count = effect.count || 1;
           return `${eventText}: gain ${count} BCC`;
@@ -7699,7 +7730,8 @@
           };
           const spaceLabels = {
             bcc: "FREE SLOT",
-            salutation: "ALREADY SET",
+            salutation: "DELETE GREETING TO APPLY",
+            signoff: "DELETE SIGN-OFF TO APPLY",
           };
 
           directList.appendChild(
@@ -7774,7 +7806,7 @@
         summaryItems.forEach((item) => {
           const div = document.createElement("div");
           div.className =
-            "col-span-2 flex justify-between bg-white retro-border px-2 py-1";
+            "col-span-1 sm:col-span-2 flex flex-col sm:flex-row sm:justify-between gap-1 bg-white retro-border px-2 py-1";
           div.innerHTML = `<span class="uppercase text-gray-500">${item.label}</span><span class="text-[10px]">${item.value}</span>`;
           totalsEl.appendChild(div);
         });
@@ -8599,6 +8631,7 @@
                 const d = getUnitDamage(a, "escalate");
                 let totalBlocked = 0;
                 let totalRecovered = 0;
+                let playerHit = false;
                 const recoverPerHit = getUnitEscalateRecover(a);
                 const escalateTargets = [
                   ...alive.filter((o) => o.id !== a.id),
@@ -8610,6 +8643,7 @@
                   if (t.hp > 0) {
                     const result = applyDamage(a, t, d);
                     totalBlocked += result.blocked;
+                    if (t === state.player && result.dmg > 0) playerHit = true;
                     if (recoverPerHit > 0) {
                       totalRecovered += recoverPerHit;
                       a.hp = Math.min(getUnitMaxHp(a), a.hp + recoverPerHit);
@@ -8638,6 +8672,16 @@
                   escBody,
                   "bg-yellow-50 border-l-4 border-yellow-400",
                 );
+                if (playerHit) {
+                  document.getElementById("game-ui").classList.add("shaking");
+                  setTimeout(
+                    () =>
+                      document
+                        .getElementById("game-ui")
+                        .classList.remove("shaking"),
+                    200,
+                  );
+                }
               } else {
                 let d = getUnitDamage(a, "single");
 
