@@ -1874,9 +1874,10 @@
         {
           id: "project_team",
           name: "To the Project Team,",
-          bonus: "+2 reply to",
+          bonus:
+            "Reply to hits a random secondary stakeholder for half damage.",
           rarity: "common",
-          singleDmg: 2,
+          replySecondaryHalf: true,
         },
         {
           id: "working_group",
@@ -4946,6 +4947,10 @@
           : null;
       }
 
+      function pickSecondaryTarget(attacker, primaryTarget) {
+        return pickBounceTarget(attacker, primaryTarget);
+      }
+
       function applyDamage(attacker, target, rawDamage, options = {}) {
         let dmg = Math.max(0, Math.floor(rawDamage));
         const flatDef = getUnitFlatDef(target);
@@ -6287,6 +6292,8 @@
           parts.push(`Self-Promote +${effect.selfPromoteHeal}`);
         if (effect.replyDeptCleave)
           parts.push(`Reply to hits entire target department`);
+        if (effect.replySecondaryHalf)
+          parts.push(`Reply to hits a random secondary for half damage`);
         if (
           effect.ccScaleSingleDmg ||
           effect.ccScaleMaxHp ||
@@ -6897,6 +6904,14 @@
           const followUpResult = followUpHit ? applyDamage(p, target, d) : null;
           const splashDamage = getUnitReplyDeptSplash(p);
           const splashResult = applyDepartmentSplash(p, target, splashDamage);
+          const secondaryActive =
+            p.salutation && p.salutation.replySecondaryHalf === true;
+          const secondaryTarget = secondaryActive
+            ? pickSecondaryTarget(p, target)
+            : null;
+          const secondaryResult = secondaryTarget
+            ? applyDamage(p, secondaryTarget, Math.floor(d * 0.5))
+            : null;
           const bounceDamage = getUnitBounceDamage(p);
           const bounceTarget = bounceDamage
             ? pickBounceTarget(p, target)
@@ -6929,6 +6944,9 @@
           }
           if (cleaveResult.hits > 0) {
             body += `<br><br><strong>Department Cleave:</strong> ${cleaveResult.hits} hit for ${cleaveResult.total}.`;
+          }
+          if (secondaryResult && secondaryTarget) {
+            body += `<br><br><strong>Secondary Reply:</strong> ${secondaryTarget.name} -${secondaryResult.dmg}.`;
           }
           if (bounceResult && bounceTarget) {
             body += `<br><br><strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`;
