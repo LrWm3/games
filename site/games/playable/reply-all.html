@@ -1247,7 +1247,7 @@
             "I'm looping in <strong>{name}</strong> to keep our technical support aligned and logged.",
           eff: {
             singleDmg: 5,
-            replyAllDmg: 3,
+            escalateDmg: 3,
           },
           usedBy: null,
         },
@@ -1346,12 +1346,10 @@
           title: "Social Media Manager",
           rarity: "rare",
           departmentId: "constituent_services",
-          bonus: "No combat bonus, but +12 REP if in loop at end of match.",
+          bonus: "No combat bonus.",
           loopInText:
             "I'm looping in <strong>{name}</strong> for awareness and to mitigate reputational risk if this thread leaks.",
-          eff: {
-            endRep: 12,
-          },
+          eff: {},
           usedBy: null,
         },
         {
@@ -1389,12 +1387,10 @@
           title: "Public Liaison",
           rarity: "rare",
           departmentId: "constituent_services",
-          bonus: "+8 REP if in loop at end of match.",
+          bonus: "No combat bonus.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to handle external messaging and stakeholder optics.",
-          eff: {
-            endRep: 8,
-          },
+          eff: {},
           usedBy: null,
         },
         {
@@ -1531,11 +1527,11 @@
           rarity: "common",
           departmentId: "m4_agency",
           employeeId: "anthony_m4_agency",
-          bonus: "+3 reply all",
+          bonus: "+3 escalate",
           loopInText:
             "I'm looping in <strong>{name}</strong> to manage the broader comms fallout.",
           eff: {
-            replyAllDmg: 3,
+            escalateDmg: 3,
           },
           usedBy: null,
         },
@@ -1623,12 +1619,10 @@
           rarity: "rare",
           departmentId: "executive_council_office",
           employeeId: "anneke_executive_council_office",
-          bonus: "+10 REP if in loop at end of match.",
+          bonus: "No combat bonus.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to provide executive counsel and strategic framing.",
-          eff: {
-            endRep: 10,
-          },
+          eff: {},
           usedBy: null,
         },
         {
@@ -1762,6 +1756,14 @@
           singleDmgMult: 0.1,
         },
         {
+          id: "wins_signature",
+          name: "Win-Optimized Footer",
+          bonus: "+5 reply to and +50% reply to per win remaining.",
+          rarity: "uncommon",
+          winScaleSingleDmg: 5,
+          winScaleSingleDmgMult: 0.5,
+        },
+        {
           id: "best",
           name: "Best,",
           bonus: "+2 Credibility/turn & Self-Promote +5.",
@@ -1787,16 +1789,16 @@
         {
           id: "thanks_advance",
           name: "Thanks in advance,",
-          bonus: "50% chance to double leverage gain.",
+          bonus: "+50% leverage gain.",
           rarity: "rare",
-          doubleLevChance: 0.5,
+          levMult: 0.5,
         },
         {
           id: "encrypted",
           name: "Sent from my encrypted workstation",
-          bonus: "15% damage reduction.",
+          bonus: "Flat damage reduction +2.",
           rarity: "rare",
-          def: 0.15,
+          defFlat: 2,
         },
         {
           id: "renewable_energy",
@@ -2055,6 +2057,14 @@
           heal: 2,
         },
         {
+          id: "team_regards_signoff",
+          name: "Regards team,",
+          bonus: "+2 Credibility/turn & Self-Promote +5",
+          rarity: "uncommon",
+          heal: 2,
+          selfPromoteHeal: 5,
+        },
+        {
           id: "yours_truly",
           name: "Yours truly,",
           bonus: "+75% leverage gain",
@@ -2078,9 +2088,8 @@
         {
           id: "with_appreciation",
           name: "With appreciation,",
-          bonus: "+1 REP at end of match.",
+          bonus: "No combat bonus.",
           rarity: "uncommon",
-          endRep: 1,
         },
         {
           id: "sincerely",
@@ -2116,9 +2125,9 @@
         {
           id: "for_your_awareness",
           name: "For your awareness,",
-          bonus: "+3 reply all",
+          bonus: "+3 escalate",
           rarity: "rare",
-          replyAllDmg: 3,
+          escalateDmg: 3,
         },
         {
           id: "v_respectfully",
@@ -2198,9 +2207,9 @@
         {
           id: "broadcast_training",
           name: "Broadcast Training",
-          bonus: "Upgrades a CC'd contact with +3 reply all.",
+          bonus: "Upgrades a CC'd contact with +3 escalate.",
           rarity: "common",
-          effect: "contactUpgradeReplyAll",
+          effect: "contactUpgradeEscalate",
           logText:
             "Issued a broadcast readiness training order for one CC'd contact.",
         },
@@ -2251,7 +2260,7 @@
             { type: "signature", id: "double_espresso" },
           ],
           effect: {
-            bounceBase: 5,
+            special: "Set bonus pending review.",
           },
         },
         {
@@ -3840,7 +3849,7 @@
               maxHp: 30,
               wins: 2,
               singleDmg: 5,
-              replyAllDmg: 3,
+              escalateDmg: 3,
               buffs: [],
               addressBook: ["cc_willy_boy_information_technology"],
             },
@@ -3869,7 +3878,7 @@
               maxHp: 40,
               wins: 2,
               singleDmg: 5,
-              replyAllDmg: 3,
+              escalateDmg: 3,
               buffs: [],
               addressBook: ["cc_gemma_policy"],
             },
@@ -3880,7 +3889,7 @@
               maxHp: 20,
               wins: 1,
               singleDmg: 5,
-              replyAllDmg: 3,
+              escalateDmg: 3,
               buffs: [],
               addressBook: ["cc_dave_constituent_services"],
             },
@@ -4299,11 +4308,9 @@
           departmentId: "executive_council_office",
           singleDmg: 10,
           escalateDmg: 5,
-          replyAllDmg: 20,
           globalDmg: 0,
           singleDmgMult: 0,
           escalateDmgMult: 0,
-          replyAllDmgMult: 0,
           globalDmgMult: 0,
           deflectPower: 3,
           deflect: 0,
@@ -4735,12 +4742,10 @@
 
       const STAT_FIELDS = [
         "escalateDmg",
-        "replyAllDmg",
         "globalDmg",
         "singleDmg",
         "singleDmgMult",
         "escalateDmgMult",
-        "replyAllDmgMult",
         "globalDmgMult",
         "maxHp",
         "wins",
@@ -4751,24 +4756,19 @@
         "replyDeptSplash",
         "escalateRecoverPerHit",
         "defFlat",
-        "def",
         "heal",
         "levMult",
         "repBonus",
-        "endRep",
         "numCCperCCaction",
-        "bounceBase",
         "bccLimit",
       ];
 
       function applyUnitDefaults(u) {
         if (u.singleDmg == null) u.singleDmg = 10;
         if (u.escalateDmg == null) u.escalateDmg = 5;
-        if (u.replyAllDmg == null) u.replyAllDmg = 20;
         if (u.globalDmg == null) u.globalDmg = 0;
         if (u.singleDmgMult == null) u.singleDmgMult = 0;
         if (u.escalateDmgMult == null) u.escalateDmgMult = 0;
-        if (u.replyAllDmgMult == null) u.replyAllDmgMult = 0;
         if (u.globalDmgMult == null) u.globalDmgMult = 0;
         if (u.maxHp == null) u.maxHp = 0;
         if (u.wins == null) u.wins = 0;
@@ -4782,13 +4782,10 @@
         if (u.escalateRecoverPerHit == null) u.escalateRecoverPerHit = 0;
         if (u.selfPromoteHeal == null) u.selfPromoteHeal = 0;
         if (u.defFlat == null) u.defFlat = 0;
-        if (u.def == null) u.def = 0;
         if (u.heal == null) u.heal = 0;
         if (u.levMult == null) u.levMult = 0;
         if (u.repBonus == null) u.repBonus = 0;
-        if (u.endRep == null) u.endRep = 0;
         if (u.numCCperCCaction == null) u.numCCperCCaction = 1;
-        if (u.bounceBase == null) u.bounceBase = 0;
         if (u.bccLimit == null) u.bccLimit = 0;
         if (!Array.isArray(u.deflectLines) || u.deflectLines.length === 0) {
           u.deflectLines = [
@@ -4889,6 +4886,33 @@
         return hasAny ? filtered : null;
       }
 
+      function getUnitRemainingWins(u) {
+        if (!u) return 0;
+        if (typeof u.currentWins === "number") return u.currentWins;
+        if (typeof u.wins === "number") return u.wins;
+        return 0;
+      }
+
+      function getUnitWinScaleStats(u) {
+        if (!u) return null;
+        const wins = getUnitRemainingWins(u);
+        if (!wins) return null;
+        const stats = {};
+        getUnitStatBlocks(u).forEach((block) => {
+          if (!block) return;
+          if (typeof block.winScaleSingleDmg === "number") {
+            stats.singleDmg =
+              (stats.singleDmg || 0) + block.winScaleSingleDmg * wins;
+          }
+          if (typeof block.winScaleSingleDmgMult === "number") {
+            stats.singleDmgMult =
+              (stats.singleDmgMult || 0) +
+              block.winScaleSingleDmgMult * wins;
+          }
+        });
+        return Object.keys(stats).length ? stats : null;
+      }
+
       function updateGreetingReputationScaling(player) {
         if (!player) return;
         const salutation = player.salutation;
@@ -4952,6 +4976,13 @@
             if (typeof value === "number") stats[field] += value;
           });
         }
+        const winScaleStats = getUnitWinScaleStats(u);
+        if (winScaleStats) {
+          STAT_FIELDS.forEach((field) => {
+            const value = winScaleStats[field];
+            if (typeof value === "number") stats[field] += value;
+          });
+        }
         return stats;
       }
 
@@ -4992,6 +5023,13 @@
           sources.push({
             label: `Greeting progress: ${u.salutation.name}`,
             stats: salutationPersistentStats,
+          });
+        }
+        const winScaleStats = getUnitWinScaleStats(u);
+        if (winScaleStats) {
+          sources.push({
+            label: `Win scaling (${getUnitRemainingWins(u)} remaining)`,
+            stats: winScaleStats,
           });
         }
         if (u.signOff) pushSource(`Sign-off: ${u.signOff.name}`, u.signOff);
@@ -5038,7 +5076,6 @@
         const fieldMap = {
           single: { dmg: "singleDmg", mult: "singleDmgMult" },
           escalate: { dmg: "escalateDmg", mult: "escalateDmgMult" },
-          replyAll: { dmg: "replyAllDmg", mult: "replyAllDmgMult" },
         };
         if (type === "replyAll") {
           const singleBase = stats.singleDmg || 0;
@@ -5063,10 +5100,6 @@
         return computeUnitStats(u).defFlat;
       }
 
-      function getUnitTotalDef(u) {
-        return computeUnitStats(u).def;
-      }
-
       function getUnitFollowUpChance(u) {
         const chance = computeUnitStats(u).followUpChance;
         return Math.max(0, Math.min(1, chance));
@@ -5082,9 +5115,7 @@
 
       function getUnitBounceDamage(u) {
         const stats = computeUnitStats(u);
-        if (!stats.bounceBase) return 0;
-        const mult = 1 + (stats.globalDmgMult || 0);
-        return Math.floor((stats.bounceBase + stats.globalDmg) * mult);
+        return 0;
       }
 
       function pickBounceTarget(attacker, primaryTarget) {
@@ -5105,9 +5136,6 @@
         let dmg = Math.max(0, Math.floor(rawDamage));
         const flatDef = getUnitFlatDef(target);
         dmg = Math.max(0, dmg - flatDef);
-        let def = getUnitTotalDef(target);
-        dmg = Math.floor(dmg * (1 - def));
-
         let blocked = 0;
         if (
           (target.deflectChargeReduce > 0 ||
@@ -5238,11 +5266,7 @@
       function getPlayerLeverageGain(base) {
         const p = state.player;
         const stats = computeUnitStats(p);
-        let gain = base * (1 + stats.levMult);
-        p.signatures.forEach((s) => {
-          if (s.doubleLevChance && Math.random() < s.doubleLevChance) gain *= 2;
-        });
-        return gain;
+        return base * (1 + stats.levMult);
       }
 
       function formatMessageBody(sender, content) {
@@ -5759,14 +5783,6 @@
             },
           },
           {
-            id: "upgrade_replyall",
-            name: "Reply-All Focus",
-            bonus: "+3 reply all",
-            apply: () => {
-              state.player.replyAllDmg += 3;
-            },
-          },
-          {
             id: "upgrade_global",
             name: "Agency-Wide Influence",
             bonus: "+1 all messages",
@@ -6105,9 +6121,6 @@
               state.removedByPlayer) *
             repStats.repBonus;
         }
-        if (repStats.endRep) {
-          bonusRep += repStats.endRep;
-        }
 
         const interestRep = Math.min(
           5,
@@ -6229,12 +6242,10 @@
             bccContacts: [],
             singleDmg: 10,
             escalateDmg: 5,
-            replyAllDmg: 20,
-            globalDmg: 0,
-            singleDmgMult: 0,
-            escalateDmgMult: 0,
-            replyAllDmgMult: 0,
-            globalDmgMult: 0,
+          globalDmg: 0,
+          singleDmgMult: 0,
+          escalateDmgMult: 0,
+          globalDmgMult: 0,
             deflectPower: 3,
             deflect: 0,
             deflectCharge: 0,
@@ -6616,7 +6627,6 @@
         if (effect.globalDmg) parts.push(`+${effect.globalDmg} all messages`);
         if (effect.singleDmg) parts.push(`+${effect.singleDmg} reply to`);
         if (effect.escalateDmg) parts.push(`+${effect.escalateDmg} escalate`);
-        if (effect.replyAllDmg) parts.push(`+${effect.replyAllDmg} reply all`);
         if (effect.globalDmgMult)
           parts.push(
             `+${Math.round(effect.globalDmgMult * 100)}% all messages`,
@@ -6625,8 +6635,6 @@
           parts.push(`+${Math.round(effect.singleDmgMult * 100)}% reply to`);
         if (effect.escalateDmgMult)
           parts.push(`+${Math.round(effect.escalateDmgMult * 100)}% escalate`);
-        if (effect.replyAllDmgMult)
-          parts.push(`+${Math.round(effect.replyAllDmgMult * 100)}% reply all`);
         if (effect.deflectPower)
           parts.push(`Deflect reflect +${effect.deflectPower}`);
         if (effect.deflect) parts.push(`Deflect reduce +${effect.deflect}`);
@@ -6649,7 +6657,6 @@
             const chunks = [];
             if (stats.singleDmg) chunks.push(`${stats.singleDmg} reply to`);
             if (stats.escalateDmg) chunks.push(`${stats.escalateDmg} escalate`);
-            if (stats.replyAllDmg) chunks.push(`${stats.replyAllDmg} reply all`);
             if (stats.maxHp) chunks.push(`${stats.maxHp} Max Cred`);
             if (stats.selfPromoteHeal)
               chunks.push(`${stats.selfPromoteHeal} self-promote`);
@@ -6671,7 +6678,6 @@
         if (effect.escalateRecoverPerHit)
           parts.push(`Escalate recover +${effect.escalateRecoverPerHit}`);
         if (effect.heal) parts.push(`+${effect.heal} Cred/turn`);
-        if (effect.bounceBase) parts.push(`Bounce +${effect.bounceBase} base`);
         return parts.join(", ");
       }
 
@@ -8084,7 +8090,7 @@
         } else if (
           bcc.effect === "contactUpgradeHp" ||
           bcc.effect === "contactUpgradeSingle" ||
-          bcc.effect === "contactUpgradeReplyAll"
+          bcc.effect === "contactUpgradeEscalate"
         ) {
           const pool = state.player.buffs.filter(
             (b) => b.usedBy === state.player.name,
@@ -8112,10 +8118,10 @@
                 subtitle: "Reply Precision",
                 eff: { singleDmg: 3 },
               };
-            } else if (bcc.effect === "contactUpgradeReplyAll") {
+            } else if (bcc.effect === "contactUpgradeEscalate") {
               upgrade = {
-                subtitle: "Broadcast Trained",
-                eff: { replyAllDmg: 3 },
+                subtitle: "Escalation Trained",
+                eff: { escalateDmg: 3 },
               };
             }
             if (upgrade) {
