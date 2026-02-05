@@ -77,9 +77,11 @@
         display: flex;
         gap: 8px;
       }
-      .address-book-list,
+      .address-book-list {
+        width: 41.6667% !important;
+      }
       .address-book-detail {
-        width: 100% !important;
+        width: 58.3333% !important;
       }
       @media (max-width: 480px) {
         .address-book-panels {
@@ -87,7 +89,7 @@
         }
         .address-book-list,
         .address-book-detail {
-          width: 100%;
+          width: 100% !important;
         }
       }
       @keyframes shake {
@@ -355,7 +357,6 @@
               <div id="shop-owned-contacts" class="space-y-2"></div>
               <div class="space-y-4">
                 <div id="shop-owned-email-template" class="space-y-2"></div>
-                <div id="shop-owned-bccs" class="space-y-2"></div>
               </div>
             </div>
           </div>
@@ -1163,26 +1164,45 @@
       });
 
       const DEPARTMENTS = [
-        { id: "operations", name: "Operations" },
-        { id: "information_technology", name: "Information Technology" },
-        { id: "executive_council_office", name: "Executive Council Office" },
+        { id: "operations", name: "Operations", shortName: "Ops" },
+        {
+          id: "information_technology",
+          name: "Information Technology",
+          shortName: "IT",
+        },
+        {
+          id: "executive_council_office",
+          name: "Executive Council Office",
+          shortName: "ECO",
+        },
         {
           id: "facilities_and_administration",
           name: "Facilities and Administration",
+          shortName: "F&A",
         },
-        { id: "marketing", name: "Marketing" },
-        { id: "constituent_services", name: "Constituent Services" },
+        { id: "marketing", name: "Marketing", shortName: "Mktg" },
+        {
+          id: "constituent_services",
+          name: "Constituent Services",
+          shortName: "CS",
+        },
         { id: "policy", name: "Policy" },
-        { id: "finance", name: "Finance" },
-        { id: "human_resources", name: "Human Resources" },
+        { id: "finance", name: "Finance", shortName: "Fin" },
+        { id: "human_resources", name: "Human Resources", shortName: "HR" },
         { id: "legal", name: "Legal" },
-        { id: "m4_agency", name: "M4 Agency" },
-        { id: "digital_technology", name: "Digital Technology" },
+        { id: "m4_agency", name: "M4 Agency", shortName: "M4" },
+        { id: "digital_technology", name: "Digital Technology", shortName: "DT" },
       ];
 
       const DEPARTMENT_BY_ID = Object.fromEntries(
         DEPARTMENTS.map((d) => [d.id, d]),
       );
+
+      function getDepartmentShortName(deptId) {
+        const dept = DEPARTMENT_BY_ID[deptId];
+        if (!dept) return "";
+        return dept.shortName || dept.name || "";
+      }
 
       const CONTACTS = [
         {
@@ -2473,7 +2493,7 @@
         },
         {
           id: "reply_precision",
-          name: "Reply Precision Training",
+          name: "Reply Precision",
           bonus: "One of your in-thread contacts gains a +5 reply to specialization.",
           rarity: "common",
           effect: "contactUpgradeSingle",
@@ -2482,7 +2502,7 @@
         },
         {
           id: "broadcast_training",
-          name: "Broadcast Training",
+          name: "Broadcast Comms.",
           bonus: "One of your in-thread contacts gains a +3 escalate specialization.",
           rarity: "common",
           effect: "contactUpgradeEscalate",
@@ -8041,18 +8061,36 @@
         // --- OWNED ASSETS ---
         const ownedContacts = document.getElementById("shop-owned-contacts");
         const addressLimit = getUnitAddressLimit(state.player);
-        ownedContacts.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Address Book (${state.player.addressBook.length}/${addressLimit})</div>`;
-        if (state.player.addressBook.length === 0) {
-          ownedContacts.innerHTML += `<div class="text-[10px] italic text-gray-400">No contacts on file.</div>`;
-        } else {
-          state.player.addressBook.forEach((id) => {
-            const c = CONTACTS.find((con) => con.id === id);
-            if (c) {
-              ownedContacts.appendChild(
-                createOwnedRow(c, "contact", () => sellItem("contact", c)),
-              );
+        if (ownedContacts) {
+          ownedContacts.innerHTML = `
+            <div class="text-[10px] font-bold uppercase text-gray-500">Address Book (${state.player.addressBook.length}/${addressLimit})</div>
+            ${
+              state.player.addressBook.length
+                ? `<div class="address-book-panels mt-2">
+                    <div class="address-book-list w-5/12 border border-gray-300 bg-white">
+                      <div id="shop-address-book-list" class="max-h-72 overflow-y-auto"></div>
+                    </div>
+                    <div class="address-book-detail w-7/12 border border-gray-300 bg-white p-3">
+                      <div id="shop-address-book-detail" class="text-[11px] space-y-2"></div>
+                    </div>
+                  </div>`
+                : `<div class="text-[10px] italic text-gray-400">No contacts on file.</div>`
             }
-          });
+          `;
+          if (state.player.addressBook.length) {
+            if (
+              !state.shopAddressBookSelection ||
+              (!state.player.addressBook.includes(state.shopAddressBookSelection) &&
+                !String(state.shopAddressBookSelection).startsWith("bcc:"))
+            ) {
+              state.shopAddressBookSelection =
+                state.player.addressBook[0] || null;
+            }
+            renderShopAddressBook();
+          } else if (state.player.bccContacts.length) {
+            state.shopAddressBookSelection = "bcc:0";
+            renderShopAddressBook();
+          }
         }
 
         const ownedEmailTemplate = document.getElementById(
@@ -8073,9 +8111,6 @@
                 Please be advised that the quarterly strategy session has been rescheduled. We remain committed to organizational excellence...
               </div>
               <div id="shop-owned-signoff" class="drop-zone min-h-10 bg-gray-50 my-4 p-2 text-[10px]"></div>
-              <div id="shop-owned-signature-drop" class="drop-zone min-h-10 bg-gray-50 my-4 p-2 text-[10px]">
-                [ ACTIVE SIGNATURES ]
-              </div>
               <div id="drawer-owned-signatures" class="space-y-1 mt-4 pt-4 border-t border-gray-100">
                 <div id="sig-count-header" class="text-[9px] font-bold text-gray-400 uppercase mb-2">
                   Active Signatures (${state.player.signatures.length}/${state.player.title.sigLimit})
@@ -8131,15 +8166,7 @@
         }
 
         const ownedBccs = document.getElementById("shop-owned-bccs");
-        const bccLimit = computeUnitStats(state.player).bccLimit || 0;
-        ownedBccs.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Consumable BCCs (${state.player.bccContacts.length}/${bccLimit})</div>`;
-        state.player.bccContacts.forEach((bcc) => {
-          ownedBccs.appendChild(
-            createOwnedRow(bcc, "bcc", () => sellItem("bcc", bcc), {
-              actionLabel: "DISCARD",
-            }),
-          );
-        });
+        if (ownedBccs) ownedBccs.innerHTML = "";
 
         // --- DIRECT ITEMS ---
         const directList = document.getElementById("shop-direct-items");
@@ -8213,6 +8240,223 @@
             ),
           );
         });
+      }
+
+      function renderShopAddressBook() {
+        const list = document.getElementById("shop-address-book-list");
+        const detail = document.getElementById("shop-address-book-detail");
+        if (!list || !detail) return;
+        list.innerHTML = "";
+        const header = document.createElement("div");
+        header.className =
+          "text-[10px] font-bold bg-gray-200 p-1 uppercase sticky top-0";
+        header.innerText = "Address Book";
+        list.appendChild(header);
+
+        state.player.addressBook.forEach((id) => {
+          const c = CONTACTS.find((con) => con.id === id);
+          if (!c) return;
+          const compactDeptLabel = c.departmentId
+            ? getDepartmentShortName(c.departmentId) ||
+              DEPARTMENT_BY_ID[c.departmentId]?.name ||
+              c.departmentId
+            : "Department N/A";
+          const btn = document.createElement("div");
+          const isSelected = state.shopAddressBookSelection === c.id;
+          btn.className = `px-2 py-1 border-b border-gray-200 text-xs cursor-pointer ${
+            isSelected ? "bg-blue-50" : "hover:bg-blue-50"
+          }`;
+          btn.innerHTML = `<div class="flex justify-between"><span class="font-semibold text-[#000080]">${c.name}</span><span class="text-[9px] uppercase text-gray-500">${compactDeptLabel}</span></div>`;
+          btn.onclick = () => {
+            state.shopAddressBookSelection = c.id;
+            renderShopAddressBook();
+          };
+          list.appendChild(btn);
+        });
+
+        if (state.player.bccContacts.length > 0) {
+          const headerBcc = document.createElement("div");
+          headerBcc.className =
+            "text-[10px] font-bold bg-gray-200 p-1 mt-3 uppercase sticky top-0";
+          headerBcc.innerText = "Help Desk (BCC)";
+          list.appendChild(headerBcc);
+
+          state.player.bccContacts.forEach((bcc, idx) => {
+            const btn = document.createElement("div");
+            const key = `bcc:${idx}`;
+            const isSelected = state.shopAddressBookSelection === key;
+            btn.className = `px-2 py-1 border-b border-gray-200 text-xs cursor-pointer ${
+              isSelected ? "bg-yellow-50" : "hover:bg-yellow-50"
+            }`;
+            btn.innerHTML = `<div class="flex justify-between"><span class="font-semibold text-yellow-800">${bcc.name}</span><span class="text-[9px] uppercase text-gray-500">BCC</span></div>`;
+            btn.onclick = () => {
+              state.shopAddressBookSelection = key;
+              renderShopAddressBook();
+            };
+            list.appendChild(btn);
+          });
+        }
+
+        if (typeof state.shopAddressBookSelection === "string" &&
+            state.shopAddressBookSelection.startsWith("bcc:")) {
+          const idx = Number(state.shopAddressBookSelection.split(":")[1]);
+          const bcc = state.player.bccContacts[idx];
+          if (!bcc) {
+            detail.innerHTML =
+              `<div class="text-[10px] uppercase text-gray-500">Select a contact to view details</div>`;
+            return;
+          }
+          detail.innerHTML = `
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="font-bold text-yellow-800 text-sm">${bcc.name}</div>
+                <div class="text-[10px] uppercase text-gray-500">BCC</div>
+              </div>
+            </div>
+            <hr class="border-gray-200 my-2" />
+            <div class="text-[10px] text-gray-700">Effects: ${getItemBonusText(bcc)}</div>
+            <div class="pt-2">
+              <button id="shop-address-book-action" class="retro-button text-xs px-3">DISCARD BCC</button>
+            </div>
+          `;
+          const actionBtn = detail.querySelector("#shop-address-book-action");
+          if (actionBtn) {
+            actionBtn.onclick = () => {
+              sellItem("bcc", bcc);
+              updateShopUI();
+            };
+          }
+          return;
+        }
+
+        const c = CONTACTS.find(
+          (con) => con.id === state.shopAddressBookSelection,
+        );
+        if (!c) {
+          detail.innerHTML =
+            `<div class="text-[10px] uppercase text-gray-500">Select a contact to view details</div>`;
+          return;
+        }
+
+        const employee = c.employeeId
+          ? EMPLOYEES.find((e) => e.id === c.employeeId)
+          : null;
+        const emailLine = employee && employee.email ? employee.email : "";
+        const deptLabel = c.departmentId
+          ? (DEPARTMENT_BY_ID[c.departmentId]?.name || c.departmentId)
+          : "Department N/A";
+        const setEntries = SET_DEFS.filter((set) =>
+          set.items?.some(
+            (item) => item.type === "contact" && item.id === c.id,
+          ),
+        );
+        const baseBonusText = getItemBonusText({ ...c, id: "__base__" }) || "";
+        const effectsText =
+          Array.isArray(c.effects) && c.effects.length
+            ? c.effects.map((effect) => formatEffect(effect)).join(" • ")
+            : "";
+        const boosts =
+          state.player.contactPermanentBoosts &&
+          state.player.contactPermanentBoosts[c.id];
+        const upgrades =
+          state.player.contactUpgrades && state.player.contactUpgrades[c.id];
+        const trainingText = boosts ? formatStatsText(boosts) : "";
+        const upgradeText =
+          upgrades && upgrades.eff ? formatStatsText(upgrades.eff) : "";
+        const showSpecialization = !!(upgrades && upgrades.subtitle && upgradeText);
+        const effectiveStats = {};
+        const mergeStats = (stats) => {
+          if (!stats) return;
+          Object.keys(stats).forEach((key) => {
+            const value = stats[key];
+            if (typeof value !== "number") return;
+            effectiveStats[key] = (effectiveStats[key] || 0) + value;
+          });
+        };
+        mergeStats(c.eff);
+        mergeStats(boosts);
+        mergeStats(upgrades && upgrades.eff);
+        const effectiveText = formatStatsText(effectiveStats);
+        const cost = c.cost || getItemCostByType(c.rarity || "common", "contact");
+        const refund = Math.floor(cost / 2);
+
+        detail.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div class="min-w-0 flex-1">
+              <div class="font-bold text-[#000080] text-sm flex items-baseline gap-1 min-w-0">
+                <span class="truncate">${c.name}</span>
+                ${
+                  emailLine
+                    ? `<span class="text-[9px] text-gray-500 whitespace-nowrap">(${emailLine})</span>`
+                    : ""
+                }
+              </div>
+              <div class="flex text-[10px] uppercase text-gray-500">
+                <span class="w-5/12 truncate pr-2">${c.title}</span>
+                <span class="w-7/12 truncate text-right">${deptLabel}</span>
+              </div>
+              ${
+                setEntries.length
+                  ? `<div class="flex flex-wrap gap-1 text-[9px] uppercase text-gray-500 mt-1">
+                      <span class="text-gray-400">Member of</span>
+                      ${setEntries
+                        .map(
+                          (set) =>
+                            `<button type="button" data-set-button data-set-id="${set.id}" class="px-1 py-0.5 bg-blue-50 text-blue-700 font-semibold uppercase text-[9px]">${set.name}</button>`,
+                        )
+                        .join("")}
+                    </div>`
+                  : ""
+              }
+            </div>
+          </div>
+          <hr class="border-gray-200 my-2" />
+          ${
+            baseBonusText || trainingText || showSpecialization
+              ? `<details class="text-[10px] text-gray-700" ${
+                  state.shopAddressBookDetailsOpen ? "open" : ""
+                }>
+                  <summary class="cursor-pointer select-none text-[10px] uppercase text-gray-500">Details</summary>
+                  <div class="pt-1 space-y-1">
+                    ${c.rarity ? `<div class="text-gray-600 uppercase">Rarity: ${c.rarity}</div>` : ""}
+                    ${baseBonusText ? `<div>Talent: ${baseBonusText}</div>` : ""}
+                    ${
+                      showSpecialization
+                        ? `<div class="text-emerald-700 font-semibold">Specialization: ${upgradeText}</div>`
+                        : ""
+                    }
+                    ${trainingText ? `<div class="text-blue-700 font-semibold">Training: ${trainingText}</div>` : ""}
+                  </div>
+                </details>`
+              : ""
+          }
+          ${effectsText ? `<div class="text-[10px] text-gray-700">Effects: ${effectsText}</div>` : ""}
+          <hr class="border-gray-200 my-2" />
+          ${effectiveText ? `<div class="text-[10px] text-gray-900">${effectiveText}</div>` : ""}
+          <div class="pt-2">
+            <button id="shop-address-book-action" class="retro-button text-xs px-3">ARCHIVE CONTACT +${refund} REP</button>
+          </div>
+        `;
+
+        const detailsEl = detail.querySelector("details");
+        if (detailsEl) {
+          detailsEl.addEventListener("toggle", () => {
+            state.shopAddressBookDetailsOpen = detailsEl.open;
+          });
+        }
+        detail.querySelectorAll("[data-set-button]").forEach((setBtn) => {
+          setBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            openSetInfo(setBtn.dataset.setId);
+          });
+        });
+        const actionBtn = detail.querySelector("#shop-address-book-action");
+        if (actionBtn) {
+          actionBtn.onclick = () => {
+            sellItem("contact", c);
+            updateShopUI();
+          };
+        }
       }
 
       function renderStatsModal() {
@@ -9331,12 +9575,11 @@
           const isDisabled = isUsed || isImplicated || solidarityLocked;
           const btn = document.createElement("div");
           btn.className = `px-2 py-1 border-b border-gray-200 text-xs ${isDisabled ? "opacity-50 bg-gray-50" : "cursor-pointer hover:bg-blue-50"}`;
-          const compactDeptLabel =
-            c.departmentId === "executive_council_office"
-              ? "ECO"
-              : c.departmentId
-                ? (DEPARTMENT_BY_ID[c.departmentId]?.name || c.departmentId)
-                : "Department N/A";
+          const compactDeptLabel = c.departmentId
+            ? getDepartmentShortName(c.departmentId) ||
+              DEPARTMENT_BY_ID[c.departmentId]?.name ||
+              c.departmentId
+            : "Department N/A";
           btn.innerHTML = `<div class="flex justify-between"><span class="font-semibold text-[#000080]">${c.name}</span><span class="text-[9px] uppercase text-gray-500">${compactDeptLabel}</span></div>`;
           btn.onclick = () => {
             state.addressBookSelection = { type: "contact", id: c.id };
@@ -9481,6 +9724,7 @@
                   }>
                     <summary class="cursor-pointer select-none text-[10px] uppercase text-gray-500">Details</summary>
                     <div class="pt-1 space-y-1">
+                      ${c.rarity ? `<div class="text-gray-600 uppercase">Rarity: ${c.rarity}</div>` : ""}
                       ${baseBonusText ? `<div>Talent: ${baseBonusText}</div>` : ""}
                       ${
                         showSpecialization
@@ -9493,6 +9737,7 @@
                 : ""
             }
             ${effectsText ? `<div class="text-[10px] text-gray-700">Effects: ${effectsText}</div>` : ""}
+            <hr class="border-gray-200 my-2" />
             ${effectiveText ? `<div class="text-[10px] text-gray-900">${effectiveText}</div>` : ""}
             <div class="pt-2">
               <button id="address-book-action" class="retro-button text-xs px-3" ${
