@@ -2085,9 +2085,10 @@
           rarity: "uncommon",
           effects: [
             {
-              event: "reply_all",
-              type: "add_random_cc_bonus",
-              stats: { singleDmgMult: 0.25 },
+              event: "thread_end",
+              type: "add_salutation_bonus",
+              stats: { globalDmg: 5 },
+              requiresFullLeverage: true,
             },
           ],
         },
@@ -2103,9 +2104,10 @@
           rarity: "uncommon",
           effects: [
             {
-              event: "cc_add",
-              type: "add_cc_bonus",
-              stats: { singleDmg: 2 },
+              event: "thread_end",
+              type: "add_salutation_bonus",
+              stats: { singleDmgMult: 0.25, escalateDmgMult: 0.25 },
+              requiresHpFull: true,
             },
           ],
         },
@@ -2114,13 +2116,7 @@
           name: "To the Sustainability Team,",
           rarity: "uncommon",
           setId: "earth_set",
-          effects: [
-            {
-              event: "deflect_proc",
-              type: "add_random_cc_bonus",
-              stats: { maxHp: 5, repBonus: 1 },
-            },
-          ],
+          levMult: 1.0,
         },
         {
           id: "greetings",
@@ -2162,11 +2158,9 @@
           rarity: "rare",
           effects: [
             {
-              event: "thread_end",
-              type: "add_random_cc_bonus_scaled",
-              scaleBy: "wins_remaining",
-              step: 2,
-              stats: { defFlat: 1, deflect: 2 },
+              event: "deflect_action",
+              type: "add_salutation_bonus",
+              stats: { globalDmgMult: 0.1 },
             },
           ],
         }
@@ -2190,14 +2184,7 @@
           id: "respectfully",
           name: "Respectfully,",
           rarity: "common",
-          effects: [
-            {
-              event: "thread_end",
-              type: "add_signoff_bonus",
-              stats: { globalDmg: 5 },
-              requiresFullLeverage: true,
-            },
-          ],
+          effects: [],
         },
         {
           id: "regards_signoff",
@@ -2267,14 +2254,7 @@
           id: "warmly",
           name: "Warmly,",
           rarity: "common",
-          effects: [
-            {
-              event: "thread_end",
-              type: "add_signoff_bonus",
-              stats: { singleDmgMult: 0.25, escalateDmgMult: 0.25 },
-              requiresHpFull: true,
-            },
-          ],
+          effects: [],
         },
         {
           id: "solidarity",
@@ -2304,9 +2284,7 @@
         {
           id: "yours_truly",
           name: "Yours truly,",
-          bonus: "+100% leverage gain",
           rarity: "uncommon",
-          levMult: 1.0,
         },
         {
           id: "thank_you",
@@ -2389,7 +2367,6 @@
         {
           id: "for_group_awareness",
           name: "For group awareness,",
-          bonus: "Reply to disabled. Reply to is added to Escalate.",
           rarity: "rare",
           disableReplyTo: true,
           addSingleToEscalate: true,
@@ -2398,13 +2375,7 @@
           id: "v_respectfully",
           name: "Very Respectfully,",
           rarity: "rare",
-          effects: [
-            {
-              event: "deflect_action",
-              type: "add_signoff_bonus",
-              stats: { globalDmgMult: 0.1 },
-            },
-          ],
+          effects: [],
         },
       ];
 
