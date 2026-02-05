@@ -73,6 +73,23 @@
       .terminal-font {
         font-family: "VT323", monospace;
       }
+      .address-book-panels {
+        display: flex;
+        gap: 8px;
+      }
+      .address-book-list,
+      .address-book-detail {
+        width: 100% !important;
+      }
+      @media (max-width: 480px) {
+        .address-book-panels {
+          flex-direction: column-reverse;
+        }
+        .address-book-list,
+        .address-book-detail {
+          width: 100%;
+        }
+      }
       @keyframes shake {
         0%,
         100% {
@@ -893,14 +910,14 @@
           <button onclick="closeAddressBook()" class="px-1">✕</button>
         </div>
         <div class="p-2 bg-white">
-          <div class="flex gap-2">
-            <div class="w-5/12 border border-gray-300 bg-white">
+          <div class="address-book-panels">
+            <div class="address-book-list w-5/12 border border-gray-300 bg-white">
               <div
                 id="contact-list"
                 class="max-h-72 overflow-y-auto"
               ></div>
             </div>
-            <div class="w-7/12 border border-gray-300 bg-white p-3">
+            <div class="address-book-detail w-7/12 border border-gray-300 bg-white p-3">
               <div id="contact-detail" class="text-[11px] space-y-2">
                 <div class="text-[10px] uppercase text-gray-500">
                   Select a contact to view details
@@ -7629,6 +7646,16 @@
           .padStart(2, "0")} ${suffix}`;
       }
 
+      function formatThreadLimitLabel(limit) {
+        const labels = {
+          1: "once per thread",
+          2: "twice per thread",
+          3: "thrice per thread",
+          4: "4x per thread",
+        };
+        return labels[limit] || `up to ${limit}x per thread`;
+      }
+
       function formatStatsText(stats) {
         if (!stats) return "";
         const parts = [];
@@ -7684,8 +7711,9 @@
           .join(", ");
       }
 
-      function formatEffect(effect) {
+      function formatEffect(effect, opts = {}) {
         if (!effect) return "";
+        const includeLimit = !!opts.includeLimit;
         const eventLabels = {
           thread_start: "On thread start",
           thread_end: "On thread end",
@@ -7705,25 +7733,22 @@
         };
         const eventText = eventLabels[effect.event] || "On event";
         const statsText = formatStatsText(effect.stats || {});
+        let result = "";
         if (effect.type === "add_random_cc_bonus") {
-          return statsText
+          result = statsText
             ? `${eventText}: random CC gains ${statsText}`
             : `${eventText}: upgrade a random CC`;
-        }
-        if (effect.type === "add_cc_bonus") {
-          return statsText
+        } else if (effect.type === "add_cc_bonus") {
+          result = statsText
             ? `${eventText}: CC gains ${statsText}`
             : `${eventText}: upgrade that CC`;
-        }
-        if (effect.type === "add_signoff_bonus") {
+        } else if (effect.type === "add_signoff_bonus") {
           const cleaned = statsText.replace(/adds\s+(x[\d.]+)/gi, "$1");
-          return `${eventText}: gain ${cleaned} permanently`;
-        }
-        if (effect.type === "add_salutation_bonus") {
+          result = `${eventText}: gain ${cleaned} permanently`;
+        } else if (effect.type === "add_salutation_bonus") {
           const cleaned = statsText.replace(/adds\s+(x[\d.]+)/gi, "$1");
-          return `${eventText}: gain ${cleaned} permanently`;
-        }
-        if (effect.type === "add_thread_bonus") {
+          result = `${eventText}: gain ${cleaned} permanently`;
+        } else if (effect.type === "add_thread_bonus") {
           const eventLabel = eventText.replace("On ", "On '") + "'";
           const statsLabel = statsText
             .replace(/\+(\d+)\s+reply to/gi, "+$1 Reply To")
@@ -7739,9 +7764,8 @@
             };
             onceText = ` (${labels[limit] || `up to ${limit}x per thread`})`;
           }
-          return `${eventLabel}${onceText}, gain ${statsLabel} until the end of this thread`;
-        }
-        if (effect.type === "add_thread_bonus_scaled") {
+          result = `${eventLabel}${onceText}, gain ${statsLabel} until the end of this thread`;
+        } else if (effect.type === "add_thread_bonus_scaled") {
           const eventLabel = eventText.replace("On ", "On '") + "'";
           const scaleLabel =
             effect.scaleBy === "wins_remaining"
@@ -7750,17 +7774,14 @@
                 ? "cred"
                 : "points";
           const step = effect.step || 1;
-          return `${eventLabel}, every ${step} ${scaleLabel} grants ${statsText} until the end of this thread`;
-        }
-        if (effect.type === "add_bcc") {
+          result = `${eventLabel}, every ${step} ${scaleLabel} grants ${statsText} until the end of this thread`;
+        } else if (effect.type === "add_bcc") {
           const count = effect.count || 1;
-          return `${eventText}: gain ${count} BCC`;
-        }
-        if (effect.type === "duplicate_bcc") {
+          result = `${eventText}: gain ${count} BCC`;
+        } else if (effect.type === "duplicate_bcc") {
           const count = effect.count || 1;
-          return `${eventText}: duplicate ${count} BCC`;
-        }
-        if (effect.type === "add_signoff_bonus_scaled") {
+          result = `${eventText}: duplicate ${count} BCC`;
+        } else if (effect.type === "add_signoff_bonus_scaled") {
           const step = effect.step || 1;
           const scaleLabel =
             effect.scaleBy === "hp"
@@ -7768,9 +7789,8 @@
               : effect.scaleBy === "wins_remaining"
                 ? "wins remaining"
                 : "points";
-          return `${eventText}: every ${step} ${scaleLabel} adds ${formatStatsText(effect.stats || {})}`;
-        }
-        if (effect.type === "add_random_cc_bonus_scaled") {
+          result = `${eventText}: every ${step} ${scaleLabel} adds ${formatStatsText(effect.stats || {})}`;
+        } else if (effect.type === "add_random_cc_bonus_scaled") {
           const step = effect.step || 1;
           const scaleLabel =
             effect.scaleBy === "wins_remaining"
@@ -7783,35 +7803,48 @@
               ? ` (up to ${effect.threadLimit}x)`
               : "";
           const bonusText = formatStatsText(effect.stats || {});
-          const targetText = bonusText ? `upgrades ${bonusText} on a random CC` : "upgrades a random CC";
-          return `${eventText}: every ${step} ${scaleLabel} ${targetText}${limitLabel}`;
-        }
-        if (effect.type === "add_all_cc_bonus") {
-          return statsText
+          const targetText = bonusText
+            ? `upgrades ${bonusText} on a random CC`
+            : "upgrades a random CC";
+          result = `${eventText}: every ${step} ${scaleLabel} ${targetText}${limitLabel}`;
+        } else if (effect.type === "add_all_cc_bonus") {
+          result = statsText
             ? `${eventText}: all CCs gain ${statsText}`
             : `${eventText}: upgrade all CCs`;
-        }
-        if (effect.type === "add_cc_bonus_by_dept_pairs") {
-          return statsText
+        } else if (effect.type === "add_cc_bonus_by_dept_pairs") {
+          result = statsText
             ? `${eventText}: each CC gains ${statsText} per same-dept CC`
             : `${eventText}: upgrade each CC per same-dept CC`;
-        }
-        if (effect.type === "add_signoff_bonus_by_dept_pairs") {
-          return `${eventText}: gain ${formatStatsText(effect.stats || {})} per same-dept pair`;
-        }
-        if (effect.type === "rep_half_to_cc_escalate") {
+        } else if (effect.type === "add_signoff_bonus_by_dept_pairs") {
+          result = `${eventText}: gain ${formatStatsText(effect.stats || {})} per same-dept pair`;
+        } else if (effect.type === "rep_half_to_cc_escalate") {
           const step = effect.step || 1;
-          return statsText
+          result = statsText
             ? `${eventText}: gain half REP; every ${step} REP missed adds ${statsText} to CCs`
             : `${eventText}: gain half REP; every ${step} REP missed upgrades a random CC`;
+        } else {
+          result = statsText || "Effect";
         }
-        return statsText || "Effect";
+
+        if (
+          includeLimit &&
+          effect.threadLimit != null &&
+          !/per thread|up to/i.test(result)
+        ) {
+          result += ` (limit: ${formatThreadLimitLabel(effect.threadLimit)})`;
+        }
+        return result;
       }
 
       function getItemBonusText(item) {
         if (!item) return "";
         if (Array.isArray(item.effects) && item.effects.length) {
-          return item.effects.map(formatEffect).join(" • ");
+          const isSignoff =
+            item.itemType === "signoff" ||
+            SIGNOFFS.some((s) => s.id === item.id);
+          return item.effects
+            .map((effect) => formatEffect(effect, { includeLimit: isSignoff }))
+            .join(" • ");
         }
         const parts = [];
         const statsText = formatStatsText(item);
@@ -9246,6 +9279,10 @@
         if (selection.type === "contact") {
           const c = CONTACTS.find((con) => con.id === selection.id);
           if (!c) return;
+          const employee = c.employeeId
+            ? EMPLOYEES.find((e) => e.id === c.employeeId)
+            : null;
+          const emailLine = employee && employee.email ? employee.email : "";
           const isUsed = isContactInLoop(c.id);
           const isImplicated = isContactImplicated(c);
           const solidarityLocked =
@@ -9267,17 +9304,64 @@
           const setBadge = c.setId
             ? `<button type="button" data-set-button data-set-id="${c.setId}" class="text-[9px] uppercase px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 font-bold">Set</button>`
             : "";
-          const bonusText = getItemBonusText(c) || "";
+          const baseBonusText = getItemBonusText({ ...c, id: "__base__" }) || "";
+          const boosts =
+            state.player.contactPermanentBoosts &&
+            state.player.contactPermanentBoosts[c.id];
+          const upgrades =
+            state.player.contactUpgrades && state.player.contactUpgrades[c.id];
+          const trainingText = boosts ? formatStatsText(boosts) : "";
+          const upgradeText =
+            upgrades && upgrades.eff ? formatStatsText(upgrades.eff) : "";
+          const showSpecialization = !!(upgrades && upgrades.subtitle && upgradeText);
+          const effectiveStats = {};
+          const mergeStats = (stats) => {
+            if (!stats) return;
+            Object.keys(stats).forEach((key) => {
+              const value = stats[key];
+              if (typeof value !== "number") return;
+              effectiveStats[key] = (effectiveStats[key] || 0) + value;
+            });
+          };
+          mergeStats(c.eff);
+          mergeStats(boosts);
+          mergeStats(upgrades && upgrades.eff);
+          const effectiveText = formatStatsText(effectiveStats);
           detail.innerHTML = `
             <div class="flex justify-between items-start">
-              <div>
-                <div class="font-bold text-[#000080] text-sm">${c.name}</div>
+              <div class="min-w-0">
+                <div class="font-bold text-[#000080] text-sm flex items-baseline gap-1 min-w-0">
+                  <span class="truncate">${c.name}</span>
+                  ${
+                    emailLine
+                      ? `<span class="text-[9px] text-gray-500 whitespace-nowrap">(${emailLine})</span>`
+                      : ""
+                  }
+                </div>
                 <div class="text-[10px] uppercase text-gray-500">${c.title}</div>
               </div>
               <div class="text-[9px] uppercase text-gray-500">${statusText}</div>
             </div>
             <div class="text-[10px] uppercase text-gray-500">${deptLabel}</div>
-            <div class="text-[10px] italic text-gray-700">${bonusText}</div>
+            ${
+              baseBonusText || trainingText || showSpecialization
+                ? `<details class="text-[10px] text-gray-700" ${
+                    state.addressBookDetailsOpen ? "open" : ""
+                  }>
+                    <summary class="cursor-pointer select-none text-[10px] uppercase text-gray-500">Details</summary>
+                    <div class="pt-1 space-y-1">
+                      ${baseBonusText ? `<div>Talent: ${baseBonusText}</div>` : ""}
+                      ${
+                        showSpecialization
+                          ? `<div class="text-emerald-700 font-semibold">Specialization: ${upgradeText}</div>`
+                          : ""
+                      }
+                      ${trainingText ? `<div class="text-blue-700 font-semibold">Training: ${trainingText}</div>` : ""}
+                    </div>
+                  </details>`
+                : ""
+            }
+            ${effectiveText ? `<div class="text-[10px] text-gray-900">${effectiveText}</div>` : ""}
             <div class="flex items-center gap-2">${setBadge}</div>
             <div class="pt-2">
               <button id="address-book-action" class="retro-button text-xs px-3" ${
@@ -9291,6 +9375,12 @@
               openSetInfo(setBtn.dataset.setId);
             });
           });
+          const detailsEl = detail.querySelector("details");
+          if (detailsEl) {
+            detailsEl.addEventListener("toggle", () => {
+              state.addressBookDetailsOpen = detailsEl.open;
+            });
+          }
           const actionBtn = detail.querySelector("#address-book-action");
           if (actionBtn && !isDisabled) {
             actionBtn.onclick = () => {
