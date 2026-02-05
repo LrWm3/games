@@ -4682,6 +4682,7 @@
 
       let state = {
         player: {
+          id: "player",
           name: "eke vdh",
           email: "eke.vdh@gov.org",
           hp: 50,
@@ -5840,7 +5841,7 @@
         document.getElementById("cc-profile-dept").innerText = deptName
           ? `Department: ${deptName}`
           : "Department: N/A";
-        document.getElementById("cc-profile-effect").innerText =
+        document.getElementById("cc-profile-effect").innerHTML =
           getItemBonusText(contact) || "Effect: N/A";
         document.getElementById("cc-profile").classList.remove("hidden");
       }
@@ -6080,6 +6081,16 @@
           if (typeof value !== "number") return;
           next[key] = (next[key] || 0) + value;
         });
+
+        const contact = CONTACTS.find((c) => c.id === contactId);
+        if (contact && contact.eff) {
+          Object.keys(contact.eff).forEach((key) => {
+            const value = contact.eff[key];
+            if (typeof value !== "number") return;
+            next[key] = (next[key] || 0) + value;
+          });
+        }
+
         player.contactPermanentBoosts[contactId] = next;
       }
 
@@ -6100,6 +6111,10 @@
         applyContactPermanentBoost(player, picked.id, stats);
         if (applyImmediate) {
           applyBuffStats(picked, stats);
+          const originalContact = CONTACTS.find((c) => c.id === picked.id);
+          if (originalContact && originalContact.eff) {
+            applyBuffStats(picked, originalContact.eff);
+          }
         }
         return picked;
       }
@@ -6197,7 +6212,6 @@
               if (unit.id !== "player") return;
               if (!context.contact) return;
               applyContactPermanentBoost(state.player, context.contact.id, effect.stats || {});
-              applyBuffStats(context.contact, effect.stats || {});
             } else if (effect.type === "add_signoff_bonus") {
               applyUnitPermanentBoost(unit, id, effect.stats || {});
             } else if (effect.type === "add_salutation_bonus") {
@@ -6275,7 +6289,13 @@
                 const buff = state.player.buffs.find(
                   (b) => b.id === cid && b.usedBy === state.player.name,
                 );
-                if (buff) applyBuffStats(buff, effect.stats || {});
+                if (buff) {
+                  applyBuffStats(buff, effect.stats || {});
+                  const originalContact = CONTACTS.find((c) => c.id === cid);
+                  if (originalContact && originalContact.eff) {
+                    applyBuffStats(buff, originalContact.eff);
+                  }
+                }
               });
             } else if (effect.type === "add_cc_bonus_by_dept_pairs") {
               if (unit.id !== "player") return;
@@ -6299,6 +6319,10 @@
                 });
                 applyContactPermanentBoost(state.player, b.id, scaled);
                 applyBuffStats(b, scaled);
+                const originalContact = CONTACTS.find((c) => c.id === b.id);
+                if (originalContact && originalContact.eff) {
+                  applyBuffStats(b, originalContact.eff);
+                }
               });
             } else if (effect.type === "add_signoff_bonus_by_dept_pairs") {
               const playerCcs = state.player.buffs.filter(
@@ -6354,6 +6378,10 @@
                 playerCcs.forEach((b) => {
                   applyContactPermanentBoost(state.player, b.id, scaled);
                   applyBuffStats(b, scaled);
+                  const originalContact = CONTACTS.find((c) => c.id === b.id);
+                  if (originalContact && originalContact.eff) {
+                    applyBuffStats(b, originalContact.eff);
+                  }
                 });
               }
               results.repAward = repAward;
@@ -7035,6 +7063,7 @@
           ...state,
           player: {
             ...state.player,
+            id: "player",
             name,
             email,
             hp: 50,
@@ -7693,6 +7722,21 @@
           const effText = formatStatsText(item.eff);
           if (effText) parts.push(effText);
         }
+
+        // Display permanent upgrades for contacts
+        if (item.id && item.id.startsWith("cc_") && typeof state !== "undefined" && state.player) {
+          const boosts = state.player.contactPermanentBoosts && state.player.contactPermanentBoosts[item.id];
+          if (boosts) {
+            const bText = formatStatsText(boosts);
+            if (bText) parts.push(`<span class="text-blue-700 font-bold">(${bText} Training)</span>`);
+          }
+          const upgrades = state.player.contactUpgrades && state.player.contactUpgrades[item.id];
+          if (upgrades && upgrades.eff) {
+            const uText = formatStatsText(upgrades.eff);
+            if (uText) parts.push(`<span class="text-emerald-700 font-bold">(${uText} ${upgrades.subtitle || "BCC"})</span>`);
+          }
+        }
+
         const deptText = formatDeptScalersText(item.deptScalers);
         if (deptText) parts.push(deptText);
         if (item.winScaleSingleDmg)
