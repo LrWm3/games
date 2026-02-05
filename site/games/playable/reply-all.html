@@ -2456,7 +2456,7 @@
         {
           id: "mentorship",
           name: "Credibility Coaching",
-          bonus: "Upgrades a CC'd contact with +10 Max Credibility.",
+          bonus: "One of your in-thread contacts gains a +10 max credibility specialization.",
           rarity: "rare",
           effect: "contactUpgradeHp",
           logText:
@@ -2475,7 +2475,7 @@
         {
           id: "reply_precision",
           name: "Reply Precision Training",
-          bonus: "Upgrades a CC'd contact with +5 reply to.",
+          bonus: "One of your in-thread contacts gains a +5 reply to specialization.",
           rarity: "common",
           effect: "contactUpgradeSingle",
           logText:
@@ -2484,7 +2484,7 @@
         {
           id: "broadcast_training",
           name: "Broadcast Training",
-          bonus: "Upgrades a CC'd contact with +3 escalate.",
+          bonus: "One of your in-thread contacts gains a +3 escalate specialization.",
           rarity: "common",
           effect: "contactUpgradeEscalate",
           logText:
@@ -2494,7 +2494,7 @@
           id: "recognition_award",
           name: "Recognition Award",
           bonus:
-            "Upgrades a CC'd contact to grant +3 REP.",
+            "One of your in-thread contacts gains a +3 REP specialization.",
           rarity: "rare",
           effect: "contactUpgradeRep",
           logText:
@@ -7159,7 +7159,11 @@
             });
             upgradesRow.classList.remove("hidden");
           } else {
-            upgradesRow.classList.add("hidden");
+            const row = document.createElement("div");
+            row.className = "text-[10px] text-gray-500 italic";
+            row.innerText = "None";
+            upgradesList.appendChild(row);
+            upgradesRow.classList.remove("hidden");
           }
         }
       }
@@ -7770,6 +7774,8 @@
       function formatEffect(effect, opts = {}) {
         if (!effect) return "";
         const includeLimit = !!opts.includeLimit;
+        const contactNoun = opts.contactNoun || "CC";
+        const upgradeVerb = opts.upgradeVerb || "upgrade";
         const eventLabels = {
           thread_start: "On thread start",
           thread_end: "On thread end",
@@ -7792,12 +7798,12 @@
         let result = "";
         if (effect.type === "add_random_cc_bonus") {
           result = statsText
-            ? `${eventText}: random CC gains ${statsText}`
-            : `${eventText}: upgrade a random CC`;
+            ? `${eventText}: random ${contactNoun} gains ${statsText}`
+            : `${eventText}: ${upgradeVerb} a random ${contactNoun}`;
         } else if (effect.type === "add_cc_bonus") {
           result = statsText
-            ? `${eventText}: CC gains ${statsText}`
-            : `${eventText}: upgrade that CC`;
+            ? `${eventText}: ${contactNoun} gains ${statsText}`
+            : `${eventText}: ${upgradeVerb} that ${contactNoun}`;
         } else if (effect.type === "add_signoff_bonus") {
           const cleaned = statsText.replace(/adds\s+(x[\d.]+)/gi, "$1");
           result = `${eventText}: gain ${cleaned} permanently`;
@@ -7860,24 +7866,24 @@
               : "";
           const bonusText = formatStatsText(effect.stats || {});
           const targetText = bonusText
-            ? `upgrades ${bonusText} on a random CC`
-            : "upgrades a random CC";
+            ? `${upgradeVerb}s ${bonusText} on a random ${contactNoun}`
+            : `${upgradeVerb}s a random ${contactNoun}`;
           result = `${eventText}: every ${step} ${scaleLabel} ${targetText}${limitLabel}`;
         } else if (effect.type === "add_all_cc_bonus") {
           result = statsText
-            ? `${eventText}: all CCs gain ${statsText}`
-            : `${eventText}: upgrade all CCs`;
+            ? `${eventText}: all ${contactNoun}s gain ${statsText}`
+            : `${eventText}: ${upgradeVerb} all ${contactNoun}s`;
         } else if (effect.type === "add_cc_bonus_by_dept_pairs") {
           result = statsText
-            ? `${eventText}: each CC gains ${statsText} per same-dept CC`
-            : `${eventText}: upgrade each CC per same-dept CC`;
+            ? `${eventText}: each ${contactNoun} gains ${statsText} per same-dept ${contactNoun}`
+            : `${eventText}: ${upgradeVerb} each ${contactNoun} per same-dept ${contactNoun}`;
         } else if (effect.type === "add_signoff_bonus_by_dept_pairs") {
           result = `${eventText}: gain ${formatStatsText(effect.stats || {})} per same-dept pair`;
         } else if (effect.type === "rep_half_to_cc_escalate") {
           const step = effect.step || 1;
           result = statsText
-            ? `${eventText}: gain half REP; every ${step} REP missed adds ${statsText} to CCs`
-            : `${eventText}: gain half REP; every ${step} REP missed upgrades a random CC`;
+            ? `${eventText}: gain half REP; every ${step} REP missed adds ${statsText} to ${contactNoun}s`
+            : `${eventText}: gain half REP; every ${step} REP missed ${upgradeVerb}s a random ${contactNoun}`;
         } else {
           result = statsText || "Effect";
         }
@@ -7899,7 +7905,13 @@
             item.itemType === "signoff" ||
             SIGNOFFS.some((s) => s.id === item.id);
           return item.effects
-            .map((effect) => formatEffect(effect, { includeLimit: isSignoff }))
+            .map((effect) =>
+              formatEffect(effect, {
+                includeLimit: isSignoff,
+                contactNoun: isSignoff ? "Contact" : "CC",
+                upgradeVerb: isSignoff ? "train" : "upgrade",
+              }),
+            )
             .join(" • ");
         }
         const parts = [];
