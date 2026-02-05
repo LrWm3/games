@@ -7893,7 +7893,7 @@
           effect.threadLimit != null &&
           !/per thread|up to/i.test(result)
         ) {
-          result += ` (limit: ${formatThreadLimitLabel(effect.threadLimit)})`;
+          result += ` (${formatThreadLimitLabel(effect.threadLimit)})`;
         }
         return result;
       }
