@@ -8562,7 +8562,6 @@
                 const result = applyDamage(p, o, d);
                 totalBlocked += result.blocked;
                 totalReflected += result.reflected;
-                totalReflected += result.reflected;
                 if (recoverPerHit > 0) {
                   totalRecovered += recoverPerHit;
                   p.hp = Math.min(totalMaxHp, p.hp + recoverPerHit);
