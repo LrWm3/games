@@ -26,6 +26,8 @@
         --win-blue: #000080;
         --win-border-light: #ffffff;
         --win-border-dark: #404040;
+        --shop-taskbar-height: 28px;
+        --shop-header-height: 30px;
       }
       body {
         font-family: "Inter", sans-serif;
@@ -83,9 +85,90 @@
       .address-book-detail {
         width: 58.3333% !important;
       }
+      .shop-card-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+        gap: 8px;
+        justify-content: start;
+      }
+      #shop-packs-list.shop-card-list {
+        justify-content: space-evenly;
+      }
+      .shop-card-item {
+        width: 100%;
+        max-width: 110px;
+        height: 150px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0;
+        background: #fff;
+        border: 1px solid #d1d5db;
+        box-shadow: inset 0 0 0 1px #f3f4f6;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        user-select: none;
+      }
+      .shop-card-item .shop-card-name {
+        font-size: 12px;
+        line-height: 1.2;
+      }
+      .shop-card-item:hover {
+        background: #f0f7ff;
+      }
+      .shop-item-overlay {
+        position: fixed;
+        z-index: 170;
+        padding: 0;
+        width: 260px;
+        display: none;
+      }
+      .shop-item-overlay-frame {
+        background: #ffffff;
+        border: 1px solid #d1d5db;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      }
+      .shop-rarity-badge {
+        position: absolute;
+        top: -8px;
+        left: -8px;
+        z-index: 1;
+      }
+      .slot-highlight {
+        outline: 2px solid #fbbf24;
+        box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.35);
+      }
+      .shop-taskbar {
+        height: var(--shop-taskbar-height);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      .shop-taskbar .retro-button.retro-border-inset {
+        border-top: 2px solid var(--win-border-dark) !important;
+        border-left: 2px solid var(--win-border-dark) !important;
+        border-bottom: 2px solid var(--win-border-light) !important;
+        border-right: 2px solid var(--win-border-light) !important;
+      }
+      .shop-assets-container {
+        max-height: 50vh;
+        overflow-y: auto;
+      }
+      .assets-window {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+      }
+      .assets-window .window-body {
+        overflow-y: auto;
+      }
       @media (max-width: 480px) {
         .address-book-panels {
-          flex-direction: column-reverse;
+          flex-direction: column;
         }
         .address-book-list,
         .address-book-detail {
@@ -324,19 +407,19 @@
     <!-- SHOP SCREEN (HR Self-Service Portal) -->
     <div
       id="shop-screen"
-      class="hidden fixed inset-0 z-[130] bg-[#008080] p-4 flex flex-col items-center overflow-y-auto"
+      class="hidden fixed inset-0 z-[130] bg-[#008080] flex flex-col items-center"
     >
       <div
-        class="bg-[#c0c0c0] retro-border w-full max-w-4xl shadow-2xl flex flex-col min-h-0"
+        class="bg-[#c0c0c0] retro-border w-full max-w-4xl shadow-2xl flex flex-col min-h-0 flex-1"
       >
         <div
           class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold shrink-0"
         >
-          <span>INTRA-NET: HR PORTAL & EMPLOYEE SERVICES</span>
+          <span class="truncate">INTRA-NET: HR PORTAL & EMPLOYEE SERVICES</span>
           <span
             id="shop-reputation-display"
             class="bg-yellow-400 text-black px-2 rounded-sm ml-auto mr-4"
-            >REPUTATION: 0</span
+            >REP:0</span
           >
           <button
             onclick="showInbox()"
@@ -345,56 +428,83 @@
             NEXT QUARTER &gt;
           </button>
         </div>
-        <div class="bg-[#f0f0f0] p-4 flex-grow overflow-y-auto space-y-6">
-          <!-- Active Employee Assets -->
+        <div id="shop-main-content" class="bg-[#f0f0f0] p-4 flex-grow overflow-y-auto space-y-6">
           <div class="space-y-4">
-            <h3
-              class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
+            <button
+              id="shop-reroll-btn"
+              onclick="rerollShop()"
+              class="retro-button text-black text-[10px] py-1 px-2 w-full"
             >
-              Active Employee Assets
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div id="shop-owned-contacts" class="space-y-2"></div>
-              <div class="space-y-4">
-                <div id="shop-owned-email-template" class="space-y-2"></div>
+              Request Alternates (5 REP)
+            </button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Individual Opportunities -->
+              <div class="space-y-2">
+                <h3
+                  class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
+                >
+                  Individual Opportunities
+                </h3>
+                <div
+                  id="shop-direct-list"
+                  class="border border-gray-200 bg-white shop-card-list p-2"
+                ></div>
+              </div>
+              <!-- Development Packages -->
+              <div class="space-y-2">
+                <h3
+                  class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
+                >
+                  Group Trainings
+                </h3>
+                <div id="shop-packs-list" class="border border-gray-200 bg-white shop-card-list p-2"></div>
               </div>
             </div>
           </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Individual Opportunities -->
-            <div class="space-y-2">
-              <button
-                id="shop-reroll-btn"
-                onclick="rerollShop()"
-                class="retro-button text-black text-[10px] py-1 px-2 mb-2 w-full"
-              >
-                Request Alternates (5 REP)
-              </button>
-              <h3
-                class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
-              >
-                Individual Opportunities
-              </h3>
-              <div id="shop-direct-items" class="grid grid-cols-1 gap-2"></div>
+        </div>
+        <div id="shop-pack-view" class="hidden bg-[#f0f0f0] p-4 flex-grow overflow-y-auto space-y-4">
+          <div class="flex justify-between items-center">
+            <div>
+              <div class="text-[9px] uppercase text-gray-500">Group Training</div>
+              <div id="shop-pack-title" class="text-sm font-bold">Training</div>
+              <div id="shop-pack-subtitle" class="text-[10px] text-gray-600">Choose 0 more</div>
             </div>
-            <!-- Development Packages -->
-            <div class="space-y-2">
-              <h3
-                class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
-              >
-                Group Trainings
-              </h3>
-              <div id="shop-packs" class="grid grid-cols-1 gap-2"></div>
-            </div>
+            <button onclick="closePackView()" class="retro-button text-[10px] px-2 py-1">Back</button>
           </div>
+          <div id="shop-pack-options" class="border border-gray-200 bg-white shop-card-list p-2"></div>
         </div>
-        <div
-          class="bg-[#dfdfdf] border-t border-[#808080] p-2 text-[10px] text-center italic text-gray-600 shrink-0"
+      </div>
+      <div class="w-full max-w-4xl mt-3 flex flex-col min-h-0 shop-assets-container">
+        <div id="assets-window-contacts" class="hidden assets-window bg-[#c0c0c0] retro-border shadow-2xl">
+          <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+            <span>CONTACTS</span>
+            <button onclick="showAssetsWindow('none')" class="px-1">✕</button>
+          </div>
+          <div class="window-body p-2 bg-white space-y-2"></div>
+        </div>
+        <div id="assets-window-email" class="hidden assets-window bg-[#c0c0c0] retro-border shadow-2xl">
+          <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+            <span>EMAIL TEMPLATE</span>
+            <button onclick="showAssetsWindow('none')" class="px-1">✕</button>
+          </div>
+          <div class="window-body p-2 bg-white space-y-2"></div>
+        </div>
+      </div>
+      <div class="shop-taskbar bg-[#c0c0c0] border-t border-[#808080] px-2 py-1 text-[9px] w-full mt-2">
+        <button
+          id="assets-tab-contacts"
+          class="retro-button text-[9px] px-2 py-0.5"
+          onclick="showAssetsWindow('contacts')"
         >
-          Corporate policy: Requests are logged. Archiving items returns partial
-          reputation.
-        </div>
+          Contacts
+        </button>
+        <button
+          id="assets-tab-email"
+          class="retro-button text-[9px] px-2 py-0.5"
+          onclick="showAssetsWindow('email')"
+        >
+          Email Template
+        </button>
       </div>
     </div>
 
@@ -510,6 +620,8 @@
         </div>
       </div>
     </div>
+
+    <div id="shop-item-overlay" class="shop-item-overlay"></div>
 
     <!-- PROMOTION SCREEN -->
     <div
@@ -1161,6 +1273,18 @@
         if (e.key === "m" || e.key === "M") {
           sfxEnabled = !sfxEnabled;
         }
+      });
+
+      window.addEventListener("resize", () => {
+        resizeAssetsWindows();
+      });
+
+      document.addEventListener("click", (e) => {
+        const overlay = document.getElementById("shop-item-overlay");
+        if (!overlay || overlay.style.display === "none") return;
+        if (overlay.contains(e.target)) return;
+        if (e.target.closest(".shop-card-item")) return;
+        hideShopItemOverlay();
       });
 
       const DEPARTMENTS = [
@@ -5035,7 +5159,7 @@
         } else if (screen === "inbox-screen") {
           showInbox();
         }
-        if (state.pendingTraining) openPackModal();
+        if (state.pendingTraining) openPackView();
       }
 
       function initLoginOption() {
@@ -5863,7 +5987,7 @@
           isPack: true,
         };
         saveGame();
-        openPackModal();
+        openPackView();
       }
 
       function applyPackItem(item) {
@@ -5874,9 +5998,28 @@
           sellItem("signoff", state.player.signOff);
         }
 
-        if (item.itemType === "contact") state.player.addressBook.push(item.id);
-        else if (item.itemType === "signature")
+        if (item.itemType === "contact") {
+          if (state.player.addressBook.includes(item.id)) {
+            alert("That contact is already in your address book.");
+            return false;
+          }
+          if (state.player.addressBook.length >= getUnitAddressLimit(state.player)) {
+            alert("Address book full. Archive a contact to make space.");
+            return false;
+          }
+          state.player.addressBook.push(item.id);
+        }
+        else if (item.itemType === "signature") {
+          if (state.player.signatures.some((s) => s.id === item.id)) {
+            alert("That signature is already in use.");
+            return false;
+          }
+          if (state.player.signatures.length >= state.player.title.sigLimit) {
+            alert("Signature limit reached. Remove a signature to make space.");
+            return false;
+          }
           state.player.signatures.push(item);
+        }
         else if (item.itemType === "salutation") state.player.salutation = item;
         else if (item.itemType === "signoff") state.player.signOff = item;
         else if (item.itemType === "bcc") {
@@ -5905,7 +6048,7 @@
         }
       }
 
-      function openPackModal() {
+      function openPackView() {
         const pending = state.pendingTraining;
         if (!pending) return;
 
@@ -5929,83 +6072,97 @@
 
         if (!pack) return;
 
-        const modal = document.getElementById("training-modal");
-        document.getElementById("training-title").innerText = pack.name;
-        document.getElementById("training-name").innerText = pack.name;
-        document.getElementById("training-subtitle").innerText =
-          `Choose ${pending.picksLeft} more`;
-        const list = document.getElementById("training-options");
+        const mainContent = document.getElementById("shop-main-content");
+        const packView = document.getElementById("shop-pack-view");
+        const titleEl = document.getElementById("shop-pack-title");
+        const subtitleEl = document.getElementById("shop-pack-subtitle");
+        const list = document.getElementById("shop-pack-options");
+        if (!mainContent || !packView || !titleEl || !subtitleEl || !list) return;
+
+        mainContent.classList.add("hidden");
+        packView.classList.remove("hidden");
+        titleEl.innerText = pack.name;
+        subtitleEl.innerText = `Choose ${pending.picksLeft} more`;
         list.innerHTML = "";
 
         pack.options.forEach((opt) => {
           if (!pending.options.includes(opt.id)) return;
 
-          const btn = document.createElement("button");
-          btn.className =
-            "w-full retro-border text-left p-2 bg-white hover:bg-blue-50 flex flex-col gap-1";
-
-          const badge = opt.rarity ? formatRarityBadge(opt.rarity) : "";
+          const btn = document.createElement("div");
+          btn.className = "shop-card-item";
           const typeLabels = {
             contact: "Contact",
             signature: "Signature",
             salutation: "Greeting",
             signoff: "Sign-off",
-            bcc: "BCC",
-            dev: "Training",
+            bcc: "Help Desk",
+            dev: "Coaching",
           };
-          const typeLabel = typeLabels[opt.itemType] || "Item";
-          const bonusDesc =
-            getItemBonusText(opt) ||
-            opt.picksText ||
-            describeEffect(opt.eff || opt);
+          btn.innerHTML = `
+            <div class="w-full h-full flex flex-col">
+              <div class="text-[9px] uppercase text-white bg-[#000080] px-2 py-0.5 text-left">
+                ${typeLabels[opt.itemType] || opt.itemType}
+              </div>
+              <div class="flex-1 flex items-center justify-center px-1">
+                <div class="shop-card-name">${opt.name}</div>
+              </div>
+            </div>
+          `;
           const isBcc = opt.itemType === "bcc";
           const bccLimit = computeUnitStats(state.player).bccLimit || 0;
           const bccFull = isBcc && state.player.bccContacts.length >= bccLimit;
-
-          const metaLabel =
-            opt.itemType === "contact"
-              ? getDepartmentName(opt.departmentId) || ""
-              : "";
-          btn.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center gap-2">
-                      <span class="bg-blue-800 text-white px-1 uppercase font-bold text-[8px]">${typeLabel}</span>
-                      <span class="font-bold">${opt.name}</span>
-                    </div>
-                    ${badge}
-                </div>
-                ${metaLabel ? `<div class="text-[9px] uppercase text-gray-500">${metaLabel}</div>` : ""}
-                <div class="text-[10px] italic text-gray-600">${bonusDesc}</div>
-            `;
           if (bccFull) {
             btn.classList.add("opacity-50");
-            btn.disabled = true;
+            btn.classList.add("pointer-events-none");
           }
 
-          btn.onclick = () => {
-            const applied = applyPackItem(opt);
-            if (!applied) return;
-            pending.picksLeft -= 1;
-            pending.options = pending.options.filter((id) => id !== opt.id);
-            saveGame();
-            if (pending.picksLeft <= 0) {
-              state.pendingTraining = null;
-              closeTrainingModal();
-              updateUI();
-              updateShopUI();
-            } else {
-              updateUI();
-              openPackModal();
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            showShopItemOverlay("pack-option", opt, btn);
+            if (opt.itemType === "contact" || opt.itemType === "bcc") {
+              showAssetsWindow("contacts", { forceOpen: true });
+            } else if (
+              opt.itemType === "salutation" ||
+              opt.itemType === "signoff" ||
+              opt.itemType === "signature"
+            ) {
+              showAssetsWindow("email", { forceOpen: true });
             }
           };
           list.appendChild(btn);
         });
         renderPackManagement();
-        modal.classList.remove("hidden");
       }
 
       function closeTrainingModal() {
         document.getElementById("training-modal").classList.add("hidden");
+      }
+
+      function closePackView() {
+        const mainContent = document.getElementById("shop-main-content");
+        const packView = document.getElementById("shop-pack-view");
+        if (mainContent) mainContent.classList.remove("hidden");
+        if (packView) packView.classList.add("hidden");
+      }
+
+      function confirmPackOption(opt) {
+        const pending = state.pendingTraining;
+        if (!pending) return;
+        const applied = applyPackItem(opt);
+        if (!applied) return;
+        pending.picksLeft -= 1;
+        pending.options = pending.options.filter((id) => id !== opt.id);
+        saveGame();
+        hideShopItemOverlay();
+        if (pending.picksLeft <= 0) {
+          state.pendingTraining = null;
+          closePackView();
+          updateUI();
+          updateShopUI();
+        } else {
+          updateUI();
+          openPackView();
+        }
       }
 
       function addRandomBccs(player, count) {
@@ -7027,7 +7184,7 @@
 
         const packTiers = ["small", "medium", "large"];
         state.shop.packs = [];
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < 3; i++) {
           const packTypePools = {
             contact: contactPool,
             email: [...salPool, ...offPool],
@@ -7192,6 +7349,15 @@
         transitionTo("shop-screen");
         runUnitEffects(state.player, "shop_enter", {});
         updateShopUI();
+        if (state.pendingTraining) {
+          openPackView();
+        } else {
+          showAssetsWindow("contacts");
+        }
+      }
+
+      function resizeAssetsWindows() {
+        return;
       }
 
       function rerollShop() {
@@ -7389,7 +7555,7 @@
 
       function formatRarityBadge(rarity) {
         const meta = getRarityMeta(rarity);
-        return `<span class="text-[9px] uppercase px-1 py-0.5 rounded-sm ${meta.className}">${meta.label}</span>`;
+        return `<span class="shop-rarity-badge text-[9px] uppercase px-1 py-0.5 rounded-sm ${meta.className}">${meta.label}</span>`;
       }
 
       function getSetById(id) {
@@ -7446,8 +7612,11 @@
       }
 
       function createShopCard(name, desc, cost, onBuy, options = {}) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "relative";
         const div = document.createElement("div");
-        div.className = "p-2 bg-white retro-border flex flex-col gap-1";
+        div.className =
+          "p-2 bg-white retro-border flex flex-col gap-1 shop-item-overlay-frame";
         const canAfford = state.player.reputation >= cost;
         const purchased = options.purchased || false;
         const canBuy = options.canBuy ?? true;
@@ -7461,14 +7630,14 @@
             : options.actionLabel || "SUBMIT REQUEST";
         const priceLabel = purchased
           ? options.ownedPriceLabel || "ON FILE"
-          : options.priceLabel || `REQ: ${cost} REP`;
+          : options.priceLabel || (cost > 0 ? `${cost} REP` : "");
         const typeBadge = options.typeLabel
           ? `<span class="bg-blue-800 text-white px-1 uppercase font-bold">${options.typeLabel}</span>`
           : "";
         div.innerHTML = `
                 <div class="flex justify-between font-bold text-[11px] gap-2">
                     <span class="truncate">${name}</span>
-                    <span class="text-blue-700 font-mono">${priceLabel}</span>
+                    ${priceLabel ? `<span class="text-blue-700 font-mono">${priceLabel}</span>` : ""}
                 </div>
                 <div class="flex items-center gap-2 text-[9px]" data-badge>${typeBadge}</div>
                 ${metaLabel ? `<div class="text-[9px] uppercase text-gray-500">${metaLabel}</div>` : ""}
@@ -7478,7 +7647,6 @@
                 </button>
             `;
         const badgeWrap = div.querySelector("[data-badge]");
-        if (badge) badgeWrap.insertAdjacentHTML("beforeend", badge);
         if (options.setId) {
           const setBtn = document.createElement("button");
           setBtn.type = "button";
@@ -7497,7 +7665,9 @@
             onBuy();
             updateShopUI();
           };
-        return div;
+        if (badge) wrapper.insertAdjacentHTML("afterbegin", badge);
+        wrapper.appendChild(div);
+        return wrapper;
       }
 
       function renderPackManagement() {
@@ -8000,9 +8170,16 @@
 
       function hasSpaceForItem(item) {
         if (item.itemType === "contact")
-          return state.player.addressBook.length < getUnitAddressLimit(state.player);
+          return (
+            state.player.addressBook.length <
+              getUnitAddressLimit(state.player) &&
+            !state.player.addressBook.includes(item.id)
+          );
         if (item.itemType === "signature")
-          return state.player.signatures.length < state.player.title.sigLimit;
+          return (
+            state.player.signatures.length < state.player.title.sigLimit &&
+            !state.player.signatures.some((s) => s.id === item.id)
+          );
         if (item.itemType === "salutation") return !state.player.salutation;
         if (item.itemType === "signoff") return true;
         if (item.itemType === "bcc") {
@@ -8013,6 +8190,26 @@
       }
 
       function buyDirectItem(item, cost) {
+        if (item.itemType === "contact") {
+          if (state.player.addressBook.includes(item.id)) {
+            alert("That contact is already in your address book.");
+            return;
+          }
+          if (state.player.addressBook.length >= getUnitAddressLimit(state.player)) {
+            alert("Address book full. Archive a contact to make space.");
+            return;
+          }
+        }
+        if (item.itemType === "signature") {
+          if (state.player.signatures.some((s) => s.id === item.id)) {
+            alert("That signature is already in use.");
+            return;
+          }
+          if (state.player.signatures.length >= state.player.title.sigLimit) {
+            alert("Signature limit reached. Remove a signature to make space.");
+            return;
+          }
+        }
         state.player.reputation -= cost;
         item.purchased = true;
 
@@ -8048,8 +8245,9 @@
       }
 
       function updateShopUI() {
+        hideShopItemOverlay();
         document.getElementById("shop-reputation-display").innerText =
-          `REP: ${state.player.reputation}`;
+          `REP:${state.player.reputation}`;
 
         const rerollBtn = document.getElementById("shop-reroll-btn");
         if (rerollBtn) {
@@ -8059,7 +8257,9 @@
         }
 
         // --- OWNED ASSETS ---
-        const ownedContacts = document.getElementById("shop-owned-contacts");
+        const ownedContacts = document.querySelector(
+          "#assets-window-contacts .window-body",
+        );
         const addressLimit = getUnitAddressLimit(state.player);
         if (ownedContacts) {
           ownedContacts.innerHTML = `
@@ -8070,50 +8270,37 @@
                     <div class="address-book-list w-5/12 border border-gray-300 bg-white">
                       <div id="shop-address-book-list" class="max-h-72 overflow-y-auto"></div>
                     </div>
-                    <div class="address-book-detail w-7/12 border border-gray-300 bg-white p-3">
-                      <div id="shop-address-book-detail" class="text-[11px] space-y-2"></div>
-                    </div>
                   </div>`
                 : `<div class="text-[10px] italic text-gray-400">No contacts on file.</div>`
             }
           `;
           if (state.player.addressBook.length) {
-            if (
-              !state.shopAddressBookSelection ||
-              (!state.player.addressBook.includes(state.shopAddressBookSelection) &&
-                !String(state.shopAddressBookSelection).startsWith("bcc:"))
-            ) {
-              state.shopAddressBookSelection =
-                state.player.addressBook[0] || null;
-            }
             renderShopAddressBook();
           } else if (state.player.bccContacts.length) {
-            state.shopAddressBookSelection = "bcc:0";
             renderShopAddressBook();
           }
         }
 
-        const ownedEmailTemplate = document.getElementById(
-          "shop-owned-email-template",
+        const ownedEmailTemplate = document.querySelector(
+          "#assets-window-email .window-body",
         );
         if (ownedEmailTemplate) {
           const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
           const subject = mission && mission.subject ? mission.subject : "Thread";
           ownedEmailTemplate.innerHTML = `
-            <div class="text-[10px] font-bold uppercase text-gray-500">Active Email Template</div>
             <div class="email-template-container border border-gray-200 rounded p-4 bg-white shadow-inner">
               <div class="email-template-header font-sans text-[10px] text-gray-700 space-y-1">
                 <div><strong>To:</strong> everyone@gov.org</div>
                 <div><strong>Subject:</strong> ${subject}</div>
               </div>
-              <div id="shop-owned-salutation" class="drop-zone min-h-10 bg-gray-50 my-4 p-2 text-[10px]"></div>
+              <div id="shop-owned-salutation" class="drop-zone min-h-6 bg-gray-50 my-2 p-1 text-[9px]"></div>
               <div class="flex-grow py-3 text-gray-400 italic text-[10px] select-none leading-relaxed">
                 Please be advised that the quarterly strategy session has been rescheduled. We remain committed to organizational excellence...
               </div>
-              <div id="shop-owned-signoff" class="drop-zone min-h-10 bg-gray-50 my-4 p-2 text-[10px]"></div>
+              <div id="shop-owned-signoff" class="drop-zone min-h-6 bg-gray-50 my-2 p-1 text-[9px]"></div>
               <div id="drawer-owned-signatures" class="space-y-1 mt-4 pt-4 border-t border-gray-100">
                 <div id="sig-count-header" class="text-[9px] font-bold text-gray-400 uppercase mb-2">
-                  Active Signatures (${state.player.signatures.length}/${state.player.title.sigLimit})
+                  Signatures (${state.player.signatures.length}/${state.player.title.sigLimit})
                 </div>
                 <div id="sig-list" class="space-y-1"></div>
               </div>
@@ -8123,34 +8310,42 @@
           const salutationSlot = document.getElementById("shop-owned-salutation");
           if (salutationSlot) {
             if (state.player.salutation) {
-              salutationSlot.appendChild(
-                createOwnedRow(
+              salutationSlot.innerHTML = `<div class="text-[10px] font-semibold cursor-pointer">${state.player.salutation.name}</div>`;
+              salutationSlot.onclick = (e) => {
+                e.stopPropagation();
+                showShopItemOverlay(
+                  "direct",
                   state.player.salutation,
-                  "salutation",
-                  () => sellItem("salutation", state.player.salutation),
-                  { actionLabel: "CLEAR" },
-                ),
-              );
+                  salutationSlot,
+                  { fromOwned: true },
+                );
+                showAssetsWindow("email", { forceOpen: true });
+              };
             } else {
               salutationSlot.innerHTML =
                 `<div class="text-[10px] italic text-gray-400">No greeting set.</div>`;
+              salutationSlot.onclick = null;
             }
           }
 
           const signoffSlot = document.getElementById("shop-owned-signoff");
           if (signoffSlot) {
             if (state.player.signOff) {
-              signoffSlot.appendChild(
-                createOwnedRow(
+              signoffSlot.innerHTML = `<div class="text-[10px] font-semibold cursor-pointer">${state.player.signOff.name}</div>`;
+              signoffSlot.onclick = (e) => {
+                e.stopPropagation();
+                showShopItemOverlay(
+                  "direct",
                   state.player.signOff,
-                  "signoff",
-                  () => sellItem("signoff", state.player.signOff),
-                  { actionLabel: "CLEAR" },
-                ),
-              );
+                  signoffSlot,
+                  { fromOwned: true },
+                );
+                showAssetsWindow("email", { forceOpen: true });
+              };
             } else {
               signoffSlot.innerHTML =
                 `<div class="text-[10px] italic text-gray-400">No sign-off set.</div>`;
+              signoffSlot.onclick = null;
             }
           }
 
@@ -8158,9 +8353,15 @@
           if (sigList) {
             sigList.innerHTML = "";
             state.player.signatures.forEach((sig) => {
-              sigList.appendChild(
-                createOwnedRow(sig, "signature", () => sellItem("signature", sig)),
-              );
+              const row = document.createElement("div");
+              row.className = "text-[10px] font-semibold text-gray-700 cursor-pointer";
+              row.innerText = sig.name;
+              row.onclick = (e) => {
+                e.stopPropagation();
+                showShopItemOverlay("direct", sig, row, { fromOwned: true });
+                showAssetsWindow("email", { forceOpen: true });
+              };
+              sigList.appendChild(row);
             });
           }
         }
@@ -8169,22 +8370,179 @@
         if (ownedBccs) ownedBccs.innerHTML = "";
 
         // --- DIRECT ITEMS ---
-        const directList = document.getElementById("shop-direct-items");
-        directList.innerHTML = "";
-        state.shop.directItems.forEach((item) => {
+        const directList = document.getElementById("shop-direct-list");
+        if (directList) {
+          directList.innerHTML = "";
+          state.shop.directItems.forEach((item) => {
+            const typeLabels = {
+              contact: "Contact",
+              salutation: "Greeting",
+              signature: "Signature",
+              bcc: "Help Desk",
+              signoff: "Sign-off",
+              dev: "Coaching",
+            };
+            const row = document.createElement("div");
+            row.className = "shop-card-item";
+            row.innerHTML = `
+              <div class="w-full h-full flex flex-col">
+                <div class="text-[9px] uppercase text-white bg-[#000080] px-2 py-0.5 text-left">
+                  ${typeLabels[item.itemType] || item.itemType}
+                </div>
+                <div class="flex-1 flex items-center justify-center px-1">
+                  <div class="shop-card-name">${item.name}</div>
+                </div>
+              </div>
+            `;
+            row.onclick = (e) => {
+              e.stopPropagation();
+              showShopItemOverlay("direct", item, row);
+              if (item.itemType === "contact" || item.itemType === "bcc") {
+                showAssetsWindow("contacts", { forceOpen: true });
+              } else if (
+                item.itemType === "salutation" ||
+                item.itemType === "signoff" ||
+                item.itemType === "signature"
+              ) {
+                showAssetsWindow("email", { forceOpen: true });
+              }
+            };
+            directList.appendChild(row);
+          });
+        }
+
+        // --- PACKS ---
+        const packList = document.getElementById("shop-packs-list");
+        if (packList) {
+          packList.innerHTML = "";
+          state.shop.packs.forEach((pack) => {
+            const row = document.createElement("div");
+            row.className = "shop-card-item";
+            row.innerHTML = `
+              <div class="w-full h-full flex flex-col">
+                <div class="text-[9px] uppercase text-white bg-[#000080] px-2 py-0.5 text-left">
+                  Coaching
+                </div>
+                <div class="flex-1 flex items-center justify-center px-1">
+                  <div class="shop-card-name">${pack.name}</div>
+                </div>
+              </div>
+            `;
+            row.onclick = (e) => {
+              e.stopPropagation();
+              showShopItemOverlay("pack", pack, row);
+            };
+            packList.appendChild(row);
+          });
+        }
+      }
+
+      function showAssetsWindow(kind, opts = {}) {
+        const contacts = document.getElementById("assets-window-contacts");
+        const email = document.getElementById("assets-window-email");
+        const tabContacts = document.getElementById("assets-tab-contacts");
+        const tabEmail = document.getElementById("assets-tab-email");
+        if (!contacts || !email || !tabContacts || !tabEmail) return;
+        if (kind === "none") {
+          contacts.classList.add("hidden");
+          email.classList.add("hidden");
+          tabContacts.classList.remove("retro-border-inset");
+          tabEmail.classList.remove("retro-border-inset");
+          return;
+        }
+        const isContacts = kind === "contacts";
+        const target = isContacts ? contacts : email;
+        const other = isContacts ? email : contacts;
+        const targetTab = isContacts ? tabContacts : tabEmail;
+        const otherTab = isContacts ? tabEmail : tabContacts;
+
+        const isOpen = !target.classList.contains("hidden");
+        if (isOpen && !opts.forceOpen) {
+          target.classList.add("hidden");
+          targetTab.classList.remove("retro-border-inset");
+        } else {
+          target.classList.remove("hidden");
+          other.classList.add("hidden");
+          targetTab.classList.add("retro-border-inset");
+          otherTab.classList.remove("retro-border-inset");
+        }
+
+        resizeAssetsWindows();
+      }
+
+      function showShopItemOverlay(type, item, anchorEl, opts = {}) {
+        const overlay = document.getElementById("shop-item-overlay");
+        if (!overlay || !item || !anchorEl) return;
+        overlay.innerHTML = "";
+        overlay.style.width = "260px";
+        clearEmailSlotHighlights();
+        if (type === "direct" || type === "pack-option") {
+          if (item.itemType === "salutation") highlightEmailSlot("salutation");
+          if (item.itemType === "signoff") highlightEmailSlot("signoff");
+          if (item.itemType === "signature") highlightEmailSlot("signature");
+        }
+        let content = null;
+        let typeLabel = "";
+        if (type === "direct") {
+          if (item.itemType === "contact") {
+            const cost =
+              item.cost || getItemCostByType(item.rarity, item.itemType);
+            overlay.innerHTML = `<div class="shop-item-overlay-frame p-2" id="shop-contact-overlay-body"></div>`;
+            const body = overlay.querySelector("#shop-contact-overlay-body");
+            renderContactDetailCard(body, item, {
+              showStatus: false,
+              actionLabel: "REACH OUT",
+              actionDisabled: !hasSpaceForItem(item) || isItemOwned(item),
+              onAction: () => buyDirectItem(item, cost),
+            });
+            overlay.style.width = "320px";
+            positionShopOverlay(overlay, anchorEl);
+            overlay.style.display = "block";
+            overlay.onclick = (e) => e.stopPropagation();
+            return;
+          }
+          if (
+            opts.fromOwned &&
+            (item.itemType === "salutation" ||
+              item.itemType === "signoff" ||
+              item.itemType === "signature")
+          ) {
+            const refund = Math.floor(
+              (item.cost || getItemCostByType(item.rarity, item.itemType)) / 2,
+            );
+            content = createShopCard(
+              item.name,
+              getItemBonusText(item) || item.description || "",
+              0,
+              () => {
+                sellItem(item.itemType, item);
+                updateShopUI();
+              },
+              {
+                purchased: false,
+                canBuy: true,
+                badge: formatRarityBadge(item.rarity),
+                setId: item.setId,
+                ownedLabel: "",
+                typeLabel: "",
+                actionLabel: `ARCHIVE +${refund} REP`,
+                spaceLabel: "",
+                metaLabel: "",
+              },
+            );
+          }
           const cost =
             item.cost || getItemCostByType(item.rarity, item.itemType);
           const owned = isItemOwned(item);
           const canBuy = hasSpaceForItem(item);
-
           const typeLabels = {
             contact: "Contact",
             signature: "Signature",
             salutation: "Greeting",
             signoff: "Sign-off",
-            bcc: "BCC",
+            bcc: "Help Desk",
           };
-
+          typeLabel = typeLabels[item.itemType] || item.itemType;
           const actionLabels = {
             contact: "REACH OUT",
             signature: "APPLY",
@@ -8197,9 +8555,8 @@
             salutation: "DELETE GREETING TO APPLY",
             signoff: "DELETE SIGN-OFF TO APPLY",
           };
-
-          directList.appendChild(
-            createShopCard(
+          if (!content) {
+            content = createShopCard(
               item.name,
               getItemBonusText(item) || item.description || "",
               cost,
@@ -8210,7 +8567,7 @@
                 badge: formatRarityBadge(item.rarity),
                 setId: item.setId,
                 ownedLabel: owned ? "OWNED" : "PURCHASED",
-                typeLabel: typeLabels[item.itemType] || item.itemType,
+                typeLabel: "",
                 actionLabel: actionLabels[item.itemType] || "SUBMIT REQUEST",
                 spaceLabel: spaceLabels[item.itemType],
                 metaLabel:
@@ -8218,34 +8575,183 @@
                     ? getDepartmentName(item.departmentId) || ""
                     : "",
               },
-            ),
+            );
+          }
+        } else if (type === "pack") {
+          typeLabel = "Coaching";
+          content = createShopCard(
+            item.name,
+            item.description,
+            item.cost,
+            () => buyPack(item),
+            {
+              purchased: item.purchased,
+              actionLabel: "OPEN PACK",
+              ownedLabel: "OPENED",
+              typeLabel: "",
+            },
           );
-        });
+        } else if (type === "pack-option") {
+          if (item.itemType === "contact") {
+            overlay.innerHTML = `<div class="shop-item-overlay-frame p-2" id="shop-contact-overlay-body"></div>`;
+            const body = overlay.querySelector("#shop-contact-overlay-body");
+            renderContactDetailCard(body, item, {
+              showStatus: false,
+              actionLabel: "SELECT",
+              actionDisabled: !hasSpaceForItem(item) || isItemOwned(item),
+              onAction: () => confirmPackOption(item),
+            });
+            overlay.style.width = "320px";
+            positionShopOverlay(overlay, anchorEl);
+            overlay.style.display = "block";
+            overlay.onclick = (e) => e.stopPropagation();
+            return;
+          }
+          const bonusDesc =
+            getItemBonusText(item) ||
+            item.picksText ||
+            describeEffect(item.eff || item);
+          const typeLabels = {
+            contact: "Contact",
+            signature: "Signature",
+            salutation: "Greeting",
+            signoff: "Sign-off",
+            bcc: "Help Desk",
+            dev: "Coaching",
+          };
+          content = createShopCard(
+            item.name,
+            bonusDesc,
+            0,
+            () => confirmPackOption(item),
+            {
+              purchased: false,
+              canBuy: true,
+              badge: formatRarityBadge(item.rarity),
+              setId: item.setId,
+              ownedLabel: "",
+              typeLabel: "",
+              actionLabel: "SELECT",
+              spaceLabel: "",
+              metaLabel:
+                item.itemType === "contact"
+                  ? getDepartmentName(item.departmentId) || ""
+                  : "",
+            },
+          );
+        }
+        if (!content) return;
+        overlay.appendChild(content);
+        overlay.style.display = "block";
+        positionShopOverlay(overlay, anchorEl);
+        overlay.onclick = (e) => e.stopPropagation();
+      }
 
-        // --- PACKS ---
-        const packList = document.getElementById("shop-packs");
-        packList.innerHTML = "";
-        state.shop.packs.forEach((pack) => {
-          packList.appendChild(
-            createShopCard(
-              pack.name,
-              pack.description,
-              pack.cost,
-              () => buyPack(pack),
-              {
-                purchased: pack.purchased,
-                actionLabel: "OPEN PACK",
-                ownedLabel: "OPENED",
-              },
-            ),
-          );
+      function highlightEmailSlot(kind) {
+        const slotIds = {
+          salutation: "shop-owned-salutation",
+          signoff: "shop-owned-signoff",
+          signature: "sig-list",
+        };
+        const el = document.getElementById(slotIds[kind]);
+        if (!el) return;
+        el.classList.add("slot-highlight");
+      }
+
+      function clearEmailSlotHighlights() {
+        ["shop-owned-salutation", "shop-owned-signoff", "sig-list"].forEach(
+          (id) => {
+            const el = document.getElementById(id);
+            if (el) el.classList.remove("slot-highlight");
+          },
+        );
+      }
+
+      function showShopContactOverlay(contact, anchorEl) {
+        const overlay = document.getElementById("shop-item-overlay");
+        if (!overlay || !contact || !anchorEl) return;
+        overlay.innerHTML = `<div class="shop-item-overlay-frame p-2" id="shop-contact-overlay-body"></div>`;
+        const body = overlay.querySelector("#shop-contact-overlay-body");
+        const cost =
+          contact.cost ||
+          getItemCostByType(contact.rarity || "common", "contact");
+        const refund = Math.floor(cost / 2);
+        renderContactDetailCard(body, contact, {
+          showStatus: false,
+          detailsStateKey: "shopAddressBookDetailsOpen",
+          actionLabel: `ARCHIVE CONTACT +${refund} REP`,
+          actionDisabled: false,
+          onAction: () => {
+            sellItem("contact", contact);
+            updateShopUI();
+          },
         });
+        overlay.style.width = "320px";
+        positionShopOverlay(overlay, anchorEl);
+        overlay.style.display = "block";
+        overlay.onclick = (e) => e.stopPropagation();
+      }
+
+      function showShopBccOverlay(bcc, anchorEl) {
+        const overlay = document.getElementById("shop-item-overlay");
+        if (!overlay || !bcc || !anchorEl) return;
+        overlay.innerHTML = `
+          <div class="bg-white retro-border p-2 shop-item-overlay-frame">
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="font-bold text-yellow-800 text-sm">${bcc.name}</div>
+                <div class="text-[10px] uppercase text-gray-500">Help Desk</div>
+              </div>
+            </div>
+            <hr class="border-gray-200 my-2" />
+            <div class="text-[10px] text-gray-700">Effects: ${getItemBonusText(bcc)}</div>
+            <div class="pt-2">
+              <button id="shop-bcc-action" class="retro-button text-xs px-3">DISCARD BCC</button>
+            </div>
+          </div>
+        `;
+        const actionBtn = overlay.querySelector("#shop-bcc-action");
+        if (actionBtn) {
+          actionBtn.onclick = () => {
+            sellItem("bcc", bcc);
+            updateShopUI();
+          };
+        }
+        overlay.style.width = "260px";
+        positionShopOverlay(overlay, anchorEl);
+        overlay.style.display = "block";
+        overlay.onclick = (e) => e.stopPropagation();
+      }
+
+      function positionShopOverlay(overlay, anchorEl) {
+        const rect = anchorEl.getBoundingClientRect();
+        const padding = 8;
+        const overlayWidth = overlay.offsetWidth || 260;
+        const overlayHeight = overlay.offsetHeight || 200;
+        let left = rect.right + padding;
+        if (left + overlayWidth > window.innerWidth) {
+          left = rect.left - overlayWidth - padding;
+        }
+        if (left < padding) left = padding;
+        let top = rect.top;
+        if (top + overlayHeight > window.innerHeight - padding) {
+          top = Math.max(padding, window.innerHeight - overlayHeight - padding);
+        }
+        overlay.style.left = `${left}px`;
+        overlay.style.top = `${top}px`;
+      }
+
+      function hideShopItemOverlay() {
+        const overlay = document.getElementById("shop-item-overlay");
+        if (!overlay) return;
+        overlay.style.display = "none";
+        overlay.innerHTML = "";
+        clearEmailSlotHighlights();
       }
 
       function renderShopAddressBook() {
         const list = document.getElementById("shop-address-book-list");
-        const detail = document.getElementById("shop-address-book-detail");
-        if (!list || !detail) return;
+        if (!list) return;
         list.innerHTML = "";
         const header = document.createElement("div");
         header.className =
@@ -8267,9 +8773,9 @@
             isSelected ? "bg-blue-50" : "hover:bg-blue-50"
           }`;
           btn.innerHTML = `<div class="flex justify-between"><span class="font-semibold text-[#000080]">${c.name}</span><span class="text-[9px] uppercase text-gray-500">${compactDeptLabel}</span></div>`;
-          btn.onclick = () => {
-            state.shopAddressBookSelection = c.id;
-            renderShopAddressBook();
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            showShopContactOverlay(c, btn);
           };
           list.appendChild(btn);
         });
@@ -8289,173 +8795,12 @@
               isSelected ? "bg-yellow-50" : "hover:bg-yellow-50"
             }`;
             btn.innerHTML = `<div class="flex justify-between"><span class="font-semibold text-yellow-800">${bcc.name}</span><span class="text-[9px] uppercase text-gray-500">BCC</span></div>`;
-            btn.onclick = () => {
-              state.shopAddressBookSelection = key;
-              renderShopAddressBook();
+            btn.onclick = (e) => {
+              e.stopPropagation();
+              showShopBccOverlay(bcc, btn);
             };
             list.appendChild(btn);
           });
-        }
-
-        if (typeof state.shopAddressBookSelection === "string" &&
-            state.shopAddressBookSelection.startsWith("bcc:")) {
-          const idx = Number(state.shopAddressBookSelection.split(":")[1]);
-          const bcc = state.player.bccContacts[idx];
-          if (!bcc) {
-            detail.innerHTML =
-              `<div class="text-[10px] uppercase text-gray-500">Select a contact to view details</div>`;
-            return;
-          }
-          detail.innerHTML = `
-            <div class="flex justify-between items-start">
-              <div>
-                <div class="font-bold text-yellow-800 text-sm">${bcc.name}</div>
-                <div class="text-[10px] uppercase text-gray-500">BCC</div>
-              </div>
-            </div>
-            <hr class="border-gray-200 my-2" />
-            <div class="text-[10px] text-gray-700">Effects: ${getItemBonusText(bcc)}</div>
-            <div class="pt-2">
-              <button id="shop-address-book-action" class="retro-button text-xs px-3">DISCARD BCC</button>
-            </div>
-          `;
-          const actionBtn = detail.querySelector("#shop-address-book-action");
-          if (actionBtn) {
-            actionBtn.onclick = () => {
-              sellItem("bcc", bcc);
-              updateShopUI();
-            };
-          }
-          return;
-        }
-
-        const c = CONTACTS.find(
-          (con) => con.id === state.shopAddressBookSelection,
-        );
-        if (!c) {
-          detail.innerHTML =
-            `<div class="text-[10px] uppercase text-gray-500">Select a contact to view details</div>`;
-          return;
-        }
-
-        const employee = c.employeeId
-          ? EMPLOYEES.find((e) => e.id === c.employeeId)
-          : null;
-        const emailLine = employee && employee.email ? employee.email : "";
-        const deptLabel = c.departmentId
-          ? (DEPARTMENT_BY_ID[c.departmentId]?.name || c.departmentId)
-          : "Department N/A";
-        const setEntries = SET_DEFS.filter((set) =>
-          set.items?.some(
-            (item) => item.type === "contact" && item.id === c.id,
-          ),
-        );
-        const baseBonusText = getItemBonusText({ ...c, id: "__base__" }) || "";
-        const effectsText =
-          Array.isArray(c.effects) && c.effects.length
-            ? c.effects.map((effect) => formatEffect(effect)).join(" • ")
-            : "";
-        const boosts =
-          state.player.contactPermanentBoosts &&
-          state.player.contactPermanentBoosts[c.id];
-        const upgrades =
-          state.player.contactUpgrades && state.player.contactUpgrades[c.id];
-        const trainingText = boosts ? formatStatsText(boosts) : "";
-        const upgradeText =
-          upgrades && upgrades.eff ? formatStatsText(upgrades.eff) : "";
-        const showSpecialization = !!(upgrades && upgrades.subtitle && upgradeText);
-        const effectiveStats = {};
-        const mergeStats = (stats) => {
-          if (!stats) return;
-          Object.keys(stats).forEach((key) => {
-            const value = stats[key];
-            if (typeof value !== "number") return;
-            effectiveStats[key] = (effectiveStats[key] || 0) + value;
-          });
-        };
-        mergeStats(c.eff);
-        mergeStats(boosts);
-        mergeStats(upgrades && upgrades.eff);
-        const effectiveText = formatStatsText(effectiveStats);
-        const cost = c.cost || getItemCostByType(c.rarity || "common", "contact");
-        const refund = Math.floor(cost / 2);
-
-        detail.innerHTML = `
-          <div class="flex justify-between items-start">
-            <div class="min-w-0 flex-1">
-              <div class="font-bold text-[#000080] text-sm flex items-baseline gap-1 min-w-0">
-                <span class="truncate">${c.name}</span>
-                ${
-                  emailLine
-                    ? `<span class="text-[9px] text-gray-500 whitespace-nowrap">(${emailLine})</span>`
-                    : ""
-                }
-              </div>
-              <div class="flex text-[10px] uppercase text-gray-500">
-                <span class="w-5/12 truncate pr-2">${c.title}</span>
-                <span class="w-7/12 truncate text-right">${deptLabel}</span>
-              </div>
-              ${
-                setEntries.length
-                  ? `<div class="flex flex-wrap gap-1 text-[9px] uppercase text-gray-500 mt-1">
-                      <span class="text-gray-400">Member of</span>
-                      ${setEntries
-                        .map(
-                          (set) =>
-                            `<button type="button" data-set-button data-set-id="${set.id}" class="px-1 py-0.5 bg-blue-50 text-blue-700 font-semibold uppercase text-[9px]">${set.name}</button>`,
-                        )
-                        .join("")}
-                    </div>`
-                  : ""
-              }
-            </div>
-          </div>
-          <hr class="border-gray-200 my-2" />
-          ${
-            baseBonusText || trainingText || showSpecialization
-              ? `<details class="text-[10px] text-gray-700" ${
-                  state.shopAddressBookDetailsOpen ? "open" : ""
-                }>
-                  <summary class="cursor-pointer select-none text-[10px] uppercase text-gray-500">Details</summary>
-                  <div class="pt-1 space-y-1">
-                    ${c.rarity ? `<div class="text-gray-600 uppercase">${c.rarity}</div>` : ""}
-                    ${baseBonusText ? `<div>Talent: ${baseBonusText}</div>` : ""}
-                    ${
-                      showSpecialization
-                        ? `<div class="text-emerald-700 font-semibold">Specialization: ${upgradeText}</div>`
-                        : ""
-                    }
-                    ${trainingText ? `<div class="text-blue-700 font-semibold">Training: ${trainingText}</div>` : ""}
-                  </div>
-                </details>`
-              : ""
-          }
-          ${effectsText ? `<div class="text-[10px] text-gray-700">Effects: ${effectsText}</div>` : ""}
-          <hr class="border-gray-200 my-2" />
-          ${effectiveText ? `<div class="text-[10px] text-gray-900">${effectiveText}</div>` : ""}
-          <div class="pt-2">
-            <button id="shop-address-book-action" class="retro-button text-xs px-3">ARCHIVE CONTACT +${refund} REP</button>
-          </div>
-        `;
-
-        const detailsEl = detail.querySelector("details");
-        if (detailsEl) {
-          detailsEl.addEventListener("toggle", () => {
-            state.shopAddressBookDetailsOpen = detailsEl.open;
-          });
-        }
-        detail.querySelectorAll("[data-set-button]").forEach((setBtn) => {
-          setBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            openSetInfo(setBtn.dataset.setId);
-          });
-        });
-        const actionBtn = detail.querySelector("#shop-address-book-action");
-        if (actionBtn) {
-          actionBtn.onclick = () => {
-            sellItem("contact", c);
-            updateShopUI();
-          };
         }
       }
 
@@ -9617,6 +9962,188 @@
         renderAddressBookDetail();
       }
 
+      function getContactDetailParts(contact) {
+        const employee = contact.employeeId
+          ? EMPLOYEES.find((e) => e.id === contact.employeeId)
+          : null;
+        const emailLine = employee && employee.email ? employee.email : "";
+        const deptLabel = contact.departmentId
+          ? (DEPARTMENT_BY_ID[contact.departmentId]?.name || contact.departmentId)
+          : "Department N/A";
+        const setEntries = SET_DEFS.filter((set) =>
+          set.items?.some(
+            (item) => item.type === "contact" && item.id === contact.id,
+          ),
+        );
+        const baseBonusText =
+          getItemBonusText({ ...contact, id: "__base__" }) || "";
+        const effectsText =
+          Array.isArray(contact.effects) && contact.effects.length
+            ? contact.effects.map((effect) => formatEffect(effect)).join(" • ")
+            : "";
+        const boosts =
+          state.player.contactPermanentBoosts &&
+          state.player.contactPermanentBoosts[contact.id];
+        const upgrades =
+          state.player.contactUpgrades && state.player.contactUpgrades[contact.id];
+        const trainingText = boosts ? formatStatsText(boosts) : "";
+        const upgradeText =
+          upgrades && upgrades.eff ? formatStatsText(upgrades.eff) : "";
+        const showSpecialization =
+          !!(upgrades && upgrades.subtitle && upgradeText);
+        const effectiveStats = {};
+        const mergeStats = (stats) => {
+          if (!stats) return;
+          Object.keys(stats).forEach((key) => {
+            const value = stats[key];
+            if (typeof value !== "number") return;
+            effectiveStats[key] = (effectiveStats[key] || 0) + value;
+          });
+        };
+        mergeStats(contact.eff);
+        mergeStats(boosts);
+        mergeStats(upgrades && upgrades.eff);
+        const effectiveText = formatStatsText(effectiveStats);
+        return {
+          emailLine,
+          deptLabel,
+          setEntries,
+          baseBonusText,
+          effectsText,
+          trainingText,
+          upgradeText,
+          showSpecialization,
+          effectiveText,
+          rarity: contact.rarity,
+        };
+      }
+
+      function renderContactDetailCard(container, contact, options = {}) {
+        if (!container || !contact) return;
+        const {
+          statusText = "",
+          showStatus = true,
+          detailsStateKey = null,
+          actionLabel = "",
+          actionDisabled = false,
+          onAction = null,
+          frameClassName = "",
+        } = options;
+        const parts = getContactDetailParts(contact);
+        const hasDetails =
+          parts.baseBonusText || parts.trainingText || parts.showSpecialization;
+        const detailsOpen = detailsStateKey
+          ? !!state[detailsStateKey]
+          : false;
+        container.innerHTML = `
+          <div class="${frameClassName}">
+            <div class="flex justify-between items-start">
+              <div class="min-w-0 flex-1">
+                <div class="font-bold text-[#000080] text-sm flex items-baseline gap-1 min-w-0">
+                  <span class="truncate">${contact.name}</span>
+                ${
+                  parts.emailLine
+                    ? `<span class="text-[9px] text-gray-500 whitespace-nowrap">(${parts.emailLine})</span>`
+                    : ""
+                }
+              </div>
+              <div class="flex text-[10px] uppercase text-gray-500">
+                <span class="w-5/12 truncate pr-2">${contact.title}</span>
+                <span class="w-7/12 truncate text-right">${parts.deptLabel}</span>
+              </div>
+              ${
+                parts.setEntries.length
+                  ? `<div class="flex flex-wrap gap-1 text-[9px] uppercase text-gray-500 mt-1">
+                      <span class="text-gray-400">Member of</span>
+                      ${parts.setEntries
+                        .map(
+                          (set) =>
+                            `<button type="button" data-set-button data-set-id="${set.id}" class="px-1 py-0.5 bg-blue-50 text-blue-700 font-semibold uppercase text-[9px]">${set.name}</button>`,
+                        )
+                        .join("")}
+                    </div>`
+                  : ""
+              }
+            </div>
+              ${
+                showStatus
+                  ? `<div class="text-[9px] uppercase text-gray-500 pl-2 whitespace-nowrap">${statusText}</div>`
+                  : ""
+              }
+            </div>
+            <hr class="border-gray-200 my-2" />
+            ${
+              hasDetails
+                ? `<details class="text-[10px] text-gray-700" ${
+                    detailsOpen ? "open" : ""
+                  }>
+                    <summary class="cursor-pointer select-none text-[10px] uppercase text-gray-500">Details</summary>
+                    <div class="pt-1 space-y-1">
+                      ${
+                        parts.rarity
+                          ? `<div class="text-gray-600 uppercase">${parts.rarity}</div>`
+                          : ""
+                      }
+                      ${
+                        parts.baseBonusText
+                          ? `<div>Talent: ${parts.baseBonusText}</div>`
+                          : ""
+                      }
+                      ${
+                        parts.showSpecialization
+                          ? `<div class="text-emerald-700 font-semibold">Specialization: ${parts.upgradeText}</div>`
+                          : ""
+                      }
+                      ${
+                        parts.trainingText
+                          ? `<div class="text-blue-700 font-semibold">Training: ${parts.trainingText}</div>`
+                          : ""
+                      }
+                    </div>
+                  </details>`
+                : ""
+            }
+            ${
+              parts.effectsText
+                ? `<div class="text-[10px] text-gray-700">Effects: ${parts.effectsText}</div>`
+                : ""
+            }
+            <hr class="border-gray-200 my-2" />
+            ${
+              parts.effectiveText
+                ? `<div class="text-[10px] text-gray-900">${parts.effectiveText}</div>`
+                : ""
+            }
+            ${
+              actionLabel
+                ? `<div class="pt-2">
+                    <button id="contact-card-action" class="retro-button text-xs px-3" ${
+                      actionDisabled ? "disabled" : ""
+                    }>${actionLabel}</button>
+                  </div>`
+                : ""
+            }
+          </div>
+        `;
+
+        const detailsEl = container.querySelector("details");
+        if (detailsEl && detailsStateKey) {
+          detailsEl.addEventListener("toggle", () => {
+            state[detailsStateKey] = detailsEl.open;
+          });
+        }
+        container.querySelectorAll("[data-set-button]").forEach((setBtn) => {
+          setBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            openSetInfo(setBtn.dataset.setId);
+          });
+        });
+        const actionBtn = container.querySelector("#contact-card-action");
+        if (actionBtn && !actionDisabled && typeof onAction === "function") {
+          actionBtn.onclick = onAction;
+        }
+      }
+
       function renderAddressBookDetail() {
         const detail = document.getElementById("contact-detail");
         if (!detail) return;
@@ -9629,10 +10156,6 @@
         if (selection.type === "contact") {
           const c = CONTACTS.find((con) => con.id === selection.id);
           if (!c) return;
-          const employee = c.employeeId
-            ? EMPLOYEES.find((e) => e.id === c.employeeId)
-            : null;
-          const emailLine = employee && employee.email ? employee.email : "";
           const isUsed = isContactInLoop(c.id);
           const isImplicated = isContactImplicated(c);
           const solidarityLocked =
@@ -9648,118 +10171,12 @@
               : solidarityLocked
                 ? "LOCKED"
               : "AVAIL";
-          const deptLabel = c.departmentId
-            ? (DEPARTMENT_BY_ID[c.departmentId]?.name || c.departmentId)
-            : "Department N/A";
-          const setEntries = SET_DEFS.filter((set) =>
-            set.items?.some(
-              (item) => item.type === "contact" && item.id === c.id,
-            ),
-          );
-          const baseBonusText = getItemBonusText({ ...c, id: "__base__" }) || "";
-          const effectsText =
-            Array.isArray(c.effects) && c.effects.length
-              ? c.effects.map((effect) => formatEffect(effect)).join(" • ")
-              : "";
-          const boosts =
-            state.player.contactPermanentBoosts &&
-            state.player.contactPermanentBoosts[c.id];
-          const upgrades =
-            state.player.contactUpgrades && state.player.contactUpgrades[c.id];
-          const trainingText = boosts ? formatStatsText(boosts) : "";
-          const upgradeText =
-            upgrades && upgrades.eff ? formatStatsText(upgrades.eff) : "";
-          const showSpecialization = !!(upgrades && upgrades.subtitle && upgradeText);
-          const effectiveStats = {};
-          const mergeStats = (stats) => {
-            if (!stats) return;
-            Object.keys(stats).forEach((key) => {
-              const value = stats[key];
-              if (typeof value !== "number") return;
-              effectiveStats[key] = (effectiveStats[key] || 0) + value;
-            });
-          };
-          mergeStats(c.eff);
-          mergeStats(boosts);
-          mergeStats(upgrades && upgrades.eff);
-          const effectiveText = formatStatsText(effectiveStats);
-          detail.innerHTML = `
-            <div class="flex justify-between items-start">
-              <div class="min-w-0 flex-1">
-                <div class="font-bold text-[#000080] text-sm flex items-baseline gap-1 min-w-0">
-                  <span class="truncate">${c.name}</span>
-                  ${
-                    emailLine
-                      ? `<span class="text-[9px] text-gray-500 whitespace-nowrap">(${emailLine})</span>`
-                      : ""
-                  }
-                </div>
-                <div class="flex text-[10px] uppercase text-gray-500">
-                  <span class="w-5/12 truncate pr-2">${c.title}</span>
-                  <span class="w-7/12 truncate text-right">${deptLabel}</span>
-                </div>
-                ${
-                  setEntries.length
-                    ? `<div class="flex flex-wrap gap-1 text-[9px] uppercase text-gray-500 mt-1">
-                        <span class="text-gray-400">Member of</span>
-                        ${setEntries
-                          .map(
-                            (set) =>
-                              `<button type="button" data-set-button data-set-id="${set.id}" class="px-1 py-0.5 bg-blue-50 text-blue-700 font-semibold uppercase text-[9px]">${set.name}</button>`,
-                          )
-                          .join("")}
-                      </div>`
-                    : ""
-                }
-              </div>
-              <div class="text-[9px] uppercase text-gray-500 pl-2 whitespace-nowrap">
-                ${statusText}
-              </div>
-            </div>
-            <hr class="border-gray-200 my-2" />
-            ${
-              baseBonusText || trainingText || showSpecialization
-                ? `<details class="text-[10px] text-gray-700" ${
-                    state.addressBookDetailsOpen ? "open" : ""
-                  }>
-                    <summary class="cursor-pointer select-none text-[10px] uppercase text-gray-500">Details</summary>
-                    <div class="pt-1 space-y-1">
-                    ${c.rarity ? `<div class="text-gray-600 uppercase">${c.rarity}</div>` : ""}
-                      ${baseBonusText ? `<div>Talent: ${baseBonusText}</div>` : ""}
-                      ${
-                        showSpecialization
-                          ? `<div class="text-emerald-700 font-semibold">Specialization: ${upgradeText}</div>`
-                          : ""
-                      }
-                      ${trainingText ? `<div class="text-blue-700 font-semibold">Training: ${trainingText}</div>` : ""}
-                    </div>
-                  </details>`
-                : ""
-            }
-            ${effectsText ? `<div class="text-[10px] text-gray-700">Effects: ${effectsText}</div>` : ""}
-            <hr class="border-gray-200 my-2" />
-            ${effectiveText ? `<div class="text-[10px] text-gray-900">${effectiveText}</div>` : ""}
-            <div class="pt-2">
-              <button id="address-book-action" class="retro-button text-xs px-3" ${
-                isDisabled ? "disabled" : ""
-              }>${isDisabled ? "UNAVAILABLE" : "LOOP IN"}</button>
-            </div>
-          `;
-          const detailsEl = detail.querySelector("details");
-          if (detailsEl) {
-            detailsEl.addEventListener("toggle", () => {
-              state.addressBookDetailsOpen = detailsEl.open;
-            });
-          }
-          detail.querySelectorAll("[data-set-button]").forEach((setBtn) => {
-            setBtn.addEventListener("click", (e) => {
-              e.stopPropagation();
-              openSetInfo(setBtn.dataset.setId);
-            });
-          });
-          const actionBtn = detail.querySelector("#address-book-action");
-          if (actionBtn && !isDisabled) {
-            actionBtn.onclick = () => {
+          renderContactDetailCard(detail, c, {
+            statusText,
+            detailsStateKey: "addressBookDetailsOpen",
+            actionLabel: isDisabled ? "UNAVAILABLE" : "LOOP IN",
+            actionDisabled: isDisabled,
+            onAction: () => {
               addContactBuff(state.player, c, state.player.name);
               const loopInText = formatLoopInText(
                 c,
@@ -9788,8 +10205,8 @@
               } else {
                 renderAddressBook();
               }
-            };
-          }
+            },
+          });
           return;
         }
         if (selection.type === "bcc") {
