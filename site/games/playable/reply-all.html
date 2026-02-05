@@ -6920,7 +6920,6 @@
         };
         const baseRep =
           baseRepByQuarter[state.player.quarter] ?? baseRepByQuarter.Q3;
-        const totalOptOutRep = 0;
         let bonusRep = 0;
 
         if (state.expenseReportActive) {
@@ -6955,7 +6954,7 @@
         const flooredBonus = Math.floor(bonusRep);
         const winsRep = Math.max(0, state.player.currentWins || 0) * 2;
         const totalRep =
-          baseRep + totalOptOutRep + flooredBonus + interestRep + winsRep;
+          baseRep + flooredBonus + interestRep + winsRep;
         return {
           baseRep,
           bonusRep: flooredBonus,
@@ -6970,21 +6969,7 @@
         const optOutList = document.getElementById("summary-optouts-list");
         if (!optOutList) return;
         optOutList.innerHTML = "";
-        const playerKills = opponents.filter((o) => o.removedByPlayer);
-
-        if (playerKills.length > 0) {
-          optOutList.classList.remove("hidden");
-          playerKills.forEach((o) => {
-            const share = 1;
-            const div = document.createElement("div");
-            div.className =
-              "flex justify-between text-[10px] text-gray-600 italic";
-            div.innerHTML = `<span>Opt-out: ${o.name}</span><span>+${share}</span>`;
-            optOutList.appendChild(div);
-          });
-        } else {
-          optOutList.classList.add("hidden");
-        }
+        optOutList.classList.add("hidden");
 
         if (summary.winsRep) {
           const div = document.createElement("div");
