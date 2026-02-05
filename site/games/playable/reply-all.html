@@ -970,7 +970,7 @@
           <div class="font-bold text-[#000080]" id="set-info-name"></div>
           <div class="space-y-1">
             <div class="text-[10px] uppercase text-gray-500 font-bold">
-              Parts
+              Members
             </div>
             <div id="set-info-parts" class="flex flex-wrap gap-1"></div>
           </div>
@@ -8736,7 +8736,6 @@
           );
         } else if (type === "ULT") {
           const d = getUnitDamage(p, "replyAll");
-          let totalBlocked = 0;
           let totalReflected = 0;
           const defeated = new Set();
           const activeOpponents = opponents.filter((o) => o.hp > 0);
@@ -8748,7 +8747,6 @@
             activeOpponents.forEach((o) => {
               if (o.hp > 0) {
                 const result = applyDamage(p, o, d);
-                totalBlocked += result.blocked;
                 totalReflected += result.reflected;
                 if (o.hp <= 0) defeated.add(o);
               }
@@ -9359,10 +9357,16 @@
           const deptLabel = c.departmentId
             ? (DEPARTMENT_BY_ID[c.departmentId]?.name || c.departmentId)
             : "Department N/A";
-          const setBadge = c.setId
-            ? `<button type="button" data-set-button data-set-id="${c.setId}" class="text-[9px] uppercase px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 font-bold">Set</button>`
-            : "";
+          const setEntries = SET_DEFS.filter((set) =>
+            set.items?.some(
+              (item) => item.type === "contact" && item.id === c.id,
+            ),
+          );
           const baseBonusText = getItemBonusText({ ...c, id: "__base__" }) || "";
+          const effectsText =
+            Array.isArray(c.effects) && c.effects.length
+              ? c.effects.map((effect) => formatEffect(effect)).join(" • ")
+              : "";
           const boosts =
             state.player.contactPermanentBoosts &&
             state.player.contactPermanentBoosts[c.id];
@@ -9387,7 +9391,7 @@
           const effectiveText = formatStatsText(effectiveStats);
           detail.innerHTML = `
             <div class="flex justify-between items-start">
-              <div class="min-w-0">
+              <div class="min-w-0 flex-1">
                 <div class="font-bold text-[#000080] text-sm flex items-baseline gap-1 min-w-0">
                   <span class="truncate">${c.name}</span>
                   ${
@@ -9396,11 +9400,28 @@
                       : ""
                   }
                 </div>
-                <div class="text-[10px] uppercase text-gray-500">${c.title}</div>
+                <div class="flex text-[10px] uppercase text-gray-500">
+                  <span class="w-5/12 truncate pr-2">${c.title}</span>
+                  <span class="w-7/12 truncate text-right">${deptLabel}</span>
+                </div>
+                ${
+                  setEntries.length
+                    ? `<div class="flex flex-wrap gap-1 text-[9px] uppercase text-gray-500 mt-1">
+                        <span class="text-gray-400">Member of</span>
+                        ${setEntries
+                          .map(
+                            (set) =>
+                              `<button type="button" data-set-button data-set-id="${set.id}" class="px-1 py-0.5 bg-blue-50 text-blue-700 font-semibold uppercase text-[9px]">${set.name}</button>`,
+                          )
+                          .join("")}
+                      </div>`
+                    : ""
+                }
               </div>
-              <div class="text-[9px] uppercase text-gray-500">${statusText}</div>
+              <div class="text-[9px] uppercase text-gray-500 pl-2 whitespace-nowrap">
+                ${statusText}
+              </div>
             </div>
-            <div class="text-[10px] uppercase text-gray-500">${deptLabel}</div>
             ${
               baseBonusText || trainingText || showSpecialization
                 ? `<details class="text-[10px] text-gray-700" ${
@@ -9419,26 +9440,26 @@
                   </details>`
                 : ""
             }
+            ${effectsText ? `<div class="text-[10px] text-gray-700">Effects: ${effectsText}</div>` : ""}
             ${effectiveText ? `<div class="text-[10px] text-gray-900">${effectiveText}</div>` : ""}
-            <div class="flex items-center gap-2">${setBadge}</div>
             <div class="pt-2">
               <button id="address-book-action" class="retro-button text-xs px-3" ${
                 isDisabled ? "disabled" : ""
               }>${isDisabled ? "UNAVAILABLE" : "LOOP IN"}</button>
             </div>
           `;
-          detail.querySelectorAll("[data-set-button]").forEach((setBtn) => {
-            setBtn.addEventListener("click", (e) => {
-              e.stopPropagation();
-              openSetInfo(setBtn.dataset.setId);
-            });
-          });
           const detailsEl = detail.querySelector("details");
           if (detailsEl) {
             detailsEl.addEventListener("toggle", () => {
               state.addressBookDetailsOpen = detailsEl.open;
             });
           }
+          detail.querySelectorAll("[data-set-button]").forEach((setBtn) => {
+            setBtn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              openSetInfo(setBtn.dataset.setId);
+            });
+          });
           const actionBtn = detail.querySelector("#address-book-action");
           if (actionBtn && !isDisabled) {
             actionBtn.onclick = () => {
