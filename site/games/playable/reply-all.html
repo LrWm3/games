@@ -2176,7 +2176,7 @@
               event: "cc_add",
               type: "add_cc_bonus",
               stats: { singleDmg: 5 },
-              oncePerThread: true,
+              threadLimit: 1,
             },
           ],
         },
@@ -2184,7 +2184,14 @@
           id: "respectfully",
           name: "Respectfully,",
           rarity: "common",
-          effects: [],
+          effects: [
+            {
+              event: "reply_all",
+              type: "add_random_cc_bonus",
+              stats: { singleDmg: 2 },
+              threadLimit: 2,
+            },
+          ],
         },
         {
           id: "regards_signoff",
@@ -2193,8 +2200,9 @@
           effects: [
             {
               event: "remove_stakeholder",
-              type: "add_signoff_bonus",
+              type: "add_random_cc_bonus",
               stats: { singleDmg: 2 },
+              threadLimit: 2,
             },
           ],
         },
@@ -2204,9 +2212,10 @@
           rarity: "common",
           effects: [
             {
-              event: "remove_stakeholder",
-              type: "add_signoff_bonus",
-              stats: { globalDmg: 1, deflect: 1, selfPromoteHeal: 1 },
+              event: "deflect_proc",
+              type: "add_random_cc_bonus",
+              stats: { deflect: 1 },
+              threadLimit: 2,
             },
           ],
         },
@@ -2216,23 +2225,22 @@
           rarity: "common",
           effects: [
             {
-              event: "promote_overflow",
-              type: "add_signoff_bonus_scaled",
-              scaleBy: "overflow",
-              step: 5,
+              event: "bcc_use",
+              type: "add_random_cc_bonus",
               stats: { maxHp: 5 },
             },
           ],
         },
         {
           id: "team_regards_signoff",
-          name: "Team regards,",
+          name: "With regards from the team,",
           rarity: "common",
           effects: [
             {
               event: "remove_stakeholder",
-              type: "add_signoff_bonus",
-              stats: { escalateDmg: 2 },
+              type: "add_random_cc_bonus",
+              stats: { escalateDmg: 1 },
+              threadLimit: 2,
             },
           ],
         },
@@ -2243,10 +2251,10 @@
           effects: [
             {
               event: "thread_end",
-              type: "add_thread_bonus_scaled",
+              type: "add_random_cc_bonus_scaled",
               scaleBy: "wins_remaining",
               step: 1,
-              stats: { repBonus: 3 },
+              stats: { endRep: 2 },
             },
           ],
         },
@@ -2254,7 +2262,14 @@
           id: "warmly",
           name: "Warmly,",
           rarity: "common",
-          effects: [],
+          effects: [
+            {
+              event: "thread_end",
+              type: "add_random_cc_bonus",
+              stats: { defFlat: 2 },
+              requiresHpFull: true,
+            },
+          ],
         },
         {
           id: "solidarity",
@@ -2285,6 +2300,15 @@
           id: "yours_truly",
           name: "Yours truly,",
           rarity: "uncommon",
+          effects: [
+            {
+              event: "thread_end",
+              type: "add_random_cc_bonus_scaled",
+              scaleBy: "wins_remaining",
+              step: 1,
+              stats: { globalDmg: 1 },
+            },
+          ],
         },
         {
           id: "thank_you",
@@ -2292,11 +2316,9 @@
           rarity: "uncommon",
           effects: [
             {
-              event: "pack_purchase",
-              type: "add_bcc",
-              count: 1,
-              chance: 0.5,
-              requiresPackType: "dev",
+              event: "bcc_use",
+              type: "add_random_cc_bonus",
+              stats: { deflect: 1 },
             },
           ],
         },
@@ -2307,7 +2329,7 @@
           effects: [
             {
               event: "thread_end",
-              type: "add_signoff_bonus_scaled",
+              type: "add_random_cc_bonus_scaled",
               scaleBy: "hp",
               step: 10,
               stats: { singleDmg: 2 },
@@ -2323,19 +2345,7 @@
               event: "rep_adjust",
               type: "rep_half_to_cc_escalate",
               step: 3,
-              stats: { escalateDmgMult: 0.2 },
-            },
-          ],
-        },
-        {
-          id: "best_regards",
-          name: "Best Regards,",
-          rarity: "uncommon",
-          effects: [
-            {
-              event: "remove_stakeholder",
-              type: "add_random_cc_bonus",
-              stats: { globalDmgMult: 0.2 },
+              stats: { escalateDmgMult: 0.1 },
             },
           ],
         },
@@ -2347,7 +2357,7 @@
           effects: [
             {
               event: "thread_end",
-              type: "add_signoff_bonus_by_dept_pairs",
+              type: "add_cc_bonus_by_dept_pairs",
               stats: { defFlat: 1 },
             },
           ],
@@ -2368,14 +2378,38 @@
           id: "for_group_awareness",
           name: "For group awareness,",
           rarity: "rare",
-          disableReplyTo: true,
-          addSingleToEscalate: true,
+          effects: [
+            {
+              event: "escalate",
+              type: "add_random_cc_bonus",
+              stats: { escalateDmg: 3 },
+            },
+          ],
         },
         {
           id: "v_respectfully",
           name: "Very Respectfully,",
           rarity: "rare",
-          effects: [],
+          effects: [
+            {
+              event: "thread_end",
+              type: "add_all_cc_bonus",
+              stats: { globalDmg: 2 },
+              requiresHpFull: true,
+            },
+          ],
+        },
+        {
+          id: "best_regards",
+          name: "Best Regards,",
+          rarity: "rare",
+          effects: [
+            {
+              event: "remove_stakeholder",
+              type: "add_random_cc_bonus",
+              stats: { globalDmgMult: 0.2 },
+            },
+          ],
         },
       ];
 
@@ -6090,6 +6124,24 @@
         return picked;
       }
 
+      function applyRandomCcBoostMultiple(player, stats, count) {
+        if (!player || !stats || !count) return [];
+        const pool = player.buffs.filter((b) => b.usedBy === player.name);
+        if (pool.length === 0) return [];
+        const picked = [];
+        for (let i = 0; i < count; i++) {
+          const target = pool[Math.floor(Math.random() * pool.length)];
+          applyContactPermanentBoost(player, target.id, stats);
+          applyBuffStats(target, stats);
+          const originalContact = CONTACTS.find((c) => c.id === target.id);
+          if (originalContact && originalContact.eff) {
+            applyBuffStats(target, originalContact.eff);
+          }
+          picked.push(target);
+        }
+        return picked;
+      }
+
       function applyUnitPermanentBoost(unit, sourceId, stats) {
         if (!unit || !sourceId || !stats) return;
         if (!unit.signoffBonuses) unit.signoffBonuses = {};
@@ -6170,11 +6222,12 @@
             )
               return;
             if (effect.chance != null && Math.random() > effect.chance) return;
-            if (effect.oncePerThread) {
+            if (effect.threadLimit != null) {
               if (!state.threadEffectFlags) state.threadEffectFlags = {};
               const key = `${event}:${id}:${effect.type}`;
-              if (state.threadEffectFlags[key]) return;
-              state.threadEffectFlags[key] = true;
+              const used = state.threadEffectFlags[key] || 0;
+              if (used >= effect.threadLimit) return;
+              state.threadEffectFlags[key] = used + 1;
             }
             if (effect.type === "add_random_cc_bonus") {
               if (unit.id !== "player") return;
@@ -6236,16 +6289,22 @@
               if (effect.scaleBy === "wins_remaining")
                 base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
               if (effect.scaleBy === "hp") base = unit.hp || 0;
-              const steps = Math.floor(base / step);
-              if (steps > 0) {
-                const scaled = {};
-                Object.keys(effect.stats || {}).forEach((key) => {
-                  const value = effect.stats[key];
-                  if (typeof value !== "number") return;
-                  scaled[key] = value * steps;
-                });
-                applyRandomCcBoost(state.player, scaled, true);
-              }
+              if (base <= 0) return;
+              const count = Math.floor(base / step);
+              if (count <= 0) return;
+              const scaled = {};
+              Object.keys(effect.stats || {}).forEach((key) => {
+                const value = effect.stats[key];
+                if (typeof value !== "number") return;
+                scaled[key] = value;
+              });
+              const limit =
+                effect.threadLimit != null
+                  ? Math.max(0, effect.threadLimit)
+                  : null;
+              const countToApply =
+                limit != null ? Math.min(count, limit) : count;
+              applyRandomCcBoostMultiple(state.player, scaled, countToApply);
             } else if (effect.type === "add_all_cc_bonus") {
               if (unit.id !== "player") return;
               const scope = effect.scope || "thread";
@@ -6341,19 +6400,15 @@
                 Object.keys(effect.stats || {}).forEach((key) => {
                   const value = effect.stats[key];
                   if (typeof value !== "number") return;
-                  scaled[key] = value * steps;
+                  scaled[key] = value;
                 });
-                const playerCcs = state.player.buffs.filter(
-                  (b) => b.usedBy === state.player.name,
-                );
-                playerCcs.forEach((b) => {
-                  applyContactPermanentBoost(state.player, b.id, scaled);
-                  applyBuffStats(b, scaled);
-                  const originalContact = CONTACTS.find((c) => c.id === b.id);
-                  if (originalContact && originalContact.eff) {
-                    applyBuffStats(b, originalContact.eff);
-                  }
-                });
+                const limit =
+                  effect.threadLimit != null
+                    ? Math.max(0, effect.threadLimit)
+                    : null;
+                const countToApply =
+                  limit != null ? Math.min(steps, limit) : steps;
+                applyRandomCcBoostMultiple(state.player, scaled, countToApply);
               }
               results.repAward = repAward;
             }
@@ -7623,7 +7678,16 @@
             .replace(/\+(\d+)\s+reply to/gi, "+$1 Reply To")
             .replace(/\+(\d+)\s+escalate/gi, "+$1 Escalate")
             .replace(/\+(\d+)\s+all messages/gi, "+$1 to your messages");
-          const onceText = effect.oncePerThread ? " (once per thread)" : "";
+          let onceText = "";
+          if (effect.threadLimit != null) {
+            const limit = effect.threadLimit;
+            const labels = {
+              1: "once per thread",
+              2: "twice per thread",
+              3: "thrice per thread",
+            };
+            onceText = ` (${labels[limit] || `up to ${limit}x per thread`})`;
+          }
           return `${eventLabel}${onceText}, gain ${statsLabel} until the end of this thread`;
         }
         if (effect.type === "add_thread_bonus_scaled") {
@@ -7663,7 +7727,11 @@
               : effect.scaleBy === "hp"
                 ? "cred"
                 : "points";
-          return `${eventText}: every ${step} ${scaleLabel} adds ${formatStatsText(effect.stats || {})} to a random CC`;
+          const limitLabel =
+            effect.threadLimit != null
+              ? ` (up to ${effect.threadLimit}x)`
+              : "";
+          return `${eventText}: every ${step} ${scaleLabel} upgrades ${formatStatsText(effect.stats || {})} on a random CC${limitLabel}`;
         }
         if (effect.type === "add_all_cc_bonus") {
           return `${eventText}: all CCs gain ${formatStatsText(effect.stats || {})}`;
