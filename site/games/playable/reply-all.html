@@ -269,22 +269,6 @@
           <span>✕</span>
         </div>
         <div class="p-4 flex flex-col items-center">
-          <div
-            class="w-16 h-16 bg-yellow-400 retro-border flex items-center justify-center mb-4"
-          >
-            <svg
-              class="w-10 h-10 text-white"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
-              <path
-                fill-rule="evenodd"
-                d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h.01a1 1 0 100-2H10zm3 0a1 1 0 000 2h.01a1 1 0 100-2H13zM7 13a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h.01a1 1 0 100-2H10zm3 0a1 1 0 000 2h.01a1 1 0 100-2H13z"
-                clip-rule="evenodd"
-              ></path>
-            </svg>
-          </div>
           <h2 class="text-xl font-bold terminal-font mb-2">
             PERFORMANCE METRICS
           </h2>
@@ -314,6 +298,15 @@
             >
               <span>TOTAL REP EARNED:</span>
               <span id="summary-rep-earned" class="font-mono text-lg">+0</span>
+            </div>
+            <div
+              id="summary-upgrades"
+              class="border-t border-gray-200 pt-2 space-y-1 hidden"
+            >
+              <div class="text-[10px] uppercase text-gray-500">
+                Trained Employees
+              </div>
+              <div id="summary-upgrades-list" class="space-y-1"></div>
             </div>
           </div>
           <button
@@ -4711,8 +4704,8 @@
           title: TITLES[0],
           addressBook: ["cc_telly_operations"],
           signatures: [],
-          salutation: null,
-          signOff: null,
+          salutation: SALUTATIONS.find((s) => s.id === "hi") || null,
+          signOff: SIGNOFFS.find((s) => s.id === "thanks") || null,
           bccContacts: [],
           departmentId: "executive_council_office",
           singleDmg: 10,
@@ -4847,6 +4840,7 @@
           rerollCount: 0,
         },
         pendingTraining: null,
+        roundEndUpgrades: {},
         expenseReportActive: false,
       };
 
@@ -6147,6 +6141,13 @@
         return picked;
       }
 
+      function recordEndRoundUpgrade(contactId) {
+        if (!contactId) return;
+        if (!state.roundEndUpgrades) state.roundEndUpgrades = {};
+        state.roundEndUpgrades[contactId] =
+          (state.roundEndUpgrades[contactId] || 0) + 1;
+      }
+
       function getDeptScalerBonusForContact(player, contactId) {
         if (!player || !contactId || !Array.isArray(player.signatures)) return null;
         const contact = CONTACTS.find((c) => c.id === contactId);
@@ -6249,6 +6250,7 @@
             .filter((b) => b.usedBy === unit.name && Array.isArray(b.effects))
             .forEach((b) => sources.push({ owner: b, id: b.id }));
         }
+        const trackEndUpgrades = unit.id === "player";
         sources.forEach(({ owner, id }) => {
           owner.effects.forEach((effect) => {
             if (!effect || effect.event !== event) return;
@@ -6279,11 +6281,21 @@
             }
             if (effect.type === "add_random_cc_bonus") {
               if (unit.id !== "player") return;
-              applyRandomCcBoost(state.player, effect.stats || {}, true);
+              const picked = applyRandomCcBoost(
+                state.player,
+                effect.stats || {},
+                true,
+              );
+              if (trackEndUpgrades && picked) {
+                recordEndRoundUpgrade(picked.id);
+              }
             } else if (effect.type === "add_cc_bonus") {
               if (unit.id !== "player") return;
               if (!context.contact) return;
               applyContactPermanentBoost(state.player, context.contact.id, effect.stats || {});
+              if (trackEndUpgrades) {
+                recordEndRoundUpgrade(context.contact.id);
+              }
             } else if (effect.type === "add_signoff_bonus") {
               applyUnitPermanentBoost(unit, id, effect.stats || {});
             } else if (effect.type === "add_salutation_bonus") {
@@ -6368,7 +6380,14 @@
                   : null;
               const countToApply =
                 limit != null ? Math.min(count, limit) : count;
-              applyRandomCcBoostMultiple(state.player, scaled, countToApply);
+              const picked = applyRandomCcBoostMultiple(
+                state.player,
+                scaled,
+                countToApply,
+              );
+              if (trackEndUpgrades && picked.length) {
+                picked.forEach((p) => recordEndRoundUpgrade(p.id));
+              }
             } else if (effect.type === "add_all_cc_bonus") {
               if (unit.id !== "player") return;
               const scope = effect.scope || "thread";
@@ -6402,6 +6421,9 @@
                   if (deptScalerBonus) {
                     applyBuffStats(buff, deptScalerBonus);
                   }
+                }
+                if (trackEndUpgrades) {
+                  recordEndRoundUpgrade(cid);
                 }
               });
             } else if (effect.type === "add_cc_bonus_by_dept_pairs") {
@@ -6442,6 +6464,9 @@
                 );
                 if (deptScalerBonus) {
                   applyBuffStats(b, deptScalerBonus);
+                }
+                if (trackEndUpgrades) {
+                  recordEndRoundUpgrade(b.id);
                 }
               });
             } else if (effect.type === "add_signoff_bonus_by_dept_pairs") {
@@ -6623,6 +6648,7 @@
         p.deflectChargeReflect = 0;
         p.deflectChargeReduce = 0;
         p.threadBonuses = {};
+        state.roundEndUpgrades = {};
         state.expenseReportActive = false;
         state.threadEffectFlags = {};
         const baseStats = computeUnitStats(p);
@@ -7113,6 +7139,29 @@
 
         document.getElementById("summary-rep-earned").innerText =
           `+${summary.totalRep}`;
+
+        const upgradesRow = document.getElementById("summary-upgrades");
+        const upgradesList = document.getElementById("summary-upgrades-list");
+        if (upgradesRow && upgradesList) {
+          upgradesList.innerHTML = "";
+          const upgrades = state.roundEndUpgrades || {};
+          const ids = Object.keys(upgrades);
+          if (ids.length) {
+            ids.forEach((id) => {
+              const c = CONTACTS.find((con) => con.id === id);
+              const name = c ? c.name : id;
+              const count = upgrades[id];
+              const row = document.createElement("div");
+              row.className =
+                "flex justify-between text-[10px] text-gray-700";
+              row.innerHTML = `<span>${name}</span><span>x${count}</span>`;
+              upgradesList.appendChild(row);
+            });
+            upgradesRow.classList.remove("hidden");
+          } else {
+            upgradesRow.classList.add("hidden");
+          }
+        }
       }
 
       function showShop() {
@@ -7178,8 +7227,8 @@
             title: TITLES[0],
             addressBook: ["cc_telly_operations"],
             signatures: [],
-            salutation: null,
-            signOff: null,
+            salutation: SALUTATIONS.find((s) => s.id === "hi") || null,
+            signOff: SIGNOFFS.find((s) => s.id === "thanks") || null,
             bccContacts: [],
             singleDmg: 10,
             escalateDmg: 5,
@@ -7216,6 +7265,7 @@
             rerollCount: 0,
           },
           pendingTraining: null,
+          roundEndUpgrades: {},
         };
         opponents = [];
         document.getElementById("player-name-input").value = name;
@@ -8687,6 +8737,7 @@
         } else if (type === "ULT") {
           const d = getUnitDamage(p, "replyAll");
           let totalBlocked = 0;
+          let totalReflected = 0;
           const defeated = new Set();
           const activeOpponents = opponents.filter((o) => o.hp > 0);
           const waves =
@@ -8698,6 +8749,7 @@
               if (o.hp > 0) {
                 const result = applyDamage(p, o, d);
                 totalBlocked += result.blocked;
+                totalReflected += result.reflected;
                 if (o.hp <= 0) defeated.add(o);
               }
             });
