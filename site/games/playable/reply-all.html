@@ -354,8 +354,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div id="shop-owned-contacts" class="space-y-2"></div>
               <div class="space-y-4">
-                <div id="shop-owned-signatures" class="space-y-2"></div>
-                <div id="shop-owned-email-meta" class="space-y-2"></div>
+                <div id="shop-owned-email-template" class="space-y-2"></div>
                 <div id="shop-owned-bccs" class="space-y-2"></div>
               </div>
             </div>
@@ -8056,39 +8055,79 @@
           });
         }
 
-        const ownedSigs = document.getElementById("shop-owned-signatures");
-        ownedSigs.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Signatures (${state.player.signatures.length}/${state.player.title.sigLimit})</div>`;
-        state.player.signatures.forEach((sig) => {
-          ownedSigs.appendChild(
-            createOwnedRow(sig, "signature", () => sellItem("signature", sig)),
-          );
-        });
+        const ownedEmailTemplate = document.getElementById(
+          "shop-owned-email-template",
+        );
+        if (ownedEmailTemplate) {
+          const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
+          const subject = mission && mission.subject ? mission.subject : "Thread";
+          ownedEmailTemplate.innerHTML = `
+            <div class="text-[10px] font-bold uppercase text-gray-500">Active Email Template</div>
+            <div class="email-template-container border border-gray-200 rounded p-4 bg-white shadow-inner">
+              <div class="email-template-header font-sans text-[10px] text-gray-700 space-y-1">
+                <div><strong>To:</strong> everyone@gov.org</div>
+                <div><strong>Subject:</strong> ${subject}</div>
+              </div>
+              <div id="shop-owned-salutation" class="drop-zone min-h-10 bg-gray-50 my-4 p-2 text-[10px]"></div>
+              <div class="flex-grow py-3 text-gray-400 italic text-[10px] select-none leading-relaxed">
+                Please be advised that the quarterly strategy session has been rescheduled. We remain committed to organizational excellence...
+              </div>
+              <div id="shop-owned-signoff" class="drop-zone min-h-10 bg-gray-50 my-4 p-2 text-[10px]"></div>
+              <div id="shop-owned-signature-drop" class="drop-zone min-h-10 bg-gray-50 my-4 p-2 text-[10px]">
+                [ ACTIVE SIGNATURES ]
+              </div>
+              <div id="drawer-owned-signatures" class="space-y-1 mt-4 pt-4 border-t border-gray-100">
+                <div id="sig-count-header" class="text-[9px] font-bold text-gray-400 uppercase mb-2">
+                  Active Signatures (${state.player.signatures.length}/${state.player.title.sigLimit})
+                </div>
+                <div id="sig-list" class="space-y-1"></div>
+              </div>
+            </div>
+          `;
 
-        const ownedEmailMeta = document.getElementById("shop-owned-email-meta");
-        ownedEmailMeta.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Active Salutation & Sign-off</div>`;
-        if (state.player.salutation) {
-          ownedEmailMeta.appendChild(
-            createOwnedRow(
-              state.player.salutation,
-              "salutation",
-              () => sellItem("salutation", state.player.salutation),
-              {
-                actionLabel: "CLEAR",
-              },
-            ),
-          );
-        }
-        if (state.player.signOff) {
-          ownedEmailMeta.appendChild(
-            createOwnedRow(
-              state.player.signOff,
-              "signoff",
-              () => sellItem("signoff", state.player.signOff),
-              {
-                actionLabel: "CLEAR",
-              },
-            ),
-          );
+          const salutationSlot = document.getElementById("shop-owned-salutation");
+          if (salutationSlot) {
+            if (state.player.salutation) {
+              salutationSlot.appendChild(
+                createOwnedRow(
+                  state.player.salutation,
+                  "salutation",
+                  () => sellItem("salutation", state.player.salutation),
+                  { actionLabel: "CLEAR" },
+                ),
+              );
+            } else {
+              salutationSlot.innerHTML =
+                `<div class="text-[10px] italic text-gray-400">No greeting set.</div>`;
+            }
+          }
+
+          const signoffSlot = document.getElementById("shop-owned-signoff");
+          if (signoffSlot) {
+            if (state.player.signOff) {
+              signoffSlot.appendChild(
+                createOwnedRow(
+                  state.player.signOff,
+                  "signoff",
+                  () => sellItem("signoff", state.player.signOff),
+                  { actionLabel: "CLEAR" },
+                ),
+              );
+            } else {
+              signoffSlot.innerHTML =
+                `<div class="text-[10px] italic text-gray-400">No sign-off set.</div>`;
+            }
+          }
+
+          const sigList = document.getElementById("sig-list");
+          if (sigList) {
+            sigList.innerHTML = "";
+            state.player.signatures.forEach((sig) => {
+              sigList.appendChild(
+                createOwnedRow(sig, "signature", () => sellItem("signature", sig)),
+              );
+            });
+          }
         }
 
         const ownedBccs = document.getElementById("shop-owned-bccs");
@@ -9434,6 +9473,7 @@
                 ${statusText}
               </div>
             </div>
+            <hr class="border-gray-200 my-2" />
             ${
               baseBonusText || trainingText || showSpecialization
                 ? `<details class="text-[10px] text-gray-700" ${
