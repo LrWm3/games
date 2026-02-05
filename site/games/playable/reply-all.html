@@ -7220,11 +7220,6 @@
       function completePromotion() {
         const targetScreen = state.postPromotionScreen || "inbox-screen";
         state.postPromotionScreen = null;
-        const nextQuarter = advanceQuarter();
-        if (nextQuarter === "Q2") {
-          showPromotion();
-          return;
-        }
         goToPostQuarterScreen(targetScreen);
       }
 
