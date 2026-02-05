@@ -885,17 +885,30 @@
       id="address-book"
       class="fixed inset-0 z-[110] bg-black/50 items-center justify-center p-4 hidden flex"
     >
-      <div class="bg-[#c0c0c0] retro-border w-full max-w-sm shadow-2xl">
+      <div class="bg-[#c0c0c0] retro-border w-full max-w-3xl shadow-2xl">
         <div
           class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
         >
           <span id="address-book-title">PERSONNEL DIRECTORY</span>
           <button onclick="closeAddressBook()" class="px-1">✕</button>
         </div>
-        <div
-          id="contact-list"
-          class="max-h-64 overflow-y-auto p-2 space-y-2 bg-white"
-        ></div>
+        <div class="p-2 bg-white">
+          <div class="flex gap-2">
+            <div class="w-5/12 border border-gray-300 bg-white">
+              <div
+                id="contact-list"
+                class="max-h-72 overflow-y-auto"
+              ></div>
+            </div>
+            <div class="w-7/12 border border-gray-300 bg-white p-3">
+              <div id="contact-detail" class="text-[11px] space-y-2">
+                <div class="text-[10px] uppercase text-gray-500">
+                  Select a contact to view details
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="p-2 flex justify-end bg-[#c0c0c0]">
           <button
             onclick="closeAddressBook()"
@@ -9134,13 +9147,19 @@
         if (state.isProcessing || state.gameOver) return;
         state.ccPicksLeft = computeUnitStats(state.player).numCCperCCaction;
         state.ccPicksTaken = 0;
+        state.addressBookSelection = null;
         renderAddressBook();
         document.getElementById("address-book").classList.remove("hidden");
       }
 
       function renderAddressBook() {
         const list = document.getElementById("contact-list");
+        const detail = document.getElementById("contact-detail");
         list.innerHTML = "";
+        if (detail) {
+          detail.innerHTML =
+            `<div class="text-[10px] uppercase text-gray-500">Select a contact to view details</div>`;
+        }
         let titleText = `PERSONNEL DIRECTORY (${state.player.addressBook.length}/${getUnitAddressLimit(state.player)})`;
         if (state.ccPicksLeft > 1 || state.ccPicksTaken > 0) {
           titleText += ` - PICKS: ${state.ccPicksLeft}`;
@@ -9155,12 +9174,77 @@
         // CCs
         const headerCC = document.createElement("div");
         headerCC.className =
-          "text-[10px] font-bold bg-gray-200 p-1 mb-1 uppercase";
-        headerCC.innerText = "Address Book (Permanent CCs)";
+          "text-[10px] font-bold bg-gray-200 p-1 uppercase sticky top-0";
+        headerCC.innerText = "Address Book";
         list.appendChild(headerCC);
 
+        const selections = [];
         state.player.addressBook.forEach((id) => {
           const c = CONTACTS.find((con) => con.id === id);
+          if (!c) return;
+          const isUsed = isContactInLoop(c.id);
+          const isImplicated = isContactImplicated(c);
+          const solidarityLocked =
+            state.player.signOff &&
+            state.player.signOff.id === "solidarity" &&
+            state.removedByPlayer > 0;
+          const isDisabled = isUsed || isImplicated || solidarityLocked;
+          const btn = document.createElement("div");
+          btn.className = `px-2 py-1 border-b border-gray-200 text-xs ${isDisabled ? "opacity-50 bg-gray-50" : "cursor-pointer hover:bg-blue-50"}`;
+          const compactDeptLabel =
+            c.departmentId === "executive_council_office"
+              ? "ECO"
+              : c.departmentId
+                ? (DEPARTMENT_BY_ID[c.departmentId]?.name || c.departmentId)
+                : "Department N/A";
+          btn.innerHTML = `<div class="flex justify-between"><span class="font-semibold text-[#000080]">${c.name}</span><span class="text-[9px] uppercase text-gray-500">${compactDeptLabel}</span></div>`;
+          btn.onclick = () => {
+            state.addressBookSelection = { type: "contact", id: c.id };
+            renderAddressBookDetail();
+          };
+          list.appendChild(btn);
+          selections.push({ type: "contact", id: c.id });
+        });
+
+        // BCCs
+        if (state.player.bccContacts.length > 0) {
+          const headerBCC = document.createElement("div");
+          headerBCC.className =
+            "text-[10px] font-bold bg-gray-200 p-1 mt-4 uppercase sticky top-0";
+          headerBCC.innerText = "Help Desk (BCC)";
+          list.appendChild(headerBCC);
+
+          state.player.bccContacts.forEach((b, idx) => {
+            const btn = document.createElement("div");
+            btn.className =
+              "px-2 py-1 border-b border-gray-200 text-xs cursor-pointer hover:bg-yellow-50";
+            btn.innerHTML = `<div class="flex justify-between"><span class="font-semibold text-yellow-800">${b.name}</span><span class="text-[9px] uppercase text-gray-500">BCC</span></div>`;
+            btn.onclick = () => {
+              state.addressBookSelection = { type: "bcc", index: idx };
+              renderAddressBookDetail();
+            };
+            list.appendChild(btn);
+            selections.push({ type: "bcc", index: idx });
+          });
+        }
+
+        if (!state.addressBookSelection && selections.length > 0) {
+          state.addressBookSelection = selections[0];
+        }
+        renderAddressBookDetail();
+      }
+
+      function renderAddressBookDetail() {
+        const detail = document.getElementById("contact-detail");
+        if (!detail) return;
+        const selection = state.addressBookSelection;
+        if (!selection) {
+          detail.innerHTML =
+            `<div class="text-[10px] uppercase text-gray-500">Select a contact to view details</div>`;
+          return;
+        }
+        if (selection.type === "contact") {
+          const c = CONTACTS.find((con) => con.id === selection.id);
           if (!c) return;
           const isUsed = isContactInLoop(c.id);
           const isImplicated = isContactImplicated(c);
@@ -9177,23 +9261,39 @@
               : solidarityLocked
                 ? "LOCKED"
               : "AVAIL";
-          const setBadge = c.setId
-            ? `<button type="button" data-set-button data-set-id="${c.setId}" class="text-[9px] uppercase px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 font-bold">Set</button>`
-            : "";
-          const btn = document.createElement("div");
-          btn.className = `p-2 border border-gray-300 flex flex-col ${isDisabled ? "opacity-40 grayscale bg-gray-100" : "cursor-pointer hover:bg-blue-50"}`;
           const deptLabel = c.departmentId
             ? (DEPARTMENT_BY_ID[c.departmentId]?.name || c.departmentId)
             : "Department N/A";
-          btn.innerHTML = `<div class="flex justify-between font-bold text-[#000080] text-xs"><span>${c.name} - ${c.title}</span><span class="text-[9px]">${statusText}</span></div><div class="text-[9px] uppercase text-gray-500">${deptLabel}</div><div class="flex items-center gap-2 text-[10px] italic">${getItemBonusText(c) || ""}${setBadge}</div>`;
-          btn.querySelectorAll("[data-set-button]").forEach((setBtn) => {
+          const setBadge = c.setId
+            ? `<button type="button" data-set-button data-set-id="${c.setId}" class="text-[9px] uppercase px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 font-bold">Set</button>`
+            : "";
+          const bonusText = getItemBonusText(c) || "";
+          detail.innerHTML = `
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="font-bold text-[#000080] text-sm">${c.name}</div>
+                <div class="text-[10px] uppercase text-gray-500">${c.title}</div>
+              </div>
+              <div class="text-[9px] uppercase text-gray-500">${statusText}</div>
+            </div>
+            <div class="text-[10px] uppercase text-gray-500">${deptLabel}</div>
+            <div class="text-[10px] italic text-gray-700">${bonusText}</div>
+            <div class="flex items-center gap-2">${setBadge}</div>
+            <div class="pt-2">
+              <button id="address-book-action" class="retro-button text-xs px-3" ${
+                isDisabled ? "disabled" : ""
+              }>${isDisabled ? "UNAVAILABLE" : "LOOP IN"}</button>
+            </div>
+          `;
+          detail.querySelectorAll("[data-set-button]").forEach((setBtn) => {
             setBtn.addEventListener("click", (e) => {
               e.stopPropagation();
               openSetInfo(setBtn.dataset.setId);
             });
           });
-          if (!isDisabled)
-            btn.onclick = () => {
+          const actionBtn = detail.querySelector("#address-book-action");
+          if (actionBtn && !isDisabled) {
+            actionBtn.onclick = () => {
               addContactBuff(state.player, c, state.player.name);
               const loopInText = formatLoopInText(
                 c,
@@ -9223,26 +9323,35 @@
                 renderAddressBook();
               }
             };
-          list.appendChild(btn);
-        });
-
-        // BCCs
-        if (state.player.bccContacts.length > 0) {
-          const headerBCC = document.createElement("div");
-          headerBCC.className =
-            "text-[10px] font-bold bg-gray-200 p-1 mt-4 mb-1 uppercase";
-          headerBCC.innerText = "Help Desk Contacts (BCC Consumables)";
-          list.appendChild(headerBCC);
-
-          state.player.bccContacts.forEach((b, idx) => {
-            const btn = document.createElement("div");
-            btn.className = `p-2 border border-gray-300 flex flex-col cursor-pointer hover:bg-yellow-50`;
-            btn.innerHTML = `<div class="flex justify-between font-bold text-yellow-800 text-xs"><span>${b.name}</span><span class="text-[9px]">BCC</span></div><div class="text-[10px] italic">${getItemBonusText(b)}</div>`;
-            btn.onclick = () => {
-              useBcc(b, idx);
+          }
+          return;
+        }
+        if (selection.type === "bcc") {
+          const bcc = state.player.bccContacts[selection.index];
+          if (!bcc) {
+            detail.innerHTML =
+              `<div class="text-[10px] uppercase text-gray-500">Select a contact to view details</div>`;
+            return;
+          }
+          detail.innerHTML = `
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="font-bold text-yellow-800 text-sm">${bcc.name}</div>
+                <div class="text-[10px] uppercase text-gray-500">BCC</div>
+              </div>
+            </div>
+            <div class="text-[10px] italic text-gray-700">${getItemBonusText(bcc)}</div>
+            <div class="pt-2">
+              <button id="address-book-action" class="retro-button text-xs px-3">USE BCC</button>
+            </div>
+          `;
+          const actionBtn = detail.querySelector("#address-book-action");
+          if (actionBtn) {
+            actionBtn.onclick = () => {
+              useBcc(bcc, selection.index);
+              renderAddressBook();
             };
-            list.appendChild(btn);
-          });
+          }
         }
       }
 
