@@ -1258,7 +1258,7 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> to help frame this conversation around department wide resourcing.",
           eff: {
-            defFlat: 4,
+            defFlat: 3,
           },
           usedBy: null,
         },
@@ -1314,7 +1314,7 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> to advise on our tactical approach and reduce reputational risk.",
           eff: {
-            defFlat: 3,
+            defFlat: 2,
             selfPromoteHeal: 5,
           },
           usedBy: null,
@@ -1328,9 +1328,9 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> ({title}) to handle the facilities impact.",
           eff: {
-            defFlat: 2,
-            heal: 3,
-            escalateDmg: 4,
+            defFlat: 1,
+            heal: 2,
+            escalateDmg: 3,
           },
           usedBy: null,
         },
@@ -1358,7 +1358,7 @@
             "I'm looping in <strong>{name}</strong> from {department} to ensure this stays within policy guardrails.",
           eff: {
             defFlat: 2,
-            singleDmg: 4,
+            singleDmg: 2,
           },
           usedBy: null,
         },
@@ -1397,7 +1397,8 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> from {department} to keep this thread compliant with HR policy.",
           eff: {
-            defFlat: 2,
+            deflect: 3,
+            deflectPower: 5,
           },
           usedBy: null,
         },
@@ -1487,6 +1488,7 @@
           eff: {
             deflect: 2,
             deflectPower: 2,
+            maxHp: 5,
           },
           usedBy: null,
         },
@@ -1556,7 +1558,6 @@
           rarity: "uncommon",
           departmentId: "human_resources",
           employeeId: "interns_human_resources",
-          bonus: "Follow-up chance +20%.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to document intern feedback and thread tone.",
           eff: {
@@ -1586,7 +1587,6 @@
           rarity: "uncommon",
           departmentId: "m4_agency",
           employeeId: "taz_m4_agency",
-          bonus: "+5 escalate.",
           loopInText:
             "I'm looping in <strong>{name}</strong> to sync the escalation plan and media response.",
           eff: {
@@ -1605,7 +1605,7 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> to provide executive counsel and strategic framing.",
           eff: {
-            defFlat: 3,
+            defFlat: 2,
             globalDmg: 3,
             heal: 3,
           },
@@ -5995,6 +5995,8 @@
         if (!player || !contactId || !stats) return;
         if (!player.contactPermanentBoosts)
           player.contactPermanentBoosts = {};
+        if (!player.contactEffectBoosts)
+          player.contactEffectBoosts = {};
         const current = player.contactPermanentBoosts[contactId] || {};
         const next = { ...current };
         Object.keys(stats).forEach((key) => {
@@ -6009,6 +6011,25 @@
             const value = contact.eff[key];
             if (typeof value !== "number") return;
             next[key] = (next[key] || 0) + value;
+          });
+        }
+        if (contact && Array.isArray(contact.effects)) {
+          contact.effects.forEach((effect) => {
+            if (
+              !effect ||
+              (effect.type !== "add_thread_bonus" &&
+                effect.type !== "add_thread_bonus_scaled")
+            )
+              return;
+            if (!effect.stats) return;
+            const currentEffect = player.contactEffectBoosts[contactId] || {};
+            const nextEffect = { ...currentEffect };
+            Object.keys(effect.stats).forEach((key) => {
+              const value = effect.stats[key];
+              if (typeof value !== "number") return;
+              nextEffect[key] = (nextEffect[key] || 0) + value;
+            });
+            player.contactEffectBoosts[contactId] = nextEffect;
           });
         }
         const upgrade = player.contactUpgrades && player.contactUpgrades[contactId];
@@ -6195,6 +6216,14 @@
         sources.forEach(({ owner, id }) => {
           owner.effects.forEach((effect) => {
             if (!effect || effect.event !== event) return;
+            const contactEffectBoosts =
+              unit.id === "player" &&
+              owner &&
+              owner.id &&
+              owner.id.startsWith("cc_") &&
+              state.player.contactEffectBoosts
+                ? state.player.contactEffectBoosts[owner.id]
+                : null;
             if (effect.requiresPackType && context.pack) {
               if (context.pack.type !== effect.requiresPackType) return;
             }
@@ -6224,7 +6253,15 @@
             } else if (effect.type === "add_salutation_bonus") {
               applySalutationPermanentBoost(unit, id, effect.stats || {});
             } else if (effect.type === "add_thread_bonus") {
-              applyUnitThreadBonus(unit, effect.stats || {});
+              const stats = { ...(effect.stats || {}) };
+              if (contactEffectBoosts) {
+                Object.keys(contactEffectBoosts).forEach((key) => {
+                  const value = contactEffectBoosts[key];
+                  if (typeof value !== "number") return;
+                  stats[key] = (stats[key] || 0) + value;
+                });
+              }
+              applyUnitThreadBonus(unit, stats);
             } else if (effect.type === "add_thread_bonus_scaled") {
               const step = effect.step || 1;
               let base = 0;
@@ -6235,8 +6272,16 @@
               const steps = Math.floor(base / step);
               if (steps > 0) {
                 const scaled = {};
-                Object.keys(effect.stats || {}).forEach((key) => {
-                  const value = effect.stats[key];
+                const combinedStats = { ...(effect.stats || {}) };
+                if (contactEffectBoosts) {
+                  Object.keys(contactEffectBoosts).forEach((key) => {
+                    const value = contactEffectBoosts[key];
+                    if (typeof value !== "number") return;
+                    combinedStats[key] = (combinedStats[key] || 0) + value;
+                  });
+                }
+                Object.keys(combinedStats).forEach((key) => {
+                  const value = combinedStats[key];
                   if (typeof value !== "number") return;
                   scaled[key] = value * steps;
                 });
@@ -8468,13 +8513,13 @@
             "I believe we need to circle back to your recent comments.",
           );
           let body = formatMessageBody(p, q);
-          if (result.blocked > 0) {
-            body += `<br><br><strong>Deflected:</strong> ${result.blocked} reflected.`;
+          if (result.reflected > 0) {
+            body += `<br><br><strong>Deflected:</strong> ${result.reflected} reflected.`;
           }
           if (followUpResult) {
             body += `<br><br><strong>Follow-up Reply:</strong> -${followUpResult.dmg}`;
-            if (followUpResult.blocked > 0) {
-              body += ` (Deflected ${followUpResult.blocked})`;
+            if (followUpResult.reflected > 0) {
+              body += ` (Deflected ${followUpResult.reflected})`;
             }
             body += ".";
           }
@@ -8486,8 +8531,8 @@
           }
           if (bounceResult && bounceTarget) {
             body += `<br><br><strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`;
-            if (bounceResult.blocked > 0) {
-              body += ` (Deflected ${bounceResult.blocked})`;
+            if (bounceResult.reflected > 0) {
+              body += ` (Deflected ${bounceResult.reflected})`;
             }
           }
           addEmailToLog(
@@ -8502,6 +8547,8 @@
         } else if (type === "ESCALATE") {
           const d = getUnitDamage(p, "escalate");
           let totalBlocked = 0;
+          let totalReflected = 0;
+          let totalReflected = 0;
           let totalRecovered = 0;
           const defeated = new Set();
           const recoverPerHit = getUnitEscalateRecover(p);
@@ -8515,6 +8562,8 @@
               if (o.hp > 0) {
                 const result = applyDamage(p, o, d);
                 totalBlocked += result.blocked;
+                totalReflected += result.reflected;
+                totalReflected += result.reflected;
                 if (recoverPerHit > 0) {
                   totalRecovered += recoverPerHit;
                   p.hp = Math.min(totalMaxHp, p.hp + recoverPerHit);
@@ -8532,8 +8581,8 @@
             "I'm escalating this for clarity across the thread.",
           );
           let body = formatMessageBody(p, line);
-          if (totalBlocked > 0) {
-            body += `<br><br><strong>Deflected:</strong> ${totalBlocked} reflected.`;
+          if (totalReflected > 0) {
+            body += `<br><br><strong>Deflected:</strong> ${totalReflected} reflected.`;
           }
           if (totalRecovered > 0) {
             body += `<br><br><strong>Recovered:</strong> +${totalRecovered} Credibility.`;
@@ -8620,8 +8669,8 @@
             },
           );
           let replyBody = replyAllLine.body;
-          if (totalBlocked > 0) {
-            replyBody += `<br><br><strong>Deflected:</strong> ${totalBlocked} reflected.`;
+          if (totalReflected > 0) {
+            replyBody += `<br><br><strong>Deflected:</strong> ${totalReflected} reflected.`;
           }
           addEmailToLog(
             p.name,
@@ -8887,6 +8936,7 @@
               } else if (actionRoll < 0.35) {
                 const d = getUnitDamage(a, "escalate");
                 let totalBlocked = 0;
+                let totalReflected = 0;
                 let totalRecovered = 0;
                 let playerHit = false;
                 const recoverPerHit = getUnitEscalateRecover(a);
@@ -8900,6 +8950,7 @@
                   if (t.hp > 0) {
                     const result = applyDamage(a, t, d);
                     totalBlocked += result.blocked;
+                    totalReflected += result.reflected;
                     if (t === state.player && result.dmg > 0) playerHit = true;
                     if (recoverPerHit > 0) {
                       totalRecovered += recoverPerHit;
@@ -8916,8 +8967,8 @@
                   "I'm escalating this across the thread for visibility.",
                 );
                 let escBody = formatMessageBody(a, escLine);
-                if (totalBlocked > 0) {
-                  escBody += `<br><br><strong>Deflected:</strong> ${totalBlocked} reflected.`;
+                if (totalReflected > 0) {
+                  escBody += `<br><br><strong>Deflected:</strong> ${totalReflected} reflected.`;
                 }
                 if (totalRecovered > 0) {
                   escBody += `<br><br><strong>Recovered:</strong> +${totalRecovered} Credibility.`;
@@ -8985,8 +9036,8 @@
                           ignoreReflect: true,
                         })
                       : null;
-                    if (result.blocked > 0) {
-                      body += `<br><br><strong>Deflected:</strong> ${result.blocked} reflected.`;
+                    if (result.reflected > 0) {
+                      body += `<br><br><strong>Deflected:</strong> ${result.reflected} reflected.`;
                     }
                     if (followUpResult) {
                       body += `<br><br><strong>Follow-up Reply:</strong> -${followUpResult.dmg}.`;
@@ -9024,8 +9075,8 @@
                         ignoreReflect: true,
                       })
                     : null;
-                  if (result.blocked > 0) {
-                    body += `<br><br><strong>Deflected:</strong> ${result.blocked} reflected.`;
+                  if (result.reflected > 0) {
+                    body += `<br><br><strong>Deflected:</strong> ${result.reflected} reflected.`;
                   }
                   if (followUpResult) {
                     body += `<br><br><strong>Follow-up Reply:</strong> -${followUpResult.dmg}.`;
