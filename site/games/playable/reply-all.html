@@ -2175,7 +2175,6 @@
             {
               event: "cc_add",
               type: "add_cc_bonus",
-              stats: { singleDmg: 5 },
               threadLimit: 1,
             },
           ],
@@ -2188,7 +2187,6 @@
             {
               event: "reply_all",
               type: "add_random_cc_bonus",
-              stats: { singleDmg: 2 },
               threadLimit: 2,
             },
           ],
@@ -2201,7 +2199,6 @@
             {
               event: "remove_stakeholder",
               type: "add_random_cc_bonus",
-              stats: { singleDmg: 2 },
               threadLimit: 2,
             },
           ],
@@ -2214,7 +2211,6 @@
             {
               event: "deflect_proc",
               type: "add_random_cc_bonus",
-              stats: { deflect: 1 },
               threadLimit: 2,
             },
           ],
@@ -2227,7 +2223,6 @@
             {
               event: "bcc_use",
               type: "add_random_cc_bonus",
-              stats: { maxHp: 5 },
             },
           ],
         },
@@ -2239,7 +2234,6 @@
             {
               event: "remove_stakeholder",
               type: "add_random_cc_bonus",
-              stats: { escalateDmg: 1 },
               threadLimit: 2,
             },
           ],
@@ -2254,7 +2248,6 @@
               type: "add_random_cc_bonus_scaled",
               scaleBy: "wins_remaining",
               step: 1,
-              stats: { endRep: 2 },
             },
           ],
         },
@@ -2266,7 +2259,6 @@
             {
               event: "thread_end",
               type: "add_random_cc_bonus",
-              stats: { defFlat: 2 },
               requiresHpFull: true,
             },
           ],
@@ -2279,7 +2271,6 @@
             {
               event: "thread_end",
               type: "add_all_cc_bonus",
-              stats: { globalDmgMult: 0.2 },
               scope: "addressBook",
             },
           ],
@@ -2292,7 +2283,6 @@
             {
               event: "thread_end",
               type: "add_cc_bonus_by_dept_pairs",
-              stats: { globalDmgMult: 0.1 },
             },
           ],
         },
@@ -2306,7 +2296,6 @@
               type: "add_random_cc_bonus_scaled",
               scaleBy: "wins_remaining",
               step: 1,
-              stats: { globalDmg: 1 },
             },
           ],
         },
@@ -2318,7 +2307,6 @@
             {
               event: "bcc_use",
               type: "add_random_cc_bonus",
-              stats: { deflect: 1 },
             },
           ],
         },
@@ -2332,7 +2320,6 @@
               type: "add_random_cc_bonus_scaled",
               scaleBy: "hp",
               step: 10,
-              stats: { singleDmg: 2 },
             },
           ],
         },
@@ -2345,7 +2332,6 @@
               event: "rep_adjust",
               type: "rep_half_to_cc_escalate",
               step: 3,
-              stats: { escalateDmgMult: 0.1 },
             },
           ],
         },
@@ -2358,7 +2344,6 @@
             {
               event: "thread_end",
               type: "add_cc_bonus_by_dept_pairs",
-              stats: { defFlat: 1 },
             },
           ],
         },
@@ -2370,7 +2355,6 @@
             {
               event: "bcc_use",
               type: "add_random_cc_bonus",
-              stats: { heal: 3, wins: 1 },
             },
           ],
         },
@@ -2382,7 +2366,6 @@
             {
               event: "escalate",
               type: "add_random_cc_bonus",
-              stats: { escalateDmg: 3 },
             },
           ],
         },
@@ -2394,7 +2377,6 @@
             {
               event: "thread_end",
               type: "add_all_cc_bonus",
-              stats: { globalDmg: 2 },
               requiresHpFull: true,
             },
           ],
@@ -2407,7 +2389,6 @@
             {
               event: "remove_stakeholder",
               type: "add_random_cc_bonus",
-              stats: { globalDmgMult: 0.2 },
             },
           ],
         },
@@ -5365,29 +5346,6 @@
             stats[s.stat] = (stats[s.stat] || 0) + per * count;
           });
         }
-        if (u && Array.isArray(u.buffs)) {
-          const deptCounts = {};
-          u.buffs
-            .filter((b) => b.usedBy === u.name)
-            .forEach((b) => {
-              if (!b.departmentId) return;
-              deptCounts[b.departmentId] =
-                (deptCounts[b.departmentId] || 0) + 1;
-            });
-          getUnitStatBlocks(u).forEach((block) => {
-            if (!block || !Array.isArray(block.deptScalers)) return;
-            block.deptScalers.forEach((s) => {
-              if (!s || !s.stat || !s.departmentId) return;
-              const count = deptCounts[s.departmentId] || 0;
-              if (!count) return;
-              const per = typeof s.per === "number" ? s.per : 0;
-              const step = typeof s.step === "number" && s.step > 0 ? s.step : 1;
-              const times = Math.floor(count / step);
-              if (!times) return;
-              stats[s.stat] = (stats[s.stat] || 0) + per * times;
-            });
-          });
-        }
         const salutationWindowStats = getSalutationWindowStats(u);
         if (salutationWindowStats) {
           STAT_FIELDS.forEach((field) => {
@@ -5497,40 +5455,6 @@
         }
         if (Array.isArray(u.signatures)) {
           u.signatures.forEach((s) => pushSource(`Signature: ${s.name}`, s));
-          if (Array.isArray(u.buffs)) {
-            const deptCounts = {};
-            u.buffs
-              .filter((b) => b.usedBy === u.name)
-              .forEach((b) => {
-                if (!b.departmentId) return;
-                deptCounts[b.departmentId] =
-                  (deptCounts[b.departmentId] || 0) + 1;
-              });
-            u.signatures.forEach((s) => {
-              if (!Array.isArray(s.deptScalers)) return;
-              const stats = {};
-              s.deptScalers.forEach((scaler) => {
-                if (!scaler || !scaler.departmentId || !scaler.stat) return;
-                const count = deptCounts[scaler.departmentId] || 0;
-                if (!count) return;
-                const per =
-                  typeof scaler.per === "number" ? scaler.per : 0;
-                const step =
-                  typeof scaler.step === "number" && scaler.step > 0
-                    ? scaler.step
-                    : 1;
-                const times = Math.floor(count / step);
-                if (!times) return;
-                stats[scaler.stat] = (stats[scaler.stat] || 0) + per * times;
-              });
-              if (Object.keys(stats).length) {
-                sources.push({
-                  label: `Signature scaling: ${s.name}`,
-                  stats,
-                });
-              }
-            });
-          }
         }
         if (u.threadBonuses && Object.keys(u.threadBonuses).length) {
           sources.push({ label: "Thread bonuses", stats: u.threadBonuses });
@@ -6095,6 +6019,22 @@
             next[key] = (next[key] || 0) + value;
           });
         }
+        const upgrade = player.contactUpgrades && player.contactUpgrades[contactId];
+        if (upgrade && upgrade.eff) {
+          Object.keys(upgrade.eff).forEach((key) => {
+            const value = upgrade.eff[key];
+            if (typeof value !== "number") return;
+            next[key] = (next[key] || 0) + value;
+          });
+        }
+        const deptScalerBonus = getDeptScalerBonusForContact(player, contactId);
+        if (deptScalerBonus) {
+          Object.keys(deptScalerBonus).forEach((key) => {
+            const value = deptScalerBonus[key];
+            if (typeof value !== "number") return;
+            next[key] = (next[key] || 0) + value;
+          });
+        }
 
         player.contactPermanentBoosts[contactId] = next;
       }
@@ -6120,6 +6060,14 @@
           if (originalContact && originalContact.eff) {
             applyBuffStats(picked, originalContact.eff);
           }
+          const upgrade = player.contactUpgrades && player.contactUpgrades[picked.id];
+          if (upgrade && upgrade.eff) {
+            applyBuffStats(picked, upgrade.eff);
+          }
+          const deptScalerBonus = getDeptScalerBonusForContact(player, picked.id);
+          if (deptScalerBonus) {
+            applyBuffStats(picked, deptScalerBonus);
+          }
         }
         return picked;
       }
@@ -6137,9 +6085,52 @@
           if (originalContact && originalContact.eff) {
             applyBuffStats(target, originalContact.eff);
           }
+          const upgrade = player.contactUpgrades && player.contactUpgrades[target.id];
+          if (upgrade && upgrade.eff) {
+            applyBuffStats(target, upgrade.eff);
+          }
+          const deptScalerBonus = getDeptScalerBonusForContact(player, target.id);
+          if (deptScalerBonus) {
+            applyBuffStats(target, deptScalerBonus);
+          }
           picked.push(target);
         }
         return picked;
+      }
+
+      function getDeptScalerBonusForContact(player, contactId) {
+        if (!player || !contactId || !Array.isArray(player.signatures)) return null;
+        const contact = CONTACTS.find((c) => c.id === contactId);
+        if (!contact || !contact.departmentId) return null;
+        const deptCounts = {};
+        if (Array.isArray(player.addressBook)) {
+          player.addressBook.forEach((id) => {
+            const entry = CONTACTS.find((c) => c.id === id);
+            if (!entry || !entry.departmentId) return;
+            deptCounts[entry.departmentId] =
+              (deptCounts[entry.departmentId] || 0) + 1;
+          });
+        }
+        const count = deptCounts[contact.departmentId] || 0;
+        if (!count) return null;
+        const bonus = {};
+        player.signatures.forEach((s) => {
+          if (!Array.isArray(s.deptScalers)) return;
+          s.deptScalers.forEach((scaler) => {
+            if (!scaler || !scaler.departmentId || !scaler.stat) return;
+            if (scaler.departmentId !== contact.departmentId) return;
+            const per = typeof scaler.per === "number" ? scaler.per : 0;
+            if (!per) return;
+            const step =
+              typeof scaler.step === "number" && scaler.step > 0
+                ? scaler.step
+                : 1;
+            const times = Math.floor(count / step);
+            if (!times) return;
+            bonus[scaler.stat] = (bonus[scaler.stat] || 0) + per * times;
+          });
+        });
+        return Object.keys(bonus).length ? bonus : null;
       }
 
       function applyUnitPermanentBoost(unit, sourceId, stats) {
@@ -6325,6 +6316,19 @@
                   if (originalContact && originalContact.eff) {
                     applyBuffStats(buff, originalContact.eff);
                   }
+                  const upgrade =
+                    state.player.contactUpgrades &&
+                    state.player.contactUpgrades[cid];
+                  if (upgrade && upgrade.eff) {
+                    applyBuffStats(buff, upgrade.eff);
+                  }
+                  const deptScalerBonus = getDeptScalerBonusForContact(
+                    state.player,
+                    cid,
+                  );
+                  if (deptScalerBonus) {
+                    applyBuffStats(buff, deptScalerBonus);
+                  }
                 }
               });
             } else if (effect.type === "add_cc_bonus_by_dept_pairs") {
@@ -6352,6 +6356,19 @@
                 const originalContact = CONTACTS.find((c) => c.id === b.id);
                 if (originalContact && originalContact.eff) {
                   applyBuffStats(b, originalContact.eff);
+                }
+                const upgrade =
+                  state.player.contactUpgrades &&
+                  state.player.contactUpgrades[b.id];
+                if (upgrade && upgrade.eff) {
+                  applyBuffStats(b, upgrade.eff);
+                }
+                const deptScalerBonus = getDeptScalerBonusForContact(
+                  state.player,
+                  b.id,
+                );
+                if (deptScalerBonus) {
+                  applyBuffStats(b, deptScalerBonus);
                 }
               });
             } else if (effect.type === "add_signoff_bonus_by_dept_pairs") {
@@ -7616,7 +7633,7 @@
             if (!per) return "";
             const step = typeof s.step === "number" && s.step > 0 ? s.step : 1;
             const stepLabel = step === 1 ? "CC" : `${step} CCs`;
-            return `Per ${dept} ${stepLabel}: ${formatStatsText({ [s.stat]: per })}`;
+            return `When upgrading a ${dept} contact: ${formatStatsText({ [s.stat]: per })} per ${dept} ${stepLabel}`;
           })
           .filter(Boolean)
           .join(", ");
@@ -7644,10 +7661,14 @@
         const eventText = eventLabels[effect.event] || "On event";
         const statsText = formatStatsText(effect.stats || {});
         if (effect.type === "add_random_cc_bonus") {
-          return `${eventText}: random CC ${statsText ? `gains ${statsText}` : "gains bonuses"}`;
+          return statsText
+            ? `${eventText}: random CC gains ${statsText}`
+            : `${eventText}: upgrade a random CC`;
         }
         if (effect.type === "add_cc_bonus") {
-          return `${eventText}: CC gains ${statsText}`;
+          return statsText
+            ? `${eventText}: CC gains ${statsText}`
+            : `${eventText}: upgrade that CC`;
         }
         if (effect.type === "add_signoff_bonus") {
           const cleaned = statsText.replace(/adds\s+(x[\d.]+)/gi, "$1");
@@ -7716,20 +7737,28 @@
             effect.threadLimit != null
               ? ` (up to ${effect.threadLimit}x)`
               : "";
-          return `${eventText}: every ${step} ${scaleLabel} upgrades ${formatStatsText(effect.stats || {})} on a random CC${limitLabel}`;
+          const bonusText = formatStatsText(effect.stats || {});
+          const targetText = bonusText ? `upgrades ${bonusText} on a random CC` : "upgrades a random CC";
+          return `${eventText}: every ${step} ${scaleLabel} ${targetText}${limitLabel}`;
         }
         if (effect.type === "add_all_cc_bonus") {
-          return `${eventText}: all CCs gain ${formatStatsText(effect.stats || {})}`;
+          return statsText
+            ? `${eventText}: all CCs gain ${statsText}`
+            : `${eventText}: upgrade all CCs`;
         }
         if (effect.type === "add_cc_bonus_by_dept_pairs") {
-          return `${eventText}: each CC gains ${formatStatsText(effect.stats || {})} per same-dept CC`;
+          return statsText
+            ? `${eventText}: each CC gains ${statsText} per same-dept CC`
+            : `${eventText}: upgrade each CC per same-dept CC`;
         }
         if (effect.type === "add_signoff_bonus_by_dept_pairs") {
           return `${eventText}: gain ${formatStatsText(effect.stats || {})} per same-dept pair`;
         }
         if (effect.type === "rep_half_to_cc_escalate") {
           const step = effect.step || 1;
-          return `${eventText}: gain half REP; every ${step} REP missed adds ${formatStatsText(effect.stats || {})} to CCs`;
+          return statsText
+            ? `${eventText}: gain half REP; every ${step} REP missed adds ${statsText} to CCs`
+            : `${eventText}: gain half REP; every ${step} REP missed upgrades a random CC`;
         }
         return statsText || "Effect";
       }
