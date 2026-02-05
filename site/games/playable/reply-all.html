@@ -1310,6 +1310,7 @@
           title: "Marketing Advisor",
           rarity: "rare",
           departmentId: "executive_council_office",
+          setId: "pod_set",
           loopInText:
             "I'm looping in <strong>{name}</strong> to advise on our tactical approach and reduce reputational risk.",
           eff: {
@@ -1600,13 +1601,52 @@
           rarity: "rare",
           departmentId: "executive_council_office",
           employeeId: "anneke_executive_council_office",
+          setId: "pod_set",
           loopInText:
             "I'm looping in <strong>{name}</strong> to provide executive counsel and strategic framing.",
           eff: {
-            flatDef: 3,
+            defFlat: 3,
             globalDmg: 3,
             heal: 3,
           },
+          usedBy: null,
+        },
+        {
+          id: "cc_julia_eco",
+          name: "Julia",
+          title: "Advisor",
+          rarity: "uncommon",
+          departmentId: "executive_council_office",
+          employeeId: "julia_eco",
+          setId: "pod_set",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to advise on our defensive positioning.",
+          effects: [
+            {
+              event: "reply_to",
+              type: "add_thread_bonus",
+              stats: { singleDmg: 2, defFlat: 1 },
+            },
+          ],
+          usedBy: null,
+        },
+        {
+          id: "cc_steph_eco",
+          name: "Steph",
+          title: "Advisor",
+          rarity: "rare",
+          departmentId: "executive_council_office",
+          employeeId: "steph_eco",
+          setId: "pod_set",
+          loopInText:
+            "I'm looping in <strong>{name}</strong>. She's great with cats and even better with help desk tickets.",
+          effects: [
+            {
+              event: "deflect_action",
+              type: "add_bcc",
+              count: 1,
+            },
+          ],
           usedBy: null,
         },
         {
@@ -2512,6 +2552,22 @@
           ],
           effect: {
             special: "Automatically loops in Elsie when both parents are CC'd.",
+          },
+        },
+        {
+          id: "pod_set",
+          name: "The Pod",
+          items: [
+            { type: "contact", id: "cc_julia_eco" },
+            { type: "contact", id: "cc_steph_eco" },
+            { type: "contact", id: "cc_anneke_executive_council_office" },
+            {
+              type: "contact",
+              id: "cc_meghan_cassedy_executive_council_office",
+            },
+          ],
+          effect: {
+            globalDmgMult: 2.0,
           },
         },
       ];
@@ -3913,6 +3969,64 @@
             },
             {
               text: "I walk both the righteous path and my dog poopus.",
+              missionId: null,
+            },
+          ],
+        },
+        {
+          id: "julia_eco",
+          name: "Julia (ECO)",
+          email: "j.eco@gov.org",
+          departmentId: "executive_council_office",
+          eff: { endRep: 2, singleDmg: 2 },
+          color: "text-blue-800",
+          defeatMessage: "I'm heading to the Peace Garden. Don't follow me.",
+          selfPromote:
+            "I've successfully mediated a dispute between two staplers. Peace is restored.",
+          deflectLines: ["We are at peace. I'm taking a moment to reflect."],
+          lines: [
+            { text: "In our defense, we're at peace.", missionId: null },
+            {
+              text: "Ill get Penny on the horn if this keeps up.",
+              missionId: null,
+            },
+            {
+              text: "Anneke and Meghan are already in alignment with my position on this.",
+              missionId: null,
+            },
+            {
+              text: "The Pod has reached a consensus, and your participation was not required.",
+              missionId: null,
+            },
+          ],
+        },
+        {
+          id: "steph_eco",
+          name: "Steph (ECO)",
+          email: "s.eco@gov.org",
+          departmentId: "executive_council_office",
+          eff: { endRep: 2, singleDmg: 2 },
+          color: "text-emerald-800",
+          defeatMessage:
+            "I'm unsubscribing to go feed my seven cats. They have better manners than this thread.",
+          selfPromote:
+            "I've organized the office's cat-photo-sharing channel. Morale has never been higher.",
+          deflectLines: ["I'm busy herding cats. I'll get back to you."],
+          lines: [
+            {
+              text: "Meow? Oh, sorry, I've been spending too much time with my feline colleagues.",
+              missionId: null,
+            },
+            {
+              text: "I'm purr-fectly capable of handling this without your constant 'Reply All' interjections.",
+              missionId: null,
+            },
+            {
+              text: "My cats have more professional decorum than what I'm seeing in this thread.",
+              missionId: null,
+            },
+            {
+              text: "If we don't reach a resolution soon, I'm CC-ing my cat rescue group.",
               missionId: null,
             },
           ],
