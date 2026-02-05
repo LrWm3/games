@@ -8313,9 +8313,13 @@
               salutationSlot.innerHTML = `<div class="text-[10px] font-semibold cursor-pointer">${state.player.salutation.name}</div>`;
               salutationSlot.onclick = (e) => {
                 e.stopPropagation();
+                const ownedItem = {
+                  ...state.player.salutation,
+                  itemType: "salutation",
+                };
                 showShopItemOverlay(
                   "direct",
-                  state.player.salutation,
+                  ownedItem,
                   salutationSlot,
                   { fromOwned: true },
                 );
@@ -8334,9 +8338,10 @@
               signoffSlot.innerHTML = `<div class="text-[10px] font-semibold cursor-pointer">${state.player.signOff.name}</div>`;
               signoffSlot.onclick = (e) => {
                 e.stopPropagation();
+                const ownedItem = { ...state.player.signOff, itemType: "signoff" };
                 showShopItemOverlay(
                   "direct",
-                  state.player.signOff,
+                  ownedItem,
                   signoffSlot,
                   { fromOwned: true },
                 );
@@ -8358,7 +8363,8 @@
               row.innerText = sig.name;
               row.onclick = (e) => {
                 e.stopPropagation();
-                showShopItemOverlay("direct", sig, row, { fromOwned: true });
+                const ownedItem = { ...sig, itemType: "signature" };
+                showShopItemOverlay("direct", ownedItem, row, { fromOwned: true });
                 showAssetsWindow("email", { forceOpen: true });
               };
               sigList.appendChild(row);
@@ -8416,12 +8422,18 @@
         if (packList) {
           packList.innerHTML = "";
           state.shop.packs.forEach((pack) => {
+            const packTypeLabels = {
+              contact: "Contact",
+              email: "Email",
+              dev: "Coaching",
+              bcc: "Help Desk",
+            };
             const row = document.createElement("div");
             row.className = "shop-card-item";
             row.innerHTML = `
               <div class="w-full h-full flex flex-col">
                 <div class="text-[9px] uppercase text-white bg-[#000080] px-2 py-0.5 text-left">
-                  Coaching
+                  ${packTypeLabels[pack.type] || pack.type}
                 </div>
                 <div class="flex-1 flex items-center justify-center px-1">
                   <div class="shop-card-name">${pack.name}</div>
