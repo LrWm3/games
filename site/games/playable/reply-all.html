@@ -8,7 +8,7 @@
     />
     <title>REPLY ALL</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@shopify/draggable@1.0.0-beta.11/lib/draggable.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@shopify/draggable@1.0.0-beta.11/lib/draggable.bundle.js"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;600;700&display=swap"
       rel="stylesheet"
@@ -98,131 +98,6 @@
       .scroll-container::-webkit-scrollbar-track {
         background: #dfdfdf;
       }
-
-      /* HR Portal Drawer Redesign */
-      #shop-drawer-panel {
-        position: fixed;
-        top: 0;
-        right: 0;
-        height: 100%;
-        width: 320px;
-        background: var(--win-grey);
-        z-index: 1000;
-        transition: transform 0.3s ease-in-out;
-        transform: translateX(100%);
-        display: flex;
-        flex-direction: row;
-      }
-      #shop-drawer-panel.open {
-        transform: translateX(0);
-      }
-      .drawer-tabs {
-        width: 40px;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        padding-top: 60px;
-        margin-left: -40px;
-      }
-      .drawer-tab {
-        width: 100px;
-        height: 38px;
-        background: var(--win-grey);
-        transform: rotate(-90deg) translate(-100%, 0);
-        transform-origin: top left;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 9px;
-        font-weight: bold;
-        text-transform: uppercase;
-        border: 2px solid var(--win-border-light);
-        border-bottom: 2px solid var(--win-border-dark);
-        border-right: none;
-        cursor: pointer;
-        white-space: nowrap;
-        box-shadow: -2px 0 5px rgba(0,0,0,0.1);
-      }
-      .drawer-tab.active {
-        background: #dfdfdf;
-        border-right: none;
-        z-index: 1001;
-      }
-      .drawer-content {
-        flex-grow: 1;
-        background: #fdfdfd;
-        border-left: 2px solid var(--win-border-dark);
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      }
-      .drawer-header {
-        background: var(--win-blue);
-        color: white;
-        padding: 8px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 12px;
-        font-weight: bold;
-      }
-      .drawer-body {
-        flex-grow: 1;
-        overflow-y: auto;
-        padding: 12px;
-      }
-
-      .droppable-zone {
-        transition: all 0.2s ease;
-      }
-      .droppable-zone.hover {
-        background-color: rgba(59, 130, 246, 0.1) !important;
-        border-color: #3b82f6 !important;
-        transform: scale(1.02);
-      }
-
-      .email-template-container {
-        background: white;
-        padding: 12px;
-        display: flex;
-        flex-direction: column;
-        min-height: 400px;
-      }
-      .email-template-header {
-        border-bottom: 1px solid #e2e8f0;
-        padding-bottom: 8px;
-        margin-bottom: 12px;
-        font-size: 10px;
-        color: #64748b;
-      }
-      .drop-zone {
-        border: 2px dashed #cbd5e1;
-        border-radius: 4px;
-        padding: 8px;
-        margin: 4px 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        font-size: 9px;
-        font-weight: bold;
-        color: #94a3b8;
-        min-height: 40px;
-      }
-
-      .draggable-mirror {
-        z-index: 2000;
-        pointer-events: none;
-        opacity: 0.8;
-        background: white;
-        padding: 8px;
-        border: 2px solid #3b82f6;
-        border-radius: 4px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        width: 150px;
-        text-align: center;
-        font-size: 10px;
-      }
       .scroll-container::-webkit-scrollbar-thumb {
         background: var(--win-grey);
         border: 2px solid var(--win-border-light);
@@ -284,6 +159,157 @@
         padding: 12px 0;
         line-height: 1.5;
         color: #111;
+      }
+
+      /* HR Portal Drawer Redesign */
+      #shop-drawer-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        height: 100%;
+        width: 320px;
+        background: var(--win-grey);
+        z-index: 1000;
+        transition: transform 0.3s ease-in-out;
+        transform: translateX(100%);
+        display: flex;
+        flex-direction: row;
+      }
+      #shop-drawer-panel.open {
+        transform: translateX(0);
+      }
+      body.is-dragging #shop-drawer-panel {
+        transition: none;
+      }
+      .drawer-tabs {
+        width: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding-top: 40px;
+        margin-left: -32px;
+      }
+      .drawer-tab {
+        width: 32px;
+        padding: 12px 0;
+        background: var(--win-grey);
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: bold;
+        text-transform: uppercase;
+        border: 2px solid var(--win-border-light);
+        border-bottom: 2px solid var(--win-border-dark);
+        border-right: none;
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+        box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+        border-radius: 4px 0 0 4px;
+      }
+      .drawer-tab.active {
+        background: #fff;
+        z-index: 1001;
+        border-left: 3px solid #000080;
+        color: #000080;
+      }
+      .drawer-content {
+        flex-grow: 1;
+        background: #fdfdfd;
+        border-left: 2px solid var(--win-border-dark);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .drawer-header {
+        background: var(--win-blue);
+        color: white;
+        padding: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        font-weight: bold;
+      }
+      .drawer-body {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 12px;
+      }
+
+      .droppable-zone {
+        transition: all 0.2s ease;
+      }
+      .droppable-zone.hover {
+        background-color: rgba(59, 130, 246, 0.25) !important;
+        border-color: #3b82f6 !important;
+        border-style: solid !important;
+        transform: scale(1.02);
+      }
+
+      .drawer-tab-content {
+          display: block !important;
+          height: 0;
+          overflow: hidden;
+          opacity: 0;
+          pointer-events: none;
+      }
+      .drawer-tab-content.active {
+          height: auto;
+          overflow: visible;
+          opacity: 1;
+          pointer-events: auto;
+      }
+
+      .email-template-container {
+        background: white;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        min-height: 400px;
+      }
+      .email-template-header {
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 8px;
+        margin-bottom: 12px;
+        font-size: 10px;
+        color: #64748b;
+      }
+      .drop-zone {
+        border: 2px dashed #cbd5e1;
+        border-radius: 4px;
+        padding: 8px;
+        margin: 8px 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 10px;
+        font-weight: bold;
+        color: #64748b;
+        min-height: 60px;
+        background: #f8fafc;
+      }
+
+      .draggable-item {
+        touch-action: none;
+        user-select: none;
+      }
+      .draggable-mirror {
+        z-index: 2000 !important;
+        pointer-events: none !important;
+        opacity: 0.9;
+        background: white;
+        padding: 8px;
+        border: 2px solid #3b82f6;
+        border-radius: 4px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        width: 150px;
+        text-align: center;
+        font-size: 10px;
       }
     </style>
   </head>
@@ -442,16 +468,48 @@
     >
       <div id="shop-drawer-panel" class="retro-border">
           <div class="drawer-tabs">
-              <div id="tab-resources" class="drawer-tab" onclick="openDrawer('resources')">Personnel & BCCs</div>
-              <div id="tab-template" class="drawer-tab" onclick="openDrawer('template')">Email Template</div>
+              <div id="tab-resources" class="drawer-tab" onclick="openDrawer('resources')">Personnel</div>
+              <div id="tab-template" class="drawer-tab" onclick="openDrawer('template')">Template</div>
           </div>
           <div class="drawer-content">
               <div class="drawer-header">
                   <span id="drawer-title">Inventory</span>
                   <button onclick="closeDrawer()" class="retro-button text-black px-1">X</button>
               </div>
-              <div id="drawer-body" class="drawer-body">
-                  <!-- Dynamic Content -->
+              <div id="drawer-body" class="drawer-body relative">
+                  <div id="drawer-resources-content" class="drawer-tab-content space-y-4">
+                      <div id="addr-header" class="text-[10px] font-bold uppercase text-gray-500 mb-2"></div>
+                      <div class="drop-zone droppable-zone" data-accept="contact">DRAG CONTACT HERE</div>
+                      <div id="addr-list" class="space-y-2 mb-6"></div>
+
+                      <div id="bcc-header" class="text-[10px] font-bold uppercase text-gray-500 mb-2 border-t border-gray-300 pt-4"></div>
+                      <div class="drop-zone droppable-zone" data-accept="bcc">DRAG BCC HERE</div>
+                      <div id="bcc-list" class="space-y-2"></div>
+                  </div>
+                  <div id="drawer-template-content" class="drawer-tab-content">
+                      <div class="email-template-container border border-gray-200 rounded p-4 bg-white shadow-inner">
+                        <div class="email-template-header font-sans">
+                          <div><strong>To:</strong> everyone@gov.org</div>
+                          <div><strong>Subject:</strong> RE: Institutional Alignment</div>
+                        </div>
+
+                        <div id="drop-zone-salutation" class="drop-zone droppable-zone min-h-12 bg-gray-50 my-4" data-accept="salutation"></div>
+
+                        <div class="flex-grow py-4 text-gray-400 italic text-[10px] select-none leading-relaxed">
+                          Please be advised that the quarterly strategy session has been
+                          rescheduled. We remain committed to organizational excellence...
+                        </div>
+
+                        <div id="drop-zone-signoff" class="drop-zone droppable-zone min-h-12 bg-gray-50 my-4" data-accept="signoff"></div>
+
+                        <div id="drop-zone-signature" class="drop-zone droppable-zone min-h-12 bg-gray-50 my-4" data-accept="signature"></div>
+
+                        <div id="drawer-owned-signatures" class="space-y-1 mt-4 pt-4 border-t border-gray-100">
+                          <div id="sig-count-header" class="text-[9px] font-bold text-gray-400 uppercase mb-2"></div>
+                          <div id="sig-list" class="space-y-1"></div>
+                        </div>
+                      </div>
+                  </div>
               </div>
           </div>
       </div>
@@ -476,6 +534,23 @@
           </button>
         </div>
         <div class="bg-[#f0f0f0] p-4 flex-grow overflow-y-auto space-y-6">
+          <!-- Active Employee Assets -->
+          <div class="space-y-4">
+            <h3
+              class="text-xs font-bold uppercase border-b border-[#808080] pb-1"
+            >
+              Active Employee Assets
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div id="shop-owned-contacts" class="space-y-2"></div>
+              <div class="space-y-4">
+                <div id="shop-owned-signatures" class="space-y-2"></div>
+                <div id="shop-owned-email-meta" class="space-y-2"></div>
+                <div id="shop-owned-bccs" class="space-y-2"></div>
+              </div>
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Individual Opportunities -->
             <div class="space-y-2">
@@ -491,7 +566,6 @@
               >
                 Individual Opportunities
               </h3>
-              <p class="text-[9px] text-gray-500 italic mb-1">Drag items to your drawer to acquire them.</p>
               <div id="shop-direct-items" class="grid grid-cols-1 gap-2"></div>
             </div>
             <!-- Development Packages -->
@@ -5085,7 +5159,6 @@
 
         if (screenId === "shop-screen") {
           updateShopUI();
-          initShopDraggable();
         } else {
           closeDrawer();
         }
@@ -7012,6 +7085,280 @@
         updateShopUI();
       }
 
+      var droppableInstance = null;
+
+      function initShopDraggable() {
+        const container = document.getElementById("shop-screen");
+        if (!container) return;
+
+        if (typeof Draggable === 'undefined') {
+            setTimeout(initShopDraggable, 100);
+            return;
+        }
+
+        if (droppableInstance) {
+          droppableInstance.destroy();
+          droppableInstance = null;
+        }
+
+        droppableInstance = new Draggable.Droppable(container, {
+          draggable: ".draggable-item",
+          droppable: ".droppable-zone",
+          delay: 0,
+          mirror: {
+            constrainDimensions: true,
+            appendTo: "body",
+          },
+        });
+
+        droppableInstance.on("drag:start", (e) => {
+          const source = e.source || (e.data && e.data.source);
+          if (!source) return;
+
+          const itemType = source.dataset.itemType;
+
+          window._dragSourceInitialRect = source.getBoundingClientRect();
+          window._dragWasDrawerOpen = document.getElementById("shop-drawer-panel").classList.contains("open");
+          window._dragSuccess = false;
+
+          // Move drawer opening to next frame to avoid breaking Draggable start logic
+          requestAnimationFrame(() => {
+              if (["contact", "bcc"].includes(itemType)) {
+                  state.shop.activeDrawerTab = 'resources';
+              } else if (["salutation", "signoff", "signature"].includes(itemType)) {
+                  state.shop.activeDrawerTab = 'template';
+              }
+              updateDrawerOnly({ skipUpdateContent: true });
+
+              document.body.classList.add("is-dragging");
+              const panel = document.getElementById("shop-drawer-panel");
+              if (panel) panel.classList.add("open");
+          });
+        });
+
+        droppableInstance.on("droppable:over", (e) => {
+          const dragEvent = e.dragEvent || (e.data && e.data.dragEvent);
+          const source = dragEvent?.source || (dragEvent?.data && dragEvent.data.source);
+          const droppable = e.droppable || (e.data && e.data.droppable);
+
+          if (!source || !droppable) return;
+          const itemType = source.dataset.itemType;
+          const zoneType = droppable.dataset.accept;
+
+
+          if (itemType === zoneType) {
+            droppable.classList.add("hover");
+          }
+        });
+
+        droppableInstance.on("droppable:out", (e) => {
+          const droppable = e.droppable || (e.data && e.data.droppable);
+          if (droppable) droppable.classList.remove("hover");
+        });
+
+        droppableInstance.on("droppable:dropped", (e) => {
+          const dragEvent = e.dragEvent || (e.data && e.data.dragEvent);
+          const source = dragEvent?.source || (dragEvent?.data && dragEvent.data.source);
+          const droppable = e.droppable || (e.data && e.data.droppable);
+
+          if (!source || !droppable) {
+              return;
+          }
+
+          const itemType = source.dataset.itemType;
+          const zoneType = droppable.dataset.accept;
+          const onBuy = shopCallbacks[source.dataset.callbackId];
+
+          if (itemType === zoneType && onBuy) {
+            window._dragSuccess = true;
+            setTimeout(() => {
+              onBuy();
+              playSound("chime");
+            }, 0);
+          } else {
+            e.cancel();
+          }
+        });
+
+        droppableInstance.on("drag:move", (e) => {
+           // Too much noise, but let's see if it fires at least once
+           if (!window._lastMoveLog || Date.now() - window._lastMoveLog > 500) {
+               window._lastMoveLog = Date.now();
+           }
+        });
+
+        droppableInstance.on("drag:stop", (e) => {
+          const source = e.source || (e.data && e.data.source);
+          const mirror = e.mirror || (e.data && e.data.mirror) || document.querySelector('.draggable-mirror');
+
+          const onBuy = source ? shopCallbacks[source.dataset.callbackId] : null;
+
+          document.body.classList.remove("is-dragging");
+
+          if (source && onBuy) {
+              if (mirror) {
+                  const rect = mirror.getBoundingClientRect();
+                  const centerX = rect.left + rect.width / 2;
+                  const centerY = rect.top + rect.height / 2;
+
+                  const oldDisplay = mirror.style.display;
+                  mirror.style.display = 'none';
+                  const elementUnder = document.elementFromPoint(centerX, centerY);
+                  mirror.style.display = oldDisplay;
+
+                  const zone = elementUnder?.closest('.droppable-zone');
+
+                  if (zone && zone.dataset.accept === source.dataset.itemType) {
+                      window._dragSuccess = true;
+                      setTimeout(() => {
+                        onBuy();
+                        playSound("chime");
+                      }, 0);
+                  }
+              }
+          }
+
+          // Return animation if not success
+          if (!window._dragSuccess && mirror && window._dragSourceInitialRect) {
+              const rect = mirror.getBoundingClientRect();
+              const targetRect = window._dragSourceInitialRect;
+
+              // Create a dummy clone for the return animation because Draggable removes the real mirror
+              const dummy = mirror.cloneNode(true);
+              document.body.appendChild(dummy);
+              dummy.style.position = 'fixed';
+              dummy.style.left = rect.left + 'px';
+              dummy.style.top = rect.top + 'px';
+              dummy.style.margin = '0';
+              dummy.style.zIndex = '9999';
+              dummy.style.transition = 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+
+              // Hide the real mirror if it's still there
+              mirror.style.display = 'none';
+
+              requestAnimationFrame(() => {
+                  dummy.style.left = targetRect.left + 'px';
+                  dummy.style.top = targetRect.top + 'px';
+                  dummy.style.opacity = '0';
+                  dummy.style.transform = 'scale(0.8)';
+              });
+
+              setTimeout(() => {
+                  if (dummy.parentNode) dummy.parentNode.removeChild(dummy);
+              }, 500);
+          }
+
+          // Re-close drawer if it was closed and no success OR even on success if initially closed?
+          // User said: "if the drawer was closed when dragging began, reclose the drawer when dragging is released"
+          if (!window._dragWasDrawerOpen) {
+              setTimeout(() => {
+                  closeDrawer();
+              }, window._dragSuccess ? 500 : 350); // delay if success to show feedback
+          }
+
+          document
+            .querySelectorAll(".droppable-zone")
+            .forEach((z) => z.classList.remove("hover"));
+        });
+      }
+
+      function openDrawer(tabId, options = {}) {
+        state.shop.activeDrawerTab = tabId;
+        const panel = document.getElementById("shop-drawer-panel");
+        if (panel) panel.classList.add("open");
+        updateDrawerOnly(options);
+      }
+
+      function closeDrawer() {
+        state.shop.activeDrawerTab = null;
+        const panel = document.getElementById("shop-drawer-panel");
+        if (panel) panel.classList.remove("open");
+        updateDrawerOnly();
+      }
+
+      function updateResourcesDrawer() {
+        const p = state.player;
+        const addressLimit = getUnitAddressLimit(p);
+        document.getElementById("addr-header").innerText = `Address Book (${p.addressBook.length}/${addressLimit})`;
+
+        const addrList = document.getElementById("addr-list");
+        addrList.innerHTML = "";
+        if (p.addressBook.length === 0) {
+          addrList.innerHTML = '<div class="text-[10px] italic text-gray-400 text-center py-2">No contacts on file.</div>';
+        } else {
+          p.addressBook.forEach((id) => {
+            const c = CONTACTS.find((con) => con.id === id);
+            if (c) addrList.appendChild(createOwnedRow(c, "contact", () => sellItem("contact", c)));
+          });
+        }
+
+        const bccLimit = computeUnitStats(p).bccLimit || 0;
+        document.getElementById("bcc-header").innerText = `Consumable BCCs (${p.bccContacts.length}/${bccLimit})`;
+
+        const bccList = document.getElementById("bcc-list");
+        bccList.innerHTML = "";
+        if (p.bccContacts.length === 0) {
+          bccList.innerHTML = '<div class="text-[10px] italic text-gray-400 text-center py-2">No BCCs on file.</div>';
+        } else {
+          p.bccContacts.forEach((bcc) => {
+            bccList.appendChild(createOwnedRow(bcc, "bcc", () => sellItem("bcc", bcc), { actionLabel: "DISCARD" }));
+          });
+        }
+      }
+
+      function updateEmailTemplateDrawer() {
+        const p = state.player;
+
+        const ghostStyle = "bg-blue-50 border-2 border-dashed border-blue-200 p-2 w-full text-center text-blue-800 font-bold text-[10px] opacity-70";
+
+        const salZone = document.getElementById("drop-zone-salutation");
+        salZone.innerHTML = p.salutation
+          ? `<div class="${ghostStyle}">${p.salutation.name}</div>`
+          : '[ DRAG GREETING HERE ]';
+
+        const offZone = document.getElementById("drop-zone-signoff");
+        offZone.innerHTML = p.signOff
+          ? `<div class="${ghostStyle}">${p.signOff.name}</div>`
+          : '[ DRAG SIGN-OFF HERE ]';
+
+        const sigZone = document.getElementById("drop-zone-signature");
+        sigZone.innerHTML = p.signatures.length < p.title.sigLimit
+          ? '[ DRAG NEW SIGNATURE HERE ]'
+          : '<div class="text-[9px] text-red-500 uppercase font-bold">Signature Limit Reached</div>';
+
+        document.getElementById("sig-count-header").innerText = `Active Signatures (${p.signatures.length}/${p.title.sigLimit})`;
+        const sigList = document.getElementById("sig-list");
+        sigList.innerHTML = "";
+        p.signatures.forEach((sig) => {
+          sigList.appendChild(createOwnedRow(sig, "signature", () => sellItem("signature", sig)));
+        });
+      }
+
+      function updateDrawerOnly(options = {}) {
+        const activeTab = state.shop.activeDrawerTab || "resources";
+
+        document
+          .querySelectorAll(".drawer-tab")
+          .forEach((t) => t.classList.remove("active"));
+        const activeTabEl = document.getElementById(`tab-${activeTab}`);
+        if (activeTabEl) activeTabEl.classList.add("active");
+
+        const resContent = document.getElementById("drawer-resources-content");
+        const tempContent = document.getElementById("drawer-template-content");
+
+        if (activeTab === "resources") {
+          resContent.classList.add("active");
+          tempContent.classList.remove("active");
+          if (!options.skipUpdateContent) updateResourcesDrawer();
+          document.getElementById("drawer-title").innerText = "Personnel & BCCs";
+        } else {
+          resContent.classList.remove("active");
+          tempContent.classList.add("active");
+          if (!options.skipUpdateContent) updateEmailTemplateDrawer();
+          document.getElementById("drawer-title").innerText = "Email Template";
+        }
+      }
+
       function rerollShop() {
         const cost = 5 + (state.shop.rerollCount || 0);
         if (state.player.reputation >= cost) {
@@ -7266,29 +7613,45 @@
         return row[rarity] ?? row.common;
       }
 
-      function createShopCard(name, desc, cost, onBuy, options = {}) {
-        const div = document.createElement("div");
-        div.className = "p-2 bg-white retro-border flex flex-col gap-1 draggable-item";
-        div.dataset.itemType = options.itemType;
-        div._onBuy = onBuy; // Store for draggable handler
+      var shopCallbacks = {};
 
+      function createShopCard(name, desc, cost, onBuy, options = {}) {
+        const isDraggable = ["contact", "signature", "salutation", "signoff", "bcc"].includes(options.itemType);
+        const div = document.createElement("div");
+        div.className = `p-2 bg-white retro-border flex flex-col gap-1 ${isDraggable ? "draggable-item" : ""}`;
+        div.dataset.itemType = options.itemType;
+        const cbId = "cb_" + Math.random().toString(36).substr(2, 9);
+        div.dataset.callbackId = cbId;
+        shopCallbacks[cbId] = onBuy;
         const canAfford = state.player.reputation >= cost;
         const purchased = options.purchased || false;
         const canBuy = options.canBuy ?? true;
         const badge = options.badge || "";
         const disabled = !canAfford || purchased || !canBuy;
         const metaLabel = options.metaLabel || "";
+
         const label = purchased
           ? options.ownedLabel || "ON FILE"
           : !canBuy
             ? options.spaceLabel || "FREE SLOT"
             : options.actionLabel || "SUBMIT REQUEST";
+
         const priceLabel = purchased
           ? options.ownedPriceLabel || "ON FILE"
           : options.priceLabel || `REQ: ${cost} REP`;
+
         const typeBadge = options.typeLabel
           ? `<span class="bg-blue-800 text-white px-1 uppercase font-bold">${options.typeLabel}</span>`
           : "";
+
+        const footerContent = isDraggable
+            ? `<div class="mt-2 text-[8px] text-gray-400 uppercase font-bold text-center border-t border-gray-100 pt-1">
+                ${purchased ? "Already Owned" : !canBuy ? "No Space Available" : "Drag to purchase"}
+               </div>`
+            : `<button data-buy class="mt-1 retro-button text-[10px] font-bold py-1 ${disabled ? "opacity-50" : ""}" ${disabled ? "disabled" : ""}>
+                ${label}
+               </button>`;
+
         div.innerHTML = `
                 <div class="flex justify-between font-bold text-[11px] gap-2">
                     <span class="truncate">${name}</span>
@@ -7297,9 +7660,7 @@
                 <div class="flex items-center gap-2 text-[9px]" data-badge>${typeBadge}</div>
                 ${metaLabel ? `<div class="text-[9px] uppercase text-gray-500">${metaLabel}</div>` : ""}
                 <div class="text-[10px] italic text-gray-600 leading-tight">${desc}</div>
-                <button data-buy class="mt-1 retro-button text-[10px] font-bold py-1 ${disabled ? "opacity-50" : ""}" ${disabled ? "disabled" : ""}>
-                    ${label}
-                </button>
+                ${footerContent}
             `;
         const badgeWrap = div.querySelector("[data-badge]");
         if (badge) badgeWrap.insertAdjacentHTML("beforeend", badge);
@@ -7773,6 +8134,9 @@
       }
 
       function buyDirectItem(item, cost) {
+        if (state.player.reputation < cost || isItemOwned(item) || !hasSpaceForItem(item)) {
+            return;
+        }
         state.player.reputation -= cost;
         item.purchased = true;
 
@@ -7783,21 +8147,22 @@
           sellItem("signoff", state.player.signOff);
         }
 
-        if (item.itemType === "contact") state.player.addressBook.push(item.id);
-        else if (item.itemType === "signature")
+        if (item.itemType === "contact") {
+          state.player.addressBook.push(item.id);
+        } else if (item.itemType === "signature") {
           state.player.signatures.push(item);
-        else if (item.itemType === "salutation") state.player.salutation = item;
-        else if (item.itemType === "signoff") state.player.signOff = item;
-        else if (item.itemType === "bcc") {
-          const limit = computeUnitStats(state.player).bccLimit || 0;
-          if (state.player.bccContacts.length >= limit) {
-            alert("BCC capacity reached. Discard a BCC to make space.");
-            return;
-          }
-          state.player.bccContacts.push(item);
+        } else if (item.itemType === "salutation") {
+          state.player.salutation = item;
+        } else if (item.itemType === "signoff") {
+          state.player.signOff = item;
+        } else if (item.itemType === "bcc") {
+          state.player.bccContacts.push({ ...item });
+        } else if (item.itemType === "dev") {
+          item.apply();
         }
-        playSound("connect");
         updateShopUI();
+        saveGame();
+        playSound("connect");
       }
 
       function buyPack(pack) {
@@ -7807,188 +8172,14 @@
         startPackOpening(pack);
       }
 
-      let droppableInstance = null;
-
-      function initShopDraggable() {
-        if (droppableInstance) {
-          droppableInstance.destroy();
-        }
-
-        const container = document.getElementById("shop-screen");
-        if (!container) return;
-
-        droppableInstance = new Draggable.Droppable(container, {
-          draggable: ".draggable-item",
-          droppable: ".droppable-zone",
-          mirror: {
-            constrainDimensions: true,
-            appendTo: "body",
-          },
-        });
-
-        droppableInstance.on("drag:start", (e) => {
-          const itemType = e.data.source.dataset.itemType;
-          if (["contact", "bcc"].includes(itemType)) openDrawer("resources");
-          else if (["salutation", "signoff", "signature"].includes(itemType))
-            openDrawer("template");
-        });
-
-        droppableInstance.on("droppable:over", (e) => {
-          const itemType = e.data.dragEvent.data.source.dataset.itemType;
-          const zoneType = e.data.droppable.dataset.accept;
-          if (itemType === zoneType) {
-            e.data.droppable.classList.add("hover");
-          } else {
-            e.cancel();
-          }
-        });
-
-        droppableInstance.on("droppable:out", (e) => {
-          e.data.droppable.classList.remove("hover");
-        });
-
-        droppableInstance.on("droppable:dropped", (e) => {
-          const source = e.data.dragEvent.data.source;
-          const itemType = source.dataset.itemType;
-          const zoneType = e.data.droppable.dataset.accept;
-
-          if (itemType === zoneType && source._onBuy) {
-            source._onBuy();
-            playSound("chime");
-          } else {
-            e.cancel();
-          }
-        });
-
-        droppableInstance.on("drag:stop", (e) => {
-          document
-            .querySelectorAll(".droppable-zone")
-            .forEach((z) => z.classList.remove("hover"));
-        });
-      }
-
-      function openDrawer(tabId) {
-        state.shop.activeDrawerTab = tabId;
-        const panel = document.getElementById("shop-drawer-panel");
-        if (panel) panel.classList.add("open");
-        updateShopUI();
-      }
-
-      function closeDrawer() {
-        state.shop.activeDrawerTab = null;
-        const panel = document.getElementById("shop-drawer-panel");
-        if (panel) panel.classList.remove("open");
-        updateShopUI();
-      }
-
-      function renderResourcesDrawer(container) {
-        container.innerHTML = "";
-
-        // Address Book Section
-        const addressLimit = getUnitAddressLimit(state.player);
-        const addrHeader = document.createElement("div");
-        addrHeader.className =
-          "text-[10px] font-bold uppercase text-gray-500 mb-2";
-        addrHeader.innerText = `Address Book (${state.player.addressBook.length}/${addressLimit})`;
-        container.appendChild(addrHeader);
-
-        const addrDropZone = document.createElement("div");
-        addrDropZone.className = "drop-zone droppable-zone";
-        addrDropZone.dataset.accept = "contact";
-        addrDropZone.innerText = "DRAG CONTACT HERE";
-        container.appendChild(addrDropZone);
-
-        const addrList = document.createElement("div");
-        addrList.className = "space-y-2 mb-6";
-        if (state.player.addressBook.length === 0) {
-          addrList.innerHTML =
-            '<div class="text-[10px] italic text-gray-400 text-center py-2">No contacts on file.</div>';
-        } else {
-          state.player.addressBook.forEach((id) => {
-            const c = CONTACTS.find((con) => con.id === id);
-            if (c) {
-              addrList.appendChild(
-                createOwnedRow(c, "contact", () => sellItem("contact", c)),
-              );
-            }
-          });
-        }
-        container.appendChild(addrList);
-
-        // BCC Section
-        const bccLimit = computeUnitStats(state.player).bccLimit || 0;
-        const bccHeader = document.createElement("div");
-        bccHeader.className =
-          "text-[10px] font-bold uppercase text-gray-500 mb-2 border-t border-gray-300 pt-4";
-        bccHeader.innerText = `Consumable BCCs (${state.player.bccContacts.length}/${bccLimit})`;
-        container.appendChild(bccHeader);
-
-        const bccDropZone = document.createElement("div");
-        bccDropZone.className = "drop-zone droppable-zone";
-        bccDropZone.dataset.accept = "bcc";
-        bccDropZone.innerText = "DRAG BCC HERE";
-        container.appendChild(bccDropZone);
-
-        const bccList = document.createElement("div");
-        bccList.className = "space-y-2";
-        if (state.player.bccContacts.length === 0) {
-          bccList.innerHTML =
-            '<div class="text-[10px] italic text-gray-400 text-center py-2">No BCCs on file.</div>';
-        } else {
-          state.player.bccContacts.forEach((bcc, idx) => {
-            bccList.appendChild(
-              createOwnedRow(bcc, "bcc", () => sellItem("bcc", bcc), {
-                actionLabel: "DISCARD",
-              }),
-            );
-          });
-        }
-        container.appendChild(bccList);
-      }
-
-      function renderEmailTemplateDrawer(container) {
-        const p = state.player;
-        container.innerHTML = `
-          <div class="email-template-container border border-gray-200 rounded p-4 bg-white shadow-inner">
-            <div class="email-template-header font-sans">
-              <div><strong>To:</strong> everyone@gov.org</div>
-              <div><strong>Subject:</strong> RE: Institutional Alignment</div>
-            </div>
-
-            <div id="drop-zone-salutation" class="drop-zone droppable-zone min-h-12 bg-gray-50 my-4" data-accept="salutation">
-              ${p.salutation ? `<div class="bg-blue-50 p-2 w-full text-center border border-blue-200 text-blue-800 font-bold text-[10px]">${p.salutation.name}</div>` : '[ DRAG GREETING HERE ]'}
-            </div>
-
-            <div class="flex-grow py-4 text-gray-400 italic text-[10px] select-none leading-relaxed">
-              Please be advised that the quarterly strategy session has been
-              rescheduled. We remain committed to organizational excellence...
-            </div>
-
-            <div id="drop-zone-signoff" class="drop-zone droppable-zone min-h-12 bg-gray-50 my-4" data-accept="signoff">
-              ${p.signOff ? `<div class="bg-blue-50 p-2 w-full text-center border border-blue-200 text-blue-800 font-bold text-[10px]">${p.signOff.name}</div>` : '[ DRAG SIGN-OFF HERE ]'}
-            </div>
-
-            <div id="drop-zone-signature" class="drop-zone droppable-zone min-h-12 bg-gray-50 my-4" data-accept="signature">
-              [ DRAG NEW SIGNATURE HERE ]
-            </div>
-
-            <div id="drawer-owned-signatures" class="space-y-1 mt-4 pt-4 border-t border-gray-100">
-              <div class="text-[9px] font-bold text-gray-400 uppercase mb-2">Active Signatures (${p.signatures.length}/${p.title.sigLimit})</div>
-            </div>
-          </div>
-        `;
-
-        const sigList = container.querySelector("#drawer-owned-signatures");
-        p.signatures.forEach((sig) => {
-          sigList.appendChild(
-            createOwnedRow(sig, "signature", () => sellItem("signature", sig)),
-          );
-        });
-      }
-
       function updateShopUI() {
+        shopCallbacks = {};
         document.getElementById("shop-reputation-display").innerText =
           `REP: ${state.player.reputation}`;
+
+        // Prepare drawer contents
+        updateResourcesDrawer();
+        updateEmailTemplateDrawer();
 
         const rerollBtn = document.getElementById("shop-reroll-btn");
         if (rerollBtn) {
@@ -7997,24 +8188,68 @@
           rerollBtn.disabled = state.player.reputation < cost;
         }
 
-        // --- DRAWER CONTENT ---
-        const drawerBody = document.getElementById("drawer-body");
-        const activeTab = state.shop.activeDrawerTab || "resources";
-
-        document
-          .querySelectorAll(".drawer-tab")
-          .forEach((t) => t.classList.remove("active"));
-        const activeTabEl = document.getElementById(`tab-${activeTab}`);
-        if (activeTabEl) activeTabEl.classList.add("active");
-
-        if (activeTab === "resources") {
-          renderResourcesDrawer(drawerBody);
-          document.getElementById("drawer-title").innerText =
-            "Personnel & BCCs";
+        // --- OWNED ASSETS ---
+        const ownedContacts = document.getElementById("shop-owned-contacts");
+        const addressLimit = getUnitAddressLimit(state.player);
+        ownedContacts.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Address Book (${state.player.addressBook.length}/${addressLimit})</div>`;
+        if (state.player.addressBook.length === 0) {
+          ownedContacts.innerHTML += `<div class="text-[10px] italic text-gray-400">No contacts on file.</div>`;
         } else {
-          renderEmailTemplateDrawer(drawerBody);
-          document.getElementById("drawer-title").innerText = "Email Template";
+          state.player.addressBook.forEach((id) => {
+            const c = CONTACTS.find((con) => con.id === id);
+            if (c) {
+              ownedContacts.appendChild(
+                createOwnedRow(c, "contact", () => sellItem("contact", c)),
+              );
+            }
+          });
         }
+
+        const ownedSigs = document.getElementById("shop-owned-signatures");
+        ownedSigs.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Signatures (${state.player.signatures.length}/${state.player.title.sigLimit})</div>`;
+        state.player.signatures.forEach((sig) => {
+          ownedSigs.appendChild(
+            createOwnedRow(sig, "signature", () => sellItem("signature", sig)),
+          );
+        });
+
+        const ownedEmailMeta = document.getElementById("shop-owned-email-meta");
+        ownedEmailMeta.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Active Salutation & Sign-off</div>`;
+        if (state.player.salutation) {
+          ownedEmailMeta.appendChild(
+            createOwnedRow(
+              state.player.salutation,
+              "salutation",
+              () => sellItem("salutation", state.player.salutation),
+              {
+                actionLabel: "CLEAR",
+              },
+            ),
+          );
+        }
+        if (state.player.signOff) {
+          ownedEmailMeta.appendChild(
+            createOwnedRow(
+              state.player.signOff,
+              "signoff",
+              () => sellItem("signoff", state.player.signOff),
+              {
+                actionLabel: "CLEAR",
+              },
+            ),
+          );
+        }
+
+        const ownedBccs = document.getElementById("shop-owned-bccs");
+        const bccLimit = computeUnitStats(state.player).bccLimit || 0;
+        ownedBccs.innerHTML = `<div class="text-[10px] font-bold uppercase text-gray-500">Consumable BCCs (${state.player.bccContacts.length}/${bccLimit})</div>`;
+        state.player.bccContacts.forEach((bcc) => {
+          ownedBccs.appendChild(
+            createOwnedRow(bcc, "bcc", () => sellItem("bcc", bcc), {
+              actionLabel: "DISCARD",
+            }),
+          );
+        });
 
         // --- DIRECT ITEMS ---
         const directList = document.getElementById("shop-direct-items");
@@ -8089,6 +8324,7 @@
             ),
           );
         });
+        initShopDraggable();
       }
 
       function renderStatsModal() {
