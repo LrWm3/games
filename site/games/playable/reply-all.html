@@ -6889,6 +6889,19 @@
           list.appendChild(btn);
         });
         currentPackOptions = optionItems.slice();
+        logGameEvent("pack_view", {
+          packId: pack.id,
+          name: pack.name || null,
+          picksLeft: pending.picksLeft,
+          options: optionItems.map((opt) => ({
+            id: opt.id,
+            name: opt.name || null,
+            itemType: opt.itemType || null,
+            rarity: opt.rarity || null,
+            cost:
+              opt.cost || getItemCostByType(opt.rarity || "common", opt.itemType),
+          })),
+        });
         initPackOptionsSortable(optionItems);
         renderPackManagement();
       }
@@ -6910,6 +6923,13 @@
         if (!pending) return { ok: false, reason: "pending" };
         const result = applyItemAcquisition(opt, { source: "pack" });
         if (!result.ok) return result;
+        logGameEvent("pack_choice", {
+          packId: pending.packId || null,
+          optionId: opt.id,
+          itemType: opt.itemType || null,
+          name: opt.name || null,
+          rarity: opt.rarity || null,
+        });
         hideProfileDropOverlay();
         if (typeof options.onApplied === "function") options.onApplied();
         pending.picksLeft -= 1;
@@ -8182,6 +8202,30 @@
         transitionTo("shop-screen");
         runUnitEffects(state.player, "shop_enter", {});
         updateShopUI();
+        logGameEvent("shop_view", {
+          directItems: (state.shop.directItems || [])
+            .filter((item) => !item.purchased)
+            .map((item) => ({
+              id: item.id,
+              name: item.name || null,
+              itemType: item.itemType || null,
+              rarity: item.rarity || null,
+              cost:
+                item.cost ||
+                getItemCostByType(item.rarity || "common", item.itemType),
+            })),
+          packs: (state.shop.packs || [])
+            .filter((pack) => !pack.purchased)
+            .map((pack) => ({
+              id: pack.id,
+              name: pack.name || null,
+              type: pack.type || null,
+              cost: pack.cost || 0,
+              picks: pack.picks || 0,
+              options: (pack.options || []).map((opt) => opt.id),
+            })),
+          rerollCount: state.shop.rerollCount || 0,
+        });
         saveGame();
         if (state.pendingTraining) {
           openPackView();
@@ -8231,6 +8275,20 @@
             dev: devPool,
           };
           state.shop.directItems = generateDirectItems(directPools);
+          logGameEvent("shop_reroll_view", {
+            directItems: (state.shop.directItems || [])
+              .filter((item) => !item.purchased)
+              .map((item) => ({
+                id: item.id,
+                name: item.name || null,
+                itemType: item.itemType || null,
+                rarity: item.rarity || null,
+                cost:
+                  item.cost ||
+                  getItemCostByType(item.rarity || "common", item.itemType),
+              })),
+            rerollCount: state.shop.rerollCount || 0,
+          });
           updateShopUI();
           playSound("trash");
         }
