@@ -131,6 +131,21 @@
         pointer-events: none;
         z-index: 5;
       }
+      .ghost-hide {
+        display: none !important;
+      }
+      #shop-address-book-list-bcc:has(.shop-card-ghost) #empty-bcc-list {
+        display: none;
+      }
+      #shop-address-book-list-bcc.bcc-has-ghost #empty-bcc-list {
+        display: none;
+      }
+      #shop-address-book-list-contacts:has(.shop-card-ghost) #empty-address-book {
+        display: none;
+      }
+      #shop-address-book-list-contacts.contacts-has-ghost #empty-address-book {
+        display: none;
+      }
       .slot-compare-overlay {
         position: absolute;
         inset: 0;
@@ -247,6 +262,36 @@
         text-align: left;
         font-size: 11px;
         color: #000080;
+      }
+      #shop-address-book-list .shop-card-ghost {
+        height: auto;
+        max-width: none;
+        width: 100%;
+        box-shadow: none;
+        border: none;
+        background: #ffffff;
+        padding: 4px 6px;
+        display: block;
+        border-bottom: 1px solid #e5e7eb;
+        opacity: 1 !important;
+      }
+      #shop-address-book-list .shop-card-ghost .shop-card-header {
+        display: none;
+      }
+      #shop-address-book-list .shop-card-ghost .shop-card-frame {
+        background: transparent;
+        border: none;
+        margin: 0;
+        padding: 0;
+        height: auto;
+        width: 100%;
+        display: block;
+      }
+      #shop-address-book-list .shop-card-ghost .shop-card-name {
+        text-align: left;
+        font-size: 11px;
+        color: #000080;
+        display: block;
       }
       .shop-card-ghost {
         opacity: 0.2;
@@ -8785,21 +8830,13 @@
         if (ownedContacts) {
           ownedContacts.innerHTML = `
             <div class="text-[10px] font-bold uppercase text-gray-500">Address Book (${state.player.addressBook.length}/${addressLimit})</div>
-            ${
-              state.player.addressBook.length || state.player.bccContacts.length
-                ? `<div class="address-book-panels mt-2">
-                    <div class="address-book-list w-5/12 border border-gray-300 bg-white">
-                      <div id="shop-address-book-list" class="max-h-72 overflow-y-auto relative"></div>
-                    </div>
-                  </div>`
-                : `<div class="text-[10px] italic text-gray-400">No contacts on file.</div>`
-            }
+            <div class="address-book-panels mt-2">
+              <div class="address-book-list w-5/12 border border-gray-300 bg-white">
+                <div id="shop-address-book-list" class="max-h-72 overflow-y-auto relative"></div>
+              </div>
+            </div>
           `;
-          if (state.player.addressBook.length) {
-            renderShopAddressBook();
-          } else if (state.player.bccContacts.length) {
-            renderShopAddressBook();
-          }
+          renderShopAddressBook();
         }
 
         const ownedEmailTemplate = document.querySelector(
@@ -9068,7 +9105,7 @@
           if (shopSortableInstances.direct)
             shopSortableInstances.direct.destroy();
           shopSortableInstances.direct = new Sortable(directList, {
-            group: { name: "shop-direct", pull: "clone", put: false },
+            group: { name: "shop-direct", pull: true, put: false },
             animation: 150,
             forceFallback: true,
             easing: "cubic-bezier(0.2, 0, 0, 1)",
@@ -9237,6 +9274,7 @@
               const dragged = evt.dragged;
               if (!dragged) return;
               if (evt.to === contactList && evt.from?.id === "shop-direct-list") {
+                contactList.classList.add("contacts-has-ghost");
                 const item = state.shop.directItems.find(
                   (i) => i.id === dragged.dataset.itemId,
                 );
@@ -9247,6 +9285,15 @@
                 const eligibility = canAcquireItem(item);
                 if (!eligibility.ok) return false;
                 dragged.classList.add("address-book-drag-preview");
+                const nameEl = dragged.querySelector(".shop-card-name");
+                if (nameEl) {
+                  const dept = item.departmentId
+                    ? getDepartmentShortName(item.departmentId) ||
+                      DEPARTMENT_BY_ID[item.departmentId]?.name ||
+                      item.departmentId
+                    : "Department N/A";
+                  nameEl.innerHTML = `<div class="flex justify-between w-full"><span class="font-semibold text-[#000080]">${item.name}</span><span class="text-[9px] uppercase text-gray-500">${dept}</span></div>`;
+                }
               } else {
                 dragged.classList.remove("address-book-drag-preview");
               }
@@ -9256,6 +9303,7 @@
               const bccOverlay = document.getElementById("bcc-drop-overlay");
               if (overlay) overlay.style.display = "none";
               if (bccOverlay) bccOverlay.style.display = "none";
+              contactList.classList.remove("contacts-has-ghost");
               contactList
                 .querySelectorAll(".address-book-drag-preview")
                 .forEach((el) =>
@@ -9287,6 +9335,16 @@
               if (!result.ok) {
                 updateShopUI();
                 return;
+              }
+              if (typeof evt.newIndex === "number") {
+                const moved = state.player.addressBook.pop();
+                if (moved != null) {
+                  const targetIndex = Math.max(
+                    0,
+                    Math.min(evt.newIndex, state.player.addressBook.length),
+                  );
+                  state.player.addressBook.splice(targetIndex, 0, moved);
+                }
               }
               updateShopUI();
             },
@@ -9325,6 +9383,7 @@
               const dragged = evt.dragged;
               if (!dragged) return;
               if (evt.to === bccList && evt.from?.id === "shop-direct-list") {
+                bccList.classList.add("bcc-has-ghost");
                 const item = state.shop.directItems.find(
                   (i) => i.id === dragged.dataset.itemId,
                 );
@@ -9344,6 +9403,7 @@
               const bccOverlay = document.getElementById("bcc-drop-overlay");
               if (overlay) overlay.style.display = "none";
               if (bccOverlay) bccOverlay.style.display = "none";
+              bccList.classList.remove("bcc-has-ghost");
               bccList
                 .querySelectorAll(".address-book-drag-preview")
                 .forEach((el) =>
@@ -10091,35 +10151,47 @@
             btn.dataset.itemType = "contact";
           },
         });
+        if (!state.player.addressBook.length) {
+          const empty = document.createElement("div");
+          empty.className = "px-2 py-2 text-[10px] italic text-gray-400";
+          empty.id = "empty-address-book";
+          empty.innerText = "No contacts on file.";
+          contactList.appendChild(empty);
+        }
 
-        if (state.player.bccContacts.length > 0) {
-          const headerBcc = document.createElement("div");
-          headerBcc.className =
-            "address-book-header text-[10px] font-bold bg-gray-200 p-1 mt-3 uppercase sticky top-0";
-          headerBcc.innerText = "Help Desk (BCC)";
-          list.appendChild(headerBcc);
-          const bccList = document.createElement("div");
-          bccList.id = "shop-address-book-list-bcc";
-          list.appendChild(bccList);
+        const headerBcc = document.createElement("div");
+        headerBcc.className =
+          "address-book-header text-[10px] font-bold bg-gray-200 p-1 mt-3 uppercase sticky top-0";
+        headerBcc.innerText = "Help Desk (BCC)";
+        list.appendChild(headerBcc);
+        const bccList = document.createElement("div");
+        bccList.id = "shop-address-book-list-bcc";
+        list.appendChild(bccList);
 
-          renderAddressBookList({
-            container: bccList,
-            contacts: state.player.bccContacts,
-            itemType: "bcc",
-            getState: (b) => {
-              const idx = state.player.bccContacts.indexOf(b);
-              return {
-                isSelected: state.shopAddressBookSelection === `bcc:${idx}`,
-              };
-            },
-            onClick: (bcc, btn) => {
-              showShopBccOverlay(bcc, btn);
-            },
-            onItem: (bcc, btn, idx) => {
-              btn.dataset.bccIndex = idx;
-              btn.dataset.itemType = "bcc";
-            },
-          });
+        renderAddressBookList({
+          container: bccList,
+          contacts: state.player.bccContacts,
+          itemType: "bcc",
+          getState: (b) => {
+            const idx = state.player.bccContacts.indexOf(b);
+            return {
+              isSelected: state.shopAddressBookSelection === `bcc:${idx}`,
+            };
+          },
+          onClick: (bcc, btn) => {
+            showShopBccOverlay(bcc, btn);
+          },
+          onItem: (bcc, btn, idx) => {
+            btn.dataset.bccIndex = idx;
+            btn.dataset.itemType = "bcc";
+          },
+        });
+        if (!state.player.bccContacts.length) {
+          const empty = document.createElement("div");
+          empty.className = "px-2 py-2 text-[10px] italic text-gray-400";
+          empty.id = "empty-bcc-list";
+          empty.innerText = "No BCCs available.";
+          bccList.appendChild(empty);
         }
       }
 
