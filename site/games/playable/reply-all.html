@@ -161,6 +161,32 @@
         pointer-events: none;
         z-index: 5;
       }
+      .pack-drop-zone {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 30vh;
+        background: rgba(255, 255, 255, 0.55);
+        border-top: 2px dashed #93c5fd;
+        display: none;
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: 12px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #1d4ed8;
+        pointer-events: none;
+        z-index: 180;
+      }
+      .pack-drop-zone.active {
+        display: flex;
+      }
+      .pack-drop-zone.over {
+        background: rgba(191, 219, 254, 0.7);
+        color: #1e40af;
+      }
       .profile-drop-target .shop-card-ghost,
       .profile-drop-target .shop-card-chosen {
         display: none !important;
@@ -892,6 +918,10 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <div id="pack-drop-zone" class="pack-drop-zone">
+      Drop pack here to open
     </div>
 
     <!-- LOSE SCREEN (Termination Notice) -->
@@ -8100,6 +8130,47 @@
         if (overlay) overlay.style.display = "none";
       }
 
+      function updatePackDropZone(cost, affordable, over) {
+        const zone = document.getElementById("pack-drop-zone");
+        if (!zone) return;
+        const label = cost
+          ? `Drop pack here to open (${cost} REP)`
+          : "Drop pack here to open";
+        zone.innerText = label;
+        zone.classList.toggle("active", packDragState.active);
+        zone.classList.toggle("over", !!over);
+        if (!affordable) {
+          zone.innerText = cost
+            ? `Need ${cost} REP to open`
+            : "Need more REP to open";
+        }
+      }
+
+      function resetPackDropZone() {
+        const zone = document.getElementById("pack-drop-zone");
+        if (!zone) return;
+        zone.classList.remove("active", "over");
+      }
+
+      function handlePackDragMove(e) {
+        if (!packDragState.active) return;
+        const clientY =
+          e?.clientY ??
+          e?.touches?.[0]?.clientY ??
+          e?.changedTouches?.[0]?.clientY ??
+          null;
+        if (typeof clientY === "number") {
+          packDragState.lastClientY = clientY;
+          const threshold = window.innerHeight * 0.7;
+          packDragState.over = clientY >= threshold;
+          updatePackDropZone(
+            packDragState.pack?.cost,
+            packDragState.affordable,
+            packDragState.over,
+          );
+        }
+      }
+
       function showLoseScreen() {
         const p = state.player;
         document.getElementById("lose-title").innerText = p.title.name;
@@ -9158,10 +9229,6 @@
         const directList = document.getElementById("shop-direct-list");
         if (directList) {
           directList.innerHTML = "";
-          const packOverlay = document.createElement("div");
-          packOverlay.id = "pack-open-overlay";
-          packOverlay.className = "pack-open-overlay";
-          directList.appendChild(packOverlay);
           let hasDirect = false;
           state.shop.directItems.forEach((item) => {
             if (item.purchased) return;
@@ -9316,6 +9383,13 @@
         profile: null,
       };
       let currentPackOptions = [];
+      const packDragState = {
+        active: false,
+        over: false,
+        pack: null,
+        affordable: false,
+        lastClientY: null,
+      };
 
       function initShopSortables() {
         if (typeof Sortable === "undefined") return;
@@ -9423,6 +9497,16 @@
               const id = el.dataset.itemId;
               const item = state.shop.packs.find((i) => i.id === id);
               if (!item) return;
+              packDragState.active = true;
+              packDragState.pack = item;
+              packDragState.affordable = state.player.reputation >= item.cost;
+              packDragState.over = false;
+              packDragState.lastClientY = null;
+              updatePackDropZone(item.cost, packDragState.affordable, false);
+              document.addEventListener("mousemove", handlePackDragMove);
+              document.addEventListener("touchmove", handlePackDragMove, {
+                passive: true,
+              });
               const type = item.itemType || item.type;
               if (type === "contact" || type === "bcc") {
                 showAssetsWindow("contacts", { forceOpen: true });
@@ -9437,31 +9521,34 @@
                 showAssetsWindow("profile", { forceOpen: true });
               }
             },
-            onMove: (evt) => {
-              const overlay =
-                document.getElementById("shop-reroll-drop-overlay");
-              if (!overlay) return;
-              if (evt.to?.id === "shop-reroll-btn") {
-                const pack = state.shop.packs.find(
-                  (p) => p.id === evt.dragged?.dataset.itemId,
-                );
-                if (pack) {
-                  overlay.innerText =
-                    pack.cost && pack.cost > 0
-                      ? `Drop pack here to open (${pack.cost} REP)`
-                      : "Drop pack here to open";
-                } else {
-                  overlay.innerText = "Drop pack here to open";
-                }
-                overlay.style.display = "flex";
-              } else {
-                overlay.style.display = "none";
-              }
-            },
             onEnd: () => {
-              const overlay =
-                document.getElementById("shop-reroll-drop-overlay");
-              if (overlay) overlay.style.display = "none";
+              const pack = packDragState.pack;
+              if (packDragState.lastClientY == null && pack) {
+                const threshold = window.innerHeight * 0.7;
+                packDragState.over = false;
+                updatePackDropZone(
+                  pack.cost,
+                  packDragState.affordable,
+                  false,
+                );
+              }
+              const shouldOpen =
+                packDragState.active &&
+                packDragState.over &&
+                packDragState.affordable &&
+                pack;
+              document.removeEventListener("mousemove", handlePackDragMove);
+              document.removeEventListener("touchmove", handlePackDragMove);
+              packDragState.active = false;
+              packDragState.over = false;
+              packDragState.pack = null;
+              packDragState.affordable = false;
+              packDragState.lastClientY = null;
+              resetPackDropZone();
+              if (shouldOpen) {
+                buyPack(pack);
+                updateShopUI();
+              }
             },
           });
         }
