@@ -12645,10 +12645,15 @@
               : solidarityLocked
                 ? "LOCKED"
               : "AVAIL";
+          const actionLabel = isImplicated
+            ? "IMPLICATED"
+            : isUsed
+              ? "IN THREAD"
+              : "LOOP IN";
           renderContactDetailCard(detail, c, {
             statusText,
             detailsStateKey: "addressBookDetailsOpen",
-            actionLabel: isDisabled ? "UNAVAILABLE" : "LOOP IN",
+            actionLabel,
             actionDisabled: isDisabled,
             onAction: () => {
               logGameEvent("player_action", {
