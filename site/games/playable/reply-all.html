@@ -1840,7 +1840,7 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> to provide this thread more light-hearted content.",
           eff: {
-            dodge: 0.35,
+            dodge: 0.20,
             specialTriggerText:
               "Thread distracted by {name}! No standing lost.",
           },
@@ -1859,6 +1859,24 @@
             singleDmg: 8,
             singleDmgMult: 0.5,
           },
+          usedBy: null,
+        },
+        {
+          id: "cc_sho_marketing",
+          name: "Sho",
+          title: "Account Mgr",
+          rarity: "uncommon",
+          departmentId: "marketing",
+          employeeId: "sho_marketing",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to keep the BCR report moving and translate this into account next steps.",
+          effects: [
+            {
+              event: "escalate",
+              type: "add_thread_bonus",
+              stats: { deflectPower: 3, escalateRecoverPerHit: 3 },
+            },
+          ],
           usedBy: null,
         },
         {
@@ -1944,8 +1962,8 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> to handle external messaging and stakeholder optics.",
           eff: {
-            singleDmg: 3,
             maxHp: 15,
+            globalDmgMult: 0.3,
           },
           usedBy: null,
         },
@@ -2182,12 +2200,12 @@
           employeeId: "julia_eco",
           setId: "pod_set",
           loopInText:
-            "I'm looping in <strong>{name}</strong> to advise on our defensive positioning.",
+            "I'm looping in <strong>{name}</strong> to advise on our strategic positioning.",
           effects: [
             {
               event: "reply_to",
               type: "add_thread_bonus",
-              stats: { singleDmg: 3, defFlat: 1 },
+              stats: { singleDmg: 3, heal: 1 },
             },
           ],
           usedBy: null,
