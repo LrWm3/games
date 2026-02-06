@@ -1580,7 +1580,10 @@
           departmentId: "constituent_services",
           loopInText:
             "I'm looping in <strong>{name}</strong> to handle external messaging and stakeholder optics.",
-          eff: {},
+          eff: {
+            singleDmg: 3,
+            maxHp: 15,
+          },
           usedBy: null,
         },
         {
@@ -1821,7 +1824,7 @@
             {
               event: "reply_to",
               type: "add_thread_bonus",
-              stats: { singleDmg: 2, defFlat: 1 },
+              stats: { singleDmg: 3, defFlat: 1 },
             },
           ],
           usedBy: null,
@@ -4196,6 +4199,18 @@
             {
               text: "Meow? Oh, sorry, I've been spending too much time with my feline colleagues.",
               missionId: null,
+            },
+            {
+              text: "The cats and I can draft a single holiday note if we stop this reply‑all chain.",
+              missionId: "holiday_reply_all",
+            },
+            {
+              text: "If we keep this short, I can still get home in time for their holiday treats.",
+              missionId: "holiday_reply_all",
+            },
+            {
+              text: "One sender, one clean message—like a single toy in the cat room. I'll proofread it.",
+              missionId: "holiday_reply_all",
             },
             {
               text: "I'm purr-fectly capable of handling this without your constant 'Reply All' interjections.",
