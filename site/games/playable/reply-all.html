@@ -1467,8 +1467,8 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep him in the loop on this initative.",
           eff: {
-            levMult: 2,
-            singleDmgMult: 1,
+            endRep: 4,
+            singleDmgMult: 0.25,
           },
           usedBy: null,
         },
@@ -1497,6 +1497,7 @@
             "I'm looping in <strong>{name}</strong> to provide data‑driven context and keep claims grounded.",
           eff: {
             singleDmg: 8,
+            singleDmgMult: 0.5,
           },
           usedBy: null,
         },
@@ -2550,8 +2551,10 @@
           rarity: "uncommon",
           effects: [
             {
-              event: "bcc_use",
-              type: "add_random_cc_bonus",
+              event: "promote_overflow",
+              type: "add_random_cc_bonus_scaled",
+              scaleBy: "overflow",
+              step: 10,
             },
           ],
         },
@@ -4480,9 +4483,12 @@
               wins: 2,
               singleDmg: 10,
               escalateDmg: 10,
-              flatDef: 10,
+              defFlat: 10,
               buffs: [],
-              addressBook: ["cc_steph_eco", "cc_meghan_cassedy_executive_council_office"],
+              addressBook: [
+                "cc_steph_eco",
+                "cc_meghan_cassedy_executive_council_office",
+              ],
             },
           ],
         },
@@ -4551,18 +4557,17 @@
             },
             {
               id: 20,
-              employeeId: "cc_steph_eco",
+              employeeId: "steph_eco",
               hp: 60,
               maxHp: 60,
-              flatDef: 5,
+              defFlat: 5,
               singleDmg: 15,
               buffs: [],
               addressBook: [
                 "cc_meghan_cassedy_executive_council_office",
                 "cc_julia_eco",
-                "cc_steph_eco"
-              ]
-            }
+              ],
+            },
           ],
         },
         {
@@ -6653,6 +6658,8 @@
               if (effect.scaleBy === "wins_remaining")
                 base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
               if (effect.scaleBy === "hp") base = unit.hp || 0;
+              if (effect.scaleBy === "overflow")
+                base = typeof context.overflow === "number" ? context.overflow : 0;
               if (base <= 0) return;
               const count = Math.floor(base / step);
               if (count <= 0) return;
@@ -8636,7 +8643,7 @@
             const body = overlay.querySelector("#shop-contact-overlay-body");
             renderContactDetailCard(body, item, {
               showStatus: false,
-              actionLabel: "REACH OUT",
+              actionLabel: `REACH OUT (${cost} REP)`,
               actionDisabled: !hasSpaceForItem(item) || isItemOwned(item),
               onAction: () => buyDirectItem(item, cost),
               hideDetails: true,
