@@ -8,6 +8,7 @@
     />
     <title>REPLY ALL</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;600;700&display=swap"
       rel="stylesheet"
@@ -86,13 +87,13 @@
         width: 58.3333% !important;
       }
       .shop-card-list {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+        display: flex;
+        flex-wrap: wrap;
         gap: 8px;
-        justify-content: start;
+        justify-content: center;
       }
       #shop-packs-list.shop-card-list {
-        justify-content: space-evenly;
+        justify-content: center;
       }
       .shop-card-item {
         width: 100%;
@@ -112,8 +113,9 @@
         cursor: pointer;
         user-select: none;
         transition:
-          transform 150ms ease,
+          transform 200ms ease,
           box-shadow 150ms ease;
+        will-change: transform;
       }
       .shop-card-header {
         width: 100%;
@@ -146,12 +148,33 @@
         transform: translate(-1px, -2px);
         box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.2);
       }
+      .shop-card-ghost {
+        opacity: 0.2;
+      }
+      .shop-card-chosen {
+        opacity: 1;
+      }
+      .shop-card-chosen.shop-card-ghost {
+        opacity: 0.2;
+      }
+      .shop-card-drag {
+        opacity: 1 !important;
+        filter: drop-shadow(6px 6px 0 rgba(0, 0, 0, 0.2));
+        transition: none !important;
+      }
       .shop-item-overlay {
         position: fixed;
         z-index: 170;
         padding: 0;
         width: 260px;
         display: none;
+      }
+      .shop-overlay-wireframe {
+        position: fixed;
+        border: 1px solid #000;
+        box-shadow: inset 0 0 0 1px #fff;
+        pointer-events: none;
+        z-index: 9999;
       }
       .shop-item-overlay-frame {
         background: #ffffff;
@@ -8835,6 +8858,7 @@
             packList.appendChild(row);
           });
         }
+        initShopSortables();
       }
 
       function showAssetsWindow(kind, opts = {}) {
@@ -8897,6 +8921,47 @@
           showAssetsWindow("email", { forceOpen: true });
         } else if (item.itemType === "dev") {
           showAssetsWindow("profile", { forceOpen: true });
+        }
+      }
+
+      const shopOverlayState = {
+        visible: false,
+        isAnimating: false,
+        anchorRect: null,
+        currentRect: null,
+      };
+      const shopSortableInstances = {
+        direct: null,
+        packs: null,
+      };
+
+      function initShopSortables() {
+        if (typeof Sortable === "undefined") return;
+        const directList = document.getElementById("shop-direct-list");
+        const packList = document.getElementById("shop-packs-list");
+        if (directList) {
+          if (shopSortableInstances.direct)
+            shopSortableInstances.direct.destroy();
+          shopSortableInstances.direct = new Sortable(directList, {
+            group: { name: "shop-direct", pull: false, put: false },
+            animation: 200,
+            easing: "cubic-bezier(0.2, 0, 0, 1)",
+            ghostClass: "shop-card-ghost",
+            chosenClass: "shop-card-chosen",
+            dragClass: "shop-card-drag",
+          });
+        }
+        if (packList) {
+          if (shopSortableInstances.packs)
+            shopSortableInstances.packs.destroy();
+          shopSortableInstances.packs = new Sortable(packList, {
+            group: { name: "shop-packs", pull: false, put: false },
+            animation: 200,
+            easing: "cubic-bezier(0.2, 0, 0, 1)",
+            ghostClass: "shop-card-ghost",
+            chosenClass: "shop-card-chosen",
+            dragClass: "shop-card-drag",
+          });
         }
       }
 
@@ -9048,12 +9113,13 @@
             onAction,
             hideDetails: !isOwnedContact,
             showRarityBadge: true,
+            showCloseButton: true,
+            onClose: () => hideShopItemOverlay(),
           });
           if (!card) return;
           overlay.appendChild(card.element);
           overlay.style.width = `${card.width}px`;
-          overlay.style.display = "block";
-          positionShopOverlay(overlay, opts.anchorEl, opts);
+          showShopOverlayAnimated(opts.anchorEl, opts);
           overlay.onclick = (e) => e.stopPropagation();
           return;
         }
@@ -9149,8 +9215,7 @@
 
         if (!content) return;
         overlay.appendChild(content);
-        overlay.style.display = "block";
-        positionShopOverlay(overlay, opts.anchorEl, opts);
+        showShopOverlayAnimated(opts.anchorEl, opts);
         overlay.onclick = (e) => e.stopPropagation();
       }
 
@@ -9186,7 +9251,7 @@
         renderItemOverlay(bcc, { anchorEl, mode: "owned-bcc" });
       }
 
-      function positionShopOverlay(overlay, anchorEl, opts = {}) {
+      function getShopOverlayPosition(overlay, anchorEl, opts = {}) {
         const rect = anchorEl.getBoundingClientRect();
         const padding = 8;
         const overlayWidth = overlay.offsetWidth || 260;
@@ -9205,15 +9270,106 @@
         if (top + overlayHeight > window.innerHeight - padding) {
           top = Math.max(padding, window.innerHeight - overlayHeight - padding);
         }
-        overlay.style.left = `${left}px`;
-        overlay.style.top = `${top}px`;
+        return { left, top };
+      }
+
+      function positionShopOverlay(overlay, anchorEl, opts = {}) {
+        const pos = getShopOverlayPosition(overlay, anchorEl, opts);
+        overlay.style.left = `${pos.left}px`;
+        overlay.style.top = `${pos.top}px`;
+      }
+
+      function runOverlayWireframe(startRect, endRect, onDone) {
+        const duration = 200;
+        const startTime = performance.now();
+        const totalFrames = 5;
+        const animate = (now) => {
+          const progress = Math.min((now - startTime) / duration, 1);
+          document
+            .querySelectorAll(".shop-overlay-wireframe")
+            .forEach((f) => f.remove());
+          for (let i = 0; i < totalFrames; i++) {
+            const frameOffset = i / (totalFrames - 1);
+            const t = Math.max(0, Math.min(1, progress - frameOffset * 0.2));
+            const frame = document.createElement("div");
+            frame.className = "shop-overlay-wireframe";
+            frame.style.left = `${
+              startRect.left + (endRect.left - startRect.left) * t
+            }px`;
+            frame.style.top = `${
+              startRect.top + (endRect.top - startRect.top) * t
+            }px`;
+            frame.style.width = `${
+              startRect.width + (endRect.width - startRect.width) * t
+            }px`;
+            frame.style.height = `${
+              startRect.height + (endRect.height - startRect.height) * t
+            }px`;
+            frame.style.opacity = `${1 - i * 0.15}`;
+            document.body.appendChild(frame);
+          }
+          if (progress < 1) {
+            requestAnimationFrame(animate);
+          } else {
+            document
+              .querySelectorAll(".shop-overlay-wireframe")
+              .forEach((f) => f.remove());
+            if (typeof onDone === "function") onDone();
+          }
+        };
+        requestAnimationFrame(animate);
+      }
+
+      function showShopOverlayAnimated(anchorEl, opts = {}) {
+        const overlay = document.getElementById("shop-item-overlay");
+        if (!overlay || !anchorEl) return;
+        overlay.style.display = "block";
+        overlay.style.visibility = "hidden";
+        const targetPos = getShopOverlayPosition(overlay, anchorEl, opts);
+        overlay.style.left = `${targetPos.left}px`;
+        overlay.style.top = `${targetPos.top}px`;
+        const endRect = {
+          left: targetPos.left,
+          top: targetPos.top,
+          width: overlay.offsetWidth,
+          height: overlay.offsetHeight,
+        };
+        const startRect = anchorEl.getBoundingClientRect();
+
+        if (shopOverlayState.visible && shopOverlayState.currentRect) {
+          const closeStart = shopOverlayState.currentRect;
+          const closeEnd = shopOverlayState.anchorRect || startRect;
+          runOverlayWireframe(closeStart, closeEnd);
+        }
+
+        shopOverlayState.isAnimating = true;
+        runOverlayWireframe(startRect, endRect, () => {
+          overlay.style.visibility = "visible";
+          shopOverlayState.visible = true;
+          shopOverlayState.isAnimating = false;
+          shopOverlayState.anchorRect = startRect;
+          shopOverlayState.currentRect = endRect;
+        });
       }
 
       function hideShopItemOverlay() {
         const overlay = document.getElementById("shop-item-overlay");
         if (!overlay) return;
-        overlay.style.display = "none";
-        overlay.innerHTML = "";
+        if (shopOverlayState.visible && shopOverlayState.currentRect) {
+          const closeStart = shopOverlayState.currentRect;
+          const closeEnd =
+            shopOverlayState.anchorRect || closeStart;
+          runOverlayWireframe(closeStart, closeEnd, () => {
+            overlay.style.display = "none";
+            overlay.innerHTML = "";
+          });
+        } else {
+          overlay.style.display = "none";
+          overlay.innerHTML = "";
+        }
+        shopOverlayState.visible = false;
+        shopOverlayState.currentRect = null;
+        shopOverlayState.anchorRect = null;
         clearEmailSlotHighlights();
         clearProfileStatHighlights();
       }
@@ -10644,6 +10800,7 @@
           showStatus = true,
           actionLabel = "",
           actionDisabled = false,
+          showCloseButton = false,
           frameClassName = "",
           hideDetails = false,
           showRarityBadge = false,
@@ -10731,10 +10888,15 @@
             }
             ${
               actionLabel
-                ? `<div class="pt-2">
-                    <button id="contact-card-action" class="retro-button text-xs px-3" ${
+                ? `<div class="pt-2 flex gap-2">
+                    <button id="contact-card-action" class="flex-1 retro-button text-[10px] font-bold py-2 uppercase" ${
                       actionDisabled ? "disabled" : ""
                     }>${actionLabel}</button>
+                    ${
+                      showCloseButton
+                        ? `<button id="contact-card-close" class="px-3 retro-button text-[10px] font-bold py-2 text-red-700">✕</button>`
+                        : ""
+                    }
                   </div>`
                 : ""
             }
@@ -10751,6 +10913,8 @@
           actionLabel = "",
           actionDisabled = false,
           onAction = null,
+          showCloseButton = false,
+          onClose = null,
           frameClassName = "",
           hideDetails = false,
           showRarityBadge = false,
@@ -10766,6 +10930,7 @@
             detailsStateKey,
             actionLabel,
             actionDisabled,
+            showCloseButton,
             frameClassName,
             hideDetails,
             showRarityBadge,
@@ -10793,6 +10958,10 @@
         const actionBtn = container.querySelector("#contact-card-action");
         if (actionBtn && !actionDisabled && typeof onAction === "function") {
           actionBtn.onclick = onAction;
+        }
+        const closeBtn = container.querySelector("#contact-card-close");
+        if (closeBtn && typeof onClose === "function") {
+          closeBtn.onclick = onClose;
         }
       }
 
