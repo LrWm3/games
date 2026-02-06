@@ -10969,7 +10969,6 @@
           btn.innerHTML = `<div class="flex justify-between"><span class="${nameClass}">${c.name}</span><span class="text-[9px] uppercase text-gray-500">${deptLabel}</span></div>`;
           btn.onclick = (e) => {
             e.stopPropagation();
-            if (isDisabled) return;
             if (typeof onClick === "function") onClick(c, btn);
           };
           container.appendChild(btn);
