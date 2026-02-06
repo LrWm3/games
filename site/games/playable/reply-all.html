@@ -7835,25 +7835,7 @@
           bcc: bccPool,
           dev: devPool,
         };
-        const directItems = [];
-        for (let i = 0; i < 3; i++) {
-          const availableTypes = Object.keys(directPools).filter(
-            (type) => directPools[type].length > 0,
-          );
-          if (availableTypes.length === 0) break;
-          const pickedType = pickWeightedType(
-            SHOP_DIRECT_TYPE_WEIGHTS,
-            availableTypes,
-          );
-          if (!pickedType) break;
-          const selected = pickWeighted(directPools[pickedType], 1)[0];
-          if (!selected) break;
-          directItems.push({ ...selected, purchased: false });
-          directPools[pickedType] = directPools[pickedType].filter(
-            (item) => item.id !== selected.id,
-          );
-        }
-        state.shop.directItems = directItems;
+        state.shop.directItems = generateDirectItems(directPools);
 
         const packTiers = ["small", "medium", "large"];
         state.shop.packs = [];
@@ -7876,6 +7858,29 @@
           const tier = packTiers[Math.floor(Math.random() * packTiers.length)];
           state.shop.packs.push(generatePack(type, tier));
         }
+      }
+
+      function generateDirectItems(directPools) {
+        const pools = { ...directPools };
+        const directItems = [];
+        for (let i = 0; i < 3; i++) {
+          const availableTypes = Object.keys(pools).filter(
+            (type) => pools[type].length > 0,
+          );
+          if (availableTypes.length === 0) break;
+          const pickedType = pickWeightedType(
+            SHOP_DIRECT_TYPE_WEIGHTS,
+            availableTypes,
+          );
+          if (!pickedType) break;
+          const selected = pickWeighted(pools[pickedType], 1)[0];
+          if (!selected) break;
+          directItems.push({ ...selected, purchased: false });
+          pools[pickedType] = pools[pickedType].filter(
+            (item) => item.id !== selected.id,
+          );
+        }
+        return directItems;
       }
 
       function endQuarter() {
@@ -8039,7 +8044,33 @@
         if (state.player.reputation >= cost) {
           state.player.reputation -= cost;
           state.shop.rerollCount = (state.shop.rerollCount || 0) + 1;
-          generateShopItems();
+          const p = state.player;
+          const contactPool = CONTACTS.filter(
+            (c) => !p.addressBook.includes(c.id) && !c.noShop,
+          ).map((c) => ({ ...c, itemType: "contact" }));
+          const sigPool = SIGNATURES.filter(
+            (s) => !p.signatures.some((sig) => sig.id === s.id),
+          ).map((s) => ({ ...s, itemType: "signature" }));
+          const salPool = SALUTATIONS.filter(
+            (s) => !p.salutation || p.salutation.id !== s.id,
+          ).map((s) => ({ ...s, itemType: "salutation" }));
+          const offPool = SIGNOFFS.filter(
+            (s) => !p.signOff || p.signOff.id !== s.id,
+          ).map((s) => ({ ...s, itemType: "signoff" }));
+          const bccPool = BCC_CONTACTS.map((b) => ({ ...b, itemType: "bcc" }));
+          const devPool = getTrainingUpgrades().map((u) => ({
+            ...u,
+            itemType: "dev",
+          }));
+          const directPools = {
+            contact: contactPool,
+            signature: sigPool,
+            salutation: salPool,
+            signoff: offPool,
+            bcc: bccPool,
+            dev: devPool,
+          };
+          state.shop.directItems = generateDirectItems(directPools);
           updateShopUI();
           playSound("trash");
         }
@@ -9417,10 +9448,10 @@
                 if (pack) {
                   overlay.innerText =
                     pack.cost && pack.cost > 0
-                      ? `Drop to open (${pack.cost} REP)`
-                      : "Drop to open";
+                      ? `Drop pack here to open (${pack.cost} REP)`
+                      : "Drop pack here to open";
                 } else {
-                  overlay.innerText = "Drop to open";
+                  overlay.innerText = "Drop pack here to open";
                 }
                 overlay.style.display = "flex";
               } else {
