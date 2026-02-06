@@ -6727,6 +6727,12 @@
         openPackView();
       }
 
+      function snapshotItemEffects(item) {
+        if (!item) return null;
+        if (!item.effects) return null;
+        return JSON.parse(JSON.stringify(item.effects));
+      }
+
       function alertAcquireFailure(item, reason) {
         if (item.itemType === "contact") {
           alert(
@@ -6797,6 +6803,7 @@
           itemId: item.id || null,
           name: item.name || null,
           cost: source === "shop" ? cost : 0,
+          effects: snapshotItemEffects(item),
         });
         if (item.itemType === "dev") {
           logGameEvent("training", {
@@ -6902,6 +6909,7 @@
             rarity: opt.rarity || null,
             cost:
               opt.cost || getItemCostByType(opt.rarity || "common", opt.itemType),
+            effects: snapshotItemEffects(opt),
           })),
         });
         initPackOptionsSortable(optionItems);
@@ -6931,6 +6939,7 @@
           itemType: opt.itemType || null,
           name: opt.name || null,
           rarity: opt.rarity || null,
+          effects: snapshotItemEffects(opt),
         });
         hideProfileDropOverlay();
         if (typeof options.onApplied === "function") options.onApplied();
@@ -8224,6 +8233,7 @@
               cost:
                 item.cost ||
                 getItemCostByType(item.rarity || "common", item.itemType),
+              effects: snapshotItemEffects(item),
             })),
           packs: (state.shop.packs || [])
             .filter((pack) => !pack.purchased)
@@ -8233,7 +8243,16 @@
               type: pack.type || null,
               cost: pack.cost || 0,
               picks: pack.picks || 0,
-              options: (pack.options || []).map((opt) => opt.id),
+              options: (pack.options || []).map((opt) => ({
+                id: opt.id,
+                name: opt.name || null,
+                itemType: opt.itemType || null,
+                rarity: opt.rarity || null,
+                cost:
+                  opt.cost ||
+                  getItemCostByType(opt.rarity || "common", opt.itemType),
+                effects: snapshotItemEffects(opt),
+              })),
             })),
           rerollCount: state.shop.rerollCount || 0,
         });
@@ -8297,6 +8316,7 @@
                 cost:
                   item.cost ||
                   getItemCostByType(item.rarity || "common", item.itemType),
+                effects: snapshotItemEffects(item),
               })),
             rerollCount: state.shop.rerollCount || 0,
           });
@@ -9326,6 +9346,7 @@
           itemId: pack.id,
           name: pack.name || null,
           cost: pack.cost || 0,
+          effects: snapshotItemEffects(pack),
         });
         runUnitEffects(state.player, "pack_purchase", { pack });
         startPackOpening(pack);
