@@ -5401,6 +5401,15 @@
         "numCCperCCaction",
         "bccLimit",
       ];
+      const ITEM_TYPE_LABELS = {
+        contact: "Contact",
+        signature: "Signature",
+        salutation: "Greeting",
+        signoff: "Sign-off",
+        bcc: "Help Desk",
+        dev: "Coaching",
+        email: "Email",
+      };
       const STAT_METADATA = {
         escalateDmg: { label: "Escalate Damage", shortName: "Esc Dmg" },
         globalDmg: { label: "All Messages Damage", shortName: "All Msg Dmg" },
@@ -5430,6 +5439,10 @@
 
       function getStatMeta(key) {
         return STAT_METADATA[key] || { label: key, shortName: key };
+      }
+
+      function getItemTypeLabel(itemType) {
+        return ITEM_TYPE_LABELS[itemType] || itemType;
       }
 
       function applyUnitDefaults(u) {
@@ -6125,36 +6138,35 @@
           sellItem("signoff", state.player.signOff);
         }
 
+        const eligibility = canAcquireItem(item);
+        if (!eligibility.ok && item.itemType !== "salutation" && item.itemType !== "signoff") {
+          if (item.itemType === "contact") {
+            alert(
+              eligibility.reason === "limit"
+                ? "Address book full. Archive a contact to make space."
+                : "That contact is already in your address book.",
+            );
+          } else if (item.itemType === "signature") {
+            alert(
+              eligibility.reason === "limit"
+                ? "Signature limit reached. Remove a signature to make space."
+                : "That signature is already in use.",
+            );
+          } else if (item.itemType === "bcc") {
+            alert("BCC capacity reached. Discard a BCC to make space.");
+          }
+          return false;
+        }
+
         if (item.itemType === "contact") {
-          if (state.player.addressBook.includes(item.id)) {
-            alert("That contact is already in your address book.");
-            return false;
-          }
-          if (state.player.addressBook.length >= getUnitAddressLimit(state.player)) {
-            alert("Address book full. Archive a contact to make space.");
-            return false;
-          }
           state.player.addressBook.push(item.id);
         }
         else if (item.itemType === "signature") {
-          if (state.player.signatures.some((s) => s.id === item.id)) {
-            alert("That signature is already in use.");
-            return false;
-          }
-          if (state.player.signatures.length >= state.player.title.sigLimit) {
-            alert("Signature limit reached. Remove a signature to make space.");
-            return false;
-          }
           state.player.signatures.push(item);
         }
         else if (item.itemType === "salutation") state.player.salutation = item;
         else if (item.itemType === "signoff") state.player.signOff = item;
         else if (item.itemType === "bcc") {
-          const limit = computeUnitStats(state.player).bccLimit || 0;
-          if (state.player.bccContacts.length >= limit) {
-            alert("BCC capacity reached. Discard a BCC to make space.");
-            return false;
-          }
           state.player.bccContacts.push(item);
         }
         else if (item.itemType === "dev") item.apply();
@@ -6217,44 +6229,25 @@
 
           const btn = document.createElement("div");
           btn.className = "shop-card-item";
-          const typeLabels = {
-            contact: "Contact",
-            signature: "Signature",
-            salutation: "Greeting",
-            signoff: "Sign-off",
-            bcc: "Help Desk",
-            dev: "Coaching",
-          };
           btn.innerHTML = `
             <div class="w-full h-full flex flex-col">
               <div class="text-[9px] uppercase text-white bg-[#000080] px-2 py-0.5 text-left">
-                ${typeLabels[opt.itemType] || opt.itemType}
+                ${getItemTypeLabel(opt.itemType)}
               </div>
               <div class="flex-1 flex items-center justify-center px-1">
                 <div class="shop-card-name">${opt.name}</div>
               </div>
             </div>
           `;
-          const isBcc = opt.itemType === "bcc";
-          const bccLimit = computeUnitStats(state.player).bccLimit || 0;
-          const bccFull = isBcc && state.player.bccContacts.length >= bccLimit;
-          if (bccFull) {
+          const eligibility = canAcquireItem(opt);
+          if (opt.itemType === "bcc" && !eligibility.ok) {
             btn.classList.add("opacity-50");
             btn.classList.add("pointer-events-none");
           }
 
           btn.onclick = (e) => {
             e.stopPropagation();
-            showShopItemOverlay("pack-option", opt, btn);
-            if (opt.itemType === "contact" || opt.itemType === "bcc") {
-              showAssetsWindow("contacts", { forceOpen: true });
-            } else if (
-              opt.itemType === "salutation" ||
-              opt.itemType === "signoff" ||
-              opt.itemType === "signature"
-            ) {
-              showAssetsWindow("email", { forceOpen: true });
-            }
+            openItemDetails(opt, { mode: "pack", anchorEl: btn });
           };
           list.appendChild(btn);
         });
@@ -6561,6 +6554,281 @@
             .forEach((b) => sources.push({ owner: b, id: b.id }));
         }
         const trackEndUpgrades = unit.id === "player";
+        const EFFECT_HANDLERS = {
+          add_random_cc_bonus: (effect, owner) => {
+            if (unit.id !== "player") return;
+            const picked = applyRandomCcBoost(
+              state.player,
+              effect.stats || {},
+              true,
+            );
+            if (trackEndUpgrades && picked) {
+              recordEndRoundUpgrade(picked.id);
+            }
+          },
+          add_cc_bonus: (effect) => {
+            if (unit.id !== "player") return;
+            if (!context.contact) return;
+            applyContactPermanentBoost(
+              state.player,
+              context.contact.id,
+              effect.stats || {},
+            );
+            if (trackEndUpgrades) {
+              recordEndRoundUpgrade(context.contact.id);
+            }
+          },
+          add_signoff_bonus: (effect, owner) => {
+            applyUnitPermanentBoost(unit, owner.id, effect.stats || {});
+          },
+          add_salutation_bonus: (effect, owner) => {
+            applySalutationPermanentBoost(unit, owner.id, effect.stats || {});
+          },
+          add_thread_bonus: (effect, owner, contactEffectBoosts) => {
+            const stats = { ...(effect.stats || {}) };
+            if (contactEffectBoosts) {
+              Object.keys(contactEffectBoosts).forEach((key) => {
+                const value = contactEffectBoosts[key];
+                if (typeof value !== "number") return;
+                stats[key] = (stats[key] || 0) + value;
+              });
+            }
+            applyUnitThreadBonus(unit, stats);
+          },
+          add_thread_bonus_scaled: (effect, owner, contactEffectBoosts) => {
+            const step = effect.step || 1;
+            let base = 0;
+            if (effect.scaleBy === "wins_remaining")
+              base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
+            if (effect.scaleBy === "hp") base = unit.hp || 0;
+            if (effect.scaleBy === "overflow") base = context.overflow || 0;
+            const steps = Math.floor(base / step);
+            if (steps > 0) {
+              const scaled = {};
+              const combinedStats = { ...(effect.stats || {}) };
+              if (contactEffectBoosts) {
+                Object.keys(contactEffectBoosts).forEach((key) => {
+                  const value = contactEffectBoosts[key];
+                  if (typeof value !== "number") return;
+                  combinedStats[key] = (combinedStats[key] || 0) + value;
+                });
+              }
+              Object.keys(combinedStats).forEach((key) => {
+                const value = combinedStats[key];
+                if (typeof value !== "number") return;
+                scaled[key] = value * steps;
+              });
+              applyUnitThreadBonus(unit, scaled);
+            }
+          },
+          add_bcc: (effect) => {
+            if (unit.id !== "player") return;
+            addRandomBccs(state.player, effect.count || 1);
+          },
+          duplicate_bcc: (effect) => {
+            if (unit.id !== "player") return;
+            duplicateRandomOwnedBccs(state.player, effect.count || 1);
+          },
+          add_signoff_bonus_scaled: (effect, owner) => {
+            const step = effect.step || 1;
+            let base = 0;
+            if (effect.scaleBy === "hp") base = unit.hp || 0;
+            if (effect.scaleBy === "wins_remaining")
+              base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
+            if (effect.scaleBy === "overflow") base = context.overflow || 0;
+            const steps = Math.floor(base / step);
+            if (steps > 0) {
+              const scaled = {};
+              Object.keys(effect.stats || {}).forEach((key) => {
+                const value = effect.stats[key];
+                if (typeof value !== "number") return;
+                scaled[key] = value * steps;
+              });
+              applyUnitPermanentBoost(unit, owner.id, scaled);
+            }
+          },
+          add_random_cc_bonus_scaled: (effect) => {
+            if (unit.id !== "player") return;
+            const step = effect.step || 1;
+            let base = 0;
+            if (effect.scaleBy === "wins_remaining")
+              base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
+            if (effect.scaleBy === "hp") base = unit.hp || 0;
+            if (effect.scaleBy === "overflow")
+              base =
+                typeof context.overflow === "number" ? context.overflow : 0;
+            if (base <= 0) return;
+            const count = Math.floor(base / step);
+            if (count <= 0) return;
+            const scaled = {};
+            Object.keys(effect.stats || {}).forEach((key) => {
+              const value = effect.stats[key];
+              if (typeof value !== "number") return;
+              scaled[key] = value;
+            });
+            const limit =
+              effect.threadLimit != null
+                ? Math.max(0, effect.threadLimit)
+                : null;
+            const countToApply =
+              limit != null ? Math.min(count, limit) : count;
+            const picked = applyRandomCcBoostMultiple(
+              state.player,
+              scaled,
+              countToApply,
+            );
+            if (trackEndUpgrades && picked.length) {
+              picked.forEach((p) => recordEndRoundUpgrade(p.id));
+            }
+          },
+          add_all_cc_bonus: (effect) => {
+            if (unit.id !== "player") return;
+            const scope = effect.scope || "thread";
+            const ids =
+              scope === "addressBook"
+                ? state.player.addressBook
+                : state.player.buffs
+                    .filter((b) => b.usedBy === state.player.name)
+                    .map((b) => b.id);
+            ids.forEach((cid) => {
+              applyContactPermanentBoost(
+                state.player,
+                cid,
+                effect.stats || {},
+              );
+              const buff = state.player.buffs.find(
+                (b) => b.id === cid && b.usedBy === state.player.name,
+              );
+              if (buff) {
+                applyBuffStats(buff, effect.stats || {});
+                const originalContact = CONTACTS.find((c) => c.id === cid);
+                if (originalContact && originalContact.eff) {
+                  applyBuffStats(buff, originalContact.eff);
+                }
+                const upgrade =
+                  state.player.contactUpgrades &&
+                  state.player.contactUpgrades[cid];
+                if (upgrade && upgrade.eff) {
+                  applyBuffStats(buff, upgrade.eff);
+                }
+                const deptScalerBonus = getDeptScalerBonusForContact(
+                  state.player,
+                  cid,
+                );
+                if (deptScalerBonus) {
+                  applyBuffStats(buff, deptScalerBonus);
+                }
+              }
+              if (trackEndUpgrades) {
+                recordEndRoundUpgrade(cid);
+              }
+            });
+          },
+          add_cc_bonus_by_dept_pairs: (effect) => {
+            if (unit.id !== "player") return;
+            const playerCcs = state.player.buffs.filter(
+              (b) => b.usedBy === state.player.name,
+            );
+            const countsByDept = {};
+            playerCcs.forEach((b) => {
+              const dept = b.departmentId || "unknown";
+              countsByDept[dept] = (countsByDept[dept] || 0) + 1;
+            });
+            playerCcs.forEach((b) => {
+              const dept = b.departmentId || "unknown";
+              const sameDept = Math.max(0, (countsByDept[dept] || 0) - 1);
+              if (sameDept <= 0) return;
+              const scaled = {};
+              Object.keys(effect.stats || {}).forEach((key) => {
+                const value = effect.stats[key];
+                if (typeof value !== "number") return;
+                scaled[key] = value * sameDept;
+              });
+              applyContactPermanentBoost(state.player, b.id, scaled);
+              applyBuffStats(b, scaled);
+              const originalContact = CONTACTS.find((c) => c.id === b.id);
+              if (originalContact && originalContact.eff) {
+                applyBuffStats(b, originalContact.eff);
+              }
+              const upgrade =
+                state.player.contactUpgrades &&
+                state.player.contactUpgrades[b.id];
+              if (upgrade && upgrade.eff) {
+                applyBuffStats(b, upgrade.eff);
+              }
+              const deptScalerBonus = getDeptScalerBonusForContact(
+                state.player,
+                b.id,
+              );
+              if (deptScalerBonus) {
+                applyBuffStats(b, deptScalerBonus);
+              }
+              if (trackEndUpgrades) {
+                recordEndRoundUpgrade(b.id);
+              }
+            });
+          },
+          add_signoff_bonus_by_dept_pairs: (effect, owner) => {
+            const playerCcs = state.player.buffs.filter(
+              (b) => b.usedBy === state.player.name,
+            );
+            const countsByDept = {};
+            playerCcs.forEach((b) => {
+              const dept = b.departmentId || "unknown";
+              countsByDept[dept] = (countsByDept[dept] || 0) + 1;
+            });
+            let pairs = 0;
+            Object.values(countsByDept).forEach((count) => {
+              if (count >= 2) pairs += Math.floor((count * (count - 1)) / 2);
+            });
+            if (pairs > 0) {
+              const scaled = {};
+              Object.keys(effect.stats || {}).forEach((key) => {
+                const value = effect.stats[key];
+                if (typeof value !== "number") return;
+                scaled[key] = value * pairs;
+              });
+              applyUnitPermanentBoost(unit, owner.id, scaled);
+            }
+          },
+          rep_scale_salutation: (effect, owner) => {
+            const rep = typeof context.rep === "number" ? context.rep : 0;
+            const step = effect.step || 1;
+            const target = Math.floor(rep / step);
+            if (target <= 0) return;
+            const scaled = {};
+            Object.keys(effect.stats || {}).forEach((key) => {
+              const value = effect.stats[key];
+              if (typeof value !== "number") return;
+              scaled[key] = value * target;
+            });
+            setSalutationBonus(unit, owner.id, scaled);
+          },
+          rep_half_to_cc_escalate: (effect) => {
+            if (!context.summary) return;
+            const total = context.summary.totalRep || 0;
+            const repAward = Math.floor(total / 2);
+            const missed = total - repAward;
+            const step = effect.step || 1;
+            const steps = Math.floor(missed / step);
+            if (steps > 0) {
+              const scaled = {};
+              Object.keys(effect.stats || {}).forEach((key) => {
+                const value = effect.stats[key];
+                if (typeof value !== "number") return;
+                scaled[key] = value;
+              });
+              const limit =
+                effect.threadLimit != null
+                  ? Math.max(0, effect.threadLimit)
+                  : null;
+              const countToApply =
+                limit != null ? Math.min(steps, limit) : steps;
+              applyRandomCcBoostMultiple(state.player, scaled, countToApply);
+            }
+            results.repAward = repAward;
+          },
+        };
         sources.forEach(({ owner, id }) => {
           owner.effects.forEach((effect) => {
             if (!effect || effect.event !== event) return;
@@ -6589,256 +6857,8 @@
               if (used >= effect.threadLimit) return;
               state.threadEffectFlags[key] = used + 1;
             }
-            if (effect.type === "add_random_cc_bonus") {
-              if (unit.id !== "player") return;
-              const picked = applyRandomCcBoost(
-                state.player,
-                effect.stats || {},
-                true,
-              );
-              if (trackEndUpgrades && picked) {
-                recordEndRoundUpgrade(picked.id);
-              }
-            } else if (effect.type === "add_cc_bonus") {
-              if (unit.id !== "player") return;
-              if (!context.contact) return;
-              applyContactPermanentBoost(state.player, context.contact.id, effect.stats || {});
-              if (trackEndUpgrades) {
-                recordEndRoundUpgrade(context.contact.id);
-              }
-            } else if (effect.type === "add_signoff_bonus") {
-              applyUnitPermanentBoost(unit, id, effect.stats || {});
-            } else if (effect.type === "add_salutation_bonus") {
-              applySalutationPermanentBoost(unit, id, effect.stats || {});
-            } else if (effect.type === "add_thread_bonus") {
-              const stats = { ...(effect.stats || {}) };
-              if (contactEffectBoosts) {
-                Object.keys(contactEffectBoosts).forEach((key) => {
-                  const value = contactEffectBoosts[key];
-                  if (typeof value !== "number") return;
-                  stats[key] = (stats[key] || 0) + value;
-                });
-              }
-              applyUnitThreadBonus(unit, stats);
-            } else if (effect.type === "add_thread_bonus_scaled") {
-              const step = effect.step || 1;
-              let base = 0;
-              if (effect.scaleBy === "wins_remaining")
-                base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
-              if (effect.scaleBy === "hp") base = unit.hp || 0;
-              if (effect.scaleBy === "overflow") base = context.overflow || 0;
-              const steps = Math.floor(base / step);
-              if (steps > 0) {
-                const scaled = {};
-                const combinedStats = { ...(effect.stats || {}) };
-                if (contactEffectBoosts) {
-                  Object.keys(contactEffectBoosts).forEach((key) => {
-                    const value = contactEffectBoosts[key];
-                    if (typeof value !== "number") return;
-                    combinedStats[key] = (combinedStats[key] || 0) + value;
-                  });
-                }
-                Object.keys(combinedStats).forEach((key) => {
-                  const value = combinedStats[key];
-                  if (typeof value !== "number") return;
-                  scaled[key] = value * steps;
-                });
-                applyUnitThreadBonus(unit, scaled);
-              }
-            } else if (effect.type === "add_bcc") {
-              if (unit.id !== "player") return;
-              addRandomBccs(state.player, effect.count || 1);
-            } else if (effect.type === "duplicate_bcc") {
-              if (unit.id !== "player") return;
-              duplicateRandomOwnedBccs(state.player, effect.count || 1);
-            } else if (effect.type === "add_signoff_bonus_scaled") {
-              const step = effect.step || 1;
-              let base = 0;
-              if (effect.scaleBy === "hp") base = unit.hp || 0;
-              if (effect.scaleBy === "wins_remaining")
-                base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
-              if (effect.scaleBy === "overflow") base = context.overflow || 0;
-              const steps = Math.floor(base / step);
-              if (steps > 0) {
-                const scaled = {};
-                Object.keys(effect.stats || {}).forEach((key) => {
-                  const value = effect.stats[key];
-                  if (typeof value !== "number") return;
-                  scaled[key] = value * steps;
-                });
-                applyUnitPermanentBoost(unit, id, scaled);
-              }
-            } else if (effect.type === "add_random_cc_bonus_scaled") {
-              if (unit.id !== "player") return;
-              const step = effect.step || 1;
-              let base = 0;
-              if (effect.scaleBy === "wins_remaining")
-                base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
-              if (effect.scaleBy === "hp") base = unit.hp || 0;
-              if (effect.scaleBy === "overflow")
-                base = typeof context.overflow === "number" ? context.overflow : 0;
-              if (base <= 0) return;
-              const count = Math.floor(base / step);
-              if (count <= 0) return;
-              const scaled = {};
-              Object.keys(effect.stats || {}).forEach((key) => {
-                const value = effect.stats[key];
-                if (typeof value !== "number") return;
-                scaled[key] = value;
-              });
-              const limit =
-                effect.threadLimit != null
-                  ? Math.max(0, effect.threadLimit)
-                  : null;
-              const countToApply =
-                limit != null ? Math.min(count, limit) : count;
-              const picked = applyRandomCcBoostMultiple(
-                state.player,
-                scaled,
-                countToApply,
-              );
-              if (trackEndUpgrades && picked.length) {
-                picked.forEach((p) => recordEndRoundUpgrade(p.id));
-              }
-            } else if (effect.type === "add_all_cc_bonus") {
-              if (unit.id !== "player") return;
-              const scope = effect.scope || "thread";
-              const ids =
-                scope === "addressBook"
-                  ? state.player.addressBook
-                  : state.player.buffs
-                      .filter((b) => b.usedBy === state.player.name)
-                      .map((b) => b.id);
-              ids.forEach((cid) => {
-                applyContactPermanentBoost(state.player, cid, effect.stats || {});
-                const buff = state.player.buffs.find(
-                  (b) => b.id === cid && b.usedBy === state.player.name,
-                );
-                if (buff) {
-                  applyBuffStats(buff, effect.stats || {});
-                  const originalContact = CONTACTS.find((c) => c.id === cid);
-                  if (originalContact && originalContact.eff) {
-                    applyBuffStats(buff, originalContact.eff);
-                  }
-                  const upgrade =
-                    state.player.contactUpgrades &&
-                    state.player.contactUpgrades[cid];
-                  if (upgrade && upgrade.eff) {
-                    applyBuffStats(buff, upgrade.eff);
-                  }
-                  const deptScalerBonus = getDeptScalerBonusForContact(
-                    state.player,
-                    cid,
-                  );
-                  if (deptScalerBonus) {
-                    applyBuffStats(buff, deptScalerBonus);
-                  }
-                }
-                if (trackEndUpgrades) {
-                  recordEndRoundUpgrade(cid);
-                }
-              });
-            } else if (effect.type === "add_cc_bonus_by_dept_pairs") {
-              if (unit.id !== "player") return;
-              const playerCcs = state.player.buffs.filter(
-                (b) => b.usedBy === state.player.name,
-              );
-              const countsByDept = {};
-              playerCcs.forEach((b) => {
-                const dept = b.departmentId || "unknown";
-                countsByDept[dept] = (countsByDept[dept] || 0) + 1;
-              });
-              playerCcs.forEach((b) => {
-                const dept = b.departmentId || "unknown";
-                const sameDept = Math.max(0, (countsByDept[dept] || 0) - 1);
-                if (sameDept <= 0) return;
-                const scaled = {};
-                Object.keys(effect.stats || {}).forEach((key) => {
-                  const value = effect.stats[key];
-                  if (typeof value !== "number") return;
-                  scaled[key] = value * sameDept;
-                });
-                applyContactPermanentBoost(state.player, b.id, scaled);
-                applyBuffStats(b, scaled);
-                const originalContact = CONTACTS.find((c) => c.id === b.id);
-                if (originalContact && originalContact.eff) {
-                  applyBuffStats(b, originalContact.eff);
-                }
-                const upgrade =
-                  state.player.contactUpgrades &&
-                  state.player.contactUpgrades[b.id];
-                if (upgrade && upgrade.eff) {
-                  applyBuffStats(b, upgrade.eff);
-                }
-                const deptScalerBonus = getDeptScalerBonusForContact(
-                  state.player,
-                  b.id,
-                );
-                if (deptScalerBonus) {
-                  applyBuffStats(b, deptScalerBonus);
-                }
-                if (trackEndUpgrades) {
-                  recordEndRoundUpgrade(b.id);
-                }
-              });
-            } else if (effect.type === "add_signoff_bonus_by_dept_pairs") {
-              const playerCcs = state.player.buffs.filter(
-                (b) => b.usedBy === state.player.name,
-              );
-              const countsByDept = {};
-              playerCcs.forEach((b) => {
-                const dept = b.departmentId || "unknown";
-                countsByDept[dept] = (countsByDept[dept] || 0) + 1;
-              });
-              let pairs = 0;
-              Object.values(countsByDept).forEach((count) => {
-                if (count >= 2) pairs += Math.floor((count * (count - 1)) / 2);
-              });
-              if (pairs > 0) {
-                const scaled = {};
-                Object.keys(effect.stats || {}).forEach((key) => {
-                  const value = effect.stats[key];
-                  if (typeof value !== "number") return;
-                  scaled[key] = value * pairs;
-                });
-                applyUnitPermanentBoost(unit, id, scaled);
-              }
-            } else if (effect.type === "rep_scale_salutation") {
-              const rep = typeof context.rep === "number" ? context.rep : 0;
-              const step = effect.step || 1;
-              const target = Math.floor(rep / step);
-              if (target <= 0) return;
-              const scaled = {};
-              Object.keys(effect.stats || {}).forEach((key) => {
-                const value = effect.stats[key];
-                if (typeof value !== "number") return;
-                scaled[key] = value * target;
-              });
-              setSalutationBonus(unit, id, scaled);
-            } else if (effect.type === "rep_half_to_cc_escalate") {
-              if (!context.summary) return;
-              const total = context.summary.totalRep || 0;
-              const repAward = Math.floor(total / 2);
-              const missed = total - repAward;
-              const step = effect.step || 1;
-              const steps = Math.floor(missed / step);
-              if (steps > 0) {
-                const scaled = {};
-                Object.keys(effect.stats || {}).forEach((key) => {
-                  const value = effect.stats[key];
-                  if (typeof value !== "number") return;
-                  scaled[key] = value;
-                });
-                const limit =
-                  effect.threadLimit != null
-                    ? Math.max(0, effect.threadLimit)
-                    : null;
-                const countToApply =
-                  limit != null ? Math.min(steps, limit) : steps;
-                applyRandomCcBoostMultiple(state.player, scaled, countToApply);
-              }
-              results.repAward = repAward;
-            }
+            const handler = EFFECT_HANDLERS[effect.type];
+            if (handler) handler(effect, owner, contactEffectBoosts);
           });
         });
         return results;
@@ -7892,14 +7912,7 @@
         const refund = Math.floor(cost / 2);
         const actionLabel = options.actionLabel || "ARCHIVE";
 
-        const typeLabels = {
-          contact: "Contact",
-          signature: "Signature",
-          salutation: "Greeting",
-          signoff: "Sign-off",
-          bcc: "BCC",
-        };
-        const typeLabel = typeLabels[type] || type;
+        const typeLabel = getItemTypeLabel(type);
         const typeBadge = `<span class="bg-blue-800 text-white px-1 uppercase font-bold text-[8px] mr-1">${typeLabel}</span>`;
 
         const setBadge = item.setId
@@ -8329,26 +8342,76 @@
         return true;
       }
 
-      function buyDirectItem(item, cost) {
-        if (item.itemType === "contact") {
+      function canAcquireItem(item) {
+        if (!item || !item.itemType)
+          return { ok: false, reason: "invalid", actionLabel: "UNAVAILABLE" };
+        const type = item.itemType;
+        if (type === "contact") {
           if (state.player.addressBook.includes(item.id)) {
-            alert("That contact is already in your address book.");
-            return;
+            return { ok: false, reason: "owned", actionLabel: "OWNED" };
           }
           if (state.player.addressBook.length >= getUnitAddressLimit(state.player)) {
-            alert("Address book full. Archive a contact to make space.");
-            return;
+            return {
+              ok: false,
+              reason: "limit",
+              actionLabel: "ARCHIVE CONTACT TO APPLY",
+            };
           }
+          return { ok: true, actionLabel: "" };
         }
-        if (item.itemType === "signature") {
+        if (type === "signature") {
           if (state.player.signatures.some((s) => s.id === item.id)) {
-            alert("That signature is already in use.");
-            return;
+            return { ok: false, reason: "owned", actionLabel: "ALREADY SET" };
           }
           if (state.player.signatures.length >= state.player.title.sigLimit) {
-            alert("Signature limit reached. Remove a signature to make space.");
-            return;
+            return {
+              ok: false,
+              reason: "limit",
+              actionLabel: "REMOVE SIGNATURE TO APPLY",
+            };
           }
+          return { ok: true, actionLabel: "" };
+        }
+        if (type === "salutation") {
+          if (state.player.salutation)
+            return {
+              ok: false,
+              reason: "limit",
+              actionLabel: "DELETE GREETING TO APPLY",
+            };
+          return { ok: true, actionLabel: "" };
+        }
+        if (type === "signoff")
+          return { ok: true, actionLabel: "" };
+        if (type === "bcc") {
+          const limit = computeUnitStats(state.player).bccLimit || 0;
+          if (state.player.bccContacts.length >= limit) {
+            return { ok: false, reason: "limit", actionLabel: "FREE SLOT" };
+          }
+          return { ok: true, actionLabel: "" };
+        }
+        return { ok: true, actionLabel: "" };
+      }
+
+      function buyDirectItem(item, cost) {
+        const eligibility = canAcquireItem(item);
+        if (!eligibility.ok) {
+          if (item.itemType === "contact") {
+            alert(
+              eligibility.reason === "limit"
+                ? "Address book full. Archive a contact to make space."
+                : "That contact is already in your address book.",
+            );
+          } else if (item.itemType === "signature") {
+            alert(
+              eligibility.reason === "limit"
+                ? "Signature limit reached. Remove a signature to make space."
+                : "That signature is already in use.",
+            );
+          } else if (item.itemType === "bcc") {
+            alert("BCC capacity reached. Discard a BCC to make space.");
+          }
+          return;
         }
         state.player.reputation -= cost;
         item.purchased = true;
@@ -8366,11 +8429,6 @@
         else if (item.itemType === "salutation") state.player.salutation = item;
         else if (item.itemType === "signoff") state.player.signOff = item;
         else if (item.itemType === "bcc") {
-          const limit = computeUnitStats(state.player).bccLimit || 0;
-          if (state.player.bccContacts.length >= limit) {
-            alert("BCC capacity reached. Discard a BCC to make space.");
-            return;
-          }
           state.player.bccContacts.push(item);
         }
         playSound("connect");
@@ -8528,20 +8586,12 @@
         if (directList) {
           directList.innerHTML = "";
           state.shop.directItems.forEach((item) => {
-            const typeLabels = {
-              contact: "Contact",
-              salutation: "Greeting",
-              signature: "Signature",
-              bcc: "Help Desk",
-              signoff: "Sign-off",
-              dev: "Coaching",
-            };
             const row = document.createElement("div");
             row.className = "shop-card-item";
             row.innerHTML = `
               <div class="w-full h-full flex flex-col">
                 <div class="text-[9px] uppercase text-white bg-[#000080] px-2 py-0.5 text-left">
-                  ${typeLabels[item.itemType] || item.itemType}
+                  ${getItemTypeLabel(item.itemType)}
                 </div>
                 <div class="flex-1 flex items-center justify-center px-1">
                   <div class="shop-card-name">${item.name}</div>
@@ -8550,16 +8600,7 @@
             `;
             row.onclick = (e) => {
               e.stopPropagation();
-              showShopItemOverlay("direct", item, row);
-              if (item.itemType === "contact" || item.itemType === "bcc") {
-                showAssetsWindow("contacts", { forceOpen: true });
-              } else if (
-                item.itemType === "salutation" ||
-                item.itemType === "signoff" ||
-                item.itemType === "signature"
-              ) {
-                showAssetsWindow("email", { forceOpen: true });
-              }
+              openItemDetails(item, { mode: "shop", anchorEl: row });
             };
             directList.appendChild(row);
           });
@@ -8570,18 +8611,12 @@
         if (packList) {
           packList.innerHTML = "";
           state.shop.packs.forEach((pack) => {
-            const packTypeLabels = {
-              contact: "Contact",
-              email: "Email",
-              dev: "Coaching",
-              bcc: "Help Desk",
-            };
             const row = document.createElement("div");
             row.className = "shop-card-item";
             row.innerHTML = `
               <div class="w-full h-full flex flex-col">
                 <div class="text-[9px] uppercase text-white bg-[#000080] px-2 py-0.5 text-left">
-                  ${packTypeLabels[pack.type] || pack.type}
+                  ${getItemTypeLabel(pack.type)}
                 </div>
                 <div class="flex-1 flex items-center justify-center px-1">
                   <div class="shop-card-name">${pack.name}</div>
@@ -8640,6 +8675,26 @@
         resizeAssetsWindows();
       }
 
+      function openItemDetails(item, options = {}) {
+        if (!item || !options.anchorEl) return;
+        const mode = options.mode === "pack" ? "pack-option" : "direct";
+        showShopItemOverlay(mode, item, options.anchorEl, {
+          fromOwned: !!options.fromOwned,
+          preferRight: !!options.preferRight,
+        });
+        if (item.itemType === "contact" || item.itemType === "bcc") {
+          showAssetsWindow("contacts", { forceOpen: true });
+        } else if (
+          item.itemType === "salutation" ||
+          item.itemType === "signoff" ||
+          item.itemType === "signature"
+        ) {
+          showAssetsWindow("email", { forceOpen: true });
+        } else if (item.itemType === "dev") {
+          showAssetsWindow("profile", { forceOpen: true });
+        }
+      }
+
       function showShopItemOverlay(type, item, anchorEl, opts = {}) {
         const overlay = document.getElementById("shop-item-overlay");
         if (!overlay || !item || !anchorEl) return;
@@ -8654,46 +8709,109 @@
           if (item.itemType === "signoff") highlightEmailSlot("signoff");
           if (item.itemType === "signature") highlightEmailSlot("signature");
         }
+        renderItemOverlay(item, {
+          anchorEl,
+          mode: type,
+          fromOwned: !!opts.fromOwned,
+          preferRight: !!opts.preferRight,
+        });
+        if (item.itemType === "dev") {
+          showAssetsWindow("profile", { forceOpen: true });
+          renderProfileWindow();
+          highlightProfileStat(getPrimaryStatKey(item), getPrimaryStatDelta(item));
+        }
+      }
+
+      function renderItemOverlay(item, opts = {}) {
+        const overlay = document.getElementById("shop-item-overlay");
+        if (!overlay || !item || !opts.anchorEl) return;
         let content = null;
-        let typeLabel = "";
-        if (type === "direct") {
-          if (item.itemType === "contact") {
-            const cost =
-              item.cost || getItemCostByType(item.rarity, item.itemType);
-            overlay.innerHTML = `<div class="shop-item-overlay-frame p-2" id="shop-contact-overlay-body"></div>`;
-            const body = overlay.querySelector("#shop-contact-overlay-body");
-            renderContactDetailCard(body, item, {
-              showStatus: false,
-              actionLabel: `REACH OUT (${cost} REP)`,
-              actionDisabled: !hasSpaceForItem(item) || isItemOwned(item),
-              onAction: () => buyDirectItem(item, cost),
-              hideDetails: true,
-              showRarityBadge: true,
-              useContainerAsWrapper: true,
-            });
-            overlay.style.width = "320px";
-            positionShopOverlay(overlay, anchorEl, opts);
-            overlay.style.display = "block";
-            overlay.onclick = (e) => e.stopPropagation();
-            return;
-          }
-          if (
-            opts.fromOwned &&
-            (item.itemType === "salutation" ||
-              item.itemType === "signoff" ||
-              item.itemType === "signature")
-          ) {
-            const refund = Math.floor(
-              (item.cost || getItemCostByType(item.rarity, item.itemType)) / 2,
-            );
+        if (item.itemType === "contact") {
+          const cost =
+            item.cost || getItemCostByType(item.rarity, item.itemType);
+          const eligibility = canAcquireItem(item);
+          const isPack = opts.mode === "pack-option";
+          const isOwnedContact = opts.mode === "owned-contact";
+          const actionLabel = isOwnedContact
+            ? `ARCHIVE CONTACT +${Math.floor(cost / 2)} REP`
+            : isPack
+              ? "SELECT"
+              : eligibility.ok
+                ? `REACH OUT (${cost} REP)`
+                : eligibility.actionLabel || "UNAVAILABLE";
+          const actionDisabled = isOwnedContact ? false : !eligibility.ok;
+          const onAction = isOwnedContact
+            ? () => {
+                sellItem("contact", item);
+                updateShopUI();
+              }
+            : isPack
+              ? () => confirmPackOption(item)
+              : () => buyDirectItem(item, cost);
+          overlay.innerHTML = `<div class="shop-item-overlay-frame p-2" id="shop-contact-overlay-body"></div>`;
+          const body = overlay.querySelector("#shop-contact-overlay-body");
+          renderContactDetailCard(body, item, {
+            showStatus: false,
+            detailsStateKey: isOwnedContact ? "shopAddressBookDetailsOpen" : null,
+            actionLabel,
+            actionDisabled,
+            onAction,
+            hideDetails: !isOwnedContact,
+            showRarityBadge: true,
+            useContainerAsWrapper: true,
+          });
+          overlay.style.width = "320px";
+          overlay.style.display = "block";
+          positionShopOverlay(overlay, opts.anchorEl, opts);
+          overlay.onclick = (e) => e.stopPropagation();
+          return;
+        }
+
+        if (item.itemType === "bcc" && opts.mode === "owned-bcc") {
+          const refund = Math.floor(
+            (item.cost || getItemCostByType(item.rarity, "bcc")) / 2,
+          );
+          content = createShopCard(
+            item.name,
+            `Effects: ${getItemBonusText(item)}`,
+            0,
+            () => {
+              sellItem("bcc", item);
+              updateShopUI();
+            },
+            {
+              purchased: false,
+              canBuy: true,
+              badge: formatRarityBadge(item.rarity),
+              actionLabel: `DISCARD BCC +${refund} REP`,
+            },
+          );
+        }
+
+        if (!content) {
+          if (opts.mode === "pack") {
             content = createShopCard(
               item.name,
-              getItemBonusText(item) || item.description || "",
-              0,
-              () => {
-                sellItem(item.itemType, item);
-                updateShopUI();
+              item.description,
+              item.cost,
+              () => buyPack(item),
+              {
+                purchased: item.purchased,
+                actionLabel: "OPEN PACK",
+                ownedLabel: "OPENED",
+                typeLabel: "",
               },
+            );
+          } else if (opts.mode === "pack-option") {
+            const bonusDesc =
+              getItemBonusText(item) ||
+              item.picksText ||
+              describeEffect(item.eff || item);
+            content = createShopCard(
+              item.name,
+              bonusDesc,
+              0,
+              () => confirmPackOption(item),
               {
                 purchased: false,
                 canBuy: true,
@@ -8701,135 +8819,83 @@
                 setId: item.setId,
                 ownedLabel: "",
                 typeLabel: "",
-                actionLabel: `ARCHIVE +${refund} REP`,
+                actionLabel: "SELECT",
                 spaceLabel: "",
-                metaLabel: "",
-              },
-            );
-          }
-          const cost =
-            item.cost || getItemCostByType(item.rarity, item.itemType);
-          const owned = isItemOwned(item);
-          const canBuy = hasSpaceForItem(item);
-          const typeLabels = {
-            contact: "Contact",
-            signature: "Signature",
-            salutation: "Greeting",
-            signoff: "Sign-off",
-            bcc: "Help Desk",
-          };
-          typeLabel = typeLabels[item.itemType] || item.itemType;
-          const actionLabels = {
-            contact: "REACH OUT",
-            signature: "APPLY",
-            salutation: "SET GREETING",
-            signoff: "SET SIGN-OFF",
-            bcc: "REQUEST",
-          };
-          const spaceLabels = {
-            bcc: "FREE SLOT",
-            salutation: "DELETE GREETING TO APPLY",
-            signoff: "DELETE SIGN-OFF TO APPLY",
-          };
-          if (!content) {
-            content = createShopCard(
-              item.name,
-              getItemBonusText(item) || item.description || "",
-              cost,
-              () => buyDirectItem(item, cost),
-              {
-                purchased: item.purchased || owned,
-                canBuy: canBuy,
-                badge: formatRarityBadge(item.rarity),
-                setId: item.setId,
-                ownedLabel: owned ? "OWNED" : "PURCHASED",
-                typeLabel: "",
-                actionLabel: actionLabels[item.itemType] || "SUBMIT REQUEST",
-                spaceLabel: spaceLabels[item.itemType],
                 metaLabel:
                   item.itemType === "contact"
                     ? getDepartmentName(item.departmentId) || ""
                     : "",
               },
             );
+          } else {
+            const cost =
+              item.cost || getItemCostByType(item.rarity, item.itemType);
+            const eligibility = canAcquireItem(item);
+            const owned = isItemOwned(item);
+            const actionLabels = {
+              contact: "REACH OUT",
+              signature: "APPLY",
+              salutation: "SET GREETING",
+              signoff: "SET SIGN-OFF",
+              bcc: "REQUEST",
+            };
+            if (
+              opts.fromOwned &&
+              (item.itemType === "salutation" ||
+                item.itemType === "signoff" ||
+                item.itemType === "signature")
+            ) {
+              const refund = Math.floor(cost / 2);
+              content = createShopCard(
+                item.name,
+                getItemBonusText(item) || item.description || "",
+                0,
+                () => {
+                  sellItem(item.itemType, item);
+                  updateShopUI();
+                },
+                {
+                  purchased: false,
+                  canBuy: true,
+                  badge: formatRarityBadge(item.rarity),
+                  setId: item.setId,
+                  ownedLabel: "",
+                  typeLabel: "",
+                  actionLabel: `ARCHIVE +${refund} REP`,
+                  spaceLabel: "",
+                  metaLabel: "",
+                },
+              );
+            } else {
+              content = createShopCard(
+                item.name,
+                getItemBonusText(item) || item.description || "",
+                cost,
+                () => buyDirectItem(item, cost),
+                {
+                  purchased: item.purchased || owned,
+                  canBuy: eligibility.ok,
+                  badge: formatRarityBadge(item.rarity),
+                  setId: item.setId,
+                  ownedLabel: owned ? "OWNED" : "PURCHASED",
+                  typeLabel: "",
+                  actionLabel: actionLabels[item.itemType] || "SUBMIT REQUEST",
+                  spaceLabel: eligibility.actionLabel,
+                  metaLabel:
+                    item.itemType === "contact"
+                      ? getDepartmentName(item.departmentId) || ""
+                      : "",
+                },
+              );
+            }
           }
-        } else if (type === "pack") {
-          typeLabel = "Coaching";
-          content = createShopCard(
-            item.name,
-            item.description,
-            item.cost,
-            () => buyPack(item),
-            {
-              purchased: item.purchased,
-              actionLabel: "OPEN PACK",
-              ownedLabel: "OPENED",
-              typeLabel: "",
-            },
-          );
-        } else if (type === "pack-option") {
-          if (item.itemType === "contact") {
-            overlay.innerHTML = `<div class="shop-item-overlay-frame p-2" id="shop-contact-overlay-body"></div>`;
-            const body = overlay.querySelector("#shop-contact-overlay-body");
-            renderContactDetailCard(body, item, {
-              showStatus: false,
-              actionLabel: "SELECT",
-              actionDisabled: !hasSpaceForItem(item) || isItemOwned(item),
-              onAction: () => confirmPackOption(item),
-              hideDetails: true,
-              showRarityBadge: true,
-              useContainerAsWrapper: true,
-            });
-            overlay.style.width = "320px";
-            positionShopOverlay(overlay, anchorEl);
-            overlay.style.display = "block";
-            overlay.onclick = (e) => e.stopPropagation();
-            return;
-          }
-          const bonusDesc =
-            getItemBonusText(item) ||
-            item.picksText ||
-            describeEffect(item.eff || item);
-          const typeLabels = {
-            contact: "Contact",
-            signature: "Signature",
-            salutation: "Greeting",
-            signoff: "Sign-off",
-            bcc: "Help Desk",
-            dev: "Coaching",
-          };
-          content = createShopCard(
-            item.name,
-            bonusDesc,
-            0,
-            () => confirmPackOption(item),
-            {
-              purchased: false,
-              canBuy: true,
-              badge: formatRarityBadge(item.rarity),
-              setId: item.setId,
-              ownedLabel: "",
-              typeLabel: "",
-              actionLabel: "SELECT",
-              spaceLabel: "",
-              metaLabel:
-                item.itemType === "contact"
-                  ? getDepartmentName(item.departmentId) || ""
-                  : "",
-            },
-          );
         }
+
         if (!content) return;
         overlay.appendChild(content);
         overlay.style.display = "block";
-        positionShopOverlay(overlay, anchorEl, opts);
+        positionShopOverlay(overlay, opts.anchorEl, opts);
         overlay.onclick = (e) => e.stopPropagation();
-
-        if (item.itemType === "dev") {
-          showAssetsWindow("profile", { forceOpen: true });
-          renderProfileWindow();
-          highlightProfileStat(getPrimaryStatKey(item), getPrimaryStatDelta(item));
-        }
       }
 
       function highlightEmailSlot(kind) {
@@ -8853,61 +8919,11 @@
       }
 
       function showShopContactOverlay(contact, anchorEl) {
-        const overlay = document.getElementById("shop-item-overlay");
-        if (!overlay || !contact || !anchorEl) return;
-        overlay.innerHTML = `<div class="shop-item-overlay-frame p-2" id="shop-contact-overlay-body"></div>`;
-        const body = overlay.querySelector("#shop-contact-overlay-body");
-        const cost =
-          contact.cost ||
-          getItemCostByType(contact.rarity || "common", "contact");
-        const refund = Math.floor(cost / 2);
-        renderContactDetailCard(body, contact, {
-          showStatus: false,
-          detailsStateKey: "shopAddressBookDetailsOpen",
-          actionLabel: `ARCHIVE CONTACT +${refund} REP`,
-          actionDisabled: false,
-          showRarityBadge: true,
-          useContainerAsWrapper: true,
-          onAction: () => {
-            sellItem("contact", contact);
-            updateShopUI();
-          },
-        });
-        overlay.style.width = "320px";
-        positionShopOverlay(overlay, anchorEl);
-        overlay.style.display = "block";
-        overlay.onclick = (e) => e.stopPropagation();
+        renderItemOverlay(contact, { anchorEl, mode: "owned-contact" });
       }
 
       function showShopBccOverlay(bcc, anchorEl) {
-        const overlay = document.getElementById("shop-item-overlay");
-        if (!overlay || !bcc || !anchorEl) return;
-        overlay.innerHTML = `
-          <div class="bg-white retro-border p-2 shop-item-overlay-frame">
-            <div class="flex justify-between items-start">
-              <div>
-                <div class="font-bold text-yellow-800 text-sm">${bcc.name}</div>
-                <div class="text-[10px] uppercase text-gray-500">Help Desk</div>
-              </div>
-            </div>
-            <hr class="border-gray-200 my-2" />
-            <div class="text-[10px] text-gray-700">Effects: ${getItemBonusText(bcc)}</div>
-            <div class="pt-2">
-              <button id="shop-bcc-action" class="retro-button text-xs px-3">DISCARD BCC</button>
-            </div>
-          </div>
-        `;
-        const actionBtn = overlay.querySelector("#shop-bcc-action");
-        if (actionBtn) {
-          actionBtn.onclick = () => {
-            sellItem("bcc", bcc);
-            updateShopUI();
-          };
-        }
-        overlay.style.width = "260px";
-        positionShopOverlay(overlay, anchorEl);
-        overlay.style.display = "block";
-        overlay.onclick = (e) => e.stopPropagation();
+        renderItemOverlay(bcc, { anchorEl, mode: "owned-bcc" });
       }
 
       function positionShopOverlay(overlay, anchorEl, opts = {}) {
@@ -8952,25 +8968,18 @@
         header.innerText = "Address Book";
         list.appendChild(header);
 
-        state.player.addressBook.forEach((id) => {
-          const c = CONTACTS.find((con) => con.id === id);
-          if (!c) return;
-          const compactDeptLabel = c.departmentId
-            ? getDepartmentShortName(c.departmentId) ||
-              DEPARTMENT_BY_ID[c.departmentId]?.name ||
-              c.departmentId
-            : "Department N/A";
-          const btn = document.createElement("div");
-          const isSelected = state.shopAddressBookSelection === c.id;
-          btn.className = `px-2 py-1 border-b border-gray-200 text-xs cursor-pointer ${
-            isSelected ? "bg-blue-50" : "hover:bg-blue-50"
-          }`;
-          btn.innerHTML = `<div class="flex justify-between"><span class="font-semibold text-[#000080]">${c.name}</span><span class="text-[9px] uppercase text-gray-500">${compactDeptLabel}</span></div>`;
-          btn.onclick = (e) => {
-            e.stopPropagation();
+        renderAddressBookList({
+          container: list,
+          contacts: state.player.addressBook
+            .map((id) => CONTACTS.find((con) => con.id === id))
+            .filter(Boolean),
+          showDeptShort: true,
+          getState: (c) => ({
+            isSelected: state.shopAddressBookSelection === c.id,
+          }),
+          onClick: (c, btn) => {
             showShopContactOverlay(c, btn);
-          };
-          list.appendChild(btn);
+          },
         });
 
         if (state.player.bccContacts.length > 0) {
@@ -8980,21 +8989,80 @@
           headerBcc.innerText = "Help Desk (BCC)";
           list.appendChild(headerBcc);
 
-          state.player.bccContacts.forEach((bcc, idx) => {
-            const btn = document.createElement("div");
-            const key = `bcc:${idx}`;
-            const isSelected = state.shopAddressBookSelection === key;
-            btn.className = `px-2 py-1 border-b border-gray-200 text-xs cursor-pointer ${
-              isSelected ? "bg-yellow-50" : "hover:bg-yellow-50"
-            }`;
-            btn.innerHTML = `<div class="flex justify-between"><span class="font-semibold text-yellow-800">${bcc.name}</span><span class="text-[9px] uppercase text-gray-500">BCC</span></div>`;
-            btn.onclick = (e) => {
-              e.stopPropagation();
+          renderAddressBookList({
+            container: list,
+            contacts: state.player.bccContacts,
+            itemType: "bcc",
+            getState: (b) => {
+              const idx = state.player.bccContacts.indexOf(b);
+              return {
+                isSelected: state.shopAddressBookSelection === `bcc:${idx}`,
+              };
+            },
+            onClick: (bcc, btn) => {
               showShopBccOverlay(bcc, btn);
-            };
-            list.appendChild(btn);
+            },
           });
         }
+      }
+
+      function renderAddressBookList({
+        container,
+        contacts,
+        onClick,
+        onItem,
+        showDeptShort = false,
+        getState = () => ({}),
+        itemType = "contact",
+      }) {
+        if (!container || !Array.isArray(contacts)) return;
+        contacts.forEach((c) => {
+          if (!c) return;
+          const stateInfo = getState(c) || {};
+          const isUsed = !!stateInfo.isUsed;
+          const isImplicated = !!stateInfo.isImplicated;
+          const solidarityLocked = !!stateInfo.solidarityLocked;
+          const isSelected = !!stateInfo.isSelected;
+          const isDisabled = isUsed || isImplicated || solidarityLocked;
+          const btn = document.createElement("div");
+          const baseClass = "px-2 py-1 border-b border-gray-200 text-xs";
+          let className = "";
+          if (isDisabled) {
+            className = `${baseClass} opacity-50 bg-gray-50`;
+          } else if (isSelected) {
+            className = `${baseClass} cursor-pointer bg-blue-50`;
+          } else {
+            className = `${baseClass} cursor-pointer hover:bg-blue-50`;
+          }
+          if (itemType === "bcc") {
+            className = isSelected
+              ? `${baseClass} cursor-pointer bg-yellow-50`
+              : `${baseClass} cursor-pointer hover:bg-yellow-50`;
+          }
+          btn.className = className;
+          const deptLabel =
+            itemType === "bcc"
+              ? "BCC"
+              : c.departmentId
+                ? showDeptShort
+                  ? getDepartmentShortName(c.departmentId) ||
+                    DEPARTMENT_BY_ID[c.departmentId]?.name ||
+                    c.departmentId
+                  : getDepartmentName(c.departmentId)
+                : "Department N/A";
+          const nameClass =
+            itemType === "bcc"
+              ? "font-semibold text-yellow-800"
+              : "font-semibold text-[#000080]";
+          btn.innerHTML = `<div class="flex justify-between"><span class="${nameClass}">${c.name}</span><span class="text-[9px] uppercase text-gray-500">${deptLabel}</span></div>`;
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            if (isDisabled) return;
+            if (typeof onClick === "function") onClick(c, btn);
+          };
+          container.appendChild(btn);
+          if (typeof onItem === "function") onItem(c, btn);
+        });
       }
 
       function renderStatsContent(header, totalsEl, sourcesEl) {
@@ -10250,30 +10318,26 @@
         list.appendChild(headerCC);
 
         const selections = [];
-        state.player.addressBook.forEach((id) => {
-          const c = CONTACTS.find((con) => con.id === id);
-          if (!c) return;
-          const isUsed = isContactInLoop(c.id);
-          const isImplicated = isContactImplicated(c);
-          const solidarityLocked =
-            state.player.signOff &&
-            state.player.signOff.id === "solidarity" &&
-            state.removedByPlayer > 0;
-          const isDisabled = isUsed || isImplicated || solidarityLocked;
-          const btn = document.createElement("div");
-          btn.className = `px-2 py-1 border-b border-gray-200 text-xs ${isDisabled ? "opacity-50 bg-gray-50" : "cursor-pointer hover:bg-blue-50"}`;
-          const compactDeptLabel = c.departmentId
-            ? getDepartmentShortName(c.departmentId) ||
-              DEPARTMENT_BY_ID[c.departmentId]?.name ||
-              c.departmentId
-            : "Department N/A";
-          btn.innerHTML = `<div class="flex justify-between"><span class="font-semibold text-[#000080]">${c.name}</span><span class="text-[9px] uppercase text-gray-500">${compactDeptLabel}</span></div>`;
-          btn.onclick = () => {
+        renderAddressBookList({
+          container: list,
+          contacts: state.player.addressBook
+            .map((id) => CONTACTS.find((con) => con.id === id))
+            .filter(Boolean),
+          showDeptShort: true,
+          getState: (c) => {
+            const isUsed = isContactInLoop(c.id);
+            const isImplicated = isContactImplicated(c);
+            const solidarityLocked =
+              state.player.signOff &&
+              state.player.signOff.id === "solidarity" &&
+              state.removedByPlayer > 0;
+            return { isUsed, isImplicated, solidarityLocked };
+          },
+          onClick: (c) => {
             state.addressBookSelection = { type: "contact", id: c.id };
             renderAddressBookDetail();
-          };
-          list.appendChild(btn);
-          selections.push({ type: "contact", id: c.id });
+          },
+          onItem: (c) => selections.push({ type: "contact", id: c.id }),
         });
 
         // BCCs
@@ -10284,18 +10348,22 @@
           headerBCC.innerText = "Help Desk (BCC)";
           list.appendChild(headerBCC);
 
-          state.player.bccContacts.forEach((b, idx) => {
-            const btn = document.createElement("div");
-            btn.className =
-              "px-2 py-1 border-b border-gray-200 text-xs cursor-pointer hover:bg-yellow-50";
-            btn.innerHTML = `<div class="flex justify-between"><span class="font-semibold text-yellow-800">${b.name}</span><span class="text-[9px] uppercase text-gray-500">BCC</span></div>`;
-            btn.onclick = () => {
-              state.addressBookSelection = { type: "bcc", index: idx };
-              renderAddressBookDetail();
-            };
-            list.appendChild(btn);
+        renderAddressBookList({
+          container: list,
+          contacts: state.player.bccContacts,
+          itemType: "bcc",
+          onClick: (b, btn) => {
+            const idx = state.player.bccContacts.indexOf(b);
+            if (idx === -1) return;
+            state.addressBookSelection = { type: "bcc", index: idx };
+            renderAddressBookDetail();
+          },
+          onItem: (b) => {
+            const idx = state.player.bccContacts.indexOf(b);
+            if (idx === -1) return;
             selections.push({ type: "bcc", index: idx });
-          });
+          },
+        });
         }
 
         if (!state.addressBookSelection && selections.length > 0) {
@@ -10372,21 +10440,21 @@
         };
       }
 
-      function renderContactDetailCard(container, contact, options = {}) {
-        if (!container || !contact) return;
+      function buildContactDetailParts(contact) {
+        return getContactDetailParts(contact);
+      }
+
+      function renderContactDetailHTML(contact, parts, options = {}) {
         const {
           statusText = "",
           showStatus = true,
           detailsStateKey = null,
           actionLabel = "",
           actionDisabled = false,
-          onAction = null,
           frameClassName = "",
           hideDetails = false,
           showRarityBadge = false,
-          useContainerAsWrapper = false,
         } = options;
-        const parts = getContactDetailParts(contact);
         const hasDetails = !!parts.hasExtraDetails;
         const detailsOpen = detailsStateKey
           ? !!state[detailsStateKey]
@@ -10495,6 +10563,38 @@
                 : ""
             }
         `;
+        return { wrapperClass, innerHtml };
+      }
+
+      function renderContactDetailCard(container, contact, options = {}) {
+        if (!container || !contact) return;
+        const {
+          statusText = "",
+          showStatus = true,
+          detailsStateKey = null,
+          actionLabel = "",
+          actionDisabled = false,
+          onAction = null,
+          frameClassName = "",
+          hideDetails = false,
+          showRarityBadge = false,
+          useContainerAsWrapper = false,
+        } = options;
+        const parts = buildContactDetailParts(contact);
+        const { wrapperClass, innerHtml } = renderContactDetailHTML(
+          contact,
+          parts,
+          {
+            statusText,
+            showStatus,
+            detailsStateKey,
+            actionLabel,
+            actionDisabled,
+            frameClassName,
+            hideDetails,
+            showRarityBadge,
+          },
+        );
         if (useContainerAsWrapper) {
           container.className = [container.className, wrapperClass]
             .filter(Boolean)
