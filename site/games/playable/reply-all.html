@@ -293,6 +293,76 @@
         color: #000080;
         display: block;
       }
+      #sig-list .shop-card-ghost {
+        height: auto;
+        max-width: none;
+        width: 100%;
+        box-shadow: none;
+        border: none;
+        background: transparent;
+        padding: 2px 4px;
+        opacity: 1 !important;
+      }
+      #sig-list .shop-card-ghost .shop-card-header {
+        display: none;
+      }
+      #sig-list .shop-card-ghost .shop-card-frame {
+        background: transparent;
+        border: none;
+        margin: 0;
+        padding: 0;
+        height: auto;
+        width: 100%;
+        display: block;
+      }
+      #sig-list .shop-card-ghost .shop-card-name {
+        text-align: left;
+        font-size: 10px;
+        color: #374151;
+        display: block;
+        font-weight: 600;
+      }
+      #shop-owned-salutation .shop-card-ghost,
+      #shop-owned-signoff .shop-card-ghost {
+        height: auto;
+        max-width: none;
+        width: 100%;
+        box-shadow: none;
+        border: none;
+        background: transparent;
+        padding: 2px 4px;
+        opacity: 1 !important;
+      }
+      #shop-owned-salutation .shop-card-ghost .shop-card-header,
+      #shop-owned-signoff .shop-card-ghost .shop-card-header {
+        display: none;
+      }
+      #shop-owned-salutation .shop-card-ghost .shop-card-frame,
+      #shop-owned-signoff .shop-card-ghost .shop-card-frame {
+        background: transparent;
+        border: none;
+        margin: 0;
+        padding: 0;
+        height: auto;
+        width: 100%;
+        display: block;
+      }
+      #shop-owned-salutation .shop-card-ghost .shop-card-name,
+      #shop-owned-signoff .shop-card-ghost .shop-card-name {
+        text-align: left;
+        font-size: 10px;
+        color: #374151;
+        display: block;
+        font-weight: 600;
+      }
+      #shop-owned-salutation:has(.shop-card-ghost) p,
+      #shop-owned-signoff:has(.shop-card-ghost) p {
+        display: none;
+      }
+      #shop-owned-salutation.slot-has-ghost p,
+      #shop-owned-signoff.slot-has-ghost p {
+        display: none;
+      }
       .shop-card-ghost {
         opacity: 0.2;
       }
@@ -9558,19 +9628,18 @@
               ghostClass: "shop-card-ghost",
               chosenClass: "shop-card-chosen",
               dragClass: "shop-card-drag",
-              draggable: "p,div",
-              onMove: (evt) => {
-                if (evt.from?.id !== "shop-direct-list") return;
-                const dragged = evt.dragged;
-                if (!dragged) return;
-                const item = state.shop.directItems.find(
-                  (i) => i.id === dragged.dataset.itemId,
-                );
-                if (!item) return;
-                const compare = document.getElementById(
-                  "salutation-compare-overlay",
-                );
-                if (!compare) return;
+              draggable: ".shop-card-item",
+            onMove: (evt) => {
+              const dragged = evt.dragged;
+              if (!dragged) return;
+              const item = state.shop.directItems.find(
+                (i) => i.id === dragged.dataset.itemId,
+              );
+              const compare = document.getElementById(
+                "salutation-compare-overlay",
+              );
+              if (!item || !compare) return;
+              if (evt.to === salutationSlot) {
                 const current = state.player.salutation
                   ? state.player.salutation.name
                   : "None";
@@ -9580,13 +9649,19 @@
                   <div class="slot-compare-card">${item.name}</div>
                 `;
                 compare.style.display = "flex";
-              },
-              onEnd: () => {
-                const compare = document.getElementById(
-                  "salutation-compare-overlay",
-                );
-                if (compare) compare.style.display = "none";
-              },
+                salutationSlot.classList.add("slot-has-ghost");
+              } else {
+                compare.style.display = "none";
+                salutationSlot.classList.remove("slot-has-ghost");
+              }
+            },
+            onEnd: () => {
+              const compare = document.getElementById(
+                "salutation-compare-overlay",
+              );
+              if (compare) compare.style.display = "none";
+              salutationSlot.classList.remove("slot-has-ghost");
+            },
               onAdd: (evt) => {
                 const dragEl = evt.item;
                 if (!dragEl) return;
@@ -9639,34 +9714,39 @@
             ghostClass: "shop-card-ghost",
             chosenClass: "shop-card-chosen",
             dragClass: "shop-card-drag",
-            draggable: "p,div",
-            onMove: (evt) => {
-              if (evt.from?.id !== "shop-direct-list") return;
+            draggable: ".shop-card-item",
+            onMove: (evt, origEvt) => {
               const dragged = evt.dragged;
               if (!dragged) return;
               const item = state.shop.directItems.find(
                 (i) => i.id === dragged.dataset.itemId,
               );
-              if (!item) return;
               const compare = document.getElementById(
                 "signoff-compare-overlay",
               );
-              if (!compare) return;
-              const current = state.player.signOff
-                ? state.player.signOff.name
-                : "None";
-              compare.innerHTML = `
-                <div class="slot-compare-card">${current}</div>
-                <div class="slot-compare-arrow">→</div>
-                <div class="slot-compare-card">${item.name}</div>
-              `;
-              compare.style.display = "flex";
+              if (!item || !compare) return;
+              if (evt.to === signoffSlot) {
+                const current = state.player.signOff
+                  ? state.player.signOff.name
+                  : "None";
+                compare.innerHTML = `
+                  <div class="slot-compare-card">${current}</div>
+                  <div class="slot-compare-arrow">→</div>
+                  <div class="slot-compare-card">${item.name}</div>
+                `;
+                compare.style.display = "flex";
+                signoffSlot.classList.add("slot-has-ghost");
+              } else {
+                compare.style.display = "none";
+                signoffSlot.classList.remove("slot-has-ghost");
+              }
             },
             onEnd: () => {
               const compare = document.getElementById(
                 "signoff-compare-overlay",
               );
               if (compare) compare.style.display = "none";
+              signoffSlot.classList.remove("slot-has-ghost");
             },
             onAdd: (evt) => {
               const dragEl = evt.item;
