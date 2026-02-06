@@ -8587,6 +8587,9 @@
               actionLabel: "REACH OUT",
               actionDisabled: !hasSpaceForItem(item) || isItemOwned(item),
               onAction: () => buyDirectItem(item, cost),
+              hideDetails: true,
+              showRarityBadge: true,
+              useContainerAsWrapper: true,
             });
             overlay.style.width = "320px";
             positionShopOverlay(overlay, anchorEl, opts);
@@ -8693,6 +8696,9 @@
               actionLabel: "SELECT",
               actionDisabled: !hasSpaceForItem(item) || isItemOwned(item),
               onAction: () => confirmPackOption(item),
+              hideDetails: true,
+              showRarityBadge: true,
+              useContainerAsWrapper: true,
             });
             overlay.style.width = "320px";
             positionShopOverlay(overlay, anchorEl);
@@ -8780,6 +8786,8 @@
           detailsStateKey: "shopAddressBookDetailsOpen",
           actionLabel: `ARCHIVE CONTACT +${refund} REP`,
           actionDisabled: false,
+          showRarityBadge: true,
+          useContainerAsWrapper: true,
           onAction: () => {
             sellItem("contact", contact);
             updateShopUI();
@@ -10185,8 +10193,10 @@
             (item) => item.type === "contact" && item.id === contact.id,
           ),
         );
-        const baseBonusText =
+        const baseBonusTextRaw =
           getItemBonusText({ ...contact, id: "__base__" }) || "";
+        const baseBonusText =
+          baseBonusTextRaw === "No listed effect." ? "" : baseBonusTextRaw;
         const effectsText =
           Array.isArray(contact.effects) && contact.effects.length
             ? contact.effects.map((effect) => formatEffect(effect)).join(" • ")
@@ -10201,19 +10211,26 @@
           upgrades && upgrades.eff ? formatStatsText(upgrades.eff) : "";
         const showSpecialization =
           !!(upgrades && upgrades.subtitle && upgradeText);
-        const effectiveStats = {};
-        const mergeStats = (stats) => {
+        const mergeInto = (target, stats) => {
           if (!stats) return;
           Object.keys(stats).forEach((key) => {
             const value = stats[key];
             if (typeof value !== "number") return;
-            effectiveStats[key] = (effectiveStats[key] || 0) + value;
+            target[key] = (target[key] || 0) + value;
           });
         };
-        mergeStats(contact.eff);
-        mergeStats(boosts);
-        mergeStats(upgrades && upgrades.eff);
+        const effectiveStats = {};
+        mergeInto(effectiveStats, contact.eff);
+        mergeInto(effectiveStats, boosts);
+        mergeInto(effectiveStats, upgrades && upgrades.eff);
         const effectiveText = formatStatsText(effectiveStats);
+        const baseStats = {};
+        mergeInto(baseStats, contact.eff);
+        const baseText = formatStatsText(baseStats);
+        const hasExtraDetails =
+          !!trainingText ||
+          showSpecialization ||
+          (!!baseBonusText && baseText !== effectiveText);
         return {
           emailLine,
           deptLabel,
@@ -10224,6 +10241,7 @@
           upgradeText,
           showSpecialization,
           effectiveText,
+          hasExtraDetails,
           rarity: contact.rarity,
         };
       }
@@ -10238,16 +10256,27 @@
           actionDisabled = false,
           onAction = null,
           frameClassName = "",
+          hideDetails = false,
+          showRarityBadge = false,
+          useContainerAsWrapper = false,
         } = options;
         const parts = getContactDetailParts(contact);
-        const hasDetails =
-          parts.baseBonusText || parts.trainingText || parts.showSpecialization;
+        const hasDetails = !!parts.hasExtraDetails;
         const detailsOpen = detailsStateKey
           ? !!state[detailsStateKey]
           : false;
-        container.innerHTML = `
-          <div class="${frameClassName}">
-            <div class="flex justify-between items-start">
+        const rarityBadge = showRarityBadge
+          ? formatRarityBadge(parts.rarity || "common")
+          : "";
+        const wrapperClass = [
+          frameClassName,
+          showRarityBadge ? "relative" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+        const innerHtml = `
+          ${rarityBadge || ""}
+          <div class="flex justify-between items-start">
               <div class="min-w-0 flex-1">
                 <div class="font-bold text-[#000080] text-sm flex items-baseline gap-1 min-w-0">
                   <span class="truncate">${contact.name}</span>
@@ -10283,7 +10312,7 @@
             </div>
             <hr class="border-gray-200 my-2" />
             ${
-              hasDetails
+              !hideDetails && hasDetails
                 ? `<details class="text-[10px] text-gray-700" ${
                     detailsOpen ? "open" : ""
                   }>
@@ -10318,7 +10347,13 @@
                 ? `<div class="text-[10px] text-gray-700">Effects: ${parts.effectsText}</div>`
                 : ""
             }
-            <hr class="border-gray-200 my-2" />
+            ${
+              hideDetails
+                ? ""
+                : hasDetails
+                  ? `<hr class="border-gray-200 my-2" />`
+                  : ""
+            }
             ${
               parts.effectiveText
                 ? `<div class="text-[10px] text-gray-900">${parts.effectiveText}</div>`
@@ -10333,8 +10368,19 @@
                   </div>`
                 : ""
             }
-          </div>
         `;
+        if (useContainerAsWrapper) {
+          container.className = [container.className, wrapperClass]
+            .filter(Boolean)
+            .join(" ");
+          container.innerHTML = innerHtml;
+        } else {
+          container.innerHTML = `
+            <div class="${wrapperClass}">
+              ${innerHtml}
+            </div>
+          `;
+        }
 
         const detailsEl = container.querySelector("details");
         if (detailsEl && detailsStateKey) {
