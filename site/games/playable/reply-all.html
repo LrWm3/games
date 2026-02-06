@@ -130,6 +130,12 @@
         border: 1px solid #d1d5db;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
       }
+      .profile-stat-highlight {
+        background: #fff0b3;
+        outline: 2px solid #f59e0b;
+        box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.35);
+        font-weight: 700;
+      }
       .shop-rarity-badge {
         position: absolute;
         top: -8px;
@@ -154,7 +160,7 @@
         border-right: 2px solid var(--win-border-light) !important;
       }
       .shop-assets-container {
-        max-height: 50vh;
+        max-height: 40vh;
         overflow-y: auto;
       }
       .assets-window {
@@ -489,6 +495,22 @@
           </div>
           <div class="window-body p-2 bg-white space-y-2"></div>
         </div>
+        <div id="assets-window-profile" class="hidden assets-window bg-[#c0c0c0] retro-border shadow-2xl">
+          <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+            <span>MY PROFILE</span>
+            <button onclick="showAssetsWindow('none')" class="px-1">✕</button>
+          </div>
+          <div class="window-body p-2 bg-white space-y-2">
+            <div id="profile-modal-header" class="text-[11px] font-bold"></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" id="profile-modal-totals"></div>
+            <div>
+              <div class="text-[10px] font-bold uppercase text-gray-500 mb-1">
+                Sources
+              </div>
+              <div id="profile-modal-sources" class="space-y-2"></div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="shop-taskbar bg-[#c0c0c0] border-t border-[#808080] px-2 py-1 text-[9px] w-full mt-2">
         <button
@@ -504,6 +526,13 @@
           onclick="showAssetsWindow('email')"
         >
           Email Template
+        </button>
+        <button
+          id="assets-tab-profile"
+          class="retro-button text-[9px] px-2 py-0.5"
+          onclick="showAssetsWindow('profile')"
+        >
+          My Profile
         </button>
         <div class="ml-auto text-[9px] uppercase text-gray-700 font-semibold" id="shop-taskbar-quarter"></div>
       </div>
@@ -5310,6 +5339,36 @@
         "numCCperCCaction",
         "bccLimit",
       ];
+      const STAT_METADATA = {
+        escalateDmg: { label: "Escalate Damage", shortName: "Esc Dmg" },
+        globalDmg: { label: "All Messages Damage", shortName: "All Msg Dmg" },
+        singleDmg: { label: "Reply To Damage", shortName: "Reply Dmg" },
+        singleDmgMult: { label: "Reply To Multiplier", shortName: "Reply x" },
+        escalateDmgMult: { label: "Escalate Multiplier", shortName: "Esc x" },
+        globalDmgMult: { label: "All Messages Multiplier", shortName: "All x" },
+        maxHp: { label: "Max Credibility", shortName: "Max Cred" },
+        wins: { label: "Wins", shortName: "Wins" },
+        selfPromoteHeal: { label: "Self-Promote Heal", shortName: "Promote" },
+        deflectPower: { label: "Deflect Reflection", shortName: "Reflect" },
+        deflect: { label: "Deflect Reduction", shortName: "Reduce" },
+        followUpChance: { label: "Follow Up Chance", shortName: "Follow Up" },
+        escalateRecoverPerHit: {
+          label: "Escalate Recovery",
+          shortName: "Esc Recover",
+        },
+        defFlat: { label: "Flat Defense", shortName: "Flat Def" },
+        heal: { label: "Heal", shortName: "Heal" },
+        levMult: { label: "Leverage Multiplier", shortName: "Leverage x" },
+        repBonus: { label: "Bonus Reputation", shortName: "Bonus Rep" },
+        endRep: { label: "End Reputation", shortName: "End Rep" },
+        addressLimit: { label: "Address Limit", shortName: "Address" },
+        numCCperCCaction: { label: "CCs per Action", shortName: "CC / Action" },
+        bccLimit: { label: "BCC Limit", shortName: "BCC Limit" },
+      };
+
+      function getStatMeta(key) {
+        return STAT_METADATA[key] || { label: key, shortName: key };
+      }
 
       function applyUnitDefaults(u) {
         if (u.singleDmg == null) u.singleDmg = 10;
@@ -8379,6 +8438,8 @@
           }
         }
 
+        renderProfileWindow();
+
         const ownedBccs = document.getElementById("shop-owned-bccs");
         if (ownedBccs) ownedBccs.innerHTML = "";
 
@@ -8457,33 +8518,43 @@
       }
 
       function showAssetsWindow(kind, opts = {}) {
-        const contacts = document.getElementById("assets-window-contacts");
-        const email = document.getElementById("assets-window-email");
-        const tabContacts = document.getElementById("assets-tab-contacts");
-        const tabEmail = document.getElementById("assets-tab-email");
-        if (!contacts || !email || !tabContacts || !tabEmail) return;
+        const windows = {
+          contacts: document.getElementById("assets-window-contacts"),
+          email: document.getElementById("assets-window-email"),
+          profile: document.getElementById("assets-window-profile"),
+        };
+        const tabs = {
+          contacts: document.getElementById("assets-tab-contacts"),
+          email: document.getElementById("assets-tab-email"),
+          profile: document.getElementById("assets-tab-profile"),
+        };
+        const kinds = Object.keys(windows);
+        if (kinds.some((k) => !windows[k] || !tabs[k])) return;
         if (kind === "none") {
-          contacts.classList.add("hidden");
-          email.classList.add("hidden");
-          tabContacts.classList.remove("retro-border-inset");
-          tabEmail.classList.remove("retro-border-inset");
+          kinds.forEach((k) => {
+            windows[k].classList.add("hidden");
+            tabs[k].classList.remove("retro-border-inset");
+          });
           return;
         }
-        const isContacts = kind === "contacts";
-        const target = isContacts ? contacts : email;
-        const other = isContacts ? email : contacts;
-        const targetTab = isContacts ? tabContacts : tabEmail;
-        const otherTab = isContacts ? tabEmail : tabContacts;
-
+        if (!windows[kind]) return;
+        const target = windows[kind];
+        const targetTab = tabs[kind];
         const isOpen = !target.classList.contains("hidden");
+
         if (isOpen && !opts.forceOpen) {
           target.classList.add("hidden");
           targetTab.classList.remove("retro-border-inset");
         } else {
-          target.classList.remove("hidden");
-          other.classList.add("hidden");
-          targetTab.classList.add("retro-border-inset");
-          otherTab.classList.remove("retro-border-inset");
+          kinds.forEach((k) => {
+            if (k === kind) {
+              windows[k].classList.remove("hidden");
+              tabs[k].classList.add("retro-border-inset");
+            } else {
+              windows[k].classList.add("hidden");
+              tabs[k].classList.remove("retro-border-inset");
+            }
+          });
         }
 
         resizeAssetsWindows();
@@ -8495,6 +8566,9 @@
         overlay.innerHTML = "";
         overlay.style.width = "260px";
         clearEmailSlotHighlights();
+        if (item.itemType !== "dev") {
+          clearProfileStatHighlights();
+        }
         if (type === "direct" || type === "pack-option") {
           if (item.itemType === "salutation") highlightEmailSlot("salutation");
           if (item.itemType === "signoff") highlightEmailSlot("signoff");
@@ -8664,6 +8738,12 @@
         overlay.style.display = "block";
         positionShopOverlay(overlay, anchorEl, opts);
         overlay.onclick = (e) => e.stopPropagation();
+
+        if (item.itemType === "dev") {
+          showAssetsWindow("profile", { forceOpen: true });
+          renderProfileWindow();
+          highlightProfileStat(getPrimaryStatKey(item), getPrimaryStatDelta(item));
+        }
       }
 
       function highlightEmailSlot(kind) {
@@ -8771,6 +8851,7 @@
         overlay.style.display = "none";
         overlay.innerHTML = "";
         clearEmailSlotHighlights();
+        clearProfileStatHighlights();
       }
 
       function renderShopAddressBook() {
@@ -8828,13 +8909,8 @@
         }
       }
 
-      function renderStatsModal() {
-        const modal = document.getElementById("stats-modal");
-        const header = document.getElementById("stats-modal-header");
-        const totalsEl = document.getElementById("stats-modal-totals");
-        const sourcesEl = document.getElementById("stats-modal-sources");
-        if (!modal || !header || !totalsEl || !sourcesEl) return;
-
+      function renderStatsContent(header, totalsEl, sourcesEl) {
+        if (!header || !totalsEl || !sourcesEl) return;
         const p = state.player;
         const totals = computeUnitStats(p);
         header.innerText = `${p.name} (${p.title ? p.title.name : "Unranked"})`;
@@ -8892,6 +8968,15 @@
         });
       }
 
+      function renderStatsModal() {
+        const modal = document.getElementById("stats-modal");
+        const header = document.getElementById("stats-modal-header");
+        const totalsEl = document.getElementById("stats-modal-totals");
+        const sourcesEl = document.getElementById("stats-modal-sources");
+        if (!modal || !header || !totalsEl || !sourcesEl) return;
+        renderStatsContent(header, totalsEl, sourcesEl);
+      }
+
       function openStatsModal() {
         const modal = document.getElementById("stats-modal");
         if (!modal) return;
@@ -8903,6 +8988,105 @@
         const modal = document.getElementById("stats-modal");
         if (!modal) return;
         modal.classList.add("hidden");
+      }
+
+      function clearProfileStatHighlights() {
+        const rows = document.querySelectorAll(
+          "#profile-modal-totals [data-profile-stat]",
+        );
+        rows.forEach((row) => row.classList.remove("profile-stat-highlight"));
+      }
+
+      function highlightProfileStat(statKey, delta = 0) {
+        if (!statKey) return;
+        clearProfileStatHighlights();
+        let el = document.querySelector(
+          `#profile-modal-totals [data-profile-stat="${statKey}"]`,
+        );
+        if (!el) {
+          const totalsEl = document.getElementById("profile-modal-totals");
+          const totals = computeUnitStats(state.player);
+          if (!totalsEl) return;
+          const meta = getStatMeta(statKey);
+          const value = totals[statKey] || 0;
+          el = document.createElement("div");
+          el.className =
+            "flex justify-between bg-white retro-border px-2 py-1 text-[10px]";
+          el.dataset.profileStat = statKey;
+          el.innerHTML = `<span class="uppercase text-gray-500">${meta.shortName}</span><span class="font-mono">${value}</span>`;
+          totalsEl.appendChild(el);
+        }
+        if (delta) {
+          const valueEl = el.querySelector(".font-mono");
+          if (valueEl) {
+            valueEl.innerHTML = `${valueEl.textContent} <span class="text-emerald-700 font-bold">(+${delta})</span>`;
+          }
+        }
+        el.classList.add("profile-stat-highlight");
+        el.scrollIntoView({ block: "nearest" });
+      }
+
+      function getPrimaryStatKey(item) {
+        if (!item) return null;
+        for (const field of STAT_FIELDS) {
+          if (typeof item[field] === "number" && item[field] !== 0) return field;
+        }
+        return null;
+      }
+
+      function getPrimaryStatDelta(item) {
+        if (!item) return 0;
+        const key = getPrimaryStatKey(item);
+        if (!key) return 0;
+        const value = item[key];
+        return typeof value === "number" ? value : 0;
+      }
+
+      function renderProfileWindow() {
+        const header = document.getElementById("profile-modal-header");
+        const totalsEl = document.getElementById("profile-modal-totals");
+        const sourcesEl = document.getElementById("profile-modal-sources");
+        if (!header || !totalsEl || !sourcesEl) return;
+        const p = state.player;
+        const totals = computeUnitStats(p);
+        header.innerText = `${p.name} (${p.title ? p.title.name : "Unranked"})`;
+
+        totalsEl.innerHTML = "";
+        const compactFields = STAT_FIELDS.filter((field) => totals[field]);
+        compactFields.forEach((field) => {
+          const value = totals[field];
+          const meta = getStatMeta(field);
+          const div = document.createElement("div");
+          div.className =
+            "flex justify-between bg-white retro-border px-2 py-1 text-[10px]";
+          div.dataset.profileStat = field;
+          div.innerHTML = `<span class="uppercase text-gray-500">${meta.shortName}</span><span class="font-mono">${value}</span>`;
+          totalsEl.appendChild(div);
+        });
+
+        sourcesEl.innerHTML = "";
+        const sources = getStatSources(p);
+        if (sources.length === 0) {
+          sourcesEl.innerHTML =
+            '<div class="text-[10px] italic text-gray-500">No stat sources found.</div>';
+          return;
+        }
+        const details = document.createElement("details");
+        details.className = "text-[10px] text-gray-700";
+        details.innerHTML = `<summary class="cursor-pointer select-none text-[10px] uppercase text-gray-500">Sources</summary>`;
+        const list = document.createElement("div");
+        list.className = "pt-2 space-y-2";
+        sources.forEach((src) => {
+          const rows = Object.entries(src.stats)
+            .map(([k, v]) => `<span class="font-mono">${k}: ${v}</span>`)
+            .join(", ");
+          const div = document.createElement("div");
+          div.className = "p-2 bg-white retro-border";
+          div.innerHTML = `<div class="font-bold">${src.label}</div><div class="text-[10px] text-gray-600">${rows}</div>`;
+          list.appendChild(div);
+        });
+        details.appendChild(list);
+        sourcesEl.appendChild(details);
       }
 
       function handleOpponentDefeat(o, byPlayer = false) {
