@@ -131,6 +131,56 @@
         pointer-events: none;
         z-index: 5;
       }
+      .pack-open-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.6);
+        border: 2px dashed #93c5fd;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #1d4ed8;
+        pointer-events: none;
+        z-index: 5;
+      }
+      .shop-reroll-drop-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.6);
+        border: 2px dashed #93c5fd;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #1d4ed8;
+        pointer-events: none;
+        z-index: 5;
+      }
+      .profile-drop-target .shop-card-ghost,
+      .profile-drop-target .shop-card-chosen {
+        display: none !important;
+      }
+      .profile-drop-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.6);
+        border: 2px dashed #6ee7b7;
+        display: none;
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: 8px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #047857;
+        pointer-events: none;
+        z-index: 5;
+      }
       .ghost-hide {
         display: none !important;
       }
@@ -180,6 +230,7 @@
         flex-wrap: wrap;
         gap: 8px;
         justify-content: center;
+        position: relative;
       }
       #shop-packs-list.shop-card-list {
         justify-content: center;
@@ -232,6 +283,16 @@
       .shop-card-item:hover {
         transform: translate(-1px, -2px);
         box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.2);
+      }
+      .shop-empty-state {
+        width: 100%;
+        padding: 10px 8px;
+        text-align: center;
+        font-size: 10px;
+        color: #6b7280;
+        font-style: italic;
+        border: 1px dashed #d1d5db;
+        background: #f9fafb;
       }
       .shop-card-item.address-book-drag-preview {
         height: auto;
@@ -704,9 +765,10 @@
             <button
               id="shop-reroll-btn"
               onclick="rerollShop()"
-              class="retro-button text-black text-[10px] py-1 px-2 w-full"
+              class="retro-button text-black text-[10px] py-1 px-2 w-full relative"
             >
               Request Alternates (5 REP)
+              <div id="shop-reroll-drop-overlay" class="shop-reroll-drop-overlay"></div>
             </button>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <!-- Individual Opportunities -->
@@ -765,7 +827,8 @@
             <span>MY PROFILE</span>
             <button onclick="showAssetsWindow('none')" class="px-1">✕</button>
           </div>
-          <div class="window-body p-2 bg-white space-y-2">
+          <div class="window-body p-2 bg-white space-y-2 relative profile-drop-target">
+            <div id="profile-drop-overlay" class="profile-drop-overlay"></div>
             <div id="profile-modal-header" class="text-[11px] font-bold"></div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" id="profile-modal-totals"></div>
             <div>
@@ -6605,6 +6668,7 @@
         else if (item.itemType === "bcc") state.player.bccContacts.push(item);
         else if (item.itemType === "dev") item.apply();
         playSound("connect");
+        hideProfileDropOverlay();
         return { ok: true };
       }
 
@@ -6690,6 +6754,7 @@
           };
           list.appendChild(btn);
         });
+        currentPackOptions = optionItems.slice();
         initPackOptionsSortable(optionItems);
         renderPackManagement();
       }
@@ -6703,13 +6768,16 @@
         const packView = document.getElementById("shop-pack-view");
         if (mainContent) mainContent.classList.remove("hidden");
         if (packView) packView.classList.add("hidden");
+        currentPackOptions = [];
       }
 
-      function confirmPackOption(opt) {
+      function resolvePackSelection(opt, options = {}) {
         const pending = state.pendingTraining;
-        if (!pending) return;
+        if (!pending) return { ok: false, reason: "pending" };
         const result = applyItemAcquisition(opt, { source: "pack" });
-        if (!result.ok) return;
+        if (!result.ok) return result;
+        hideProfileDropOverlay();
+        if (typeof options.onApplied === "function") options.onApplied();
         pending.picksLeft -= 1;
         pending.options = pending.options.filter((id) => id !== opt.id);
         hideShopItemOverlay();
@@ -6722,6 +6790,11 @@
           updateUI();
           openPackView();
         }
+        return result;
+      }
+
+      function confirmPackOption(opt) {
+        resolvePackSelection(opt);
       }
 
       function addRandomBccs(player, count) {
@@ -7972,6 +8045,30 @@
         }
       }
 
+      function setupPackDropTarget() {
+        const btn = document.getElementById("shop-reroll-btn");
+        if (!btn || btn.dataset.packDropSetup) return;
+        btn.dataset.packDropSetup = "1";
+        btn.addEventListener("dragover", (e) => {
+          e.preventDefault();
+        });
+        btn.addEventListener("drop", (e) => {
+          e.preventDefault();
+          const id = e.dataTransfer?.getData("text/plain");
+          if (!id) return;
+          const pack = state.shop.packs.find((p) => p.id === id);
+          if (!pack) return;
+          if (state.player.reputation < pack.cost) return;
+          buyPack(pack);
+          updateShopUI();
+        });
+      }
+
+      function hideProfileDropOverlay() {
+        const overlay = document.getElementById("profile-drop-overlay");
+        if (overlay) overlay.style.display = "none";
+      }
+
       function showLoseScreen() {
         const p = state.player;
         document.getElementById("lose-title").innerText = p.title.name;
@@ -9030,8 +9127,14 @@
         const directList = document.getElementById("shop-direct-list");
         if (directList) {
           directList.innerHTML = "";
+          const packOverlay = document.createElement("div");
+          packOverlay.id = "pack-open-overlay";
+          packOverlay.className = "pack-open-overlay";
+          directList.appendChild(packOverlay);
+          let hasDirect = false;
           state.shop.directItems.forEach((item) => {
             if (item.purchased) return;
+            hasDirect = true;
             const row = document.createElement("div");
             row.className = "shop-card-item";
             row.dataset.itemId = item.id;
@@ -9053,14 +9156,22 @@
             };
             directList.appendChild(row);
           });
+          if (!hasDirect) {
+            const empty = document.createElement("div");
+            empty.className = "shop-empty-state";
+            empty.innerText = "No individual opportunities available.";
+            directList.appendChild(empty);
+          }
         }
 
         // --- PACKS ---
         const packList = document.getElementById("shop-packs-list");
         if (packList) {
           packList.innerHTML = "";
+          let hasPacks = false;
           state.shop.packs.forEach((pack) => {
             if (pack.purchased) return;
+            hasPacks = true;
             const row = document.createElement("div");
             row.className = "shop-card-item";
             row.dataset.itemId = pack.id;
@@ -9081,6 +9192,12 @@
             };
             packList.appendChild(row);
           });
+          if (!hasPacks) {
+            const empty = document.createElement("div");
+            empty.className = "shop-empty-state";
+            empty.innerText = "No group trainings available.";
+            packList.appendChild(empty);
+          }
         }
         initShopSortables();
         initOwnedSortables();
@@ -9165,16 +9282,20 @@
         ownedSigs: null,
         ownedSalutation: null,
         ownedSignoff: null,
+        profile: null,
       };
+      let currentPackOptions = [];
 
       function initShopSortables() {
         if (typeof Sortable === "undefined") return;
         const directList = document.getElementById("shop-direct-list");
         const packList = document.getElementById("shop-packs-list");
+        setupPackDropTarget();
         if (directList) {
           if (shopSortableInstances.direct)
             shopSortableInstances.direct.destroy();
           shopSortableInstances.direct = new Sortable(directList, {
+            delay: 16,
             group: { name: "shop-direct", pull: true, put: false },
             animation: 150,
             forceFallback: true,
@@ -9221,6 +9342,18 @@
                 }
               } else if (item.itemType === "dev") {
                 showAssetsWindow("profile", { forceOpen: true });
+                renderProfileWindow();
+                highlightProfileStat(
+                  getPrimaryStatKey(item),
+                  getPrimaryStatDelta(item),
+                );
+                const overlay = document.getElementById("profile-drop-overlay");
+                if (overlay) {
+                  const cost =
+                    item.cost || getItemCostByType(item.rarity, item.itemType);
+                  overlay.innerText = `Apply for ${cost} REP`;
+                  overlay.style.display = "flex";
+                }
               }
             },
             onEnd: () => {
@@ -9228,6 +9361,12 @@
               if (overlay) overlay.style.display = "none";
               const sigOverlay = document.getElementById("sig-drop-overlay");
               if (sigOverlay) sigOverlay.style.display = "none";
+              const profileOverlay =
+                document.getElementById("profile-drop-overlay");
+              if (profileOverlay) profileOverlay.style.display = "none";
+              const packOverlay =
+                document.getElementById("shop-reroll-drop-overlay");
+              if (packOverlay) packOverlay.style.display = "none";
             },
           });
         }
@@ -9235,13 +9374,18 @@
           if (shopSortableInstances.packs)
             shopSortableInstances.packs.destroy();
           shopSortableInstances.packs = new Sortable(packList, {
-            group: "shop-packs",
+            delay: 16,
+            group: { name: "shop-direct", pull: true, put: false },
             animation: 150,
             forceFallback: true,
             easing: "cubic-bezier(0.2, 0, 0, 1)",
             ghostClass: "shop-card-ghost",
             chosenClass: "shop-card-chosen",
             dragClass: "shop-card-drag",
+            setData: (dataTransfer, dragEl) => {
+              if (!dataTransfer || !dragEl) return;
+              dataTransfer.setData("text/plain", dragEl.dataset.itemId || "");
+            },
             onStart: (evt) => {
               const el = evt.item;
               if (!el) return;
@@ -9262,6 +9406,32 @@
                 showAssetsWindow("profile", { forceOpen: true });
               }
             },
+            onMove: (evt) => {
+              const overlay =
+                document.getElementById("shop-reroll-drop-overlay");
+              if (!overlay) return;
+              if (evt.to?.id === "shop-reroll-btn") {
+                const pack = state.shop.packs.find(
+                  (p) => p.id === evt.dragged?.dataset.itemId,
+                );
+                if (pack) {
+                  overlay.innerText =
+                    pack.cost && pack.cost > 0
+                      ? `Drop to open (${pack.cost} REP)`
+                      : "Drop to open";
+                } else {
+                  overlay.innerText = "Drop to open";
+                }
+                overlay.style.display = "flex";
+              } else {
+                overlay.style.display = "none";
+              }
+            },
+            onEnd: () => {
+              const overlay =
+                document.getElementById("shop-reroll-drop-overlay");
+              if (overlay) overlay.style.display = "none";
+            },
           });
         }
       }
@@ -9273,7 +9443,8 @@
         if (shopSortableInstances.packOptions)
           shopSortableInstances.packOptions.destroy();
         shopSortableInstances.packOptions = new Sortable(list, {
-          group: "shop-pack-options",
+          delay: 16,
+          group: { name: "shop-direct", pull: true, put: false },
           animation: 150,
           forceFallback: true,
           easing: "cubic-bezier(0.2, 0, 0, 1)",
@@ -9297,9 +9468,42 @@
               highlightEmailSlot(item.itemType);
             } else if (item.itemType === "dev") {
               showAssetsWindow("profile", { forceOpen: true });
+              renderProfileWindow();
+              highlightProfileStat(
+                getPrimaryStatKey(item),
+                getPrimaryStatDelta(item),
+              );
+              const overlay = document.getElementById("profile-drop-overlay");
+              if (overlay) {
+                overlay.innerText = "Apply training";
+                overlay.style.display = "flex";
+              }
             }
           },
+          onEnd: () => {
+            const overlay = document.getElementById("profile-drop-overlay");
+            if (overlay) overlay.style.display = "none";
+          },
         });
+      }
+
+      function getDraggedShopItem(dragEl, fromEl) {
+        if (!dragEl || !fromEl) return null;
+        const id = dragEl.dataset.itemId;
+        if (!id) return null;
+        if (fromEl.id === "shop-direct-list") {
+          return {
+            source: "shop",
+            item: state.shop.directItems.find((i) => i.id === id),
+          };
+        }
+        if (fromEl.id === "shop-pack-options") {
+          return {
+            source: "pack",
+            item: currentPackOptions.find((i) => i.id === id),
+          };
+        }
+        return null;
       }
 
       function initOwnedSortables() {
@@ -9311,27 +9515,32 @@
         const sigList = document.getElementById("sig-list");
         const salutationSlot = document.getElementById("shop-owned-salutation");
         const signoffSlot = document.getElementById("shop-owned-signoff");
+        const profileBody = document.querySelector(
+          "#assets-window-profile .window-body",
+        );
 
         if (contactList) {
           if (shopSortableInstances.ownedContacts)
             shopSortableInstances.ownedContacts.destroy();
           shopSortableInstances.ownedContacts = new Sortable(contactList, {
+            delay: 16,
             group: {
               name: "shop-direct",
               pull: true,
               put: (to, from, dragEl) => {
                 if (!dragEl) return false;
                 if (from === contactList) return true;
-                if (from?.el?.id !== "shop-direct-list") return false;
-                if (dragEl.dataset.itemType !== "contact") return false;
-                const item = state.shop.directItems.find(
-                  (i) => i.id === dragEl.dataset.itemId,
-                );
-                if (!item) return false;
-                const cost =
-                  item.cost || getItemCostByType(item.rarity, item.itemType);
-                if (state.player.reputation < cost) return false;
-                const eligibility = canAcquireItem(item);
+                const fromEl = from?.el || from;
+                const info = getDraggedShopItem(dragEl, fromEl);
+                if (!info || !info.item) return false;
+                if (info.item.itemType !== "contact") return false;
+                if (info.source === "shop") {
+                  const cost =
+                    info.item.cost ||
+                    getItemCostByType(info.item.rarity, info.item.itemType);
+                  if (state.player.reputation < cost) return false;
+                }
+                const eligibility = canAcquireItem(info.item);
                 return eligibility.ok;
               },
             },
@@ -9343,15 +9552,15 @@
             onMove: (evt) => {
               const dragged = evt.dragged;
               if (!dragged) return;
-              if (evt.to === contactList && evt.from?.id === "shop-direct-list") {
+              const info = getDraggedShopItem(dragged, evt.from);
+              if (evt.to === contactList && info?.item) {
                 contactList.classList.add("contacts-has-ghost");
-                const item = state.shop.directItems.find(
-                  (i) => i.id === dragged.dataset.itemId,
-                );
-                if (!item) return false;
-                const cost =
-                  item.cost || getItemCostByType(item.rarity, item.itemType);
-                if (state.player.reputation < cost) return false;
+                const item = info.item;
+                if (info.source === "shop") {
+                  const cost =
+                    item.cost || getItemCostByType(item.rarity, item.itemType);
+                  if (state.player.reputation < cost) return false;
+                }
                 const eligibility = canAcquireItem(item);
                 if (!eligibility.ok) return false;
                 dragged.classList.add("address-book-drag-preview");
@@ -9389,16 +9598,37 @@
             onAdd: (evt) => {
               const dragEl = evt.item;
               if (!dragEl) return;
-              const item = state.shop.directItems.find(
-                (i) => i.id === dragEl.dataset.itemId,
-              );
-              if (!item) {
+              const info = getDraggedShopItem(dragEl, evt.from);
+              if (!info || !info.item) {
+                updateShopUI();
+                return;
+              }
+              if (info.source === "pack") {
+                const result = resolvePackSelection(info.item, {
+                  onApplied: () => {
+                    if (typeof evt.newIndex === "number") {
+                      const moved = state.player.addressBook.pop();
+                      if (moved != null) {
+                        const targetIndex = Math.max(
+                          0,
+                          Math.min(
+                            evt.newIndex,
+                            state.player.addressBook.length,
+                          ),
+                        );
+                        state.player.addressBook.splice(targetIndex, 0, moved);
+                      }
+                    }
+                  },
+                });
+                dragEl.remove();
                 updateShopUI();
                 return;
               }
               const cost =
-                item.cost || getItemCostByType(item.rarity, item.itemType);
-              const result = applyItemAcquisition(item, {
+                info.item.cost ||
+                getItemCostByType(info.item.rarity, info.item.itemType);
+              const result = applyItemAcquisition(info.item, {
                 source: "shop",
                 cost,
               });
@@ -9425,22 +9655,24 @@
           if (shopSortableInstances.ownedBccs)
             shopSortableInstances.ownedBccs.destroy();
           shopSortableInstances.ownedBccs = new Sortable(bccList, {
+            delay: 16,
             group: {
               name: "shop-direct",
               pull: true,
               put: (to, from, dragEl) => {
                 if (!dragEl) return false;
                 if (from === bccList) return true;
-                if (from?.el?.id !== "shop-direct-list") return false;
-                if (dragEl.dataset.itemType !== "bcc") return false;
-                const item = state.shop.directItems.find(
-                  (i) => i.id === dragEl.dataset.itemId,
-                );
-                if (!item) return false;
-                const cost =
-                  item.cost || getItemCostByType(item.rarity, item.itemType);
-                if (state.player.reputation < cost) return false;
-                const eligibility = canAcquireItem(item);
+                const fromEl = from?.el || from;
+                const info = getDraggedShopItem(dragEl, fromEl);
+                if (!info || !info.item) return false;
+                if (info.item.itemType !== "bcc") return false;
+                if (info.source === "shop") {
+                  const cost =
+                    info.item.cost ||
+                    getItemCostByType(info.item.rarity, info.item.itemType);
+                  if (state.player.reputation < cost) return false;
+                }
+                const eligibility = canAcquireItem(info.item);
                 return eligibility.ok;
               },
             },
@@ -9452,15 +9684,15 @@
             onMove: (evt) => {
               const dragged = evt.dragged;
               if (!dragged) return;
-              if (evt.to === bccList && evt.from?.id === "shop-direct-list") {
+              const info = getDraggedShopItem(dragged, evt.from);
+              if (evt.to === bccList && info?.item) {
                 bccList.classList.add("bcc-has-ghost");
-                const item = state.shop.directItems.find(
-                  (i) => i.id === dragged.dataset.itemId,
-                );
-                if (!item) return false;
-                const cost =
-                  item.cost || getItemCostByType(item.rarity, item.itemType);
-                if (state.player.reputation < cost) return false;
+                const item = info.item;
+                if (info.source === "shop") {
+                  const cost =
+                    item.cost || getItemCostByType(item.rarity, item.itemType);
+                  if (state.player.reputation < cost) return false;
+                }
                 const eligibility = canAcquireItem(item);
                 if (!eligibility.ok) return false;
                 dragged.classList.add("address-book-drag-preview");
@@ -9494,19 +9726,25 @@
             onAdd: (evt) => {
               const dragEl = evt.item;
               if (!dragEl) return;
-              const item = state.shop.directItems.find(
-                (i) => i.id === dragEl.dataset.itemId,
-              );
-              if (!item) {
+              const info = getDraggedShopItem(dragEl, evt.from);
+              if (!info || !info.item) {
                 updateShopUI();
                 return;
               }
+              if (info.source === "pack") {
+                const result = resolvePackSelection(info.item);
+                dragEl.remove();
+                if (!result.ok) updateShopUI();
+                return;
+              }
               const cost =
-                item.cost || getItemCostByType(item.rarity, item.itemType);
-              const result = applyItemAcquisition(item, {
+                info.item.cost ||
+                getItemCostByType(info.item.rarity, info.item.itemType);
+              const result = applyItemAcquisition(info.item, {
                 source: "shop",
                 cost,
               });
+              dragEl.remove();
               if (!result.ok) {
                 updateShopUI();
                 return;
@@ -9520,22 +9758,24 @@
           if (shopSortableInstances.ownedSigs)
             shopSortableInstances.ownedSigs.destroy();
           shopSortableInstances.ownedSigs = new Sortable(sigList, {
+            delay: 5,
             group: {
               name: "shop-direct",
               pull: true,
               put: (to, from, dragEl) => {
                 if (!dragEl) return false;
                 if (from === sigList) return true;
-                if (from?.el?.id !== "shop-direct-list") return false;
-                if (dragEl.dataset.itemType !== "signature") return false;
-                const item = state.shop.directItems.find(
-                  (i) => i.id === dragEl.dataset.itemId,
-                );
-                if (!item) return false;
-                const cost =
-                  item.cost || getItemCostByType(item.rarity, item.itemType);
-                if (state.player.reputation < cost) return false;
-                const eligibility = canAcquireItem(item);
+                const fromEl = from?.el || from;
+                const info = getDraggedShopItem(dragEl, fromEl);
+                if (!info || !info.item) return false;
+                if (info.item.itemType !== "signature") return false;
+                if (info.source === "shop") {
+                  const cost =
+                    info.item.cost ||
+                    getItemCostByType(info.item.rarity, info.item.itemType);
+                  if (state.player.reputation < cost) return false;
+                }
+                const eligibility = canAcquireItem(info.item);
                 return eligibility.ok;
               },
             },
@@ -9547,15 +9787,15 @@
             onMove: (evt) => {
               const dragged = evt.dragged;
               if (!dragged) return;
-              if (evt.to === sigList && evt.from?.id === "shop-direct-list") {
-                const item = state.shop.directItems.find(
-                  (i) => i.id === dragged.dataset.itemId,
-                );
-                if (!item) return false;
-                const cost =
-                  item.cost || getItemCostByType(item.rarity, item.itemType);
-                if (state.player.reputation < cost) return false;
-                const eligibility = canAcquireItem(item);
+              const info = getDraggedShopItem(dragged, evt.from);
+              if (evt.to === sigList && info?.item) {
+                if (info.source === "shop") {
+                  const cost =
+                    info.item.cost ||
+                    getItemCostByType(info.item.rarity, info.item.itemType);
+                  if (state.player.reputation < cost) return false;
+                }
+                const eligibility = canAcquireItem(info.item);
                 if (!eligibility.ok) return false;
               }
             },
@@ -9578,16 +9818,21 @@
             onAdd: (evt) => {
               const dragEl = evt.item;
               if (!dragEl) return;
-              const item = state.shop.directItems.find(
-                (i) => i.id === dragEl.dataset.itemId,
-              );
-              if (!item) {
+              const info = getDraggedShopItem(dragEl, evt.from);
+              if (!info || !info.item) {
+                updateShopUI();
+                return;
+              }
+              if (info.source === "pack") {
+                const result = resolvePackSelection(info.item);
+                dragEl.remove();
                 updateShopUI();
                 return;
               }
               const cost =
-                item.cost || getItemCostByType(item.rarity, item.itemType);
-              const result = applyItemAcquisition(item, {
+                info.item.cost ||
+                getItemCostByType(info.item.rarity, info.item.itemType);
+              const result = applyItemAcquisition(info.item, {
                 source: "shop",
                 cost,
               });
@@ -9606,21 +9851,26 @@
           shopSortableInstances.ownedSalutation = new Sortable(
             salutationSlot,
             {
+              delay: 16,
               group: {
                 name: "shop-direct",
                 pull: true,
                 put: (to, from, dragEl) => {
                   if (!dragEl) return false;
                   if (from === salutationSlot) return true;
-                  if (from?.el?.id !== "shop-direct-list") return false;
-                  if (dragEl.dataset.itemType !== "salutation") return false;
-                  const item = state.shop.directItems.find(
-                    (i) => i.id === dragEl.dataset.itemId,
-                  );
-                  if (!item) return false;
-                  const cost =
-                    item.cost || getItemCostByType(item.rarity, item.itemType);
-                  if (state.player.reputation < cost) return false;
+                  const fromEl = from?.el || from;
+                  const info = getDraggedShopItem(dragEl, fromEl);
+                  if (!info || !info.item) return false;
+                  if (info.item.itemType !== "salutation") return false;
+                  if (info.source === "shop") {
+                    const cost =
+                      info.item.cost ||
+                      getItemCostByType(
+                        info.item.rarity,
+                        info.item.itemType,
+                      );
+                    if (state.player.reputation < cost) return false;
+                  }
                   return true;
                 },
               },
@@ -9632,13 +9882,11 @@
             onMove: (evt) => {
               const dragged = evt.dragged;
               if (!dragged) return;
-              const item = state.shop.directItems.find(
-                (i) => i.id === dragged.dataset.itemId,
-              );
+              const info = getDraggedShopItem(dragged, evt.from);
               const compare = document.getElementById(
                 "salutation-compare-overlay",
               );
-              if (!item || !compare) return;
+              if (!info?.item || !compare) return;
               if (evt.to === salutationSlot) {
                 const current = state.player.salutation
                   ? state.player.salutation.name
@@ -9646,7 +9894,7 @@
                 compare.innerHTML = `
                   <div class="slot-compare-card">${current}</div>
                   <div class="slot-compare-arrow">→</div>
-                  <div class="slot-compare-card">${item.name}</div>
+                  <div class="slot-compare-card">${info.item.name}</div>
                 `;
                 compare.style.display = "flex";
                 salutationSlot.classList.add("slot-has-ghost");
@@ -9665,16 +9913,21 @@
               onAdd: (evt) => {
                 const dragEl = evt.item;
                 if (!dragEl) return;
-                const item = state.shop.directItems.find(
-                  (i) => i.id === dragEl.dataset.itemId,
-                );
-                if (!item) {
+                const info = getDraggedShopItem(dragEl, evt.from);
+                if (!info || !info.item) {
+                  updateShopUI();
+                  return;
+                }
+                if (info.source === "pack") {
+                  const result = resolvePackSelection(info.item);
+                  dragEl.remove();
                   updateShopUI();
                   return;
                 }
                 const cost =
-                  item.cost || getItemCostByType(item.rarity, item.itemType);
-                const result = applyItemAcquisition(item, {
+                  info.item.cost ||
+                  getItemCostByType(info.item.rarity, info.item.itemType);
+                const result = applyItemAcquisition(info.item, {
                   source: "shop",
                   cost,
                 });
@@ -9692,21 +9945,26 @@
           if (shopSortableInstances.ownedSignoff)
             shopSortableInstances.ownedSignoff.destroy();
           shopSortableInstances.ownedSignoff = new Sortable(signoffSlot, {
+            delay: 16,
             group: {
               name: "shop-direct",
               pull: true,
               put: (to, from, dragEl) => {
                 if (!dragEl) return false;
                 if (from === signoffSlot) return true;
-                if (from?.el?.id !== "shop-direct-list") return false;
-                if (dragEl.dataset.itemType !== "signoff") return false;
-                const item = state.shop.directItems.find(
-                  (i) => i.id === dragEl.dataset.itemId,
-                );
-                if (!item) return false;
-                const cost =
-                  item.cost || getItemCostByType(item.rarity, item.itemType);
-                if (state.player.reputation < cost) return false;
+                const fromEl = from?.el || from;
+                const info = getDraggedShopItem(dragEl, fromEl);
+                if (!info || !info.item) return false;
+                if (info.item.itemType !== "signoff") return false;
+                if (info.source === "shop") {
+                  const cost =
+                    info.item.cost ||
+                    getItemCostByType(
+                      info.item.rarity,
+                      info.item.itemType,
+                    );
+                  if (state.player.reputation < cost) return false;
+                }
                 return true;
               },
             },
@@ -9718,13 +9976,11 @@
             onMove: (evt, origEvt) => {
               const dragged = evt.dragged;
               if (!dragged) return;
-              const item = state.shop.directItems.find(
-                (i) => i.id === dragged.dataset.itemId,
-              );
               const compare = document.getElementById(
                 "signoff-compare-overlay",
               );
-              if (!item || !compare) return;
+              const info = getDraggedShopItem(dragged, evt.from);
+              if (!info?.item || !compare) return;
               if (evt.to === signoffSlot) {
                 const current = state.player.signOff
                   ? state.player.signOff.name
@@ -9732,7 +9988,7 @@
                 compare.innerHTML = `
                   <div class="slot-compare-card">${current}</div>
                   <div class="slot-compare-arrow">→</div>
-                  <div class="slot-compare-card">${item.name}</div>
+                  <div class="slot-compare-card">${info.item.name}</div>
                 `;
                 compare.style.display = "flex";
                 signoffSlot.classList.add("slot-has-ghost");
@@ -9751,19 +10007,108 @@
             onAdd: (evt) => {
               const dragEl = evt.item;
               if (!dragEl) return;
-              const item = state.shop.directItems.find(
-                (i) => i.id === dragEl.dataset.itemId,
-              );
-              if (!item) {
+              const info = getDraggedShopItem(dragEl, evt.from);
+              if (!info || !info.item) {
+                updateShopUI();
+                return;
+              }
+              if (info.source === "pack") {
+                const result = resolvePackSelection(info.item);
+                dragEl.remove();
                 updateShopUI();
                 return;
               }
               const cost =
-                item.cost || getItemCostByType(item.rarity, item.itemType);
-              const result = applyItemAcquisition(item, {
+                info.item.cost ||
+                getItemCostByType(info.item.rarity, info.item.itemType);
+              const result = applyItemAcquisition(info.item, {
                 source: "shop",
                 cost,
               });
+              if (!result.ok) {
+                updateShopUI();
+                return;
+              }
+              updateShopUI();
+            },
+          });
+        }
+
+        if (profileBody) {
+          if (shopSortableInstances.profile)
+            shopSortableInstances.profile.destroy();
+          shopSortableInstances.profile = new Sortable(profileBody, {
+            delay: 16,
+            group: {
+              name: "shop-direct",
+              pull: false,
+              put: (to, from, dragEl) => {
+                if (!dragEl) return false;
+                const fromEl = from?.el || from;
+                const info = getDraggedShopItem(dragEl, fromEl);
+                if (!info || !info.item) return false;
+                if (info.item.itemType !== "dev") return false;
+                if (info.source === "shop") {
+                  const cost =
+                    info.item.cost ||
+                    getItemCostByType(info.item.rarity, info.item.itemType);
+                  if (state.player.reputation < cost) return false;
+                }
+                return true;
+              },
+            },
+            sort: false,
+            animation: 150,
+            ghostClass: "shop-card-ghost",
+            chosenClass: "shop-card-chosen",
+            dragClass: "shop-card-drag",
+            onMove: (evt) => {
+              const dragged = evt.dragged;
+              if (!dragged) return;
+              const info = getDraggedShopItem(dragged, evt.from);
+              const overlay = document.getElementById("profile-drop-overlay");
+              if (!overlay || !info?.item) return;
+              if (evt.to === profileBody) {
+                if (info.source === "shop") {
+                  const cost =
+                    info.item.cost ||
+                    getItemCostByType(info.item.rarity, info.item.itemType);
+                  overlay.innerText = `Apply for ${cost} REP`;
+                } else {
+                  overlay.innerText = "Apply training";
+                }
+                overlay.style.display = "flex";
+              } else {
+                overlay.style.display = "none";
+              }
+            },
+            onEnd: () => {
+              const overlay = document.getElementById("profile-drop-overlay");
+              if (overlay) overlay.style.display = "none";
+            },
+            onAdd: (evt) => {
+              const dragEl = evt.item;
+              if (!dragEl) return;
+              const info = getDraggedShopItem(dragEl, evt.from);
+              if (!info || !info.item) {
+                updateShopUI();
+                return;
+              }
+              if (info.source === "pack") {
+                const result = resolvePackSelection(info.item);
+                dragEl.remove();
+                updateShopUI();
+                return;
+              }
+              const cost =
+                info.item.cost ||
+                getItemCostByType(info.item.rarity, info.item.itemType);
+              const result = applyItemAcquisition(info.item, {
+                source: "shop",
+                cost,
+              });
+              hideProfileDropOverlay();
+              dragEl.remove();
               if (!result.ok) {
                 updateShopUI();
                 return;
@@ -9967,7 +10312,7 @@
               description: item.description || "",
               rarity: item.rarity,
               repLabel,
-              actionLabel: item.purchased ? "OPENED" : "OPEN PACK",
+              actionLabel: item.purchased ? "COMPLETED" : "ATTEND EVENT",
               actionDisabled: !!item.purchased,
               onAction: () => buyPack(item),
             });
@@ -10095,7 +10440,7 @@
       }
 
       function runOverlayWireframe(startRect, endRect, onDone) {
-        const duration = 200;
+        const duration = 100;
         const startTime = performance.now();
         const totalFrames = 5;
         const animate = (now) => {
