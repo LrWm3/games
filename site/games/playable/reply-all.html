@@ -8943,7 +8943,7 @@
           if (shopSortableInstances.direct)
             shopSortableInstances.direct.destroy();
           shopSortableInstances.direct = new Sortable(directList, {
-            group: { name: "shop-direct", pull: false, put: false },
+            group: "shop-direct",
             animation: 200,
             easing: "cubic-bezier(0.2, 0, 0, 1)",
             ghostClass: "shop-card-ghost",
@@ -8955,8 +8955,9 @@
           if (shopSortableInstances.packs)
             shopSortableInstances.packs.destroy();
           shopSortableInstances.packs = new Sortable(packList, {
-            group: { name: "shop-packs", pull: false, put: false },
+            group: "shop-packs",
             animation: 200,
+            forceFallback: true,
             easing: "cubic-bezier(0.2, 0, 0, 1)",
             ghostClass: "shop-card-ghost",
             chosenClass: "shop-card-chosen",
