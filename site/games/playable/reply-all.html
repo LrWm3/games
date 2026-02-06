@@ -1880,6 +1880,7 @@
           title: "Facilities Lead",
           rarity: "rare",
           departmentId: "facilities_and_administration",
+          employeeId: "larry_facilities_and_administration",
           loopInText:
             "I'm looping in <strong>{name}</strong> ({title}) to handle the facilities impact.",
           eff: {
@@ -3980,40 +3981,44 @@
           ],
         },
         {
-          id: "elliot_policy",
-          name: "Elliot (Policy Analyst)",
-          email: "e.policy@gov.org",
-          departmentId: "policy",
+          id: "sho_marketing",
+          name: "Sho (Account Mgr)",
+          email: "s.marketing@gov.org",
+          departmentId: "marketing",
           eff: { endRep: 2, singleDmg: 2 },
           color: "text-blue-600",
           defeatMessage:
-            "I'm stepping out. Please submit updates on this to a policy process unrelated to myself.",
+            "I'm stepping out. The BCR report is almost finalized—I'll follow up when it's ready.",
           selfPromote:
-            "I shipped a policy framework that reduced approval time by half.",
-          deflectLines: ["I'm pausing to map this to our policy framework."],
+            "I nearly finalized the BCR report and just need a little more time to publish it.",
+          deflectLines: ["I'm pausing to finish the BCR report draft."],
           lines: [
             {
-              text: "All‑staff messages require a single approved sender. This chain violates policy.",
+              text: "Holiday note: the BCR report is nearly done—just need time to get it ready.",
               missionId: "holiday_reply_all",
             },
             {
-              text: "We should move this to a one‑way announcement and close replies.",
+              text: "As a little holiday gift, I'll soon be sending out the BCR.",
               missionId: "holiday_reply_all",
             },
             {
-              text: "We need a clear logic model before making this change.",
+              text: "Check under your tree, a BCR will be waiting for you there.",
+              missionId: "holiday_reply_all",
+            },
+            {
+              text: "I’m this close to completing the BCR report; I need a little time to get it over the line.",
               missionId: null,
             },
             {
-              text: "This should follow the established policy pipeline. Please submit formally.",
+              text: "The BCR report is nearly complete—please allow time to prepare the final version.",
               missionId: null,
             },
             {
-              text: "I'm drafting a brief to capture the policy implications.",
+              text: "I’m finalizing the BCR report; I’ll send it as soon as it’s ready.",
               missionId: null,
             },
             {
-              text: "We cannot bypass stakeholder review without precedent.",
+              text: "I’m almost done with the BCR report—just need time to make it presentable.",
               missionId: null,
             },
           ],
@@ -4860,7 +4865,7 @@
           turns: 20,
           onlyMissionLines: true,
           intro:
-            "Happy holidays everyone!<br><br>Thank you to everyone for attending the holiday party once again! We also want to wish Elliot well once again for winning the 'Cultural Award' for the year.",
+            "Happy holidays everyone!<br><br>Thank you to everyone for attending the holiday party once again! We also want to wish Sho well once again for winning the 'Cultural Award' for the year.",
           opponents: [
             {
               id: 14,
@@ -4909,7 +4914,7 @@
             },
             {
               id: 19,
-              employeeId: "elliot_policy",
+              employeeId: "sho_marketing",
               hp: 50,
               maxHp: 50,
               wins: 2,
