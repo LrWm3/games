@@ -9452,6 +9452,30 @@
         // Heal from all sources
         p.hp = Math.min(totalMaxHp, p.hp + getUnitTotalHeal(p));
 
+        // Pre-resolve AI deflects so they happen before the player action.
+        const activeOpponents = opponents.filter((o) => o.hp > 0);
+        activeOpponents.forEach((a) => {
+          if (a.preDeflectedThisTurn) return;
+          if (a.deflectChargeReduce > 0 || a.deflectChargeReflect > 0) return;
+          if (Math.random() >= 0.15) return;
+          a.preDeflectedThisTurn = true;
+          a.deflectChargeReflect = getUnitDeflectReflect(a);
+          a.deflectChargeReduce = getUnitDeflectReduce(a);
+          const deflectLine = drawFromLineBag(
+            a,
+            "deflect",
+            a.deflectLines,
+            "I'm pausing to document this thread before responding further.",
+          );
+          addEmailToLog(
+            a.name,
+            "everyone@gov.org",
+            "Holding Response",
+            `${formatMessageBody(a, deflectLine)}<br><br><strong>Deflection Ready:</strong> Reduce ${a.deflectChargeReduce}, Reflect ${a.deflectChargeReflect}`,
+            "bg-blue-50",
+          );
+        });
+
         if (type === "ATTACK") {
           playSound("send");
           let d = getUnitDamage(p, "single");
@@ -9688,6 +9712,10 @@
         alive.forEach((a, idx) => {
           setTimeout(() => {
             if (a.hp <= 0 || state.gameOver) return;
+            if (a.preDeflectedThisTurn) {
+              a.preDeflectedThisTurn = false;
+              return;
+            }
 
             if (a.isStunned) {
               a.isStunned = false;
@@ -9785,6 +9813,20 @@
 
             a.hp = Math.min(getUnitMaxHp(a), a.hp + getUnitTotalHeal(a));
 
+            const aMaxHp = getUnitMaxHp(a);
+            const promoteHeal = getUnitSelfPromoteHeal(a, 15);
+            const defFlat = getUnitFlatDef(a);
+            const defReduce = a.deflectChargeReduce || 0;
+            const playerSingle = getUnitDamage(state.player, "single");
+            const playerEscalate = getUnitDamage(state.player, "escalate");
+            const dmgSingle = Math.max(0, playerSingle - defFlat - defReduce);
+            const dmgEscalate = Math.max(0, playerEscalate - defFlat - defReduce);
+            const inOneHitRange = dmgSingle >= a.hp || dmgEscalate >= a.hp;
+            const canUseFullPromote =
+              promoteHeal > 0 && a.hp + promoteHeal <= aMaxHp;
+            const selfPromoteEligible =
+              a.hp < aMaxHp && a.wins > 0 && inOneHitRange && canUseFullPromote;
+
             const availFromBook = a.addressBook
               .map((id) => CONTACTS.find((con) => con.id === id))
               .filter(
@@ -9816,10 +9858,8 @@
                   "bg-blue-50",
                 );
               }
-            } else if (roll < 0.3 && a.hp < 20 && a.wins > 0) {
+            } else if (roll < 0.3 && selfPromoteEligible) {
               a.wins--;
-              const promoteHeal = getUnitSelfPromoteHeal(a, 15);
-              const aMaxHp = getUnitMaxHp(a);
               const promotePotential = a.hp + promoteHeal;
               const promoteOverflow = Math.max(0, promotePotential - aMaxHp);
               a.hp = Math.min(aMaxHp, promotePotential);
