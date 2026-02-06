@@ -6827,7 +6827,10 @@
           state.player.signatures.push(item);
         else if (item.itemType === "salutation") state.player.salutation = item;
         else if (item.itemType === "signoff") state.player.signOff = item;
-        else if (item.itemType === "bcc") state.player.bccContacts.push(item);
+        else if (item.itemType === "bcc") {
+          state.player.bccContacts.push(item);
+          logBccGains([item], "purchase", { source });
+        }
         else if (item.itemType === "dev") item.apply();
         playSound("connect");
         logGameEvent("purchase", {
@@ -7005,6 +7008,7 @@
         if (picks <= 0) return [];
         const picked = pickWeighted(pool, picks);
         picked.forEach((b) => player.bccContacts.push({ ...b }));
+        if (player.id === "player") logBccGains(picked, "effect:add_bcc");
         return picked;
       }
 
@@ -7024,6 +7028,8 @@
             added.push(clone);
           }
         }
+        if (player.id === "player")
+          logBccGains(added, "effect:duplicate_bcc");
         return added;
       }
 
@@ -11702,6 +11708,20 @@
         });
       }
 
+      function logBccGains(added, reason, extra = {}) {
+        if (!added || !added.length) return;
+        logGameEvent("bcc_gain", {
+          reason,
+          bccs: added.map((b) => ({
+            id: b.id,
+            name: b.name || null,
+            rarity: b.rarity || null,
+            effects: snapshotItemEffects(b),
+          })),
+          ...extra,
+        });
+      }
+
       function performAction(type) {
         if (state.isProcessing || state.gameOver) return;
         if (
@@ -13294,6 +13314,7 @@
             const count = Math.min(2, slots, pool.length);
             const picked = pickWeighted(pool, count);
             picked.forEach((b) => state.player.bccContacts.push({ ...b }));
+            logBccGains(picked, "bcc:randomBccs", { sourceBcc: bcc.id });
             bccLog.outcome = {
               type: "randomBccs",
               added: picked.map((b) => b.id),
