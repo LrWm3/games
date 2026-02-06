@@ -2551,10 +2551,10 @@
           rarity: "uncommon",
           effects: [
             {
-              event: "promote_overflow",
+              event: "thread_end",
               type: "add_random_cc_bonus_scaled",
-              scaleBy: "overflow",
-              step: 10,
+              scaleBy: "active_cc_count",
+              step: 2,
             },
           ],
         },
@@ -4444,7 +4444,7 @@
               maxHp: 30,
               wins: 2,
               singleDmg: 15,
-              flatDef: 3,
+              defFlat: 3,
               buffs: [],
               addressBook: ["cc_willy_boy_information_technology"],
             },
@@ -4462,7 +4462,7 @@
               employeeId: "priya_finance",
               hp: 50,
               maxHp: 50,
-              flatDef: 2,
+              defFlat: 2,
               wins: 2,
               buffs: [],
               addressBook: ["cc_adam_finance"],
@@ -4734,7 +4734,7 @@
               hp: 60,
               maxHp: 60,
               singleDmg: 15,
-              flatDef: 5,
+              defFlat: 5,
               wins: 3,
               buffs: [],
               numCCperCCaction: 2,
@@ -4815,7 +4815,7 @@
               buffs: [],
               singleDmg: 20,
               escalateDmg: 10,
-              flatDef: 10,
+              defFlat: 10,
               numCCperCCaction: 2,
               addressBook: [
                 "cc_meghan_cassedy_executive_council_office",
@@ -5445,6 +5445,23 @@
         return ITEM_TYPE_LABELS[itemType] || itemType;
       }
 
+      function getItemActionLabel(item, mode, eligibility) {
+        if (!item || !item.itemType) return "UNAVAILABLE";
+        const type = item.itemType;
+        if (mode === "pack") return "SELECT";
+        const baseLabels = {
+          contact: "REACH OUT",
+          signature: "APPLY",
+          salutation: "SET GREETING",
+          signoff: "SET SIGN-OFF",
+          bcc: "REQUEST",
+          dev: "ENROLL",
+        };
+        if (type === "contact") return baseLabels.contact;
+        if (!eligibility?.ok) return eligibility?.actionLabel || "UNAVAILABLE";
+        return baseLabels[type] || "SUBMIT REQUEST";
+      }
+
       function applyUnitDefaults(u) {
         if (u.singleDmg == null) u.singleDmg = 10;
         if (u.escalateDmg == null) u.escalateDmg = 5;
@@ -6060,6 +6077,85 @@
           .replace(/{department}/g, departmentName);
       }
 
+      function decideAiAction(ai, alive, player) {
+        const pool = [
+          ...alive.filter((o) => o.id !== ai.id),
+          {
+            id: "player",
+            name: player.name,
+            email: player.email,
+            departmentId: player.departmentId,
+          },
+        ];
+        const weights = pool.map((t) =>
+          t.departmentId === ai.departmentId ? 0 : 1.0,
+        );
+        let totalWeight = weights.reduce((acc, w) => acc + w, 0);
+        let random = Math.random() * totalWeight;
+        let target = pool[0];
+        for (let i = 0; i < pool.length; i++) {
+          random -= weights[i];
+          if (random <= 0) {
+            target = pool[i];
+            break;
+          }
+        }
+
+        const roll = Math.random();
+        const maxHp = getUnitMaxHp(ai);
+        ai.hp = Math.min(maxHp, ai.hp + getUnitTotalHeal(ai));
+
+        const promoteHeal = getUnitSelfPromoteHeal(ai, 15);
+        const defFlat = getUnitFlatDef(ai);
+        const defReduce = ai.deflectChargeReduce || 0;
+        const playerSingle = getUnitDamage(player, "single");
+        const playerEscalate = getUnitDamage(player, "escalate");
+        const dmgSingle = Math.max(0, playerSingle - defFlat - defReduce);
+        const dmgEscalate = Math.max(0, playerEscalate - defFlat - defReduce);
+        const inOneHitRange = dmgSingle >= ai.hp || dmgEscalate >= ai.hp;
+        const canUseFullPromote =
+          promoteHeal > 0 && ai.hp + promoteHeal <= maxHp;
+        const selfPromoteEligible =
+          ai.hp < maxHp && ai.wins > 0 && inOneHitRange && canUseFullPromote;
+
+        const availFromBook = ai.addressBook
+          .map((id) => CONTACTS.find((con) => con.id === id))
+          .filter(
+            (c) => c && !isContactInLoop(c.id) && !isContactImplicated(c),
+          );
+        if (roll < 0.15 && availFromBook.length > 0) {
+          const numPicks = computeUnitStats(ai).numCCperCCaction;
+          const picks = [];
+          for (let p = 0; p < numPicks; p++) {
+            const currentAvail = ai.addressBook
+              .map((id) => CONTACTS.find((con) => con.id === id))
+              .filter(
+                (c) =>
+                  c && !isContactInLoop(c.id) && !isContactImplicated(c),
+              );
+            if (currentAvail.length === 0) break;
+            picks.push(
+              currentAvail[Math.floor(Math.random() * currentAvail.length)],
+            );
+          }
+          return { type: "cc", target, ccTargets: picks };
+        }
+        if (roll < 0.3 && selfPromoteEligible) {
+          return { type: "promote", target, promoteHeal, maxHp };
+        }
+
+        const actionRoll = Math.random();
+        if (
+          actionRoll < 0.15 &&
+          ai.deflectChargeReduce <= 0 &&
+          ai.deflectChargeReflect <= 0
+        ) {
+          return { type: "deflect", target };
+        }
+        if (actionRoll < 0.35) return { type: "escalate", target };
+        return { type: "attack", target };
+      }
+
       function isContactImplicated(contact) {
         if (!contact || !contact.employeeId) return false;
         return opponents.some((o) => o.employeeId === contact.employeeId);
@@ -6130,7 +6226,36 @@
         openPackView();
       }
 
-      function applyPackItem(item) {
+      function alertAcquireFailure(item, reason) {
+        if (item.itemType === "contact") {
+          alert(
+            reason === "limit"
+              ? "Address book full. Archive a contact to make space."
+              : "That contact is already in your address book.",
+          );
+          return;
+        }
+        if (item.itemType === "signature") {
+          alert(
+            reason === "limit"
+              ? "Signature limit reached. Remove a signature to make space."
+              : "That signature is already in use.",
+          );
+          return;
+        }
+        if (item.itemType === "bcc") {
+          alert("BCC capacity reached. Discard a BCC to make space.");
+        }
+      }
+
+      function applyItemAcquisition(item, opts = {}) {
+        if (!item) return { ok: false };
+        const source = opts.source || "shop";
+        const cost =
+          typeof opts.cost === "number"
+            ? opts.cost
+            : getItemCostByType(item.rarity, item.itemType);
+
         if (item.itemType === "salutation" && state.player.salutation) {
           sellItem("salutation", state.player.salutation);
         }
@@ -6139,40 +6264,35 @@
         }
 
         const eligibility = canAcquireItem(item);
-        if (!eligibility.ok && item.itemType !== "salutation" && item.itemType !== "signoff") {
-          if (item.itemType === "contact") {
-            alert(
-              eligibility.reason === "limit"
-                ? "Address book full. Archive a contact to make space."
-                : "That contact is already in your address book.",
-            );
-          } else if (item.itemType === "signature") {
-            alert(
-              eligibility.reason === "limit"
-                ? "Signature limit reached. Remove a signature to make space."
-                : "That signature is already in use.",
-            );
-          } else if (item.itemType === "bcc") {
-            alert("BCC capacity reached. Discard a BCC to make space.");
-          }
-          return false;
+        if (
+          !eligibility.ok &&
+          item.itemType !== "salutation" &&
+          item.itemType !== "signoff"
+        ) {
+          alertAcquireFailure(item, eligibility.reason);
+          return { ok: false, reason: eligibility.reason };
         }
 
-        if (item.itemType === "contact") {
+        if (source === "shop") {
+          if (state.player.reputation < cost) {
+            return { ok: false, reason: "rep" };
+          }
+          state.player.reputation -= cost;
+          item.purchased = true;
+        }
+
+        if (item.itemType === "contact")
           state.player.addressBook.push(item.id);
-        }
-        else if (item.itemType === "signature") {
+        else if (item.itemType === "signature")
           state.player.signatures.push(item);
-        }
         else if (item.itemType === "salutation") state.player.salutation = item;
         else if (item.itemType === "signoff") state.player.signOff = item;
-        else if (item.itemType === "bcc") {
-          state.player.bccContacts.push(item);
-        }
+        else if (item.itemType === "bcc") state.player.bccContacts.push(item);
         else if (item.itemType === "dev") item.apply();
         playSound("connect");
-        return true;
+        return { ok: true };
       }
+
 
       function togglePackManagement() {
         const container = document.getElementById("pack-management-container");
@@ -6268,8 +6388,8 @@
       function confirmPackOption(opt) {
         const pending = state.pendingTraining;
         if (!pending) return;
-        const applied = applyPackItem(opt);
-        if (!applied) return;
+        const result = applyItemAcquisition(opt, { source: "pack" });
+        if (!result.ok) return;
         pending.picksLeft -= 1;
         pending.options = pending.options.filter((id) => id !== opt.id);
         saveGame();
@@ -6657,6 +6777,10 @@
             if (effect.scaleBy === "overflow")
               base =
                 typeof context.overflow === "number" ? context.overflow : 0;
+            if (effect.scaleBy === "active_cc_count")
+              base = Array.isArray(unit.buffs)
+                ? unit.buffs.filter((b) => b.usedBy === unit.name).length
+                : 0;
             if (base <= 0) return;
             const count = Math.floor(base / step);
             if (count <= 0) return;
@@ -8025,6 +8149,97 @@
         return parts.join(", ");
       }
 
+      function getDisplayEffect(item, opts = {}) {
+        if (!item) return "";
+        if (Array.isArray(item.effects) && item.effects.length) {
+          const isSignoff =
+            item.itemType === "signoff" ||
+            SIGNOFFS.some((s) => s.id === item.id);
+          return item.effects
+            .map((effect) =>
+              formatEffect(effect, {
+                includeLimit: isSignoff,
+                contactNoun: isSignoff ? "Contact" : "CC",
+                upgradeVerb: isSignoff ? "train" : "upgrade",
+              }),
+            )
+            .join(" • ");
+        }
+        const parts = [];
+        const statsText = formatStatsText(item);
+        if (statsText) parts.push(statsText);
+        if (item.eff && typeof item.eff === "object") {
+          const effText = formatStatsText(item.eff);
+          if (effText) parts.push(effText);
+        }
+
+        if (
+          item.id &&
+          item.id.startsWith("cc_") &&
+          typeof state !== "undefined" &&
+          state.player
+        ) {
+          const tCount =
+            (state.player.contactTrainingCount &&
+              state.player.contactTrainingCount[item.id]) ||
+            0;
+          const trainingLabel =
+            tCount >= 3 ? "Fully Trained" : `Training ${tCount}/3`;
+          const boosts =
+            state.player.contactPermanentBoosts &&
+            state.player.contactPermanentBoosts[item.id];
+          if (boosts) {
+            const bText = formatStatsText(boosts);
+            if (bText)
+              parts.push(
+                `<span class="text-blue-700 font-bold">(${bText} ${trainingLabel})</span>`,
+              );
+          } else if (tCount > 0) {
+            parts.push(
+              `<span class="text-blue-700 font-bold">(${trainingLabel})</span>`,
+            );
+          }
+          const upgrades =
+            state.player.contactUpgrades &&
+            state.player.contactUpgrades[item.id];
+          if (upgrades && upgrades.eff) {
+            const uText = formatStatsText(upgrades.eff);
+            if (uText)
+              parts.push(
+                `<span class="text-emerald-700 font-bold">(${uText} ${upgrades.subtitle || "BCC"})</span>`,
+              );
+          }
+        }
+
+        const deptText = formatDeptScalersText(item.deptScalers);
+        if (deptText) parts.push(deptText);
+        if (item.winScaleSingleDmg)
+          parts.push(`Per win remaining: +${item.winScaleSingleDmg} reply to`);
+        if (item.winScaleSingleDmgMult)
+          parts.push(
+            `Per win remaining: ${formatMultiplier(item.winScaleSingleDmgMult) } reply to`,
+          );
+        if (parts.length) return parts.join(" • ");
+        if (
+          item.scalers ||
+          item.statWindows ||
+          item.replyDeptCleave ||
+          item.replySecondaryHalf ||
+          item.deflectBoostSingle ||
+          item.deflectBoostEscalate ||
+          item.disableReplyTo ||
+          item.addSingleToEscalate ||
+          item.replyAllPerActive ||
+          item.escalatePerActive
+        ) {
+          const desc = describeEffect(item);
+          if (desc) return desc;
+        }
+        if (item.bonus) return item.bonus;
+        if (typeof item.getBonusText === "function") return item.getBonusText();
+        return "No listed effect.";
+      }
+
       function formatMultiplier(value, opts = {}) {
         const { prefix = "adds", decimals = 2 } = opts;
         const mult = 1 + value;
@@ -8197,6 +8412,8 @@
               ? "wins remaining"
               : effect.scaleBy === "hp"
                 ? "cred"
+                : effect.scaleBy === "active_cc_count"
+                  ? "active Contacts"
                 : "points";
           const limitLabel =
             effect.threadLimit != null
@@ -8237,74 +8454,7 @@
       }
 
       function getItemBonusText(item) {
-        if (!item) return "";
-        if (Array.isArray(item.effects) && item.effects.length) {
-          const isSignoff =
-            item.itemType === "signoff" ||
-            SIGNOFFS.some((s) => s.id === item.id);
-          return item.effects
-            .map((effect) =>
-              formatEffect(effect, {
-                includeLimit: isSignoff,
-                contactNoun: isSignoff ? "Contact" : "CC",
-                upgradeVerb: isSignoff ? "train" : "upgrade",
-              }),
-            )
-            .join(" • ");
-        }
-        const parts = [];
-        const statsText = formatStatsText(item);
-        if (statsText) parts.push(statsText);
-        if (item.eff && typeof item.eff === "object") {
-          const effText = formatStatsText(item.eff);
-          if (effText) parts.push(effText);
-        }
-
-        // Display permanent upgrades for contacts
-        if (item.id && item.id.startsWith("cc_") && typeof state !== "undefined" && state.player) {
-          const tCount = (state.player.contactTrainingCount && state.player.contactTrainingCount[item.id]) || 0;
-          const trainingLabel = tCount >= 3 ? "Fully Trained" : `Training ${tCount}/3`;
-          const boosts = state.player.contactPermanentBoosts && state.player.contactPermanentBoosts[item.id];
-          if (boosts) {
-            const bText = formatStatsText(boosts);
-            if (bText) parts.push(`<span class="text-blue-700 font-bold">(${bText} ${trainingLabel})</span>`);
-          } else if (tCount > 0) {
-            parts.push(`<span class="text-blue-700 font-bold">(${trainingLabel})</span>`);
-          }
-          const upgrades = state.player.contactUpgrades && state.player.contactUpgrades[item.id];
-          if (upgrades && upgrades.eff) {
-            const uText = formatStatsText(upgrades.eff);
-            if (uText) parts.push(`<span class="text-emerald-700 font-bold">(${uText} ${upgrades.subtitle || "BCC"})</span>`);
-          }
-        }
-
-        const deptText = formatDeptScalersText(item.deptScalers);
-        if (deptText) parts.push(deptText);
-        if (item.winScaleSingleDmg)
-          parts.push(`Per win remaining: +${item.winScaleSingleDmg} reply to`);
-        if (item.winScaleSingleDmgMult)
-          parts.push(
-            `Per win remaining: ${formatMultiplier(item.winScaleSingleDmgMult) } reply to`,
-          );
-        if (parts.length) return parts.join(" • ");
-        if (
-          item.scalers ||
-          item.statWindows ||
-          item.replyDeptCleave ||
-          item.replySecondaryHalf ||
-          item.deflectBoostSingle ||
-          item.deflectBoostEscalate ||
-          item.disableReplyTo ||
-          item.addSingleToEscalate ||
-          item.replyAllPerActive ||
-          item.escalatePerActive
-        ) {
-          const desc = describeEffect(item);
-          if (desc) return desc;
-        }
-        if (item.bonus) return item.bonus;
-        if (typeof item.getBonusText === "function") return item.getBonusText();
-        return "No listed effect.";
+        return getDisplayEffect(item);
       }
 
       function isItemOwned(item) {
@@ -8394,44 +8544,8 @@
       }
 
       function buyDirectItem(item, cost) {
-        const eligibility = canAcquireItem(item);
-        if (!eligibility.ok) {
-          if (item.itemType === "contact") {
-            alert(
-              eligibility.reason === "limit"
-                ? "Address book full. Archive a contact to make space."
-                : "That contact is already in your address book.",
-            );
-          } else if (item.itemType === "signature") {
-            alert(
-              eligibility.reason === "limit"
-                ? "Signature limit reached. Remove a signature to make space."
-                : "That signature is already in use.",
-            );
-          } else if (item.itemType === "bcc") {
-            alert("BCC capacity reached. Discard a BCC to make space.");
-          }
-          return;
-        }
-        state.player.reputation -= cost;
-        item.purchased = true;
-
-        if (item.itemType === "salutation" && state.player.salutation) {
-          sellItem("salutation", state.player.salutation);
-        }
-        if (item.itemType === "signoff" && state.player.signOff) {
-          sellItem("signoff", state.player.signOff);
-        }
-
-        if (item.itemType === "contact") state.player.addressBook.push(item.id);
-        else if (item.itemType === "signature")
-          state.player.signatures.push(item);
-        else if (item.itemType === "salutation") state.player.salutation = item;
-        else if (item.itemType === "signoff") state.player.signOff = item;
-        else if (item.itemType === "bcc") {
-          state.player.bccContacts.push(item);
-        }
-        playSound("connect");
+        const result = applyItemAcquisition(item, { source: "shop", cost });
+        if (!result.ok) return;
         updateShopUI();
       }
 
@@ -8695,6 +8809,33 @@
         }
       }
 
+      function renderItemCard(item, options = {}) {
+        if (!item) return null;
+        if (item.itemType === "contact") {
+          const container = document.createElement("div");
+          container.className = "shop-item-overlay-frame p-2";
+          renderContactDetailCard(container, item, {
+            showStatus: false,
+            detailsStateKey: options.detailsStateKey || null,
+            actionLabel: options.actionLabel || "",
+            actionDisabled: !!options.actionDisabled,
+            onAction: options.onAction || null,
+            hideDetails: !!options.hideDetails,
+            showRarityBadge: !!options.showRarityBadge,
+            useContainerAsWrapper: true,
+          });
+          return { element: container, width: 320 };
+        }
+        const content = createShopCard(
+          options.name || item.name,
+          options.description || getItemBonusText(item) || item.description || "",
+          options.cost || 0,
+          options.onAction || (() => {}),
+          options.cardOptions || {},
+        );
+        return { element: content, width: 260 };
+      }
+
       function showShopItemOverlay(type, item, anchorEl, opts = {}) {
         const overlay = document.getElementById("shop-item-overlay");
         if (!overlay || !item || !anchorEl) return;
@@ -8732,13 +8873,14 @@
           const eligibility = canAcquireItem(item);
           const isPack = opts.mode === "pack-option";
           const isOwnedContact = opts.mode === "owned-contact";
+          const baseAction = eligibility.ok
+            ? "REACH OUT"
+            : eligibility.actionLabel || "UNAVAILABLE";
           const actionLabel = isOwnedContact
             ? `ARCHIVE CONTACT +${Math.floor(cost / 2)} REP`
             : isPack
               ? "SELECT"
-              : eligibility.ok
-                ? `REACH OUT (${cost} REP)`
-                : eligibility.actionLabel || "UNAVAILABLE";
+              : `${baseAction} (${cost} REP)`;
           const actionDisabled = isOwnedContact ? false : !eligibility.ok;
           const onAction = isOwnedContact
             ? () => {
@@ -8748,19 +8890,17 @@
             : isPack
               ? () => confirmPackOption(item)
               : () => buyDirectItem(item, cost);
-          overlay.innerHTML = `<div class="shop-item-overlay-frame p-2" id="shop-contact-overlay-body"></div>`;
-          const body = overlay.querySelector("#shop-contact-overlay-body");
-          renderContactDetailCard(body, item, {
-            showStatus: false,
+          const card = renderItemCard(item, {
             detailsStateKey: isOwnedContact ? "shopAddressBookDetailsOpen" : null,
             actionLabel,
             actionDisabled,
             onAction,
             hideDetails: !isOwnedContact,
             showRarityBadge: true,
-            useContainerAsWrapper: true,
           });
-          overlay.style.width = "320px";
+          if (!card) return;
+          overlay.appendChild(card.element);
+          overlay.style.width = `${card.width}px`;
           overlay.style.display = "block";
           positionShopOverlay(overlay, opts.anchorEl, opts);
           overlay.onclick = (e) => e.stopPropagation();
@@ -8771,48 +8911,43 @@
           const refund = Math.floor(
             (item.cost || getItemCostByType(item.rarity, "bcc")) / 2,
           );
-          content = createShopCard(
-            item.name,
-            `Effects: ${getItemBonusText(item)}`,
-            0,
-            () => {
+          content = renderItemCard(item, {
+            description: `Effects: ${getItemBonusText(item)}`,
+            onAction: () => {
               sellItem("bcc", item);
               updateShopUI();
             },
-            {
+            cardOptions: {
               purchased: false,
               canBuy: true,
               badge: formatRarityBadge(item.rarity),
               actionLabel: `DISCARD BCC +${refund} REP`,
             },
-          );
+          })?.element;
         }
 
         if (!content) {
           if (opts.mode === "pack") {
-            content = createShopCard(
-              item.name,
-              item.description,
-              item.cost,
-              () => buyPack(item),
-              {
+            content = renderItemCard(item, {
+              description: item.description,
+              cost: item.cost,
+              onAction: () => buyPack(item),
+              cardOptions: {
                 purchased: item.purchased,
                 actionLabel: "OPEN PACK",
                 ownedLabel: "OPENED",
                 typeLabel: "",
               },
-            );
+            })?.element;
           } else if (opts.mode === "pack-option") {
             const bonusDesc =
               getItemBonusText(item) ||
               item.picksText ||
               describeEffect(item.eff || item);
-            content = createShopCard(
-              item.name,
-              bonusDesc,
-              0,
-              () => confirmPackOption(item),
-              {
+            content = renderItemCard(item, {
+              description: bonusDesc,
+              onAction: () => confirmPackOption(item),
+              cardOptions: {
                 purchased: false,
                 canBuy: true,
                 badge: formatRarityBadge(item.rarity),
@@ -8826,19 +8961,12 @@
                     ? getDepartmentName(item.departmentId) || ""
                     : "",
               },
-            );
+            })?.element;
           } else {
             const cost =
               item.cost || getItemCostByType(item.rarity, item.itemType);
             const eligibility = canAcquireItem(item);
             const owned = isItemOwned(item);
-            const actionLabels = {
-              contact: "REACH OUT",
-              signature: "APPLY",
-              salutation: "SET GREETING",
-              signoff: "SET SIGN-OFF",
-              bcc: "REQUEST",
-            };
             if (
               opts.fromOwned &&
               (item.itemType === "salutation" ||
@@ -8846,15 +8974,13 @@
                 item.itemType === "signature")
             ) {
               const refund = Math.floor(cost / 2);
-              content = createShopCard(
-                item.name,
-                getItemBonusText(item) || item.description || "",
-                0,
-                () => {
+              content = renderItemCard(item, {
+                description: getItemBonusText(item) || item.description || "",
+                onAction: () => {
                   sellItem(item.itemType, item);
                   updateShopUI();
                 },
-                {
+                cardOptions: {
                   purchased: false,
                   canBuy: true,
                   badge: formatRarityBadge(item.rarity),
@@ -8865,28 +8991,27 @@
                   spaceLabel: "",
                   metaLabel: "",
                 },
-              );
+              })?.element;
             } else {
-              content = createShopCard(
-                item.name,
-                getItemBonusText(item) || item.description || "",
+              content = renderItemCard(item, {
+                description: getItemBonusText(item) || item.description || "",
                 cost,
-                () => buyDirectItem(item, cost),
-                {
+                onAction: () => buyDirectItem(item, cost),
+                cardOptions: {
                   purchased: item.purchased || owned,
                   canBuy: eligibility.ok,
                   badge: formatRarityBadge(item.rarity),
                   setId: item.setId,
                   ownedLabel: owned ? "OWNED" : "PURCHASED",
                   typeLabel: "",
-                  actionLabel: actionLabels[item.itemType] || "SUBMIT REQUEST",
+                  actionLabel: getItemActionLabel(item, "shop", eligibility),
                   spaceLabel: eligibility.actionLabel,
                   metaLabel:
                     item.itemType === "contact"
                       ? getDepartmentName(item.departmentId) || ""
                       : "",
                 },
-              );
+              })?.element;
             }
           }
         }
@@ -9886,30 +10011,8 @@
               return;
             }
 
-            let pool = [
-              ...alive.filter((o) => o.id !== a.id),
-              {
-                id: "player",
-                name: state.player.name,
-                email: state.player.email,
-                departmentId: state.player.departmentId,
-              },
-            ];
-
-            // Targeting logic: weigh opponents by department (colleagues never attack each other)
-            let weights = pool.map((t) =>
-              t.departmentId === a.departmentId ? 0 : 1.0,
-            );
-            let totalWeight = weights.reduce((acc, w) => acc + w, 0);
-            let random = Math.random() * totalWeight;
-            let target = pool[0];
-            for (let i = 0; i < pool.length; i++) {
-              random -= weights[i];
-              if (random <= 0) {
-                target = pool[i];
-                break;
-              }
-            }
+            const ai = decideAiAction(a, alive, state.player);
+            let target = ai.target;
 
             if (a.redirectNext) {
               a.redirectNext = false;
@@ -9928,42 +10031,8 @@
               }
             }
 
-            let roll = Math.random();
-
-            a.hp = Math.min(getUnitMaxHp(a), a.hp + getUnitTotalHeal(a));
-
-            const aMaxHp = getUnitMaxHp(a);
-            const promoteHeal = getUnitSelfPromoteHeal(a, 15);
-            const defFlat = getUnitFlatDef(a);
-            const defReduce = a.deflectChargeReduce || 0;
-            const playerSingle = getUnitDamage(state.player, "single");
-            const playerEscalate = getUnitDamage(state.player, "escalate");
-            const dmgSingle = Math.max(0, playerSingle - defFlat - defReduce);
-            const dmgEscalate = Math.max(0, playerEscalate - defFlat - defReduce);
-            const inOneHitRange = dmgSingle >= a.hp || dmgEscalate >= a.hp;
-            const canUseFullPromote =
-              promoteHeal > 0 && a.hp + promoteHeal <= aMaxHp;
-            const selfPromoteEligible =
-              a.hp < aMaxHp && a.wins > 0 && inOneHitRange && canUseFullPromote;
-
-            const availFromBook = a.addressBook
-              .map((id) => CONTACTS.find((con) => con.id === id))
-              .filter(
-                (c) => c && !isContactInLoop(c.id) && !isContactImplicated(c),
-              );
-            if (roll < 0.15 && availFromBook.length > 0) {
-              const numPicks = computeUnitStats(a).numCCperCCaction;
-              for (let p = 0; p < numPicks; p++) {
-                const currentAvail = a.addressBook
-                  .map((id) => CONTACTS.find((con) => con.id === id))
-                  .filter(
-                    (c) =>
-                      c && !isContactInLoop(c.id) && !isContactImplicated(c),
-                  );
-                if (currentAvail.length === 0) break;
-
-                const c =
-                  currentAvail[Math.floor(Math.random() * currentAvail.length)];
+            if (ai.type === "cc") {
+              ai.ccTargets.forEach((c) => {
                 addContactBuff(a, c, a.name);
                 const loopInText = formatLoopInText(
                   c,
@@ -9976,12 +10045,12 @@
                   loopInText,
                   "bg-blue-50",
                 );
-              }
-            } else if (roll < 0.3 && selfPromoteEligible) {
+              });
+            } else if (ai.type === "promote") {
               a.wins--;
-              const promotePotential = a.hp + promoteHeal;
-              const promoteOverflow = Math.max(0, promotePotential - aMaxHp);
-              a.hp = Math.min(aMaxHp, promotePotential);
+              const promotePotential = a.hp + ai.promoteHeal;
+              const promoteOverflow = Math.max(0, promotePotential - ai.maxHp);
+              a.hp = Math.min(ai.maxHp, promotePotential);
               runUnitEffects(a, "promote_overflow", { overflow: promoteOverflow });
               const selfPromoteLine = drawFromLineBag(
                 a,
@@ -9996,224 +10065,176 @@
                 formatMessageBody(a, selfPromoteLine),
                 "opacity-70",
               );
-            } else {
-              const actionRoll = Math.random();
+            } else if (ai.type === "deflect") {
               if (
-                actionRoll < 0.15 &&
-                a.deflectChargeReduce <= 0 &&
-                a.deflectChargeReflect <= 0
+                a.employeeId === "jen_lavallee" &&
+                a.name === "Jen LaVallee"
               ) {
-                if (
-                  a.employeeId === "jen_lavallee" &&
-                  a.name === "Jen LaVallee"
-                ) {
-                  const agentId = Math.random()
-                    .toString(36)
-                    .substring(2, 6)
-                    .toUpperCase();
-                  const newAgents = [
-                    {
-                      id: Date.now() + Math.random(),
-                      name: `AI aJENt-${agentId}`,
-                      employeeId: "jen_lavallee",
-                      title: "Automated Processing Unit",
-                      department: "Digital Technology",
-                      departmentId: "digital_technology",
-                      hp: 20,
-                      maxHp: 20,
-                      wins: 1,
-                      singleDmg: 15,
-                      escalateDmg: 10,
-                      numCCperCCaction: 0,
-                      addressBook: [],
-                      buffs: [],
-                      greet: "INITIATING SUB-PROCESS...",
-                      signoff: "PROCESS COMPLETE.",
-                      signatures: ["[AUTOMATED SYSTEM MESSAGE]"],
-                      defeatMessage: "FATAL ERROR: PROCESS TERMINATED.",
-                    },
-                    {
-                      id: Date.now() + Math.random(),
-                      name: `AI aJENt-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
-                      employeeId: "jen_lavallee",
-                      title: "Automated Processing Unit",
-                      department: "Digital Technology",
-                      departmentId: "digital_technology",
-                      hp: 20,
-                      maxHp: 20,
-                      wins: 1,
-                      singleDmg: 15,
-                      escalateDmg: 10,
-                      numCCperCCaction: 0,
-                      addressBook: [],
-                      buffs: [],
-                      greet: "INITIATING SUB-PROCESS...",
-                      signoff: "PROCESS COMPLETE.",
-                      signatures: ["[AUTOMATED SYSTEM MESSAGE]"],
-                      defeatMessage: "FATAL ERROR: PROCESS TERMINATED.",
-                    },
-                  ];
-                  opponents.push(...newAgents);
-                  addEmailToLog(
-                    a.name,
-                    "everyone@gov.org",
-                    "Automated Provisioning",
-                    `I am provisioning two additional processing units: <strong>${newAgents[0].name}</strong> and <strong>${newAgents[1].name}</strong>. They will assist in managing this thread's bandwidth.`,
-                    "bg-cyan-50 border-l-4 border-cyan-500",
-                  );
-                } else {
-                  a.deflectChargeReflect = getUnitDeflectReflect(a);
-                  a.deflectChargeReduce = getUnitDeflectReduce(a);
-                  const deflectLine = drawFromLineBag(
-                    a,
-                    "deflect",
-                    a.deflectLines,
-                    "I'm pausing to document this thread before responding further.",
-                  );
-                  addEmailToLog(
-                    a.name,
-                    "everyone@gov.org",
-                    "Holding Response",
-                    `${formatMessageBody(a, deflectLine)}<br><br><strong>Deflection Ready:</strong> Reduce ${a.deflectChargeReduce}, Reflect ${a.deflectChargeReflect}`,
-                    "bg-blue-50",
-                  );
-                }
-              } else if (actionRoll < 0.35) {
-                const d = getUnitDamage(a, "escalate");
-                let totalBlocked = 0;
-                let totalReflected = 0;
-                let totalRecovered = 0;
-                let playerHit = false;
-                const recoverPerHit = getUnitEscalateRecover(a);
-                const escalateTargets = [
-                  ...alive.filter((o) => o.id !== a.id),
-                  state.player,
+                const agentId = Math.random()
+                  .toString(36)
+                  .substring(2, 6)
+                  .toUpperCase();
+                const newAgents = [
+                  {
+                    id: Date.now() + Math.random(),
+                    name: `AI aJENt-${agentId}`,
+                    employeeId: "jen_lavallee",
+                    title: "Automated Processing Unit",
+                    department: "Digital Technology",
+                    departmentId: "digital_technology",
+                    hp: 20,
+                    maxHp: 20,
+                    wins: 1,
+                    singleDmg: 15,
+                    escalateDmg: 10,
+                    numCCperCCaction: 0,
+                    addressBook: [],
+                    buffs: [],
+                    greet: "INITIATING SUB-PROCESS...",
+                    signoff: "PROCESS COMPLETE.",
+                    signatures: ["[AUTOMATED SYSTEM MESSAGE]"],
+                    defeatMessage: "FATAL ERROR: PROCESS TERMINATED.",
+                  },
+                  {
+                    id: Date.now() + Math.random(),
+                    name: `AI aJENt-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+                    employeeId: "jen_lavallee",
+                    title: "Automated Processing Unit",
+                    department: "Digital Technology",
+                    departmentId: "digital_technology",
+                    hp: 20,
+                    maxHp: 20,
+                    wins: 1,
+                    singleDmg: 15,
+                    escalateDmg: 10,
+                    numCCperCCaction: 0,
+                    addressBook: [],
+                    buffs: [],
+                    greet: "INITIATING SUB-PROCESS...",
+                    signoff: "PROCESS COMPLETE.",
+                    signatures: ["[AUTOMATED SYSTEM MESSAGE]"],
+                    defeatMessage: "FATAL ERROR: PROCESS TERMINATED.",
+                  },
                 ];
-                escalateTargets.forEach((t) => {
-                  if (t !== state.player && t.departmentId === a.departmentId)
-                    return;
-                  if (t.hp > 0) {
-                    const result = applyDamage(a, t, d);
-                    totalBlocked += result.blocked;
-                    totalReflected += result.reflected;
-                    if (t === state.player && result.dmg > 0) playerHit = true;
-                    if (recoverPerHit > 0) {
-                      totalRecovered += recoverPerHit;
-                      a.hp = Math.min(getUnitMaxHp(a), a.hp + recoverPerHit);
-                    }
-                    if (t !== state.player && t.hp <= 0)
-                      handleOpponentDefeat(t);
-                  }
-                });
-                const escLine = drawFromLineBag(
-                  a,
-                  "attack",
-                  a.attacks,
-                  "I'm escalating this across the thread for visibility.",
-                );
-                let escBody = formatMessageBody(a, escLine);
-                if (totalReflected > 0) {
-                  escBody += `<br><br><strong>Deflected:</strong> ${totalReflected} reflected.`;
-                }
-                if (totalRecovered > 0) {
-                  escBody += `<br><br><strong>Recovered:</strong> +${totalRecovered} Credibility.`;
-                }
+                opponents.push(...newAgents);
                 addEmailToLog(
                   a.name,
                   "everyone@gov.org",
-                  "Escalation Notice",
-                  escBody,
-                  "bg-yellow-50 border-l-4 border-yellow-400",
+                  "Automated Provisioning",
+                  `I am provisioning two additional processing units: <strong>${newAgents[0].name}</strong> and <strong>${newAgents[1].name}</strong>. They will assist in managing this thread's bandwidth.`,
+                  "bg-cyan-50 border-l-4 border-cyan-500",
                 );
-                if (playerHit) {
-                  document.getElementById("game-ui").classList.add("shaking");
-                  setTimeout(
-                    () =>
-                      document
-                        .getElementById("game-ui")
-                        .classList.remove("shaking"),
-                    200,
-                  );
-                }
               } else {
-                let d = getUnitDamage(a, "single");
-
-                // Select attack type
-                const q = drawFromLineBag(
+                a.deflectChargeReflect = getUnitDeflectReflect(a);
+                a.deflectChargeReduce = getUnitDeflectReduce(a);
+                const deflectLine = drawFromLineBag(
                   a,
-                  "attack",
-                  a.attacks,
-                  "I'm following up to keep this thread moving.",
+                  "deflect",
+                  a.deflectLines,
+                  "I'm pausing to document this thread before responding further.",
                 );
-                let body = formatMessageBody(a, q);
-
-                const followUpChance = getUnitFollowUpChance(a);
-                const followUpHit =
-                  followUpChance > 0 && Math.random() < followUpChance;
-                const bounceDamage = getUnitBounceDamage(a);
-
-                if (target.id === "player") {
-                  const dodgeBuff = state.player.buffs.find(
-                    (b) => b.eff.dodge && Math.random() < b.eff.dodge,
-                  );
-                  if (dodgeBuff) {
-                    const defaultLine = `${dodgeBuff.name} distracted the thread and they didnt see this email, no effect!`;
-                    const triggerText = (
-                      dodgeBuff.eff.specialTriggerText || defaultLine
-                    ).replace(/{name}/g, dodgeBuff.name);
-                    addEmailToLog(
-                      a.name,
-                      state.player.name,
-                      "Urgent Follow-up",
-                      body + `<br><br>(${triggerText})`,
-                      "text-blue-600",
-                    );
-                  } else {
-                    const result = applyDamage(a, state.player, d);
-                    const followUpResult = followUpHit
-                      ? applyDamage(a, state.player, d)
-                      : null;
-                    const bounceTarget = bounceDamage
-                      ? pickBounceTarget(a, state.player)
-                      : null;
-                    const bounceResult = bounceTarget
-                      ? applyDamage(a, bounceTarget, bounceDamage, {
-                          ignoreReflect: true,
-                        })
-                      : null;
-                    if (result.reflected > 0) {
-                      body += `<br><br><strong>Deflected:</strong> ${result.reflected} reflected.`;
-                    }
-                    if (followUpResult) {
-                      body += `<br><br><strong>Follow-up Reply:</strong> -${followUpResult.dmg}.`;
-                    }
-                    if (bounceResult && bounceTarget) {
-                      body += `<br><br><strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`;
-                    }
-                    addEmailToLog(
-                      a.name,
-                      state.player.name,
-                      "Escalation",
-                      body +
-                        `<br><br><strong>Damage to Credibility: -${result.dmg}</strong>`,
-                      "bg-red-50 border-l-2 border-red-400",
-                    );
-                    document.getElementById("game-ui").classList.add("shaking");
-                    setTimeout(
-                      () =>
-                        document
-                          .getElementById("game-ui")
-                          .classList.remove("shaking"),
-                      200,
-                    );
+                addEmailToLog(
+                  a.name,
+                  "everyone@gov.org",
+                  "Holding Response",
+                  `${formatMessageBody(a, deflectLine)}<br><br><strong>Deflection Ready:</strong> Reduce ${a.deflectChargeReduce}, Reflect ${a.deflectChargeReflect}`,
+                  "bg-blue-50",
+                );
+              }
+            } else if (ai.type === "escalate") {
+              const d = getUnitDamage(a, "escalate");
+              let totalBlocked = 0;
+              let totalReflected = 0;
+              let totalRecovered = 0;
+              let playerHit = false;
+              const recoverPerHit = getUnitEscalateRecover(a);
+              const escalateTargets = [
+                ...alive.filter((o) => o.id !== a.id),
+                state.player,
+              ];
+              escalateTargets.forEach((t) => {
+                if (t !== state.player && t.departmentId === a.departmentId)
+                  return;
+                if (t.hp > 0) {
+                  const result = applyDamage(a, t, d);
+                  totalBlocked += result.blocked;
+                  totalReflected += result.reflected;
+                  if (t === state.player && result.dmg > 0) playerHit = true;
+                  if (recoverPerHit > 0) {
+                    totalRecovered += recoverPerHit;
+                    a.hp = Math.min(getUnitMaxHp(a), a.hp + recoverPerHit);
                   }
+                  if (t !== state.player && t.hp <= 0)
+                    handleOpponentDefeat(t);
+                }
+              });
+              const escLine = drawFromLineBag(
+                a,
+                "attack",
+                a.attacks,
+                "I'm escalating this across the thread for visibility.",
+              );
+              let escBody = formatMessageBody(a, escLine);
+              if (totalReflected > 0) {
+                escBody += `<br><br><strong>Deflected:</strong> ${totalReflected} reflected.`;
+              }
+              if (totalRecovered > 0) {
+                escBody += `<br><br><strong>Recovered:</strong> +${totalRecovered} Credibility.`;
+              }
+              addEmailToLog(
+                a.name,
+                "everyone@gov.org",
+                "Escalation Notice",
+                escBody,
+                "bg-yellow-50 border-l-4 border-yellow-400",
+              );
+              if (playerHit) {
+                document.getElementById("game-ui").classList.add("shaking");
+                setTimeout(
+                  () =>
+                    document
+                      .getElementById("game-ui")
+                      .classList.remove("shaking"),
+                  200,
+                );
+              }
+            } else {
+              let d = getUnitDamage(a, "single");
+              const q = drawFromLineBag(
+                a,
+                "attack",
+                a.attacks,
+                "I'm following up to keep this thread moving.",
+              );
+              let body = formatMessageBody(a, q);
+              const followUpChance = getUnitFollowUpChance(a);
+              const followUpHit =
+                followUpChance > 0 && Math.random() < followUpChance;
+              const bounceDamage = getUnitBounceDamage(a);
+
+              if (target.id === "player") {
+                const dodgeBuff = state.player.buffs.find(
+                  (b) => b.eff.dodge && Math.random() < b.eff.dodge,
+                );
+                if (dodgeBuff) {
+                  const defaultLine = `${dodgeBuff.name} distracted the thread and they didnt see this email, no effect!`;
+                  const triggerText = (
+                    dodgeBuff.eff.specialTriggerText || defaultLine
+                  ).replace(/{name}/g, dodgeBuff.name);
+                  addEmailToLog(
+                    a.name,
+                    state.player.name,
+                    "Urgent Follow-up",
+                    body + `<br><br>(${triggerText})`,
+                    "text-blue-600",
+                  );
                 } else {
-                  const result = applyDamage(a, target, d);
+                  const result = applyDamage(a, state.player, d);
                   const followUpResult = followUpHit
-                    ? applyDamage(a, target, d)
+                    ? applyDamage(a, state.player, d)
                     : null;
                   const bounceTarget = bounceDamage
-                    ? pickBounceTarget(a, target)
+                    ? pickBounceTarget(a, state.player)
                     : null;
                   const bounceResult = bounceTarget
                     ? applyDamage(a, bounceTarget, bounceDamage, {
@@ -10231,14 +10252,52 @@
                   }
                   addEmailToLog(
                     a.name,
-                    target.name,
-                    "Internal Memo",
+                    state.player.name,
+                    "Escalation",
                     body +
-                      `<br><br>(Targeting ${target.name}. Standing lost: ${result.dmg})`,
-                    "text-gray-500 text-[11px]",
+                      `<br><br><strong>Damage to Credibility: -${result.dmg}</strong>`,
+                    "bg-red-50 border-l-2 border-red-400",
                   );
-                  if (target.hp <= 0) handleOpponentDefeat(target);
+                  document.getElementById("game-ui").classList.add("shaking");
+                  setTimeout(
+                    () =>
+                      document
+                        .getElementById("game-ui")
+                        .classList.remove("shaking"),
+                    200,
+                  );
                 }
+              } else {
+                const result = applyDamage(a, target, d);
+                const followUpResult = followUpHit
+                  ? applyDamage(a, target, d)
+                  : null;
+                const bounceTarget = bounceDamage
+                  ? pickBounceTarget(a, target)
+                  : null;
+                const bounceResult = bounceTarget
+                  ? applyDamage(a, bounceTarget, bounceDamage, {
+                      ignoreReflect: true,
+                    })
+                  : null;
+                if (result.reflected > 0) {
+                  body += `<br><br><strong>Deflected:</strong> ${result.reflected} reflected.`;
+                }
+                if (followUpResult) {
+                  body += `<br><br><strong>Follow-up Reply:</strong> -${followUpResult.dmg}.`;
+                }
+                if (bounceResult && bounceTarget) {
+                  body += `<br><br><strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`;
+                }
+                addEmailToLog(
+                  a.name,
+                  target.name,
+                  "Internal Memo",
+                  body +
+                    `<br><br>(Targeting ${target.name}. Standing lost: ${result.dmg})`,
+                  "text-gray-500 text-[11px]",
+                );
+                if (target.hp <= 0) handleOpponentDefeat(target);
               }
             }
 
