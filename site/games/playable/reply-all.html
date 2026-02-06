@@ -4112,7 +4112,7 @@
           defeatMessage:
             "You know what? I'll leave this to the pipsqueaks. I'm out.",
           selfPromote:
-            "I've managed to keep my 'Important' folder under 500 unread messages. Peak organizational skills.",
+            "I've managed to keep my 'Important' folder to under 500 unread messages. Peak organizational skills.",
           deflectLines: ["I'm documenting this thread before I respond."],
           lines: [
             {
@@ -4120,7 +4120,7 @@
               missionId: "bankable_time_off",
             },
             {
-              text: "Please clarify the current weekend arrangement and what change you want so I can assess feasibility.",
+              text: "I'm pretty sure the current weekend benefit you have goes against what's in your contact.",
               missionId: "bankable_time_off",
             },
             {
@@ -4133,10 +4133,6 @@
             },
             {
               text: "I'm auditing this thread for potential FOIA requests. Mind your words.",
-              missionId: null,
-            },
-            {
-              text: "Regulatory standards require a 24-hour cooling-off period after a 'Reply All' incident. You ignored it.",
               missionId: null,
             },
             {
@@ -4192,7 +4188,7 @@
           eff: { endRep: 2, singleDmg: 2 },
           color: "text-emerald-800",
           defeatMessage:
-            "I'm unsubscribing to go feed my seven cats. They have better manners than this thread.",
+            "I'm unsubscribing to go feed my cats. They have better manners than this thread.",
           selfPromote:
             "I've organized the office's cat-photo-sharing channel. Morale has never been higher.",
           deflectLines: ["I'm busy herding cats. I'll get back to you."],
@@ -4210,7 +4206,7 @@
               missionId: null,
             },
             {
-              text: "If we don't reach a resolution soon, I'm CC-ing my cat rescue group.",
+              text: "If we don't reach a resolution soon, I'm going to CC my cat rescue group.",
               missionId: null,
             },
           ],
@@ -4464,14 +4460,14 @@
             {
               id: 13,
               employeeId: "julia_eco",
-              hp: 35,
-              maxHp: 35,
+              hp: 25,
+              maxHp: 25,
               wins: 2,
               singleDmg: 10,
               escalateDmg: 10,
               flatDef: 10,
               buffs: [],
-              addressBook: ["cc_meghan_cassedy_executive_council_office"],
+              addressBook: ["cc_steph_eco", "cc_meghan_cassedy_executive_council_office"],
             },
           ],
         },
@@ -4538,6 +4534,20 @@
               buffs: [],
               addressBook: ["cc_gemma_policy"],
             },
+            {
+              id: 20,
+              employeeId: "cc_steph_eco",
+              hp: 60,
+              maxHp: 60,
+              flatDef: 5,
+              singleDmg: 15,
+              buffs: [],
+              addressBook: [
+                "cc_meghan_cassedy_executive_council_office",
+                "cc_julia_eco",
+                "cc_steph_eco"
+              ]
+            }
           ],
         },
         {
@@ -4706,7 +4716,6 @@
               buffs: [],
               numCCperCCaction: 2,
               addressBook: [
-                "cc_tim_executive_council_office",
                 "cc_meghan_cassedy_executive_council_office",
                 "cc_julia_eco",
                 "cc_steph_eco"
@@ -4786,7 +4795,6 @@
               flatDef: 10,
               numCCperCCaction: 2,
               addressBook: [
-                "cc_tim_executive_council_office",
                 "cc_meghan_cassedy_executive_council_office",
                 "cc_julia_eco",
                 "cc_steph_eco"
