@@ -4349,6 +4349,7 @@
         {
           id: "jen_lavallee",
           name: "Jen LaVallee",
+          email: "j.lavallee@gov.org",
           title: "Deputy Minister",
           department: "Digital Technology",
           departmentId: "digital_technology",
@@ -4368,6 +4369,8 @@
           signoff: "Awaiting your automated acknowledgment.",
           selfPromote:
             "I am recalibrating my internal feedback loops for 100% efficiency.",
+          defeatMessage:
+            "System error encountered. This thread has reached a state of terminal inefficiency. Offline.",
           lines: [
             {
               text: "My models indicate that 99.8% of this thread's content is redundant.",
@@ -5959,18 +5962,23 @@
 
       function formatMessageBody(sender, content) {
         let body = "";
-        if (sender.salutation) {
-          body += `<strong>${sender.salutation.name}</strong><br><br>`;
+        const salutation =
+          sender.salutation || (sender.greet ? { name: sender.greet } : null);
+        if (salutation) {
+          body += `<strong>${salutation.name}</strong><br><br>`;
         }
         body += content;
-        if (sender.signOff) {
-          body += `<br><br><strong>${sender.signOff.name}</strong><br>${sender.name}`;
+        const signOff =
+          sender.signOff || (sender.signoff ? { name: sender.signoff } : null);
+        if (signOff) {
+          body += `<br><br><strong>${signOff.name}</strong><br>${sender.name}`;
         } else {
           body += `<br><br>${sender.name}`;
         }
         if (sender.signatures && sender.signatures.length > 0) {
           sender.signatures.forEach((sig) => {
-            body += `<div class="text-[10px] text-gray-500 border-t border-gray-200 mt-2 pt-1">-- ${sig.name}</div>`;
+            const sigName = typeof sig === "string" ? sig : sig.name;
+            body += `<div class="text-[10px] text-gray-500 border-t border-gray-200 mt-2 pt-1">-- ${sigName}</div>`;
           });
         }
         return body;
@@ -9941,6 +9949,7 @@
                       greet: "INITIATING SUB-PROCESS...",
                       signoff: "PROCESS COMPLETE.",
                       signatures: ["[AUTOMATED SYSTEM MESSAGE]"],
+                      defeatMessage: "FATAL ERROR: PROCESS TERMINATED.",
                     },
                     {
                       id: Date.now() + Math.random(),
@@ -9960,6 +9969,7 @@
                       greet: "INITIATING SUB-PROCESS...",
                       signoff: "PROCESS COMPLETE.",
                       signatures: ["[AUTOMATED SYSTEM MESSAGE]"],
+                      defeatMessage: "FATAL ERROR: PROCESS TERMINATED.",
                     },
                   ];
                   opponents.push(...newAgents);
