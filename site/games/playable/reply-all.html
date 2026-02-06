@@ -5478,7 +5478,7 @@
           if (!Array.isArray(u.signatures)) return false;
           return u.signatures.some((s) => s.id === id);
         };
-        return set.items.every((item) => {
+        const active = set.items.every((item) => {
           if (!item || !item.type || !item.id) return false;
           if (item.type === "salutation")
             return u.salutation && u.salutation.id === item.id;
