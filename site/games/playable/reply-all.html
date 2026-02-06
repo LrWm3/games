@@ -99,24 +99,52 @@
         max-width: 110px;
         height: 150px;
         display: flex;
-        align-items: center;
-        justify-content: center;
         text-align: center;
         padding: 0;
-        background: #fff;
-        border: 1px solid #d1d5db;
-        box-shadow: inset 0 0 0 1px #f3f4f6;
+        background: #c0c0c0;
+        border-top: 2px solid #ffffff;
+        border-left: 2px solid #ffffff;
+        border-right: 2px solid #404040;
+        border-bottom: 2px solid #404040;
+        box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
         font-size: 11px;
         font-weight: 600;
         cursor: pointer;
         user-select: none;
+        transition:
+          transform 150ms ease,
+          box-shadow 150ms ease;
+      }
+      .shop-card-header {
+        width: 100%;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #ffffff;
+        padding: 2px 6px;
+        text-align: left;
+      }
+      .shop-card-frame {
+        flex: 1;
+        margin: 6px;
+        background: #808080;
+        border-top: 2px solid #404040;
+        border-left: 2px solid #404040;
+        border-right: 2px solid #ffffff;
+        border-bottom: 2px solid #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px;
       }
       .shop-card-item .shop-card-name {
         font-size: 12px;
         line-height: 1.2;
+        color: #111827;
       }
       .shop-card-item:hover {
-        background: #f0f7ff;
+        transform: translate(-1px, -2px);
+        box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.2);
       }
       .shop-item-overlay {
         position: fixed;
@@ -5402,13 +5430,55 @@
         "bccLimit",
       ];
       const ITEM_TYPE_LABELS = {
-        contact: "Contact",
-        signature: "Signature",
-        salutation: "Greeting",
-        signoff: "Sign-off",
-        bcc: "Help Desk",
-        dev: "Coaching",
-        email: "Email",
+        contact: {
+          label: "Contact",
+          headerBg: "#800000",
+          headerText: "#ffffff",
+          paneBg: "#d6c1c1",
+          paneText: "#2f0d0d",
+        },
+        signature: {
+          label: "Signature",
+          headerBg: "#2f5d62",
+          headerText: "#ffffff",
+          paneBg: "#cfe5e6",
+          paneText: "#123237",
+        },
+        salutation: {
+          label: "Greeting",
+          headerBg: "#6b21a8",
+          headerText: "#ffffff",
+          paneBg: "#e9d5ff",
+          paneText: "#2e1065",
+        },
+        signoff: {
+          label: "Sign-off",
+          headerBg: "#1e4d2b",
+          headerText: "#ffffff",
+          paneBg: "#cfe8d6",
+          paneText: "#0f2b17",
+        },
+        bcc: {
+          label: "Help Desk",
+          headerBg: "#1f3a8a",
+          headerText: "#ffffff",
+          paneBg: "#dbe6ff",
+          paneText: "#111827",
+        },
+        dev: {
+          label: "Coaching",
+          headerBg: "#7c2d12",
+          headerText: "#ffffff",
+          paneBg: "#ffe1d5",
+          paneText: "#431407",
+        },
+        email: {
+          label: "Email",
+          headerBg: "#000080",
+          headerText: "#ffffff",
+          paneBg: "#e5e7eb",
+          paneText: "#111827",
+        },
       };
       const STAT_METADATA = {
         escalateDmg: { label: "Escalate Damage", shortName: "Esc Dmg" },
@@ -5442,7 +5512,19 @@
       }
 
       function getItemTypeLabel(itemType) {
-        return ITEM_TYPE_LABELS[itemType] || itemType;
+        const entry = ITEM_TYPE_LABELS[itemType];
+        return entry ? entry.label : itemType;
+      }
+
+      function getItemTypeMeta(itemType) {
+        const entry = ITEM_TYPE_LABELS[itemType];
+        return entry || {
+          label: itemType,
+          headerBg: "#000080",
+          headerText: "#ffffff",
+          paneBg: "#e5e7eb",
+          paneText: "#111827",
+        };
       }
 
       function getItemActionLabel(item, mode, eligibility) {
@@ -6349,12 +6431,13 @@
 
           const btn = document.createElement("div");
           btn.className = "shop-card-item";
+          const typeMeta = getItemTypeMeta(opt.itemType);
           btn.innerHTML = `
             <div class="w-full h-full flex flex-col">
-              <div class="text-[9px] uppercase text-white bg-[#000080] px-2 py-0.5 text-left">
-                ${getItemTypeLabel(opt.itemType)}
+              <div class="shop-card-header" style="background:${typeMeta.headerBg}; color:${typeMeta.headerText};">
+                ${typeMeta.label}
               </div>
-              <div class="flex-1 flex items-center justify-center px-1">
+              <div class="shop-card-frame" style="background:${typeMeta.paneBg}; color:${typeMeta.paneText};">
                 <div class="shop-card-name">${opt.name}</div>
               </div>
             </div>
@@ -8622,20 +8705,24 @@
             </div>
           `;
 
-          const salutationSlot = document.getElementById("shop-owned-salutation");
+          const salutationSlot = document.getElementById(
+            "shop-owned-salutation",
+          );
           if (salutationSlot) {
             if (state.player.salutation) {
-              salutationSlot.innerHTML = `<div class="text-[10px] font-semibold cursor-pointer">${state.player.salutation.name}</div>`;
+              salutationSlot.innerHTML = `<p class="text-[10px] font-semibold cursor-pointer inline-block w-fit pr-2">${state.player.salutation.name}</p>`;
               salutationSlot.onclick = (e) => {
                 e.stopPropagation();
                 const ownedItem = {
                   ...state.player.salutation,
                   itemType: "salutation",
                 };
+                const anchor =
+                  salutationSlot.querySelector("p") || salutationSlot;
                 showShopItemOverlay(
                   "direct",
                   ownedItem,
-                  salutationSlot,
+                  anchor,
                   { fromOwned: true, preferRight: true },
                 );
                 showAssetsWindow("email", { forceOpen: true });
@@ -8650,14 +8737,15 @@
           const signoffSlot = document.getElementById("shop-owned-signoff");
           if (signoffSlot) {
             if (state.player.signOff) {
-              signoffSlot.innerHTML = `<div class="text-[10px] font-semibold cursor-pointer">${state.player.signOff.name}</div>`;
+              signoffSlot.innerHTML = `<p class="text-[10px] font-semibold cursor-pointer inline-block w-fit pr-2">${state.player.signOff.name}</p>`;
               signoffSlot.onclick = (e) => {
                 e.stopPropagation();
                 const ownedItem = { ...state.player.signOff, itemType: "signoff" };
+                const anchor = signoffSlot.querySelector("p") || signoffSlot;
                 showShopItemOverlay(
                   "direct",
                   ownedItem,
-                  signoffSlot,
+                  anchor,
                   { fromOwned: true, preferRight: true },
                 );
                 showAssetsWindow("email", { forceOpen: true });
@@ -8674,12 +8762,13 @@
             sigList.innerHTML = "";
             state.player.signatures.forEach((sig) => {
               const row = document.createElement("div");
-              row.className = "text-[10px] font-semibold text-gray-700 cursor-pointer";
-              row.innerText = sig.name;
+              row.className = "text-[10px] font-semibold text-gray-700";
+              row.innerHTML = `<p class="cursor-pointer inline-block w-fit pr-2">${sig.name}</p>`;
               row.onclick = (e) => {
                 e.stopPropagation();
                 const ownedItem = { ...sig, itemType: "signature" };
-                showShopItemOverlay("direct", ownedItem, row, {
+                const anchor = row.querySelector("p") || row;
+                showShopItemOverlay("direct", ownedItem, anchor, {
                   fromOwned: true,
                   preferRight: true,
                 });
@@ -8702,12 +8791,13 @@
           state.shop.directItems.forEach((item) => {
             const row = document.createElement("div");
             row.className = "shop-card-item";
+            const typeMeta = getItemTypeMeta(item.itemType);
             row.innerHTML = `
               <div class="w-full h-full flex flex-col">
-                <div class="text-[9px] uppercase text-white bg-[#000080] px-2 py-0.5 text-left">
-                  ${getItemTypeLabel(item.itemType)}
+                <div class="shop-card-header" style="background:${typeMeta.headerBg}; color:${typeMeta.headerText};">
+                  ${typeMeta.label}
                 </div>
-                <div class="flex-1 flex items-center justify-center px-1">
+                <div class="shop-card-frame" style="background:${typeMeta.paneBg}; color:${typeMeta.paneText};">
                   <div class="shop-card-name">${item.name}</div>
                 </div>
               </div>
@@ -8727,12 +8817,13 @@
           state.shop.packs.forEach((pack) => {
             const row = document.createElement("div");
             row.className = "shop-card-item";
+            const typeMeta = getItemTypeMeta(pack.type);
             row.innerHTML = `
               <div class="w-full h-full flex flex-col">
-                <div class="text-[9px] uppercase text-white bg-[#000080] px-2 py-0.5 text-left">
-                  ${getItemTypeLabel(pack.type)}
+                <div class="shop-card-header" style="background:${typeMeta.headerBg}; color:${typeMeta.headerText};">
+                  ${typeMeta.label}
                 </div>
-                <div class="flex-1 flex items-center justify-center px-1">
+                <div class="shop-card-frame" style="background:${typeMeta.paneBg}; color:${typeMeta.paneText};">
                   <div class="shop-card-name">${pack.name}</div>
                 </div>
               </div>
