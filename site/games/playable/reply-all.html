@@ -9118,9 +9118,11 @@
           if (next) state.targetId = next.id;
         }
         if (opponents.every((opp) => opp.hp <= 0)) {
-          runUnitEffects(state.player, "thread_end", {});
-          state.gameOver = true;
-          endQuarter();
+          if (!state.gameOver) {
+            runUnitEffects(state.player, "thread_end", {});
+            state.gameOver = true;
+            endQuarter();
+          }
         }
       }
 
