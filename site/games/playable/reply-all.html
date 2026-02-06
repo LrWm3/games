@@ -4957,6 +4957,7 @@
           bccLimit: 2,
           contactUpgrades: {},
           contactPermanentBoosts: {},
+          contactTrainingCount: {},
           salutationBonuses: {},
           signoffBonuses: {},
           attacks: [
@@ -5137,6 +5138,7 @@
           signatures,
           bccContacts,
           discoveredSets: saved.discoveredSets || [],
+          contactTrainingCount: saved.contactTrainingCount || {},
         };
         applyUnitDefaults(player);
         return player;
@@ -6328,6 +6330,13 @@
           player.contactPermanentBoosts = {};
         if (!player.contactEffectBoosts)
           player.contactEffectBoosts = {};
+        if (!player.contactTrainingCount)
+          player.contactTrainingCount = {};
+
+        const currentCount = player.contactTrainingCount[contactId] || 0;
+        if (currentCount >= 3) return;
+        player.contactTrainingCount[contactId] = currentCount + 1;
+
         const current = player.contactPermanentBoosts[contactId] || {};
         const next = { ...current };
         Object.keys(stats).forEach((key) => {
@@ -6394,7 +6403,7 @@
       }
 
       function applyRandomCcBoost(player, stats, applyImmediate = true) {
-        const pool = player.buffs.filter((b) => b.usedBy === player.name);
+        const pool = player.buffs.filter((b) => b.usedBy === player.name && (player.contactTrainingCount?.[b.id] || 0) < 3);
         if (pool.length === 0) return null;
         const picked = pool[Math.floor(Math.random() * pool.length)];
         applyContactPermanentBoost(player, picked.id, stats);
@@ -6855,8 +6864,8 @@
         }
         if (usedBy === state.player.name && state.player.contactUpgrades) {
           const upgrade = state.player.contactUpgrades[buff.id];
-          if (upgrade) {
-            buff.eff = { ...(buff.eff || {}), ...(upgrade.eff || {}) };
+          if (upgrade && upgrade.eff) {
+            applyBuffStats(buff, upgrade.eff);
             buff.subtitle = upgrade.subtitle || buff.subtitle;
           }
         }
@@ -8240,10 +8249,14 @@
 
         // Display permanent upgrades for contacts
         if (item.id && item.id.startsWith("cc_") && typeof state !== "undefined" && state.player) {
+          const tCount = (state.player.contactTrainingCount && state.player.contactTrainingCount[item.id]) || 0;
+          const trainingLabel = tCount >= 3 ? "Fully Trained" : `Training ${tCount}/3`;
           const boosts = state.player.contactPermanentBoosts && state.player.contactPermanentBoosts[item.id];
           if (boosts) {
             const bText = formatStatsText(boosts);
-            if (bText) parts.push(`<span class="text-blue-700 font-bold">(${bText} Training)</span>`);
+            if (bText) parts.push(`<span class="text-blue-700 font-bold">(${bText} ${trainingLabel})</span>`);
+          } else if (tCount > 0) {
+            parts.push(`<span class="text-blue-700 font-bold">(${trainingLabel})</span>`);
           }
           const upgrades = state.player.contactUpgrades && state.player.contactUpgrades[item.id];
           if (upgrades && upgrades.eff) {
@@ -10317,7 +10330,9 @@
           state.player.contactPermanentBoosts[contact.id];
         const upgrades =
           state.player.contactUpgrades && state.player.contactUpgrades[contact.id];
-        const trainingText = boosts ? formatStatsText(boosts) : "";
+        const tCount = (state.player.contactTrainingCount && state.player.contactTrainingCount[contact.id]) || 0;
+        const trainingLabel = tCount >= 3 ? "Fully Trained" : `Training ${tCount}/3`;
+        const trainingText = boosts ? `${formatStatsText(boosts)} (${trainingLabel})` : (tCount > 0 ? `(${trainingLabel})` : "");
         const upgradeText =
           upgrades && upgrades.eff ? formatStatsText(upgrades.eff) : "";
         const showSpecialization =
