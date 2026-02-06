@@ -1005,6 +1005,12 @@
           >
             TRY AGAIN
           </button>
+          <button
+            onclick="downloadGameLog()"
+            class="mt-2 w-full py-2 retro-button font-bold text-sm"
+          >
+            DOWNLOAD SESSION LOG
+          </button>
         </div>
       </div>
     </div>
@@ -4817,7 +4823,7 @@
           id: "calendar_chaos",
           subject: "RE: Conference Room Double Booking",
           from: "a.ops@gov.org",
-          turns: 12,
+          turns: 17,
           intro:
             "<p>Hi all,</p><p>We have a triple booking for the main conference room this morning.</p><br><ul><li><strong>{playerName}</strong>, you have it booked for an internal process audit.</li><li><strong>{opp0}</strong> and <strong>{opp1}</strong> from Operations flagged a safety walkthrough and vendor briefing.</li><li><strong>{opp2}</strong> and <strong>{opp3}</strong> from Finance flagged payroll finalization and budget reconciliation.</li><li><strong>{opp4}</strong>, we see your booking was the one that went through first.</li></ul><p>We need to figure out who is taking this meeting room.</p>",
           opponents: [
@@ -4828,7 +4834,6 @@
               maxHp: 30,
               wins: 2,
               singleDmg: 15,
-              defFlat: 3,
               buffs: [],
               addressBook: ["cc_willy_boy_information_technology"],
             },
@@ -4883,7 +4888,7 @@
           id: "holiday_reply_all",
           subject: "RE: Happy Holidays!",
           from: "announcements@gov.org",
-          turns: 20,
+          turns: 21,
           onlyMissionLines: true,
           intro:
             "<p>Happy holidays everyone! 🎄✨</p><p>Thank you to everyone for attending the holiday party once again! 🎉 We also want to wish Sho well once again for winning the 'Cultural Award' for the year.</p>",
@@ -4974,7 +4979,7 @@
           id: "paper",
           subject: "CRITICAL: Departmental Paper Rationing",
           from: "m.compliance@gov.org",
-          turns: 12,
+          turns: 17,
           intro:
             "<p>Dear Staff,</p><p>Due to unforeseen budget constraints, we are implementing immediate paper rationing.</p><ul><li><strong>{playerName}</strong>, your department's printing logs are particularly high.</li><li><strong>Megan</strong>, please ensure we are still meeting filing requirements.</li><li><strong>Colin</strong>, please expedite the 'Paperless Initiative'.</li></ul><p>Effective immediately, all non-essential printing is strictly prohibited.</p>",
           opponents: [
@@ -5024,7 +5029,7 @@
           id: "thermostat_war",
           subject: "RE: Office Thermostat Dispute",
           from: "l.facilities@gov.org",
-          turns: 16,
+          turns: 17,
           intro:
             "<p>Hi all,</p><p>Facilities here. We received multiple complaints about the floor thermostat. It looks like the setpoint has been toggled between 74°F and 96°F.</p><ul><li><strong>{playerName}</strong>, your desk is listed at 74°F.</li><li>The <strong>Marketing</strong> team (<strong>{opp1}</strong>, <strong>{opp2}</strong>) is pushing for 96°F.</li><li>The <strong>Finance</strong> team (<strong>{opp3}</strong>, <strong>{opp4}</strong>) says the 96°F setting is unacceptable for reviews.</li></ul><p>My view is we should be aiming lower overall to bring down the oil bill for this place, but we need a consistent setting.</p><p>How does around 64°F sound?</p>",
           opponents: [
@@ -5102,7 +5107,7 @@
           id: "intern_grievance",
           subject: "RE: Intern Grievance Collective",
           from: "hr.interns@gov.org",
-          turns: 16,
+          turns: 20,
           intro:
             "To the Permanent Staff,<br><br>We, the interns, have noticed a significant lack of 'Team Synergy' and 'Professional Courtesy'.<p><strong>{playerName}</strong>, your recent emails have been cited as 'aggressive'.</p><p><strong>Samantha</strong>, we are looping in our mentor <strong>Anneke</strong>.</p><p><strong>Shelia</strong>, we expect payroll to ensure our stipends to reflect the emotional labor of this thread.</p>",
           opponents: [
@@ -5260,7 +5265,7 @@
           id: "M015_MediaCrisis",
           subject: "CRITICAL: Budget Re-Forecasting & Ad Targeting Session",
           from: "taz@m4agency.com",
-          turns: 16,
+          turns: 17,
           intro:
             "<p>Hey all,</p><p>There has been a <strong>significant overspend</strong> of the quarterly media budget earmarked for the strategic placement for the <strong>Measles Vaccination Initiative</strong>. During media plan implementation, an unforeseen configuration error on our end resulted in a demographic targeting misalignment—specifically, an overly focused optimization towards the <strong>equine sector</strong> executed entirely on day one.</p><p><strong>{playerName}</strong>, we need to leverage this emergency session to ensure continuity of service delivery.</p><p><strong>Selina</strong> and <strong>Anthony</strong> are here for support, and to use up our retainer. The objective is to devise a recovery plan that allows us to meet our six-week deliverable goals with additional budgetary approval, <strong>as the original $40,000 has been fully exhausted.</strong></p>",
           opponents: [
@@ -5361,6 +5366,10 @@
       const SAVE_KEY = "reply_all_save_v1";
 
       let state = {
+        analytics: {
+          events: [],
+          rounds: [],
+        },
         player: {
           id: "player",
           name: "eke vdh",
@@ -6780,6 +6789,19 @@
         else if (item.itemType === "bcc") state.player.bccContacts.push(item);
         else if (item.itemType === "dev") item.apply();
         playSound("connect");
+        logGameEvent("purchase", {
+          source,
+          itemType: item.itemType,
+          itemId: item.id || null,
+          name: item.name || null,
+          cost: source === "shop" ? cost : 0,
+        });
+        if (item.itemType === "dev") {
+          logGameEvent("training", {
+            itemId: item.id || null,
+            name: item.name || null,
+          });
+        }
         hideProfileDropOverlay();
         return { ok: true };
       }
@@ -7619,6 +7641,19 @@
         CONTACTS.forEach((c) => (c.usedBy = null));
 
         const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
+        logGameEvent("mission_start", {
+          mission: JSON.parse(JSON.stringify(mission)),
+          stakeholders: mission.opponents.map((missionOpponent) => {
+            const employee = EMPLOYEES.find(
+              (e) => e.id === missionOpponent.employeeId,
+            );
+            return {
+              employeeId: missionOpponent.employeeId,
+              base: employee ? JSON.parse(JSON.stringify(employee)) : null,
+              overrides: JSON.parse(JSON.stringify(missionOpponent)),
+            };
+          }),
+        });
 
         runUnitEffects(p, "thread_start", {});
 
@@ -7826,9 +7861,9 @@
 
       function generatePack(type, tier) {
         const tiers = {
-          small: { cost: 6, options: 2, picks: 1 },
-          medium: { cost: 8, options: 3, picks: 1 },
-          large: { cost: 10, options: 3, picks: 2 },
+          small: { cost: 4, options: 2, picks: 1 },
+          medium: { cost: 6, options: 3, picks: 1 },
+          large: { cost: 8, options: 3, picks: 2 },
         };
         const t = tiers[tier];
         let pool = [];
@@ -8010,6 +8045,14 @@
               : summary.totalRep;
           summary.totalRep = repAward;
           state.player.reputation += repAward;
+          logGameEvent("thread_end", {
+            totalRep: repAward,
+            baseRep: summary.baseRep,
+            bonusRep: summary.bonusRep,
+            interestRep: summary.interestRep,
+            winsRep: summary.winsRep,
+            winsRemaining: state.player.currentWins || 0,
+          });
 
           // Advance mission index
           state.currentMissionIndex =
@@ -8156,6 +8199,11 @@
         if (state.player.reputation >= cost) {
           state.player.reputation -= cost;
           state.shop.rerollCount = (state.shop.rerollCount || 0) + 1;
+          logGameEvent("purchase", {
+            source: "shop",
+            itemType: "reroll",
+            cost,
+          });
           const p = state.player;
           const contactPool = CONTACTS.filter(
             (c) => !p.addressBook.includes(c.id) && !c.noShop,
@@ -8255,6 +8303,10 @@
 
       function showLoseScreen() {
         const p = state.player;
+        logGameEvent("game_over", {
+          reason: state.lossReason || "defeat",
+          turn: state.turn,
+        });
         document.getElementById("lose-title").innerText = p.title.name;
         document.getElementById("lose-period").innerText =
           `${p.quarter} - YR ${p.year}`;
@@ -8282,6 +8334,10 @@
         clearSavedGame();
         state = {
           ...state,
+          analytics: {
+            events: [],
+            rounds: [],
+          },
           player: {
             ...state.player,
             id: "player",
@@ -8342,6 +8398,40 @@
         document.getElementById("player-name-input").value = name;
         document.getElementById("email-preview").innerText = email;
         showInbox();
+      }
+
+      function downloadGameLog() {
+        const mission = MISSIONS[state.currentMissionIndex] || {};
+        const data = {
+          player: {
+            name: state.player.name,
+            title: state.player.title?.name || null,
+            quarter: state.player.quarter,
+            year: state.player.year,
+            reputation: state.player.reputation,
+            addressBookCount: state.player.addressBook.length,
+            signatures: state.player.signatures.map((s) => s.id),
+            salutation: state.player.salutation?.id || null,
+            signOff: state.player.signOff?.id || null,
+          },
+          progress: {
+            missionId: mission.id || null,
+            missionSubject: mission.subject || null,
+            turn: state.turn,
+          },
+          analytics: state.analytics || { events: [] },
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `reply-all-session-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
       }
 
       function advanceQuarter() {
@@ -9154,6 +9244,13 @@
         hideShopItemOverlay();
         state.player.reputation -= pack.cost;
         pack.purchased = true;
+        logGameEvent("purchase", {
+          source: "shop",
+          itemType: "pack",
+          itemId: pack.id,
+          name: pack.name || null,
+          cost: pack.cost || 0,
+        });
         runUnitEffects(state.player, "pack_purchase", { pack });
         startPackOpening(pack);
       }
@@ -11064,6 +11161,11 @@
         if (o.isDefeated) return;
         o.hp = 0;
         o.isDefeated = true;
+        logGameEvent("stakeholder_opt_out", {
+          actorId: o.employeeId || o.id,
+          actorName: o.name,
+          byPlayer,
+        });
         if (byPlayer) {
           state.removedByPlayer++;
           o.removedByPlayer = true;
@@ -11365,6 +11467,21 @@
         log.prepend(entry);
       }
 
+      function logGameEvent(type, data = {}) {
+        if (!state.analytics) return;
+        const mission = MISSIONS[state.currentMissionIndex] || {};
+        const event = {
+          ts: Date.now(),
+          type,
+          turn: state.turn,
+          quarter: state.player.quarter,
+          year: state.player.year,
+          missionId: mission.id || null,
+          ...data,
+        };
+        state.analytics.events.push(event);
+      }
+
       function performAction(type) {
         if (state.isProcessing || state.gameOver) return;
         if (
@@ -11373,6 +11490,10 @@
           state.player.signOff.disableReplyTo
         )
           return;
+        logGameEvent("player_action", {
+          action: type,
+          targetId: state.targetId || null,
+        });
         state.isProcessing = true;
         state.turn++;
         const target = opponents.find((o) => o.id === state.targetId);
@@ -11448,6 +11569,37 @@
                 ignoreReflect: true,
               })
             : null;
+          logGameEvent("action_result", {
+            actor: "player",
+            action: "ATTACK",
+            targetId: target.id,
+            targetName: target.name,
+            baseDamage: d,
+            damageDealt: result.dmg,
+            blocked: result.blocked,
+            reflected: result.reflected,
+            followUp: followUpResult
+              ? {
+                  damageDealt: followUpResult.dmg,
+                  reflected: followUpResult.reflected,
+                }
+              : null,
+            secondary: secondaryResult && secondaryTarget
+              ? {
+                  targetId: secondaryTarget.id,
+                  targetName: secondaryTarget.name,
+                  damageDealt: secondaryResult.dmg,
+                }
+              : null,
+            bounce: bounceResult && bounceTarget
+              ? {
+                  targetId: bounceTarget.id,
+                  targetName: bounceTarget.name,
+                  damageDealt: bounceResult.dmg,
+                  reflected: bounceResult.reflected,
+                }
+              : null,
+          });
 
           const q = drawFromLineBag(
             p,
@@ -11513,6 +11665,15 @@
               }
             });
           }
+          logGameEvent("action_result", {
+            actor: "player",
+            action: "ESCALATE",
+            baseDamage: d,
+            totalBlocked,
+            totalReflected,
+            totalRecovered,
+            waves,
+          });
           let levGain = getPlayerLeverageGain(10);
           p.ult += levGain;
           const line = drawFromLineBag(
@@ -11547,6 +11708,12 @@
             p.escalateDmg += p.salutation.deflectBoostEscalate;
           }
           runUnitEffects(p, "deflect_action", {});
+          logGameEvent("action_result", {
+            actor: "player",
+            action: "DEFLECT",
+            reflect: p.deflectChargeReflect,
+            reduce: p.deflectChargeReduce,
+          });
           const line = drawFromLineBag(
             p,
             getPlayerLineBagKey("deflect", missionId, titleId),
@@ -11567,6 +11734,12 @@
           const promoteOverflow = Math.max(0, promotePotential - totalMaxHp);
           p.hp = Math.min(totalMaxHp, promotePotential);
           runUnitEffects(p, "promote_overflow", { overflow: promoteOverflow });
+          logGameEvent("action_result", {
+            actor: "player",
+            action: "PROMOTE",
+            heal: promoteHeal,
+            overflow: promoteOverflow,
+          });
           const selfPromoteLine = drawFromLineBag(
             p,
             getPlayerLineBagKey("selfPromote", missionId, titleId),
@@ -11598,6 +11771,13 @@
               }
             });
           }
+          logGameEvent("action_result", {
+            actor: "player",
+            action: "REPLY_ALL",
+            baseDamage: d,
+            totalReflected,
+            waves,
+          });
           p.ult = 0;
           runUnitEffects(p, "reply_all", {});
           const replyAllLine = drawFromLineBag(
@@ -11702,6 +11882,17 @@
 
             const ai = decideAiAction(a, alive, state.player);
             let target = ai.target;
+            logGameEvent("ai_action", {
+              actorId: a.employeeId || a.id,
+              actorName: a.name,
+              action: ai.type,
+              targetId: target ? target.id : null,
+              targetName: target ? target.name : null,
+              ccTargets:
+                ai.type === "cc"
+                  ? ai.ccTargets.map((c) => c.id)
+                  : [],
+            });
 
             if (a.redirectNext) {
               a.redirectNext = false;
@@ -11741,6 +11932,12 @@
               const promoteOverflow = Math.max(0, promotePotential - ai.maxHp);
               a.hp = Math.min(ai.maxHp, promotePotential);
               runUnitEffects(a, "promote_overflow", { overflow: promoteOverflow });
+              logGameEvent("action_result", {
+                actor: a.employeeId || a.id,
+                action: "PROMOTE",
+                heal: ai.promoteHeal,
+                overflow: promoteOverflow,
+              });
               const selfPromoteLine = drawFromLineBag(
                 a,
                 "selfPromote",
@@ -11816,6 +12013,12 @@
               } else {
                 a.deflectChargeReflect = getUnitDeflectReflect(a);
                 a.deflectChargeReduce = getUnitDeflectReduce(a);
+                logGameEvent("action_result", {
+                  actor: a.employeeId || a.id,
+                  action: "DEFLECT",
+                  reflect: a.deflectChargeReflect,
+                  reduce: a.deflectChargeReduce,
+                });
                 const deflectLine = drawFromLineBag(
                   a,
                   "deflect",
@@ -11856,6 +12059,14 @@
                   if (t !== state.player && t.hp <= 0)
                     handleOpponentDefeat(t);
                 }
+              });
+              logGameEvent("action_result", {
+                actor: a.employeeId || a.id,
+                action: "ESCALATE",
+                baseDamage: d,
+                totalBlocked,
+                totalReflected,
+                totalRecovered,
               });
               const escLine = drawFromLineBag(
                 a,
@@ -11930,6 +12141,26 @@
                         ignoreReflect: true,
                       })
                     : null;
+                  logGameEvent("action_result", {
+                    actor: a.employeeId || a.id,
+                    action: "ATTACK",
+                    targetId: "player",
+                    targetName: state.player.name,
+                    baseDamage: d,
+                    damageDealt: result.dmg,
+                    blocked: result.blocked,
+                    reflected: result.reflected,
+                    followUp: followUpResult
+                      ? { damageDealt: followUpResult.dmg }
+                      : null,
+                    bounce: bounceResult && bounceTarget
+                      ? {
+                          targetId: bounceTarget.id,
+                          targetName: bounceTarget.name,
+                          damageDealt: bounceResult.dmg,
+                        }
+                      : null,
+                  });
                   if (result.reflected > 0) {
                     body += `<br><br><strong>Deflected:</strong> ${result.reflected} reflected.`;
                   }
@@ -11969,6 +12200,26 @@
                       ignoreReflect: true,
                     })
                   : null;
+                logGameEvent("action_result", {
+                  actor: a.employeeId || a.id,
+                  action: "ATTACK",
+                  targetId: target.id,
+                  targetName: target.name,
+                  baseDamage: d,
+                  damageDealt: result.dmg,
+                  blocked: result.blocked,
+                  reflected: result.reflected,
+                  followUp: followUpResult
+                    ? { damageDealt: followUpResult.dmg }
+                    : null,
+                  bounce: bounceResult && bounceTarget
+                    ? {
+                        targetId: bounceTarget.id,
+                        targetName: bounceTarget.name,
+                        damageDealt: bounceResult.dmg,
+                      }
+                    : null,
+                });
                 if (result.reflected > 0) {
                   body += `<br><br><strong>Deflected:</strong> ${result.reflected} reflected.`;
                 }
@@ -12009,6 +12260,10 @@
             clearDeflectCharges(state.player);
             state.isProcessing = false;
             updateUI();
+            logGameEvent("round_end", {
+              playerHp: state.player.hp,
+              opponentsRemaining: opponents.filter((o) => o.hp > 0).length,
+            });
             saveGame();
           }
         }, alive.length * 700);
@@ -12397,6 +12652,11 @@
             actionLabel: isDisabled ? "UNAVAILABLE" : "LOOP IN",
             actionDisabled: isDisabled,
             onAction: () => {
+              logGameEvent("player_action", {
+                action: "CC",
+                targetId: c.id,
+                targetName: c.name,
+              });
               addContactBuff(state.player, c, state.player.name);
               const loopInText = formatLoopInText(
                 c,
@@ -12451,6 +12711,11 @@
           const actionBtn = detail.querySelector("#address-book-action");
           if (actionBtn) {
             actionBtn.onclick = () => {
+              logGameEvent("player_action", {
+                action: "BCC",
+                targetId: bcc.id,
+                targetName: bcc.name,
+              });
               useBcc(bcc, selection.index);
               renderAddressBook();
             };
