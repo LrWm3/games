@@ -2845,6 +2845,7 @@
               event: "thread_end",
               type: "add_random_cc_bonus",
               requiresHpFull: true,
+              count: 2,
             },
           ],
         },
@@ -7224,13 +7225,16 @@
         const EFFECT_HANDLERS = {
           add_random_cc_bonus: (effect, owner) => {
             if (unit.id !== "player") return;
-            const picked = applyRandomCcBoost(
-              state.player,
-              effect.stats || {},
-              true,
-            );
-            if (trackEndUpgrades && picked) {
-              recordEndRoundUpgrade(picked.id);
+            const count = effect.count || 1;
+            for (let i = 0; i < count; i++) {
+              const picked = applyRandomCcBoost(
+                state.player,
+                effect.stats || {},
+                true,
+              );
+              if (trackEndUpgrades && picked) {
+                recordEndRoundUpgrade(picked.id);
+              }
             }
           },
           add_cc_bonus: (effect) => {
@@ -9103,9 +9107,15 @@
         const statsText = formatStatsText(effect.stats || {});
         let result = "";
         if (effect.type === "add_random_cc_bonus") {
+          const count = effect.count || 1;
+          const countLabel =
+            count > 1
+              ? `${count} random ${contactNoun}s`
+              : `a random ${contactNoun}`;
+          const verb = count > 1 ? "gain" : "gains";
           result = statsText
-            ? `${eventText}: random ${contactNoun} gains ${statsText}`
-            : `${eventText}: ${upgradeVerb} a random ${contactNoun}`;
+            ? `${eventText}: ${countLabel} ${verb} ${statsText}`
+            : `${eventText}: ${upgradeVerb} ${countLabel}`;
         } else if (effect.type === "add_cc_bonus") {
           result = statsText
             ? `${eventText}: ${contactNoun} gains ${statsText}`
