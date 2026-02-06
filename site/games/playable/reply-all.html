@@ -3022,7 +3022,7 @@
           id: "mentorship",
           name: "Credibility Coaching",
           bonus: "One of your in-thread contacts gains a +10 max credibility specialization.",
-          rarity: "rare",
+          rarity: "common",
           effect: "contactUpgradeHp",
           logText:
             "Approved a resilience coaching plan for one CC'd contact.",
@@ -3041,7 +3041,7 @@
           id: "reply_precision",
           name: "Reply Precision",
           bonus: "One of your in-thread contacts gains a +5 reply to specialization.",
-          rarity: "common",
+          rarity: "uncommon",
           effect: "contactUpgradeSingle",
           logText:
             "Issued a precision-reply training order for one CC'd contact.",
@@ -7656,6 +7656,9 @@
         const baseStats = computeUnitStats(p);
         p.hp = getUnitMaxHp(p);
         p.currentWins = Math.max(0, Math.floor(baseStats.wins));
+        if (state.analytics) {
+          state.analytics.lastRoundRep = state.player.reputation;
+        }
 
         // Reset global CONTACTS.usedBy
         CONTACTS.forEach((c) => (c.usedBy = null));
@@ -12317,10 +12320,19 @@
             clearDeflectCharges(state.player);
             state.isProcessing = false;
             updateUI();
+            const repAfter = state.player.reputation;
+            const repBefore =
+              state.analytics && typeof state.analytics.lastRoundRep === "number"
+                ? state.analytics.lastRoundRep
+                : repAfter;
             logGameEvent("round_end", {
               playerHp: state.player.hp,
               opponentsRemaining: opponents.filter((o) => o.hp > 0).length,
+              repBefore,
+              repAfter,
+              repDelta: repAfter - repBefore,
             });
+            if (state.analytics) state.analytics.lastRoundRep = repAfter;
             saveGame();
           }
         }, alive.length * 700);
