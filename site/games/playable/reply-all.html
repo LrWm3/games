@@ -7652,6 +7652,9 @@
         p.deflectChargeReduce = 0;
         p.threadBonuses = {};
         state.roundEndUpgrades = {};
+        if (state.player.contactTrainingCount) {
+          state.player.contactTrainingCount["cc_telly_operations"] = 0;
+        }
         state.expenseReportActive = false;
         state.threadEffectFlags = {};
         const baseStats = computeUnitStats(p);
@@ -8435,6 +8438,7 @@
           bccLimit: 2,
           contactUpgrades: {},
           contactPermanentBoosts: {},
+          contactTrainingCount: {},
           salutationBonuses: {},
           signoffBonuses: {},
           _lineBags: {},
