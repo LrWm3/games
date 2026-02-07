@@ -22,10 +22,13 @@
          * 4. Address Book: Modal system for assigning permanent buffs.
          * 5. Personality: Specific attack types (Compliance, Value, Time, Accusatory).
          */
+      /* GLOBAL */
       :root {
         --win-grey: #c0c0c0;
         --win-blue: #000080;
+        --win-blue-light: #1084d0;
         --win-border-light: #ffffff;
+        --win-border-medium: #808080;
         --win-border-dark: #404040;
         --shop-taskbar-height: 28px;
         --shop-header-height: 30px;
@@ -68,7 +71,11 @@
         padding-top: 5px;
         padding-bottom: 3px;
       }
-      .retro-button:disabled {
+      .retro-button:disabled
+      .window-titlebar {
+        background: linear-gradient(90deg, var(--win-blue), var(--win-blue-light));
+      }
+ {
         color: #808080;
         cursor: not-allowed;
         opacity: 0.6;
@@ -76,6 +83,9 @@
       .terminal-font {
         font-family: "VT323", monospace;
       }
+    </style>
+    <style>
+      /* SHOP */
       .address-book-panels {
         display: flex;
         gap: 8px;
@@ -533,6 +543,9 @@
           width: 100% !important;
         }
       }
+    </style>
+    <style>
+      /* GAME-UI */
       @keyframes shake {
         0%,
         100% {
@@ -631,7 +644,7 @@
         class="bg-[#c0c0c0] retro-border max-w-2xl w-full h-[80dvh] flex flex-col shadow-2xl"
       >
         <div
-          class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs"
+          class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs"
         >
           <span>Outlook Express - Inbox</span>
           <div class="flex gap-1">
@@ -706,7 +719,7 @@
         class="bg-[#c0c0c0] retro-border max-w-xs w-full shadow-2xl overflow-hidden"
       >
         <div
-          class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
+          class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
         >
           <span>ARCHIVED THREAD</span>
           <span>✕</span>
@@ -771,7 +784,7 @@
         class="bg-[#c0c0c0] retro-border w-full max-w-4xl shadow-2xl flex flex-col min-h-0 flex-1"
       >
         <div
-          class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold shrink-0"
+          class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold shrink-0"
         >
           <span class="truncate">INTRA-NET: HR PORTAL & EMPLOYEE SERVICES</span>
           <span
@@ -835,21 +848,21 @@
       </div>
       <div class="w-full max-w-4xl mt-3 flex flex-col min-h-0 shop-assets-container">
         <div id="assets-window-contacts" class="hidden assets-window bg-[#c0c0c0] retro-border shadow-2xl">
-          <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+          <div class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
             <span>CONTACTS</span>
             <button onclick="showAssetsWindow('none')" class="px-1">✕</button>
           </div>
           <div class="window-body p-2 bg-white space-y-2"></div>
         </div>
         <div id="assets-window-email" class="hidden assets-window bg-[#c0c0c0] retro-border shadow-2xl">
-          <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+          <div class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
             <span>EMAIL TEMPLATE</span>
             <button onclick="showAssetsWindow('none')" class="px-1">✕</button>
           </div>
           <div class="window-body p-2 bg-white space-y-2"></div>
         </div>
         <div id="assets-window-profile" class="hidden assets-window bg-[#c0c0c0] retro-border shadow-2xl">
-          <div class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+          <div class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
             <span>MY PROFILE</span>
             <button onclick="showAssetsWindow('none')" class="px-1">✕</button>
           </div>
@@ -899,7 +912,7 @@
     >
       <div class="bg-[#f7f4e8] retro-border w-full max-w-2xl shadow-2xl">
         <div
-          class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
+          class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
         >
           <span>EMPLOYEE FILE</span>
           <button id="stats-modal-close" class="px-1">✕</button>
@@ -1099,7 +1112,7 @@
     >
       <div class="bg-[#c0c0c0] p-4 retro-border max-w-sm w-full shadow-2xl">
         <div
-          class="bg-[#000080] text-white px-2 py-1 mb-4 flex justify-between items-center text-xs"
+          class="window-titlebar text-white px-2 py-1 mb-4 flex justify-between items-center text-xs"
         >
           <span>NEW USER SETUP</span>
           <span>✕</span>
@@ -1165,7 +1178,7 @@
       class="hidden flex flex-col w-full h-full max-w-5xl bg-[#c0c0c0] retro-border overflow-hidden"
     >
       <div
-        class="bg-[#000080] text-white p-1 flex justify-between items-center shrink-0"
+        class="window-titlebar text-white p-1 flex justify-between items-center shrink-0"
       >
         <div class="flex items-center gap-2 px-1">
           <span id="game-header-subject" class="text-xs font-bold truncate"
@@ -1403,7 +1416,7 @@
     >
       <div class="bg-[#c0c0c0] retro-border w-full max-w-3xl shadow-2xl">
         <div
-          class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
+          class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
         >
           <span id="address-book-title">PERSONNEL DIRECTORY</span>
           <button onclick="closeAddressBook()" class="px-1">✕</button>
@@ -1441,7 +1454,7 @@
     >
       <div class="bg-[#c0c0c0] retro-border w-full max-w-xs shadow-2xl">
         <div
-          class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
+          class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
         >
           <span id="cc-profile-title">CC Profile</span>
           <button onclick="closeCcProfile()" class="px-1">✕</button>
@@ -1467,7 +1480,7 @@
     >
       <div class="bg-[#c0c0c0] retro-border w-full max-w-sm shadow-2xl">
         <div
-          class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
+          class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
         >
           <span id="set-info-title">Set</span>
           <button onclick="closeSetInfo()" class="px-1">✕</button>
@@ -1496,7 +1509,7 @@
     >
       <div class="bg-[#c0c0c0] retro-border w-full max-w-sm shadow-2xl">
         <div
-          class="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
+          class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
         >
           <span id="training-title">Training Selection</span>
           <button onclick="closeTrainingModal()" class="px-1">✕</button>
@@ -5297,6 +5310,7 @@
           events: [],
           rounds: [],
         },
+        aiPlannedActions: {},
         player: {
           id: "player",
           name: "eke vdh",
@@ -5598,6 +5612,7 @@
           player: hydratePlayer(save.state.player),
           shop: hydrateShop(save.state.shop),
         };
+        if (!state.aiPlannedActions) state.aiPlannedActions = {};
         opponents = Array.isArray(save.opponents) ? save.opponents : [];
         opponents.forEach((o) => {
           applyUnitDefaults(o);
@@ -5610,6 +5625,7 @@
       function startNewGame() {
         clearSavedGame();
         state.player.contactTrainingCount = {};
+        state.aiPlannedActions = {};
         startGame();
       }
 
@@ -5696,6 +5712,7 @@
         state.activeScreen = screenId;
         if (prevScreen === "shop-screen" && screenId !== "shop-screen") {
           logInventorySnapshot("shop_exit");
+          logResolvedPlayerSheet("shop_exit");
         }
       }
 
@@ -6620,6 +6637,42 @@
         }
         if (actionRoll < 0.35) return { type: "escalate", target };
         return { type: "attack", target };
+      }
+
+      function planAiActions() {
+        const alive = opponents.filter((o) => o.hp > 0);
+        const plans = {};
+        alive.forEach((a) => {
+          plans[a.id] = decideAiAction(a, alive, state.player);
+        });
+        state.aiPlannedActions = plans;
+      }
+
+      function isPlannedActionValid(ai, plan) {
+        if (!plan || !ai || ai.hp <= 0) return false;
+        const target =
+          plan.target &&
+          (plan.target.id === "player"
+            ? { id: "player" }
+            : opponents.find((o) => o.id === plan.target.id));
+        if (plan.type === "cc") {
+          const available = ai.addressBook
+            .map((id) => CONTACTS.find((con) => con.id === id))
+            .filter(
+              (c) => c && !isContactInLoop(c.id) && !isContactImplicated(c),
+            );
+          if (!available.length) return false;
+          const plannedIds = (plan.ccTargets || []).map((c) => c.id);
+          return plannedIds.some((id) =>
+            available.some((c) => c.id === id),
+          );
+        }
+        if (plan.type === "attack") return !!target && target.id != null;
+        if (plan.type === "escalate") return true;
+        if (plan.type === "deflect")
+          return ai.deflectChargeReduce <= 0 && ai.deflectChargeReflect <= 0;
+        if (plan.type === "promote") return ai.wins > 0;
+        return false;
       }
 
       function isContactImplicated(contact) {
@@ -7709,6 +7762,7 @@
         state.lossReason = null;
         state.isProcessing = false;
         logInventorySnapshot("mission_start");
+        logResolvedPlayerSheet("mission_start");
         const p = state.player;
         applyUnitDefaults(p);
         p._lineBags = {};
@@ -7786,6 +7840,7 @@
         state.removedTotal = opponents.length;
         state.removedByPlayer = 0;
         state.targetId = opponents[0].id;
+        planAiActions();
 
         document.getElementById("message-log").innerHTML = "";
         document.getElementById("game-header-subject").innerText =
@@ -8279,6 +8334,7 @@
         runUnitEffects(state.player, "shop_enter", {});
         updateShopUI();
         logInventorySnapshot("shop_enter");
+        logResolvedPlayerSheet("shop_enter");
         logGameEvent("shop_view", {
           directItems: (state.shop.directItems || [])
             .filter((item) => !item.purchased)
@@ -8473,6 +8529,7 @@
           turn: state.turn,
           board: boardSnapshot,
         });
+        logResolvedPlayerSheet("loss");
         document.getElementById("lose-title").innerText = p.title.name;
         document.getElementById("lose-period").innerText =
           `${p.quarter} - YR ${p.year}`;
@@ -11681,6 +11738,17 @@
         });
       }
 
+      function logResolvedPlayerSheet(source) {
+        const p = state.player;
+        const totals = computeUnitStats(p);
+        const sources = getStatSources(p);
+        logGameEvent("player_sheet", {
+          source,
+          totals,
+          sources,
+        });
+      }
+
       function logPassiveHeal(unit, hpBefore, hpAfter, trigger) {
         if (!unit) return;
         const amount = Math.max(0, (hpAfter || 0) - (hpBefore || 0));
@@ -12146,7 +12214,12 @@
               return;
             }
 
-            const ai = decideAiAction(a, alive, state.player);
+            let aiPlan =
+              state.aiPlannedActions && state.aiPlannedActions[a.id];
+            if (!isPlannedActionValid(a, aiPlan)) {
+              aiPlan = decideAiAction(a, alive, state.player);
+            }
+            const ai = aiPlan;
             let target = ai.target;
             logGameEvent("ai_action", {
               actorId: a.employeeId || a.id,
@@ -12573,6 +12646,7 @@
               repDelta: repAfter - repBefore,
             });
             if (state.analytics) state.analytics.lastRoundRep = repAfter;
+            planAiActions();
             saveGame();
           }
         }, alive.length * 700);
