@@ -8079,7 +8079,7 @@
           "everyone@gov.org",
           mission.subject,
           introText,
-          "border-l-4 border-blue-500 bg-blue-50",
+          "border-l-4 border-blue-500 bg-blue-50 intro-message",
         );
         saveGame();
       }
@@ -12028,6 +12028,8 @@
           headerSubject;
         const subLine = document.getElementById("thread-subject");
         if (subLine) subLine.innerText = getMissionSubSubject(mission);
+
+        renderDraftingIndicators();
       }
 
       function addEmailToLog(from, to, subject, body, classes = "") {
@@ -12056,7 +12058,64 @@
                     ${body}
                 </div>
             `;
-        log.prepend(entry);
+        const drafting = document.getElementById("drafting-indicators");
+        if (drafting && classes.includes("intro-message")) {
+          drafting.insertAdjacentElement("afterend", entry);
+        } else {
+          log.prepend(entry);
+        }
+      }
+
+      function renderDraftingIndicators() {
+        const log = document.getElementById("message-log");
+        if (!log) return;
+        const gameUi = document.getElementById("game-ui");
+        const shouldShow =
+          !state.isProcessing &&
+          !state.gameOver &&
+          gameUi &&
+          !gameUi.classList.contains("hidden");
+        const existing = document.getElementById("drafting-indicators");
+        if (!shouldShow) {
+          if (existing) existing.remove();
+          return;
+        }
+        const alive = opponents.filter((o) => o.hp > 0);
+        if (alive.length === 0) {
+          if (existing) existing.remove();
+          return;
+        }
+        const typeText = {
+          attack: "drafting a reply...",
+          escalate: "preparing to escalate...",
+          promote: "readies a recent win...",
+          deflect: "planning retaliation...",
+          cc: "looping in a contact...",
+        };
+        const container = existing || document.createElement("div");
+        container.id = "drafting-indicators";
+        container.className =
+          "message-entry p-2 border-2 border-gray-100 bg-gray-50 text-[10px] italic text-gray-600";
+        container.innerHTML = alive
+          .map((o) => {
+            let plan = state.aiPlannedActions
+              ? state.aiPlannedActions[o.id]
+              : null;
+            if (!isPlannedActionValid(o, plan)) {
+              plan = decideAiAction(o, alive, state.player);
+              if (state.aiPlannedActions) state.aiPlannedActions[o.id] = plan;
+            }
+            let text = typeText[plan?.type] || typeText.attack;
+            if (
+              (o.employeeId === "jen_lavallee" || o.id === "jen_lavallee") &&
+              plan?.type === "deflect"
+            ) {
+              text = "granting aJENts SMTP access...";
+            }
+            return `<div><strong>${o.name}</strong> is ${text}</div>`;
+          })
+          .join("");
+        if (container.parentElement !== log) log.prepend(container);
       }
 
       function logGameEvent(type, data = {}) {
@@ -12659,9 +12718,10 @@
                     title: "Automated Processing Unit",
                     department: "Digital Technology",
                     departmentId: "digital_technology",
-                    hp: 20,
-                    maxHp: 20,
+                    hp: 30,
+                    maxHp: 30,
                     wins: 1,
+                    defFlat: 10,
                     singleDmg: 15,
                     escalateDmg: 10,
                     numCCperCCaction: 0,
