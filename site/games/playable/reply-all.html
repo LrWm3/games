@@ -487,6 +487,10 @@
         pointer-events: none;
         z-index: 9999;
       }
+      .win-panel {
+        border-color: #10b981 !important;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.35), 0 12px 25px rgba(16, 185, 129, 0.25);
+      }
       .shop-item-overlay-frame {
         background: #ffffff;
         border: 1px solid #d1d5db;
@@ -1163,31 +1167,14 @@
         class="bg-[#c0c0c0] retro-border max-w-sm w-full shadow-2xl overflow-hidden"
       >
         <div
+          id="lose-header-bar"
           class="bg-red-800 text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
         >
           <span>SYSTEM LOCKOUT - SECURITY BREACH</span>
           <span>✕</span>
         </div>
         <div class="p-6 flex flex-col items-center">
-          <div
-            class="w-16 h-16 bg-red-600 retro-border flex items-center justify-center mb-6"
-          >
-            <svg
-              class="w-10 h-10 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              ></path>
-            </svg>
-          </div>
-
-          <h2 class="text-2xl font-bold terminal-font mb-4 text-red-800">
+          <h2 id="lose-title-text" class="text-2xl font-bold terminal-font mb-4 text-red-800">
             NOTICE OF TERMINATION
           </h2>
 
@@ -1217,7 +1204,7 @@
 
           <div
             id="lose-message"
-            class="text-[12px] text-center italic text-gray-800 px-2 leading-relaxed"
+            class="text-[12px] italic text-gray-800 px-2 leading-relaxed"
           >
             "Credibility is of utmost importance for ECO staff. As a result of
             correspondence recently brought to our attention, your role here has
@@ -1225,6 +1212,7 @@
           </div>
 
           <div
+            id="lose-footer"
             class="mt-8 text-[10px] text-gray-500 uppercase tracking-widest animate-pulse"
           >
             Access Revoked. See Security.
@@ -1903,6 +1891,11 @@
       document.addEventListener("keydown", (e) => {
         if (e.key === "m" || e.key === "M") {
           sfxEnabled = !sfxEnabled;
+        }
+        if (e.key === "`") {
+          state.winGame = true;
+          state.gameOver = true;
+          showLoseScreen();
         }
       });
 
@@ -8804,16 +8797,29 @@
         document.getElementById("lose-total-rep").innerText = p.reputation;
         document.getElementById("lose-contacts").innerText =
           `${p.addressBook.length} Contacts`;
-        const loseHeader = document.querySelector("#lose-screen .bg-red-800 span");
-        const loseIcon = document.querySelector("#lose-screen .w-16.h-16");
-        const loseTitle = document.querySelector("#lose-screen h2");
+        const loseHeader = document.querySelector("#lose-header-bar span");
+        const loseTitle = document.getElementById("lose-title-text");
+        const loseHeaderBar = document.getElementById("lose-header-bar");
         const continueBtn = document.getElementById("continue-btn");
         const loseMessage = document.getElementById("lose-message");
+        const loseFooter = document.getElementById("lose-footer");
         if (isWin) {
           if (loseHeader) loseHeader.innerText = "SYSTEM ACCESS RESTORED";
-          if (loseIcon) loseIcon.className =
-            "w-16 h-16 bg-emerald-600 retro-border flex items-center justify-center mb-6";
+          if (loseHeaderBar) {
+            loseHeaderBar.classList.remove("bg-red-800");
+            loseHeaderBar.classList.add("bg-emerald-800");
+          }
           if (loseTitle) loseTitle.innerText = "EMPLOYMENT SECURED";
+          if (loseTitle) {
+            loseTitle.classList.remove("text-red-800");
+            loseTitle.classList.add("text-emerald-800");
+          }
+          const losePanel = document.querySelector("#lose-screen > div");
+          if (losePanel) losePanel.classList.add("win-panel");
+          if (loseMessage) {
+            loseMessage.classList.add("text-emerald-900");
+          }
+          if (loseFooter) loseFooter.classList.add("hidden");
           if (loseMessage) {
             loseMessage.innerText =
               '"It has come to our attention that your thread performance exceeds executive benchmarks. Your access has been reinstated and your next rotation is ready."';
@@ -8821,9 +8827,21 @@
           if (continueBtn) continueBtn.classList.remove("hidden");
         } else {
           if (loseHeader) loseHeader.innerText = "SYSTEM LOCKOUT - SECURITY BREACH";
-          if (loseIcon) loseIcon.className =
-            "w-16 h-16 bg-red-600 retro-border flex items-center justify-center mb-6";
           if (loseTitle) loseTitle.innerText = "NOTICE OF TERMINATION";
+          if (loseHeaderBar) {
+            loseHeaderBar.classList.remove("bg-emerald-800");
+            loseHeaderBar.classList.add("bg-red-800");
+          }
+          if (loseTitle) {
+            loseTitle.classList.remove("text-emerald-800");
+            loseTitle.classList.add("text-red-800");
+          }
+          const losePanel = document.querySelector("#lose-screen > div");
+          if (losePanel) losePanel.classList.remove("win-panel");
+          if (loseMessage) {
+            loseMessage.classList.remove("text-emerald-900");
+          }
+          if (loseFooter) loseFooter.classList.remove("hidden");
           if (continueBtn) continueBtn.classList.add("hidden");
           if (loseMessage) {
             if (state.lossReason === "timeout") {
