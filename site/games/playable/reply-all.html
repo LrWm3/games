@@ -193,6 +193,80 @@
       .pack-drop-zone.active {
         display: flex;
       }
+      .wizard-sidebar {
+        background: linear-gradient(180deg, #000040 0%, #000080 100%);
+        width: 120px;
+      }
+      .wizard-text {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        font-size: 2rem;
+        font-weight: 900;
+        color: rgba(255, 255, 255, 0.1);
+        pointer-events: none;
+        user-select: none;
+      }
+      .dither-lock {
+        background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVQImWNkYGBoYGBgYGBgYAAAAwAHAAFc878AAAAASUVORK5CYII=");
+        background-repeat: repeat;
+        background-color: rgba(192, 192, 192, 0.4);
+        backdrop-filter: grayscale(1);
+      }
+      .prestige-btn {
+        aspect-ratio: 1 / 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-family: monospace;
+        font-size: 14px;
+        cursor: pointer;
+        background: var(--win-grey);
+      }
+      .prestige-btn.locked {
+        color: #808080;
+        cursor: not-allowed;
+        text-shadow: 1px 1px white;
+      }
+      .prestige-btn.selected {
+        background: #ffffff;
+        outline: 1.5px dotted black;
+        outline-offset: -4px;
+        box-shadow: inset 1px 1px 0px black;
+      }
+      .nav-btn {
+        width: 32px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--win-grey);
+      }
+      .nav-btn:active:not(:disabled) {
+        border-top: 2px solid var(--win-border-dark);
+        border-left: 2px solid var(--win-border-dark);
+        border-bottom: 2px solid var(--win-border-light);
+        border-right: 2px solid var(--win-border-light);
+      }
+      .manifest-table td {
+        padding: 6px 10px;
+        border-bottom: 1px solid #e5e7eb;
+        font-size: 10px;
+      }
+      .manifest-table tr:last-child td {
+        border-bottom: none;
+      }
+      .dossier-scroll::-webkit-scrollbar {
+        width: 14px;
+      }
+      .dossier-scroll::-webkit-scrollbar-track {
+        background: #dfdfdf;
+      }
+      .dossier-scroll::-webkit-scrollbar-thumb {
+        background: var(--win-grey);
+        border: 2px solid white;
+        box-shadow: inset -1px -1px 0px var(--win-border-dark);
+      }
       .pack-drop-zone.over {
         background: rgba(191, 219, 254, 0.7);
         color: #1e40af;
@@ -1371,22 +1445,6 @@
               ...
             </div>
           </div>
-          <details class="text-[10px]">
-            <summary class="cursor-pointer uppercase font-bold text-gray-600">
-              Advanced
-            </summary>
-            <div class="mt-2">
-              <label class="block text-[10px] font-bold uppercase mb-1"
-                >Seed (optional):</label
-              >
-              <input
-                id="seed-input"
-                type="text"
-                placeholder="e.g. 123456 or 'my-seed'"
-                class="w-full p-2 bg-white retro-border-inset outline-none text-sm"
-              />
-            </div>
-          </details>
         </div>
 
         <button
@@ -1406,6 +1464,106 @@
           >
             Login as (...)
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PERSONNEL INTRODUCTION WIZARD -->
+    <div
+      id="induction-screen"
+      class="hidden fixed inset-0 z-[110] flex items-center justify-center bg-[#008080] p-2"
+    >
+      <div class="w-full max-w-2xl bg-[#c0c0c0] retro-border flex flex-col min-h-[500px] sm:h-[540px]">
+        <div class="window-titlebar text-white px-1 py-0.5 flex justify-between items-center select-none">
+          <div class="flex items-center gap-1.5 px-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"></path>
+            </svg>
+            <span class="text-[10px] sm:text-[11px] font-bold tracking-tight">Personnel Induction Wizard</span>
+          </div>
+          <div class="flex gap-0.5">
+            <button class="w-4 h-4 bg-[#c0c0c0] border border-white shadow-[1px_1px_0px_black] text-black text-[10px] flex items-center justify-center font-bold">✕</button>
+          </div>
+        </div>
+
+        <div class="flex flex-1 overflow-hidden">
+          <div class="wizard-sidebar hidden sm:flex flex-col items-center justify-end pb-8 border-r border-[#808080] shrink-0">
+            <div id="induction-sidebar-text" class="wizard-text uppercase">EXECUTIVE</div>
+          </div>
+
+          <div class="flex-1 flex flex-col bg-white sm:bg-[#c0c0c0] overflow-hidden">
+            <div class="p-4 sm:p-6 flex-1 flex flex-col overflow-hidden">
+              <div class="mb-4">
+                <h2 id="induction-dept-name" class="text-lg sm:text-xl font-bold leading-none mb-1 text-black">Executive Council Office</h2>
+                <div class="h-[1px] w-full bg-black mb-1"></div>
+                <p class="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Induction Assignment Protocol</p>
+              </div>
+
+              <div class="relative flex-1 bg-[#dfdfdf] retro-border-inset flex flex-col overflow-hidden">
+                <div class="absolute inset-y-0 left-0 w-12 flex items-center justify-center z-40 pointer-events-none">
+                  <button onclick="rotateInduction(-1)" class="nav-btn retro-border pointer-events-auto hover:bg-[#d4d4d4]">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="4"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                  </button>
+                </div>
+                <div class="absolute inset-y-0 right-0 w-12 flex items-center justify-center z-40 pointer-events-none">
+                  <button onclick="rotateInduction(1)" class="nav-btn retro-border pointer-events-auto hover:bg-[#d4d4d4]">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="4"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  </button>
+                </div>
+
+                <div id="induction-lock-overlay" class="absolute inset-0 z-30 dither-lock hidden flex flex-col items-center justify-center p-4">
+                  <div class="bg-[#c0c0c0] retro-border p-4 max-w-[240px] text-center shadow-xl">
+                    <div class="bg-[#000080] text-white text-[9px] font-bold px-2 py-0.5 mb-3 uppercase flex items-center justify-between">
+                      <span>System Message</span>
+                      <span>✕</span>
+                    </div>
+                    <svg class="mx-auto mb-3 text-red-700" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    <div class="text-[10px] font-bold mb-2">ACCESS RESTRICTED</div>
+                    <div id="induction-lock-condition" class="text-[9px] font-mono leading-tight text-red-900 p-2 bg-white/50 border border-red-200">
+                      Req: Pending.
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex-1 p-4 sm:p-6 overflow-y-auto dossier-scroll">
+                  <div class="flex flex-col sm:flex-row gap-6">
+                    <div class="flex flex-col items-center shrink-0">
+                      <div id="induction-icon-frame" class="w-24 h-24 bg-white retro-border-inset flex items-center justify-center mb-3"></div>
+                      <div id="induction-dept-code" class="text-[10px] font-mono font-bold bg-white px-3 py-0.5 border border-gray-400 retro-border-inset">EXE-SEC-01</div>
+                    </div>
+
+                    <div class="flex-1 bg-white retro-border-inset shadow-inner">
+                      <table class="w-full manifest-table border-collapse">
+                        <thead>
+                          <tr class="bg-gray-100">
+                            <th class="text-left text-[8px] uppercase p-2 border-b border-gray-300 text-gray-500 font-bold">Attribute</th>
+                            <th class="text-left text-[8px] uppercase p-2 border-b border-gray-300 text-gray-500 font-bold">Data Point</th>
+                          </tr>
+                        </thead>
+                        <tbody id="induction-manifest-body"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4 shrink-0">
+                <div class="flex justify-between items-end mb-1 px-1">
+                  <span class="text-[9px] font-bold uppercase text-gray-500">Prestige Clearance</span>
+                  <span id="induction-prestige-desc" class="text-[10px] font-bold italic text-blue-900">Standard Ops</span>
+                </div>
+                <div id="induction-prestige-grid" class="grid grid-cols-4 sm:grid-cols-8 gap-1.5 p-1.5 bg-white retro-border-inset"></div>
+              </div>
+            </div>
+
+            <div class="p-3 border-t border-[#808080] flex justify-between items-center bg-[#c0c0c0] shrink-0">
+              <div class="text-[9px] uppercase text-gray-500 font-bold">Dept + Prestige Selection</div>
+              <div class="flex gap-2">
+                <button onclick="openInductionAdvanced()" class="bg-[#c0c0c0] retro-border px-3 py-1 text-[11px] min-w-[70px] active:bg-gray-300">Advanced</button>
+                <button id="induction-start-btn" onclick="clockInInduction()" class="bg-[#c0c0c0] retro-border px-4 py-1 text-[11px] min-w-[70px] font-bold btn-default-action">Clock In</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2805,6 +2963,92 @@
           deptScalers: [
             { departmentId: "m4_agency", stat: "followUpChance", per: 0.2, step: 3 },
           ],
+        },
+      ];
+
+      const START_PRESTIGE_TITLES = [
+        "Standard Operations",
+        "Increased Oversight",
+        "Quarterly Review",
+        "Aggressive Restructuring",
+        "Hostile Takeover",
+        "Corporate Hegemony",
+        "Monopolistic Tendencies",
+        "End of History",
+      ];
+
+      const START_DEPARTMENTS = [
+        {
+          id: "executive",
+          name: "Executive Council Office",
+          short: "EXECUTIVE",
+          code: "EXE-SEC-01",
+          unlocked: true,
+          lockCondition: null,
+          manifest: {
+            Reputation: "4.0 (Standard)",
+            "Key Contact": "Telly (Admin)",
+            "Comm Flair": "Full Access",
+            Skillset: "Standard Corporate",
+          },
+          icon: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#000080" stroke-width="1.5"><path d="M3 21h18"></path><path d="M19 21V10a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v11"></path><path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"></path></svg>`,
+          start: {
+            departmentId: "executive_council_office",
+            reputation: 4,
+            winsDelta: 0,
+            addressBook: ["cc_telly_operations"],
+            signatureIds: [],
+            salutationId: "hi",
+            signOffId: "thanks",
+          },
+        },
+        {
+          id: "it",
+          name: "IT Support & Systems",
+          short: "IT_DEPT",
+          code: "SYS-ADM-04",
+          unlocked: true,
+          lockCondition: null,
+          manifest: {
+            Reputation: "4.0 (Stable)",
+            "Key Contact": "Colin (IT)",
+            "Unique Item": "IT Service Desk | Ticket Resolved",
+            Liability: "-1 Win (Ops)",
+          },
+          icon: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#000080" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="12" y1="17" x2="12" y2="21"></line><line x1="8" y1="21" x2="16" y2="21"></line></svg>`,
+          start: {
+            departmentId: "information_technology",
+            reputation: 4,
+            winsDelta: -1,
+            addressBook: ["cc_colin_information_technology"],
+            signatureIds: ["it_ticket"],
+            salutationId: "hi",
+            signOffId: "thanks",
+          },
+        },
+        {
+          id: "finance",
+          name: "Finance & Accounts",
+          short: "FINANCE",
+          code: "FISC-ACC-09",
+          unlocked: true,
+          lockCondition: null,
+          manifest: {
+            Reputation: "14.0 (Venture Cap)",
+            "Key Contact": "N/A (Liquid)",
+            "Comm Restriction": "No Greetings/Signoffs",
+            Passive: "Expense Recovery",
+          },
+          icon: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#000080" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>`,
+          start: {
+            departmentId: "finance",
+            reputation: 14,
+            winsDelta: 0,
+            addressBook: [],
+            signatureIds: [],
+            salutationId: null,
+            signOffId: null,
+          },
         },
       ];
 
@@ -5565,6 +5809,16 @@
         shopVisitIndex: 0,
         missionCycle: 0,
         aiPlannedActions: {},
+        startConfig: {
+          departmentId: "executive",
+          prestige: 0,
+          seedInput: "",
+        },
+        startUnlocks: {
+          executive: 0,
+          it: 0,
+          finance: 0,
+        },
         player: {
           id: "player",
           name: "eke vdh",
@@ -5814,6 +6068,242 @@
         return hashSeed(trimmed, "user");
       }
 
+      function ensureStartDefaults() {
+        if (!state.startConfig) {
+          state.startConfig = { departmentId: "executive", prestige: 0, seedInput: "" };
+        }
+        if (!state.startUnlocks) {
+          state.startUnlocks = { executive: 0, it: 0, finance: 0 };
+        }
+        if (!state.startConfig.departmentId) state.startConfig.departmentId = "executive";
+        if (state.startConfig.prestige == null) state.startConfig.prestige = 0;
+        if (state.startConfig.seedInput == null) state.startConfig.seedInput = "";
+      }
+
+      function getBasePlayerState(name, email) {
+        return {
+          id: "player",
+          name,
+          email,
+          hp: 50,
+          maxHp: 50,
+          ult: 0,
+          wins: 3,
+          currentWins: 3,
+          buffs: [],
+          reputation: 4,
+          year: 1,
+          quarter: "Q3",
+          title: TITLES[0],
+          addressBook: [],
+          signatures: [],
+          salutation: null,
+          signOff: null,
+          bccContacts: [],
+          departmentId: "executive_council_office",
+          singleDmg: 10,
+          escalateDmg: 5,
+          globalDmg: 0,
+          singleDmgMult: 0,
+          escalateDmgMult: 0,
+          globalDmgMult: 0,
+          retaliation: 5,
+          deflect: 0,
+          deflectCharge: 0,
+          deflectChargeReflect: 0,
+          deflectChargeReduce: 0,
+          followUpChance: 0,
+          escalateRecoverPerHit: 0,
+          bccLimit: 2,
+          contactTrainingLimit: 3,
+          contactUpgrades: {},
+          contactPermanentBoosts: {},
+          contactTrainingCount: {},
+          salutationBonuses: {},
+          signoffBonuses: {},
+          _lineBags: {},
+        };
+      }
+
+      function applyStartConfigToPlayer(config) {
+        if (!config) return;
+        const dept = START_DEPARTMENTS.find((d) => d.id === config.departmentId);
+        if (!dept) return;
+        const start = dept.start || {};
+        const baseWins = state.player.wins || 0;
+        const winsDelta = typeof start.winsDelta === "number" ? start.winsDelta : 0;
+        const nextWins = Math.max(0, baseWins + winsDelta);
+        state.player.wins = nextWins;
+        state.player.currentWins = nextWins;
+        if (typeof start.reputation === "number") {
+          state.player.reputation = start.reputation;
+        }
+        state.player.departmentId = start.departmentId || state.player.departmentId;
+        state.player.addressBook = Array.isArray(start.addressBook)
+          ? [...start.addressBook]
+          : [];
+        state.player.signatures = Array.isArray(start.signatureIds)
+          ? start.signatureIds
+              .map((id) => SIGNATURES.find((s) => s.id === id))
+              .filter(Boolean)
+          : [];
+        state.player.salutation = start.salutationId
+          ? SALUTATIONS.find((s) => s.id === start.salutationId) || null
+          : null;
+        state.player.signOff = start.signOffId
+          ? SIGNOFFS.find((s) => s.id === start.signOffId) || null
+          : null;
+      }
+
+      let inductionIndex = 0;
+
+      function openInductionWizard() {
+        ensureStartDefaults();
+        const idx = START_DEPARTMENTS.findIndex(
+          (d) => d.id === state.startConfig.departmentId,
+        );
+        inductionIndex = idx >= 0 ? idx : 0;
+        updateInductionUI();
+        transitionTo("induction-screen");
+      }
+
+      function rotateInduction(dir) {
+        inductionIndex =
+          (inductionIndex + dir + START_DEPARTMENTS.length) %
+          START_DEPARTMENTS.length;
+        state.startConfig.departmentId = START_DEPARTMENTS[inductionIndex].id;
+        state.startConfig.prestige = 0;
+        updateInductionUI();
+      }
+
+      function updateInductionUI() {
+        ensureStartDefaults();
+        const dept = START_DEPARTMENTS[inductionIndex] || START_DEPARTMENTS[0];
+        if (!dept) return;
+        const nameEl = document.getElementById("induction-dept-name");
+        const sidebarEl = document.getElementById("induction-sidebar-text");
+        const iconFrame = document.getElementById("induction-icon-frame");
+        const codeEl = document.getElementById("induction-dept-code");
+        const manifestBody = document.getElementById("induction-manifest-body");
+        if (nameEl) nameEl.innerText = dept.name;
+        if (sidebarEl) sidebarEl.innerText = dept.short;
+        if (iconFrame) iconFrame.innerHTML = dept.icon || "";
+        if (codeEl) codeEl.innerText = dept.code || "";
+        if (manifestBody) {
+          manifestBody.innerHTML = Object.entries(dept.manifest || {})
+            .map(
+              ([key, value]) => `
+                <tr>
+                  <td class="font-bold text-gray-500 uppercase text-[8px] whitespace-nowrap">${key}</td>
+                  <td class="font-mono text-blue-900">${value}</td>
+                </tr>
+              `,
+            )
+            .join("");
+        }
+        const overlay = document.getElementById("induction-lock-overlay");
+        const conditionText = document.getElementById("induction-lock-condition");
+        const startBtn = document.getElementById("induction-start-btn");
+        const isLocked = !dept.unlocked;
+        if (overlay && conditionText && startBtn) {
+          if (isLocked) {
+            overlay.classList.remove("hidden");
+            conditionText.innerText = `REQ: ${dept.lockCondition || "Unavailable"}`;
+            startBtn.disabled = true;
+            startBtn.classList.remove("btn-default-action");
+            startBtn.style.opacity = "0.5";
+          } else {
+            overlay.classList.add("hidden");
+            startBtn.disabled = false;
+            startBtn.classList.add("btn-default-action");
+            startBtn.style.opacity = "1";
+          }
+        }
+        renderInductionPrestige();
+      }
+
+      function renderInductionPrestige() {
+        ensureStartDefaults();
+        const dept = START_DEPARTMENTS[inductionIndex] || START_DEPARTMENTS[0];
+        const grid = document.getElementById("induction-prestige-grid");
+        if (!grid || !dept) return;
+        const maxUnlocked = state.startUnlocks?.[dept.id] ?? 0;
+        grid.innerHTML = "";
+        for (let i = 0; i < START_PRESTIGE_TITLES.length; i++) {
+          const isLocked = !dept.unlocked || i > maxUnlocked;
+          const btn = document.createElement("div");
+          btn.className = `prestige-btn retro-border ${isLocked ? "locked" : ""}`;
+          if (i === state.startConfig.prestige && !isLocked) {
+            btn.classList.add("selected");
+          }
+          btn.innerText = i;
+          if (!isLocked) {
+            btn.onclick = () => {
+              state.startConfig.prestige = i;
+              const desc = document.getElementById("induction-prestige-desc");
+              if (desc) desc.innerText = START_PRESTIGE_TITLES[i];
+              renderInductionPrestige();
+            };
+          }
+          grid.appendChild(btn);
+        }
+        const desc = document.getElementById("induction-prestige-desc");
+        if (desc)
+          desc.innerText =
+            START_PRESTIGE_TITLES[state.startConfig.prestige] ||
+            START_PRESTIGE_TITLES[0];
+      }
+
+      function openInductionAdvanced() {
+        const modal = document.createElement("div");
+        modal.id = "induction-advanced-modal";
+        modal.className =
+          "fixed inset-0 bg-black/40 z-[120] flex items-center justify-center p-4";
+        modal.innerHTML = `
+          <div class="bg-[#c0c0c0] retro-border p-1 w-full max-w-[300px] shadow-2xl">
+            <div class="window-titlebar text-white px-2 py-0.5 text-[10px] font-bold mb-2 flex justify-between items-center">
+              <span>Advanced Parameters</span>
+              <button onclick="document.getElementById('induction-advanced-modal').remove()" class="w-3.5 h-3.5 bg-[#c0c0c0] border border-white shadow-[1px_1px_0px_black] text-black text-[9px] flex items-center justify-center font-bold">✕</button>
+            </div>
+            <div class="p-3">
+              <div class="text-[10px] font-bold mb-1 uppercase text-gray-700">Sequence Seed:</div>
+              <div class="bg-white retro-border-inset p-1 mb-4">
+                <input id="induction-seed-input" type="text" value="${state.startConfig.seedInput || ""}" class="w-full bg-transparent outline-none font-mono text-xs px-1" placeholder="Leave blank for random...">
+              </div>
+              <div class="text-[9px] text-gray-500 italic leading-tight mb-4 border-l-2 border-gray-400 pl-2">
+                Enter a seed to force deterministic generation for this run.
+              </div>
+              <div class="flex justify-end gap-2">
+                <button onclick="saveInductionSeed()" class="bg-[#c0c0c0] retro-border px-6 py-1 text-[11px] font-bold btn-default-action">OK</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+        const input = document.getElementById("induction-seed-input");
+        if (input) input.focus();
+      }
+
+      function saveInductionSeed() {
+        const input = document.getElementById("induction-seed-input");
+        state.startConfig.seedInput = input ? input.value : "";
+        const modal = document.getElementById("induction-advanced-modal");
+        if (modal) modal.remove();
+      }
+
+      function clockInInduction() {
+        ensureStartDefaults();
+        const name = nameInput.value.trim() || "eke vdh";
+        const email = name.toLowerCase().replace(/\s+/g, ".") + "@gov.org";
+        state.player = getBasePlayerState(name, email);
+        const parsedSeed = parseSeedInput(state.startConfig.seedInput);
+        state.seed = parsedSeed != null ? parsedSeed : Date.now() >>> 0;
+        state.rngStates = {};
+        resetRngStreams();
+        applyStartConfigToPlayer(state.startConfig);
+        startGame();
+      }
+
       const nameInput = document.getElementById("player-name-input");
       const emailPreview = document.getElementById("email-preview");
       const loginSection = document.getElementById("login-section");
@@ -5957,6 +6447,7 @@
           player: hydratePlayer(save.state.player),
           shop: hydrateShop(save.state.shop),
         };
+        ensureStartDefaults();
         if (!state.seed) state.seed = Date.now() >>> 0;
         if (!state.rngStates) state.rngStates = {};
         resetRngStreams();
@@ -5972,16 +6463,25 @@
 
       function startNewGame() {
         clearSavedGame();
-        state.player.contactTrainingCount = {};
+        ensureStartDefaults();
         state.aiPlannedActions = {};
-        const seedInput = document.getElementById("seed-input");
-        const parsedSeed = parseSeedInput(seedInput?.value);
-        state.seed = parsedSeed != null ? parsedSeed : Date.now() >>> 0;
+        state.seed = null;
         state.rngStates = {};
         state.shopVisitIndex = 0;
         state.missionCycle = 0;
+        state.player = getBasePlayerState(
+          nameInput.value.trim() || "eke vdh",
+          (nameInput.value.trim() || "eke vdh")
+            .toLowerCase()
+            .replace(/\s+/g, ".") + "@gov.org",
+        );
+        state.startConfig = {
+          departmentId: "executive",
+          prestige: 0,
+          seedInput: "",
+        };
         resetRngStreams();
-        startGame();
+        openInductionWizard();
       }
 
       function resumeGame() {
@@ -5999,6 +6499,8 @@
           renderSummary();
         } else if (screen === "inbox-screen") {
           showInbox();
+        } else if (screen === "induction-screen") {
+          openInductionWizard();
         }
         if (state.pendingTraining) openPackView();
       }
@@ -6050,6 +6552,7 @@
       function transitionTo(screenId) {
         const screens = [
           "start-screen",
+          "induction-screen",
           "game-ui",
           "inbox-screen",
           "summary-screen",
@@ -8957,6 +9460,13 @@
         const loseMessage = document.getElementById("lose-message");
         const loseFooter = document.getElementById("lose-footer");
         if (isWin) {
+          const deptId = state.startConfig?.departmentId;
+          if (deptId) {
+            const nextUnlock = (state.startConfig?.prestige ?? 0) + 1;
+            const currentUnlock = state.startUnlocks?.[deptId] ?? 0;
+            state.startUnlocks = state.startUnlocks || {};
+            state.startUnlocks[deptId] = Math.max(currentUnlock, nextUnlock);
+          }
           if (loseHeader) loseHeader.innerText = "SYSTEM ACCESS RESTORED";
           if (loseHeaderBar) {
             loseHeaderBar.classList.remove("bg-red-800");
@@ -9042,55 +9552,19 @@
         const name = state.player.name || "eke vdh";
         const email = state.player.email || "eke.vdh@gov.org";
         clearSavedGame();
-        const seed = Date.now() >>> 0;
+        ensureStartDefaults();
         state = {
           ...state,
           analytics: {
             events: [],
             rounds: [],
           },
-          seed,
+          seed: null,
           rngStates: {},
           shopVisitIndex: 0,
           missionCycle: 0,
           player: {
-            ...state.player,
-            id: "player",
-            name,
-            email,
-            hp: 50,
-            ult: 0,
-            wins: 3,
-            currentWins: 3,
-            buffs: [],
-            reputation: 4,
-            year: 1,
-            quarter: "Q3",
-            title: TITLES[0],
-            addressBook: ["cc_telly_operations"],
-            signatures: [],
-            salutation: SALUTATIONS.find((s) => s.id === "hi") || null,
-            signOff: SIGNOFFS.find((s) => s.id === "thanks") || null,
-            bccContacts: [],
-            singleDmg: 10,
-            escalateDmg: 5,
-          globalDmg: 0,
-          singleDmgMult: 0,
-          escalateDmgMult: 0,
-          globalDmgMult: 0,
-            retaliation: 3,
-            deflect: 0,
-            deflectCharge: 0,
-            deflectChargeReflect: 0,
-            deflectChargeReduce: 0,
-          followUpChance: 0,
-          escalateRecoverPerHit: 0,
-          bccLimit: 2,
-          contactUpgrades: {},
-          contactPermanentBoosts: {},
-          salutationBonuses: {},
-          signoffBonuses: {},
-          _lineBags: {},
+            ...getBasePlayerState(name, email),
           },
           currentMissionIndex: 0,
           targetId: 1,
@@ -9113,7 +9587,7 @@
         opponents = [];
         document.getElementById("player-name-input").value = name;
         document.getElementById("email-preview").innerText = email;
-        showInbox();
+        openInductionWizard();
       }
 
       function downloadGameLog() {
