@@ -6538,18 +6538,20 @@
       }
 
       function decideAiAction(ai, alive, player) {
+        const playerTarget = {
+          id: "player",
+          name: player.name,
+          email: player.email,
+          departmentId: player.departmentId,
+        };
         const pool = [
           ...alive.filter((o) => o.id !== ai.id),
-          {
-            id: "player",
-            name: player.name,
-            email: player.email,
-            departmentId: player.departmentId,
-          },
+          playerTarget,
         ];
-        const weights = pool.map((t) =>
-          t.departmentId === ai.departmentId ? 0 : 1.0,
-        );
+        const weights = pool.map((t) => {
+          if (t.departmentId === ai.departmentId) return 0;
+          return t.id === "player" ? 2.0 : 1.0;
+        });
         let totalWeight = weights.reduce((acc, w) => acc + w, 0);
         let random = Math.random() * totalWeight;
         let target = pool[0];
@@ -6600,7 +6602,9 @@
               currentAvail[Math.floor(Math.random() * currentAvail.length)],
             );
           }
-          return { type: "cc", target, ccTargets: picks };
+          if (picks.length) {
+            return { type: "cc", target, ccTargets: picks };
+          }
         }
         if (roll < 0.3 && selfPromoteEligible) {
           return { type: "promote", target, promoteHeal, maxHp };
