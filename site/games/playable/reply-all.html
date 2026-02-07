@@ -1984,7 +1984,7 @@
             "I'm looping in <strong>{name}</strong> from {department} to keep this thread compliant with HR policy.",
           eff: {
             deflect: 3,
-            retaliation: 5,
+            escalateDmg: 1,
           },
           usedBy: null,
         },
@@ -2619,12 +2619,12 @@
         {
           id: "good_afternoon",
           name: "Good afternoon,",
-          rarity: "common",
+          rarity: "uncommon",
           statWindows: [
             {
-              start: 10 * 60,
-              end: 12 * 60,
-              stats: { singleDmg: 30, singleDmgMult: 1, maxHp: 60 },
+              start: 10 * 60 + 30,
+              end: 11 * 60,
+              stats: { singleDmgMult: 1, maxHp: 30 },
             },
           ],
         },
@@ -2641,12 +2641,12 @@
         {
           id: "good_evening",
           name: "Good evening,",
-          rarity: "uncommon",
+          rarity: "rare",
           statWindows: [
             {
               start: 13 * 60,
               end: null,
-              stats: { singleDmg: 60, singleDmgMult: 1, maxHp: 120 },
+              stats: { singleDmg: 30, singleDmgMult: 1, maxHp: 60 },
             },
           ],
         },
@@ -4799,25 +4799,23 @@
           subject: "URGENT: Breakroom Incident",
           from: "k.smith@gov.org",
           turns: 12,
+          opponentBaseStats: {
+            hp: 35,
+            maxHp: 35,
+            wins: 1,
+          },
           intro:
             "Hi team,<br><br>I am absolutely disgusted. Someone heated up fish in the breakroom microwave. <strong>{playerName}</strong>, I'm sure you noticed the stench. <strong>{opp1}</strong>, I know you have the policy manual out already. <strong>{opp0}</strong>, please document this.<br><br>Please advise immediately on who is responsible for this violation of shared space ethics.",
           opponents: [
             {
               id: 1,
               employeeId: "karen_human_resources",
-              hp: 35,
-              maxHp: 35,
-              wins: 1,
-              buffs: [],
               addressBook: ["cc_telly_operations"],
             },
             {
               id: 2,
               employeeId: "christina_policy",
-              hp: 35,
-              maxHp: 35,
               wins: 2,
-              buffs: [],
               addressBook: ["cc_samantha_executive_council_office"],
             },
           ],
@@ -4827,17 +4825,18 @@
           subject: "RE: Conference Room Double Booking",
           from: "a.ops@gov.org",
           turns: 17,
+          opponentBaseStats: {
+            hp: 25,
+            maxHp: 25,
+            wins: 2,
+          },
           intro:
             "<p>Hi all,</p><p>We have a triple booking for the main conference room this morning.</p><br><ul><li><strong>{playerName}</strong>, you have it booked for an internal process audit.</li><li><strong>{opp0}</strong> and <strong>{opp1}</strong> from Operations flagged a safety walkthrough and vendor briefing.</li><li><strong>{opp2}</strong> and <strong>{opp3}</strong> from Finance flagged payroll finalization and budget reconciliation.</li><li><strong>{opp4}</strong>, we see your booking was the one that went through first.</li></ul><p>We need to figure out who is taking this meeting room.</p>",
           opponents: [
             {
               id: 9,
               employeeId: "avery_operations",
-              hp: 30,
-              maxHp: 30,
-              wins: 2,
               singleDmg: 15,
-              buffs: [],
               addressBook: ["cc_willy_boy_information_technology"],
             },
             {
@@ -4845,8 +4844,6 @@
               employeeId: "rory_operations",
               hp: 50,
               maxHp: 50,
-              wins: 2,
-              buffs: [],
               addressBook: ["cc_tim_executive_council_office"],
             },
             {
@@ -4855,8 +4852,6 @@
               hp: 50,
               maxHp: 50,
               defFlat: 2,
-              wins: 2,
-              buffs: [],
               addressBook: ["cc_adam_finance"],
             },
             {
@@ -4864,22 +4859,16 @@
               employeeId: "dora_finance",
               hp: 50,
               maxHp: 50,
-              wins: 2,
               singleDmg: 5,
               escalateDmg: 3,
-              buffs: [],
               addressBook: ["cc_gemma_policy"],
             },
             {
               id: 13,
               employeeId: "julia_eco",
-              hp: 25,
-              maxHp: 25,
-              wins: 2,
               singleDmg: 10,
               escalateDmg: 10,
-              defFlat: 10,
-              buffs: [],
+              defFlat: 8,
               addressBook: [
                 "cc_steph_eco",
                 "cc_meghan_cassedy_executive_council_office",
@@ -4893,73 +4882,54 @@
           from: "announcements@gov.org",
           turns: 21,
           onlyMissionLines: true,
+          opponentBaseStats: {
+            hp: 50,
+            maxHp: 50,
+            wins: 2,
+          },
           intro:
             "<p>Happy holidays everyone! 🎄✨</p><p>Thank you to everyone for attending the holiday party once again! 🎉 We also want to wish Sho well once again for winning the 'Cultural Award' for the year.</p>",
           opponents: [
             {
               id: 14,
               employeeId: "larry_facilities_and_administration",
-              hp: 50,
-              maxHp: 50,
               escalateDmg: 10,
-              wins: 2,
-              buffs: [],
               addressBook: ["cc_tim_executive_council_office"],
             },
             {
               id: 15,
               employeeId: "lisa_marketing",
-              hp: 50,
-              maxHp: 50,
               singleDmg: 20,
               escalateDmg: 15,
               defFlat: 5,
-              wins: 2,
-              buffs: [],
               addressBook: ["cc_malik_marketing"],
             },
             {
               id: 16,
               employeeId: "meghan_cassedy_executive_council_office",
-              hp: 50,
-              maxHp: 50,
               singleDmg: 15,
               escalateDmg: 10,
               defFlat: 5,
-              wins: 2,
-              buffs: [],
               addressBook: ["cc_samantha_executive_council_office"],
             },
             {
               id: 17,
               employeeId: "willy_boy_information_technology",
-              hp: 50,
-              maxHp: 50,
-              wins: 2,
               defFlat: 5,
               escalateDmg: 10,
-              buffs: [],
               addressBook: ["cc_nimby_facilities_and_administration"],
             },
             {
               id: 18,
               employeeId: "casey_legal",
-              hp: 50,
-              maxHp: 50,
               defFlat: 5,
-              wins: 2,
-              buffs: [],
               addressBook: ["cc_karen_human_resources"],
             },
             {
               id: 19,
               employeeId: "sho_marketing",
-              hp: 50,
-              maxHp: 50,
               escalateDmg: 10,
               defFlat: 5,
-              wins: 2,
-              buffs: [],
               addressBook: ["cc_gemma_policy"],
             },
             {
@@ -4970,8 +4940,6 @@
               defFlat: 10,
               singleDmg: 15,
               escalateDmg: 10,
-              wins: 2,
-              buffs: [],
               addressBook: [
                 "cc_julia_eco",
               ],
@@ -4983,6 +4951,12 @@
           subject: "CRITICAL: Departmental Paper Rationing",
           from: "m.compliance@gov.org",
           turns: 17,
+          opponentBaseStats: {
+            hp: 30,
+            maxHp: 30,
+            wins: 1,
+            defFlat: 5,
+          },
           intro:
             "<p>Dear Staff,</p><p>Due to unforeseen budget constraints, we are implementing immediate paper rationing.</p><ul><li><strong>{playerName}</strong>, your department's printing logs are particularly high.</li><li><strong>Megan</strong>, please ensure we are still meeting filing requirements.</li><li><strong>Colin</strong>, please expedite the 'Paperless Initiative'.</li></ul><p>Effective immediately, all non-essential printing is strictly prohibited.</p>",
           opponents: [
@@ -4991,11 +4965,9 @@
               employeeId: "megan_legal",
               hp: 60,
               maxHp: 60,
-              defFlat: 5,
               singleDmg: 20,
               escalateDmg: 15,
               wins: 3,
-              buffs: [],
               addressBook: ["cc_karen_human_resources", "cc_gemma_policy"],
             },
             {
@@ -5003,11 +4975,9 @@
               employeeId: "colin_information_technology",
               hp: 70,
               maxHp: 70,
-              defFlat: 5,
               singleDmg: 10,
               escalateDmg: 20,
               wins: 2,
-              buffs: [],
               addressBook: [
                 "cc_adam_finance",
                 "cc_willy_boy_information_technology",
@@ -5016,11 +4986,6 @@
             {
               id: 44,
               employeeId: "fraser_information_technology",
-              hp: 30,
-              maxHp: 30,
-              defFlat: 5,
-              wins: 1,
-              buffs: [],
               addressBook: [
                 "cc_rowan_constituent_services",
                 "cc_christina_policy",
@@ -5033,6 +4998,14 @@
           subject: "RE: Office Thermostat Dispute",
           from: "l.facilities@gov.org",
           turns: 17,
+          opponentBaseStats: {
+            hp: 30,
+            maxHp: 30,
+            wins: 2,
+            singleDmg: 15,
+            escalateDmg: 10,
+            defFlat: 5,
+          },
           intro:
             "<p>Hi all,</p><p>Facilities here. We received multiple complaints about the floor thermostat. It looks like the setpoint has been toggled between 74°F and 96°F.</p><ul><li><strong>{playerName}</strong>, your desk is listed at 74°F.</li><li>The <strong>Marketing</strong> team (<strong>{opp1}</strong>, <strong>{opp2}</strong>) is pushing for 96°F.</li><li>The <strong>Finance</strong> team (<strong>{opp3}</strong>, <strong>{opp4}</strong>) says the 96°F setting is unacceptable for reviews.</li></ul><p>My view is we should be aiming lower overall to bring down the oil bill for this place, but we need a consistent setting.</p><p>How does around 64°F sound?</p>",
           opponents: [
@@ -5041,11 +5014,6 @@
               employeeId: "larry_facilities_and_administration",
               hp: 45,
               maxHp: 45,
-              defFlat: 5,
-              singleDmg: 15,
-              escalateDmg: 10,
-              wins: 2,
-              buffs: [],
               addressBook: [
                 "cc_tim_executive_council_office",
                 "cc_rory_operations",
@@ -5056,11 +5024,6 @@
               employeeId: "maya_marketing",
               hp: 45,
               maxHp: 45,
-              singleDmg: 15,
-              escalateDmg: 10,
-              defFlat: 5,
-              wins: 2,
-              buffs: [],
               addressBook: [
                 "cc_dave_constituent_services",
                 "cc_malik_marketing",
@@ -5069,12 +5032,8 @@
             {
               id: 22,
               employeeId: "jules_marketing",
-              hp: 30,
-              maxHp: 30,
-              singleDmg: 30,
-              defFlat: 25,
-              wins: 2,
-              buffs: [],
+              singleDmg: 20,
+              defFlat: 20,
               addressBook: [
                 "cc_lisa_marketing",
                 "cc_rowan_constituent_services",
@@ -5085,11 +5044,6 @@
               employeeId: "priya_finance",
               hp: 45,
               maxHp: 45,
-              singleDmg: 15,
-              escalateDmg: 10,
-              defFlat: 5,
-              wins: 2,
-              buffs: [],
               addressBook: ["cc_adam_finance", "cc_karen_human_resources"],
             },
             {
@@ -5097,11 +5051,7 @@
               employeeId: "dora_finance",
               hp: 45,
               maxHp: 45,
-              singleDmg: 15,
-              escalateDmg: 10,
               defFlat: 10,
-              wins: 2,
-              buffs: [],
               addressBook: ["cc_gemma_policy", "cc_christina_policy"],
             },
           ],
@@ -5111,6 +5061,14 @@
           subject: "RE: Intern Grievance Collective",
           from: "hr.interns@gov.org",
           turns: 20,
+          opponentBaseStats: {
+            hp: 60,
+            maxHp: 60,
+            wins: 2,
+            singleDmg: 15,
+            escalateDmg: 15,
+            defFlat: 5,
+          },
           intro:
             "To the Permanent Staff,<br><br>We, the interns, have noticed a significant lack of 'Team Synergy' and 'Professional Courtesy'.<p><strong>{playerName}</strong>, your recent emails have been cited as 'aggressive'.</p><p><strong>Samantha</strong>, we are looping in our mentor <strong>Anneke</strong>.</p><p><strong>Shelia</strong>, we expect payroll to ensure our stipends to reflect the emotional labor of this thread.</p>",
           opponents: [
@@ -5119,12 +5077,9 @@
               employeeId: "interns_human_resources",
               hp: 150,
               maxHp: 150,
-              singleDmg: 15,
               defFlat: 10,
-              escalateDmg: 15,
               wins: 3,
               numCCperCCaction: 2,
-              buffs: [],
               addressBook: [
                 "cc_telly_operations",
                 "cc_dave_constituent_services",
@@ -5138,11 +5093,8 @@
               employeeId: "sheila_finance",
               hp: 70,
               maxHp: 70,
-              wins: 2,
               singleDmg: 20,
-              escalateDmg: 15,
               defFlat: 10,
-              buffs: [],
               addressBook: ["cc_adam_finance", "cc_priya_finance"],
             },
             {
@@ -5151,10 +5103,7 @@
               hp: 70,
               maxHp: 70,
               wins: 4,
-              singleDmg: 15,
-              escalateDmg: 15,
               defFlat: 5,
-              buffs: [],
               addressBook: [
                 "cc_meghan_cassedy_executive_council_office",
                 "cc_tim_executive_council_office",
@@ -5163,13 +5112,9 @@
             {
               id: 8,
               employeeId: "anneke_executive_council_office",
-              hp: 60,
-              maxHp: 60,
               singleDmg: 20,
-              escalateDmg: 15,
               defFlat: 20,
               wins: 5,
-              buffs: [],
               numCCperCCaction: 2,
               addressBook: [
                 "cc_meghan_cassedy_executive_council_office",
@@ -5184,6 +5129,14 @@
           subject: "RE: Bankable Time Off Policy Dispute",
           from: "anneke.eco@gov.org",
           turns: 20,
+          opponentBaseStats: {
+            hp: 55,
+            maxHp: 55,
+            wins: 3,
+            singleDmg: 15,
+            escalateDmg: 10,
+            defFlat: 10,
+          },
           intro:
             "<p>Hi all,</p><p>I'm trying to understand the request around bankable time off. <strong>IT</strong> is asking for parity, and <strong>Marketing</strong> is split on whether to push for both bankable time off and weekend accruals or keep the current arrangement.</p><p>The team is also confused about why Marketing gets weekends bankable off the books.</p><p><strong>{playerName}</strong>, please lead this discussion. <strong>{opp0}</strong> and <strong>{opp1}</strong> from IT, please outline the impact. <strong>{opp2}</strong> and <strong>{opp3}</strong> from Marketing, please clarify what you want and what you are willing to risk. I'll try to map this to policy and fairness.</p>",
           opponents: [
@@ -5192,11 +5145,7 @@
               employeeId: "colin_information_technology",
               hp: 80,
               maxHp: 80,
-              singleDmg: 15,
               escalateDmg: 20,
-              defFlat: 10,
-              wins: 3,
-              buffs: [],
               addressBook: [
                 "cc_willy_boy_information_technology",
                 "cc_gemma_policy",
@@ -5205,12 +5154,6 @@
             {
               id: 26,
               employeeId: "stephan_information_technology",
-              hp: 55,
-              maxHp: 55,
-              singleDmg: 15,
-              defFlat: 10,
-              wins: 3,
-              buffs: [],
               addressBook: [
                 "cc_rowan_constituent_services",
                 "cc_christina_policy",
@@ -5221,11 +5164,6 @@
               employeeId: "rachel_marketing",
               hp: 70,
               maxHp: 70,
-              singleDmg: 15,
-              escalateDmg: 10,
-              defFlat: 10,
-              wins: 3,
-              buffs: [],
               addressBook: [
                 "cc_malik_marketing",
                 "cc_dave_constituent_services",
@@ -5236,11 +5174,6 @@
               employeeId: "jeff_marketing",
               hp: 75,
               maxHp: 75,
-              escalateDmg: 10,
-              defFlat: 10,
-              wins: 3,
-              singleDmg: 15,
-              buffs: [],
               addressBook: ["cc_lisa_marketing", "cc_karen_human_resources"],
             },
             {
@@ -5248,13 +5181,9 @@
               employeeId: "anneke_executive_council_office",
               hp: 60,
               maxHp: 60,
-              wins: 3,
-              buffs: [],
               singleDmg: 20,
-              escalateDmg: 10,
               retaliation: 15,
               deflect: 10,
-              defFlat: 10,
               numCCperCCaction: 2,
               addressBook: [
                 "cc_meghan_cassedy_executive_council_office",
@@ -5269,6 +5198,13 @@
           subject: "CRITICAL: Budget Re-Forecasting & Ad Targeting Session",
           from: "taz@m4agency.com",
           turns: 17,
+          opponentBaseStats: {
+            hp: 30,
+            maxHp: 30,
+            wins: 3,
+            singleDmg: 15,
+            defFlat: 15,
+          },
           intro:
             "<p>Hey all,</p><p>There has been a <strong>significant overspend</strong> of the quarterly media budget earmarked for the strategic placement for the <strong>Measles Vaccination Initiative</strong>. During media plan implementation, an unforeseen configuration error on our end resulted in a demographic targeting misalignment—specifically, an overly focused optimization towards the <strong>equine sector</strong> executed entirely on day one.</p><p><strong>{playerName}</strong>, we need to leverage this emergency session to ensure continuity of service delivery.</p><p><strong>Selina</strong> and <strong>Anthony</strong> are here for support, and to use up our retainer. The objective is to devise a recovery plan that allows us to meet our six-week deliverable goals with additional budgetary approval, <strong>as the original $40,000 has been fully exhausted.</strong></p>",
           opponents: [
@@ -5277,12 +5213,8 @@
               employeeId: "selina_m4_agency",
               hp: 90,
               maxHp: 90,
-              singleDmg: 15,
-              defFlat: 15,
               retaliation: 10,
               deflect: 0,
-              wins: 3,
-              buffs: [],
               addressBook: ["cc_dave_constituent_services"],
             },
             {
@@ -5290,10 +5222,6 @@
               employeeId: "taz_m4_agency",
               hp: 80,
               maxHp: 80,
-              singleDmg: 15,
-              defFlat: 15,
-              wins: 3,
-              buffs: [],
               addressBook: ["cc_samantha_executive_council_office"],
             },
             {
@@ -5301,11 +5229,8 @@
               employeeId: "anthony_m4_agency",
               hp: 30,
               maxHp: 30,
-              defFlat: 15,
               retaliation: 15,
               deflect: 0,
-              wins: 3,
-              buffs: [],
               addressBook: ["cc_gemma_policy"],
             },
           ],
@@ -5358,7 +5283,6 @@
                 "cc_taz_m4_agency",
                 "cc_selina_m4_agency",
               ],
-              buffs: [],
             },
           ],
         },
@@ -7806,6 +7730,9 @@
         const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
         logGameEvent("mission_start", {
           mission: JSON.parse(JSON.stringify(mission)),
+          opponentBaseStats: mission.opponentBaseStats
+            ? JSON.parse(JSON.stringify(mission.opponentBaseStats))
+            : null,
           stakeholders: mission.opponents.map((missionOpponent) => {
             const employee = EMPLOYEES.find(
               (e) => e.id === missionOpponent.employeeId,
@@ -7821,12 +7748,14 @@
         runUnitEffects(p, "thread_start", {});
 
         // Assemble opponents from EMPLOYEES and mission-specific data
+        const opponentBaseStats = mission.opponentBaseStats || {};
         opponents = mission.opponents.map((missionOpponent) => {
           const employee = EMPLOYEES.find(
             (e) => e.id === missionOpponent.employeeId,
           );
           const clone = {
             ...JSON.parse(JSON.stringify(employee)),
+            ...JSON.parse(JSON.stringify(opponentBaseStats)),
             ...JSON.parse(JSON.stringify(missionOpponent)),
           };
           applyUnitDefaults(clone);
