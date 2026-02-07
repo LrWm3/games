@@ -71,11 +71,11 @@
         padding-top: 5px;
         padding-bottom: 3px;
       }
-      .retro-button:disabled
       .window-titlebar {
-        background: linear-gradient(90deg, var(--win-blue), var(--win-blue-light));
+        background: linear-gradient(90deg, var(--win-blue), var(--win-blue-light)) !important;
       }
- {
+      .retro-button:disabled
+      {
         color: #808080;
         cursor: not-allowed;
         opacity: 0.6;
@@ -534,6 +534,50 @@
       .assets-window .window-body {
         overflow-y: auto;
       }
+      .profile-window-body {
+        max-height: 70vh;
+        overflow-y: auto;
+      }
+      .profile-tab-btn {
+        background: #b0b0b0;
+        border-top: 2px solid #dfdfdf;
+        border-left: 2px solid #dfdfdf;
+        border-right: 2px solid var(--win-border-dark);
+        border-bottom: 2px solid var(--win-border-medium);
+        padding: 4px 12px;
+        font-size: 11px;
+        font-weight: bold;
+        position: relative;
+        margin-top: 2px;
+        height: 28px;
+        cursor: pointer;
+      }
+      .profile-tab-btn.active {
+        background: var(--win-grey);
+        border-bottom: none;
+        margin-top: 0;
+        height: 30px;
+        z-index: 10;
+        border-top: 2px solid white;
+        border-left: 2px solid white;
+      }
+      .profile-tab-panel {
+        display: none;
+        animation: profileFadeIn 0.2s ease-out;
+      }
+      .profile-tab-panel.active {
+        display: block;
+      }
+      @keyframes profileFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(2px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
       @media (max-width: 480px) {
         .address-book-panels {
           flex-direction: column;
@@ -866,15 +910,77 @@
             <span>MY PROFILE</span>
             <button onclick="showAssetsWindow('none')" class="px-1">✕</button>
           </div>
-          <div class="window-body p-2 bg-white space-y-2 relative profile-drop-target">
+          <div class="window-body p-3 bg-[#c0c0c0] space-y-2 relative profile-drop-target profile-window-body">
             <div id="profile-drop-overlay" class="profile-drop-overlay"></div>
-            <div id="profile-modal-header" class="text-[11px] font-bold"></div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" id="profile-modal-totals"></div>
-            <div>
-              <div class="text-[10px] font-bold uppercase text-gray-500 mb-1">
-                Sources
+            <div class="bg-white/20 p-3 retro-border-inset flex gap-4">
+              <div class="w-16 h-16 bg-gray-400 retro-border-inset flex items-center justify-center overflow-hidden flex-shrink-0">
+                <div class="text-[#606060] text-[8px] text-center p-1 leading-tight uppercase font-bold">
+                  Identification<br />Missing
+                </div>
               </div>
-              <div id="profile-modal-sources" class="space-y-2"></div>
+              <div class="flex flex-col justify-center overflow-hidden">
+                <h1 id="profile-name" class="text-lg font-bold leading-tight truncate uppercase tracking-tighter text-[#000080]"></h1>
+                <div id="profile-title" class="flex items-center gap-1 text-[9px] bg-[#000080] text-white self-start px-2 py-0.5 rounded-sm mt-1 uppercase font-bold"></div>
+              </div>
+            </div>
+
+            <div class="flex border-b-2 border-b-[#808080] relative z-0">
+              <button onclick="showProfileTab('summary')" id="profile-tab-summary" class="profile-tab-btn active">Summary</button>
+              <button onclick="showProfileTab('stats')" id="profile-tab-stats" class="profile-tab-btn">Full Stats</button>
+              <button onclick="showProfileTab('sources')" id="profile-tab-sources" class="profile-tab-btn">Sources</button>
+            </div>
+
+            <div class="bg-[#c0c0c0] border-l-2 border-r-2 border-b-2 border-white shadow-[inset_-2px_-2px_0_#808080] p-3">
+              <div id="profile-panel-summary" class="profile-tab-panel active space-y-3">
+                <div>
+                  <div class="flex justify-between text-[10px] font-bold mb-1 uppercase text-[#404040]">
+                    <span>Productivity HP</span>
+                    <span id="profile-hp-text"></span>
+                  </div>
+                  <div class="h-3 bg-[#808080] border border-white shadow-[inset_1px_1px_1px_black]">
+                    <div id="profile-hp-bar" class="h-full bg-[#00ff00] border-r-2 border-[#008000]"></div>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="bg-white retro-border-inset p-2 flex items-center gap-2">
+                    <div>
+                      <div class="text-[9px] text-gray-500 font-bold uppercase">Wins</div>
+                      <div id="profile-wins" class="text-sm font-mono font-bold leading-none"></div>
+                    </div>
+                  </div>
+                  <div class="bg-white retro-border-inset p-2 flex items-center gap-2">
+                    <div>
+                      <div class="text-[9px] text-gray-500 font-bold uppercase">Dmg</div>
+                      <div id="profile-dmg" class="text-sm font-mono font-bold leading-none"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="space-y-1">
+                  <div class="text-[10px] font-bold text-gray-600 uppercase">Communication Preset</div>
+                  <div class="bg-white retro-border-inset text-[11px] p-2 space-y-1">
+                    <div class="flex justify-between border-b border-dashed border-gray-200 pb-1">
+                      <span class="text-gray-400 uppercase text-[9px]">Greeting</span>
+                      <span id="profile-greeting" class="font-bold italic"></span>
+                    </div>
+                    <div class="flex justify-between border-b border-dashed border-gray-200 py-1">
+                      <span class="text-gray-400 uppercase text-[9px]">Sign-off</span>
+                      <span id="profile-signoff" class="font-bold italic"></span>
+                    </div>
+                    <div class="flex justify-between pt-1">
+                      <span class="text-gray-400 uppercase text-[9px]">Signatures</span>
+                      <span id="profile-signatures" class="font-bold"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="profile-panel-stats" class="profile-tab-panel space-y-2">
+                <div class="grid grid-cols-1 gap-1.5" id="profile-modal-totals"></div>
+              </div>
+
+              <div id="profile-panel-sources" class="profile-tab-panel space-y-2 custom-scroll overflow-y-auto max-h-[250px] pr-1">
+                <div id="profile-modal-sources" class="space-y-2"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -11301,6 +11407,16 @@
         modal.classList.add("hidden");
       }
 
+      function showProfileTab(tabId) {
+        const tabs = ["summary", "stats", "sources"];
+        tabs.forEach((tab) => {
+          const btn = document.getElementById(`profile-tab-${tab}`);
+          const panel = document.getElementById(`profile-panel-${tab}`);
+          if (btn) btn.classList.toggle("active", tab === tabId);
+          if (panel) panel.classList.toggle("active", tab === tabId);
+        });
+      }
+
       function clearProfileStatHighlights() {
         const rows = document.querySelectorAll(
           "#profile-modal-totals [data-profile-stat]",
@@ -11357,10 +11473,40 @@
         const header = document.getElementById("profile-modal-header");
         const totalsEl = document.getElementById("profile-modal-totals");
         const sourcesEl = document.getElementById("profile-modal-sources");
-        if (!header || !totalsEl || !sourcesEl) return;
+        const nameEl = document.getElementById("profile-name");
+        const titleEl = document.getElementById("profile-title");
+        const hpTextEl = document.getElementById("profile-hp-text");
+        const hpBarEl = document.getElementById("profile-hp-bar");
+        const winsEl = document.getElementById("profile-wins");
+        const dmgEl = document.getElementById("profile-dmg");
+        const greetEl = document.getElementById("profile-greeting");
+        const signoffEl = document.getElementById("profile-signoff");
+        const sigsEl = document.getElementById("profile-signatures");
+        if (!totalsEl || !sourcesEl || !nameEl || !titleEl) return;
         const p = state.player;
         const totals = computeUnitStats(p);
-        header.innerText = `${p.name} (${p.title ? p.title.name : "Unranked"})`;
+        const titleName = p.title ? p.title.name : "Unranked";
+        header && (header.innerText = `${p.name} (${titleName})`);
+        nameEl.innerText = p.name || "";
+        titleEl.innerText = titleName;
+        if (hpTextEl && hpBarEl) {
+          const maxHp = getUnitMaxHp(p);
+          const hp = Math.max(0, p.hp || 0);
+          hpTextEl.innerText = `${hp}/${maxHp}`;
+          const pct = maxHp > 0 ? Math.min(100, Math.round((hp / maxHp) * 100)) : 0;
+          hpBarEl.style.width = `${pct}%`;
+        }
+        if (winsEl) winsEl.innerText = `${p.currentWins ?? p.wins ?? 0}`;
+        if (dmgEl) dmgEl.innerText = `${totals.singleDmg || 0}`;
+        if (greetEl)
+          greetEl.innerText = p.salutation ? `"${p.salutation.name}"` : "None";
+        if (signoffEl)
+          signoffEl.innerText = p.signOff ? `"${p.signOff.name}"` : "None";
+        if (sigsEl)
+          sigsEl.innerText =
+            p.signatures && p.signatures.length
+              ? p.signatures.map((s) => s.name).join(", ")
+              : "None";
 
         totalsEl.innerHTML = "";
         const compactFields = STAT_FIELDS.filter((field) => totals[field]);
@@ -11369,9 +11515,9 @@
           const meta = getStatMeta(field);
           const div = document.createElement("div");
           div.className =
-            "flex justify-between bg-white retro-border px-2 py-1 text-[10px]";
+            "stat-row flex justify-between items-center bg-white/40 px-3 py-1.5 border border-white/50";
           div.dataset.profileStat = field;
-          div.innerHTML = `<span class="uppercase text-gray-500">${meta.shortName}</span><span class="font-mono">${value}</span>`;
+          div.innerHTML = `<span class="text-[10px] font-bold uppercase text-gray-700">${meta.label}</span><span class="font-mono text-xs font-bold">${value}</span>`;
           totalsEl.appendChild(div);
         });
 
@@ -11382,22 +11528,15 @@
             '<div class="text-[10px] italic text-gray-500">No stat sources found.</div>';
           return;
         }
-        const details = document.createElement("details");
-        details.className = "text-[10px] text-gray-700";
-        details.innerHTML = `<summary class="cursor-pointer select-none text-[10px] uppercase text-gray-500">Sources</summary>`;
-        const list = document.createElement("div");
-        list.className = "pt-2 space-y-2";
         sources.forEach((src) => {
           const rows = Object.entries(src.stats)
             .map(([k, v]) => `<span class="font-mono">${k}: ${v}</span>`)
             .join(", ");
           const div = document.createElement("div");
-          div.className = "p-2 bg-white retro-border";
-          div.innerHTML = `<div class="font-bold">${src.label}</div><div class="text-[10px] text-gray-600">${rows}</div>`;
-          list.appendChild(div);
+          div.className = "bg-white retro-border-inset p-2";
+          div.innerHTML = `<div class="text-[11px] font-bold text-[#000080] flex items-center gap-1 mb-1">${src.label}</div><div class="text-[9px] text-gray-500 font-mono leading-tight bg-gray-50 p-1 border border-inset">${rows}</div>`;
+          sourcesEl.appendChild(div);
         });
-        details.appendChild(list);
-        sourcesEl.appendChild(details);
       }
 
       function handleOpponentDefeat(o, byPlayer = false) {
