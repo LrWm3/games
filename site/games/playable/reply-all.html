@@ -5883,6 +5883,104 @@
           departmentUnlocks: { executive: true, it: false, finance: false },
         };
 
+      const DEFAULT_PLAYER_LINES = {
+        attacks: [
+          "I believe we need to circle back to your recent comments. My focus is on department output, and I suggest yours should be too.",
+          "I've already addressed this in my previous email, but for the sake of clarity, I'll repeat it: This is not my responsibility.",
+          "Perhaps we should focus on next quarters' deliverables instead of speculating on departmental policy?",
+          "I'm happy to discuss this in a 1-on-1, but I don't believe this is a productive use of the 'All-Staff' distribution list.",
+        ],
+        attackLinesByMission: {
+          microwave: [
+            "We can argue policy later. Right now, I'd just like to hear you deny that you heated the fish.",
+            "This thread is spiraling. Let's 'fish-stick' to the facts; did you heat the fish or not?",
+          ],
+          calendar_chaos: [
+            "We need the booking record and timestamps before we debate priority, why haven't you linked that?",
+            "Let's pick a single room owner for the hour and move on, are you willing to give up the room?",
+          ],
+          holiday_reply_all: [
+            "Happy holidays, but does this really need everyone's attention?",
+            "My inbox is flooded, I don't want to have to block you til the new year.",
+          ],
+          paper: [
+            "If the rationing is real, we need a clear exception process today, can you clarify what's needed?",
+            "No one is printing for fun. Let's align on what's actually essential and what's not.",
+          ],
+          thermostat_war: [
+            "I set it to 74°F because that's a normal temperature. 96°F is not.",
+            "I'm fine with 74°F. 64°F seems too low.",
+            "If we're picking a standard, 74°F is reasonable for most desks.",
+          ],
+          intern_grievance: [
+            "Let's keep this professional and focus on actionable steps.",
+            "I'm not ignoring concerns, but this thread needs structure.",
+            "I don't understand why our interns are sharing a single email address. Can you clarify?",
+          ],
+          M015_MediaCrisis: [
+            "We need a recovery plan, not another round of scope creep or out of scope budgetary approvals. Will you cover the cost?",
+            "Realistically, this is your error. Why should we pay more to fix your misconfiguration?",
+            "We pay agency rates with the expectation of competence. This level of error is unacceptable.",
+          ],
+        },
+        attackLinesByTitle: {},
+        escalateLines: [
+          "Given the lack of alignment here, I'm escalating this thread for broader visibility.",
+          "I'm escalating this to keep all stakeholders aligned and reduce duplication.",
+        ],
+        deflectLines: [
+          "I'm taking a moment to document this properly before responding further.",
+          "Let's pause and keep the thread within scope. I'll respond once this is reframed.",
+        ],
+        selfPromoteLines: [
+          "Just logging a new win—the quarterly audit came back clean under my supervision. Always happy to add value to the organization!",
+        ],
+        selfPromoteLinesByMission: {
+          microwave: [
+            "Update: I drafted a fish based incident summary to share it around to get traction on this.",
+          ],
+          calendar_chaos: [
+            "I created a booking summary and a proposed rotation. We can move forward now.",
+          ],
+          holiday_reply_all: [
+            "I consolidated the greetings into one clean message and sent it to Samantha for approval.",
+          ],
+          paper: [
+            "I compiled a short list of essential print exceptions to keep us compliant.",
+          ],
+          thermostat_war: [
+            "Quick update: I created a simple temperature log so we can stop arguing and use data.",
+          ],
+          intern_grievance: [
+            "I documented the feedback and proposed a short-term fix to address concerns.",
+          ],
+          M015_MediaCrisis: [
+            "I summarized the revised plan and sent it to leadership for sign-off.",
+          ],
+        },
+        selfPromoteLinesByTitle: {},
+        replyAllLines: [
+          {
+            subject: "Fwd: Salary_Discrepancies_2024.xlsx",
+            body: "Not sure if I should be sending this to everyone, but since transparency is one of our 'core values', here is the full salary spreadsheet for the department. Enjoy.",
+          },
+          {
+            subject: "RE: Quick In Person Pulse Check",
+            body: "Looping everyone in so we can align in real time. Please reply all with your availability in the next hour or you will be considered absent from work today. Remote attendance will not permitted.",
+          },
+          {
+            subject: "RE: Late Night Tonight",
+            body: "Just to keep everyone in the loop, I've gotten it approved every single one of us must stay late today until this is resolved.",
+          },
+          {
+            subject: "RE: Deferral of Bonuses",
+            body: "I requested leadership defer bonuses until this is resolved. Please see the attached memo for details.",
+          },
+        ],
+        replyAllLinesByMission: {},
+        replyAllLinesByTitle: {},
+      };
+
       let state = {
         analytics: {
           events: [],
@@ -5943,101 +6041,7 @@
           contactTrainingCount: {},
           salutationBonuses: {},
           signoffBonuses: {},
-          attacks: [
-            "I believe we need to circle back to your recent comments. My focus is on department output, and I suggest yours should be too.",
-            "I've already addressed this in my previous email, but for the sake of clarity, I'll repeat it: This is not my responsibility.",
-            "Perhaps we should focus on next quarters' deliverables instead of speculating on departmental policy?",
-            "I'm happy to discuss this in a 1-on-1, but I don't believe this is a productive use of the 'All-Staff' distribution list.",
-          ],
-          attackLinesByMission: {
-            microwave: [
-              "We can argue policy later. Right now, I'd just like to hear you deny that you heated the fish.",
-              "This thread is spiraling. Let's 'fish-stick' to the facts; did you heat the fish or not?",
-            ],
-            calendar_chaos: [
-              "We need the booking record and timestamps before we debate priority, why haven't you linked that?",
-              "Let's pick a single room owner for the hour and move on, are you willing to give up the room?",
-            ],
-            holiday_reply_all: [
-              "Happy holidays, but does this really need everyone's attention?",
-              "My inbox is flooded, I don't want to have to block you til the new year.",
-            ],
-            paper: [
-              "If the rationing is real, we need a clear exception process today, can you clarify what's needed?",
-              "No one is printing for fun. Let's align on what's actually essential and what's not.",
-            ],
-            thermostat_war: [
-              "I set it to 74°F because that's a normal temperature. 96°F is not.",
-              "I'm fine with 74°F. 64°F seems too low.",
-              "If we're picking a standard, 74°F is reasonable for most desks.",
-            ],
-            intern_grievance: [
-              "Let's keep this professional and focus on actionable steps.",
-              "I'm not ignoring concerns, but this thread needs structure.",
-              "I don't understand why our interns are sharing a single email address. Can you clarify?",
-            ],
-            M015_MediaCrisis: [
-              "We need a recovery plan, not another round of scope creep or out of scope budgetary approvals. Will you cover the cost?",
-              "Realistically, this is your error. Why should we pay more to fix your misconfiguration?",
-              "We pay agency rates with the expectation of competence. This level of error is unacceptable.",
-            ],
-          },
-          attackLinesByTitle: {},
-          escalateLines: [
-            "Given the lack of alignment here, I'm escalating this thread for broader visibility.",
-            "I'm escalating this to keep all stakeholders aligned and reduce duplication.",
-          ],
-          deflectLines: [
-            "I'm taking a moment to document this properly before responding further.",
-            "Let's pause and keep the thread within scope. I'll respond once this is reframed.",
-          ],
-          selfPromoteLines: [
-            "Just logging a new win—the quarterly audit came back clean under my supervision. Always happy to add value to the organization!",
-          ],
-          selfPromoteLinesByMission: {
-            microwave: [
-              "Update: I drafted a fish based incident summary to share it around to get traction on this.",
-            ],
-            calendar_chaos: [
-              "I created a booking summary and a proposed rotation. We can move forward now.",
-            ],
-            holiday_reply_all: [
-              "I consolidated the greetings into one clean message and sent it to Samantha for approval.",
-            ],
-            paper: [
-              "I compiled a short list of essential print exceptions to keep us compliant.",
-            ],
-            thermostat_war: [
-              "Quick update: I created a simple temperature log so we can stop arguing and use data.",
-            ],
-            intern_grievance: [
-              "I documented the feedback and proposed a short-term fix to address concerns.",
-            ],
-            M015_MediaCrisis: [
-              "I summarized the revised plan and sent it to leadership for sign-off.",
-            ],
-          },
-          selfPromoteLinesByTitle: {},
-          replyAllLines: [
-            {
-              subject: "Fwd: Salary_Discrepancies_2024.xlsx",
-              body: "Not sure if I should be sending this to everyone, but since transparency is one of our 'core values', here is the full salary spreadsheet for the department. Enjoy.",
-            },
-            {
-              subject: "RE: Quick In Person Pulse Check",
-              body: "Looping everyone in so we can align in real time. Please reply all with your availability in the next hour or you will be considered absent from work today. Remote attendance will not permitted.",
-            },
-            {
-              subject: "RE: Late Night Tonight",
-              body: "Just to keep everyone in the loop, I've gotten it approved every single one of us must stay late today until this is resolved.",
-            },
-            {
-              subject: "RE: Deferral of Bonuses",
-              body: "I requested leadership defer bonuses until this is resolved. Please see the attached memo for details.",
-            },
-          ],
-          replyAllLinesByMission: {},
-          replyAllLinesByTitle: {},
+          ...DEFAULT_PLAYER_LINES,
           discoveredSets: [],
         },
         currentMissionIndex: 0,
@@ -6231,6 +6235,7 @@
           contactTrainingCount: {},
           salutationBonuses: {},
           signoffBonuses: {},
+          ...DEFAULT_PLAYER_LINES,
           _lineBags: {},
         };
       }
@@ -7471,24 +7476,24 @@
         const salutation =
           sender.salutation || (sender.greet ? { name: sender.greet } : null);
         if (salutation) {
-          body += `<strong>${salutation.name}</strong><br><br>`;
+          body += `<strong>${salutation.name}</strong><br>`;
         }
-        body += content;
+        body += `<p class="mt-2 mb-3">${content}</p>`;
 
         const windowStats = getSalutationWindowStats(sender);
         if (windowStats) {
           const statsText = formatStatsText(windowStats);
           if (statsText) {
-            body += `<br><br><span class="text-[10px] text-blue-600 font-semibold italic">Time-based bonus active: ${statsText}</span>`;
+            body += `<span class="text-[10px] text-blue-600 font-semibold italic">Time-based bonus active: ${statsText}</span><br>`;
           }
         }
 
         const signOff =
           sender.signOff || (sender.signoff ? { name: sender.signoff } : null);
         if (signOff) {
-          body += `<br><br><strong>${signOff.name}</strong><br>${sender.name}`;
+          body += `<strong>${signOff.name}</strong><br>${sender.name}<br>`;
         } else {
-          body += `<br><br>${sender.name}`;
+          body += `${sender.name}<br>`;
         }
         if (sender.signatures && sender.signatures.length > 0) {
           sender.signatures.forEach((sig) => {
@@ -7497,6 +7502,11 @@
           });
         }
         return body;
+      }
+
+      function appendEmailExtras(body, extras = []) {
+        if (!extras.length) return body;
+        return `${body}<hr class="m-1">${extras.join("<br>")}`;
       }
 
       function pickRandomItem(list, fallback, rngKey = "misc") {
@@ -13088,13 +13098,10 @@
         entry.className = `message-entry p-0 border-2 border-gray-100 bg-white shadow-sm ${classes}`;
         entry.innerHTML = `
                 <div class="email-header p-2">
-                    <div class="flex flex-wrap gap-x-4">
+                    <div class="flex flex-wrap gap-x-3 gap-y-1">
                         <div><strong>From:</strong> ${from}</div>
                         <div><strong>To:</strong> ${to}</div>
-                    </div>
-                    <div class="flex flex-wrap gap-x-4">
                         <div><strong>Sent:</strong> Today, ${time}</div>
-                        <div><strong>Subject:</strong> ${reCount}${baseSubject}</div>
                     </div>
                 </div>
                 <div class="email-body px-3 py-2 font-serif italic">
@@ -13273,11 +13280,14 @@
             a.deflectLines,
             "I'm pausing to document this thread before responding further.",
           );
+          const deflectExtras = [
+            `<strong>Deflection Ready:</strong> Reduce ${a.deflectChargeReduce}, Retaliate ${a.deflectChargeReflect}`,
+          ];
           addEmailToLog(
             a.name,
             "everyone@gov.org",
             "Holding Response",
-            `${formatMessageBody(a, deflectLine)}<br><br><strong>Deflection Ready:</strong> Reduce ${a.deflectChargeReduce}, Retaliate ${a.deflectChargeReflect}`,
+            appendEmailExtras(formatMessageBody(a, deflectLine), deflectExtras),
             "bg-blue-50",
           );
         });
@@ -13373,31 +13383,41 @@
             p,
             getPlayerLineBagKey("attack", missionId, titleId),
             getPlayerActionLines("attack", missionId),
-            "I believe we need to circle back to your recent comments.",
+            "Could you explain why you wanted to bring this to our attention to me?",
           );
           let body = formatMessageBody(p, q);
+          const extras = [];
           if (result.reflected > 0) {
-            body += `<br><br><strong>Deflected:</strong> ${result.reflected} reflected.`;
+            extras.push(
+              `<strong>Deflected:</strong> ${result.reflected} reflected.`,
+            );
           }
           if (followUpResult) {
-            body += `<br><br><strong>Follow-up Reply:</strong> -${followUpResult.dmg}`;
+            let followUpLine = `<strong>Follow-up Reply:</strong> -${followUpResult.dmg}`;
             if (followUpResult.reflected > 0) {
-              body += ` (Deflected ${followUpResult.reflected})`;
+              followUpLine += ` (Deflected ${followUpResult.reflected})`;
             }
-            body += ".";
+            followUpLine += ".";
+            extras.push(followUpLine);
           }
           if (cleaveResult.hits > 0) {
-            body += `<br><br><strong>Department Cleave:</strong> ${cleaveResult.hits} hit for ${cleaveResult.total}.`;
+            extras.push(
+              `<strong>Department Cleave:</strong> ${cleaveResult.hits} hit for ${cleaveResult.total}.`,
+            );
           }
           if (secondaryResult && secondaryTarget) {
-            body += `<br><br><strong>Secondary Reply:</strong> ${secondaryTarget.name} -${secondaryResult.dmg}.`;
+            extras.push(
+              `<strong>Secondary Reply:</strong> ${secondaryTarget.name} -${secondaryResult.dmg}.`,
+            );
           }
           if (bounceResult && bounceTarget) {
-            body += `<br><br><strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`;
+            let bounceLine = `<strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`;
             if (bounceResult.reflected > 0) {
-              body += ` (Deflected ${bounceResult.reflected})`;
+              bounceLine += ` (Deflected ${bounceResult.reflected})`;
             }
+            extras.push(bounceLine);
           }
+          body = appendEmailExtras(body, extras);
           addEmailToLog(
             p.name,
             target.name,
@@ -13454,12 +13474,18 @@
             "I'm escalating this for clarity across the thread.",
           );
           let body = formatMessageBody(p, line);
+          const extras = [];
           if (totalReflected > 0) {
-            body += `<br><br><strong>Deflected:</strong> ${totalReflected} reflected.`;
+            extras.push(
+              `<strong>Deflected:</strong> ${totalReflected} reflected.`,
+            );
           }
           if (totalRecovered > 0) {
-            body += `<br><br><strong>Recovered:</strong> +${totalRecovered} Credibility.`;
+            extras.push(
+              `<strong>Recovered:</strong> +${totalRecovered} Credibility.`,
+            );
           }
+          body = appendEmailExtras(body, extras);
           addEmailToLog(
             p.name,
             "everyone@gov.org",
@@ -13491,11 +13517,14 @@
             getPlayerActionLines("deflect", missionId),
             "Holding response to keep this thread scoped and documented.",
           );
+          const deflectExtras = [
+            `<strong>Deflection Ready:</strong> Reduce ${p.deflectChargeReduce}, Retaliate ${p.deflectChargeReflect}`,
+          ];
           addEmailToLog(
             p.name,
             "everyone@gov.org",
             "Holding Response",
-            `${formatMessageBody(p, line)}<br><br><strong>Deflection Ready:</strong> Reduce ${p.deflectChargeReduce}, Retaliate ${p.deflectChargeReflect}`,
+            appendEmailExtras(formatMessageBody(p, line), deflectExtras),
             "bg-blue-50 border-l-4 border-blue-500",
           );
         } else if (type === "PROMOTE") {
@@ -13577,10 +13606,14 @@
               body: "Not sure if I should be sending this to everyone, but since transparency is one of our 'core values', here is the full salary spreadsheet for the department. Enjoy.",
             },
           );
-          let replyBody = replyAllLine.body;
+          let replyBody = formatMessageBody(p, replyAllLine.body);
+          const extras = [];
           if (totalReflected > 0) {
-            replyBody += `<br><br><strong>Deflected:</strong> ${totalReflected} reflected.`;
+            extras.push(
+              `<strong>Deflected:</strong> ${totalReflected} reflected.`,
+            );
           }
+          replyBody = appendEmailExtras(replyBody, extras);
           addEmailToLog(
             p.name,
             "everyone@gov.org",
@@ -13826,11 +13859,14 @@
                   a.deflectLines,
                   "I'm pausing to document this thread before responding further.",
                 );
+                const deflectExtras = [
+                  `<strong>Deflection Ready:</strong> Reduce ${a.deflectChargeReduce}, Retaliate ${a.deflectChargeReflect}`,
+                ];
                 addEmailToLog(
                   a.name,
                   "everyone@gov.org",
                   "Holding Response",
-                  `${formatMessageBody(a, deflectLine)}<br><br><strong>Deflection Ready:</strong> Reduce ${a.deflectChargeReduce}, Retaliate ${a.deflectChargeReflect}`,
+                  appendEmailExtras(formatMessageBody(a, deflectLine), deflectExtras),
                   "bg-blue-50",
                 );
               }
@@ -13879,12 +13915,18 @@
                 "I'm escalating this across the thread for visibility.",
               );
               let escBody = formatMessageBody(a, escLine);
+              const escExtras = [];
               if (totalReflected > 0) {
-                escBody += `<br><br><strong>Deflected:</strong> ${totalReflected} reflected.`;
+                escExtras.push(
+                  `<strong>Deflected:</strong> ${totalReflected} reflected.`,
+                );
               }
               if (totalRecovered > 0) {
-                escBody += `<br><br><strong>Recovered:</strong> +${totalRecovered} Credibility.`;
+                escExtras.push(
+                  `<strong>Recovered:</strong> +${totalRecovered} Credibility.`,
+                );
               }
+              escBody = appendEmailExtras(escBody, escExtras);
               addEmailToLog(
                 a.name,
                 "everyone@gov.org",
@@ -13911,6 +13953,7 @@
                 "I'm following up to keep this thread moving.",
               );
               let body = formatMessageBody(a, q);
+              const extras = [];
               const followUpChance = getUnitFollowUpChance(a);
               const followUpHit =
                 followUpChance > 0 && rngNext(combatKey) < followUpChance;
@@ -13980,20 +14023,29 @@
                       : null,
                   });
                   if (result.reflected > 0) {
-                    body += `<br><br><strong>Deflected:</strong> ${result.reflected} reflected.`;
+                    extras.push(
+                      `<strong>Deflected:</strong> ${result.reflected} reflected.`,
+                    );
                   }
                   if (followUpResult) {
-                    body += `<br><br><strong>Follow-up Reply:</strong> -${followUpResult.dmg}.`;
+                    extras.push(
+                      `<strong>Follow-up Reply:</strong> -${followUpResult.dmg}.`,
+                    );
                   }
                   if (bounceResult && bounceTarget) {
-                    body += `<br><br><strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`;
+                    extras.push(
+                      `<strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`,
+                    );
                   }
+                  extras.push(
+                    `<strong>Damage to Credibility: -${result.dmg}</strong>`,
+                  );
+                  body = appendEmailExtras(body, extras);
                   addEmailToLog(
                     a.name,
                     state.player.name,
                     "Escalation",
-                    body +
-                      `<br><br><strong>Damage to Credibility: -${result.dmg}</strong>`,
+                    body,
                     "bg-red-50 border-l-2 border-red-400",
                   );
                   document.getElementById("game-ui").classList.add("shaking");
@@ -14053,20 +14105,29 @@
                     : null,
                 });
                 if (result.reflected > 0) {
-                  body += `<br><br><strong>Deflected:</strong> ${result.reflected} reflected.`;
+                  extras.push(
+                    `<strong>Deflected:</strong> ${result.reflected} reflected.`,
+                  );
                 }
                 if (followUpResult) {
-                  body += `<br><br><strong>Follow-up Reply:</strong> -${followUpResult.dmg}.`;
+                  extras.push(
+                    `<strong>Follow-up Reply:</strong> -${followUpResult.dmg}.`,
+                  );
                 }
                 if (bounceResult && bounceTarget) {
-                  body += `<br><br><strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`;
+                  extras.push(
+                    `<strong>Bounce:</strong> ${bounceTarget.name} -${bounceResult.dmg}.`,
+                  );
                 }
+                extras.push(
+                  `<span class="text-[10px] italic">(Targeting ${target.name}. Standing lost: ${result.dmg})</span>`,
+                );
+                body = appendEmailExtras(body, extras);
                 addEmailToLog(
                   a.name,
                   target.name,
                   "Internal Memo",
-                  body +
-                    `<br><br>(Targeting ${target.name}. Standing lost: ${result.dmg})`,
+                  body,
                   "text-gray-500 text-[11px]",
                 );
                 if (target.hp <= 0) handleOpponentDefeat(target);
