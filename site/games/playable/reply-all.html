@@ -1880,7 +1880,7 @@
             {
               event: "escalate",
               type: "add_thread_bonus",
-              stats: { deflectPower: 3, escalateRecoverPerHit: 3 },
+              stats: { retaliation: 3, escalateRecoverPerHit: 3 },
             },
           ],
           usedBy: null,
@@ -1984,7 +1984,7 @@
             "I'm looping in <strong>{name}</strong> from {department} to keep this thread compliant with HR policy.",
           eff: {
             deflect: 3,
-            deflectPower: 5,
+            retaliation: 5,
           },
           usedBy: null,
         },
@@ -2073,7 +2073,7 @@
             "I'm looping in <strong>{name}</strong> to ensure we stay aligned with policy language.",
           eff: {
             deflect: 2,
-            deflectPower: 2,
+            retaliation: 2,
             maxHp: 5,
           },
           usedBy: null,
@@ -2089,7 +2089,7 @@
             "I'm looping in <strong>{name}</strong> to support technical logging and incident tracking.",
           eff: {
             deflect: 2,
-            deflectPower: 2,
+            retaliation: 2,
           },
           usedBy: null,
         },
@@ -2591,7 +2591,7 @@
           name: "Team,",
           rarity: "common",
           scalers: [
-            { source: "cc", stat: "deflectPower", per: 7 },
+            { source: "cc", stat: "retaliation", per: 7 },
             { source: "cc", stat: "deflect", per: 1 },
           ],
         },
@@ -2635,7 +2635,7 @@
           scalers: [
             { source: "sig", stat: "escalateDmg", per: 2 },
             { source: "sig", stat: "deflect", per: 1 },
-            { source: "sig", stat: "deflectPower", per: 1 },
+            { source: "sig", stat: "retaliation", per: 1 },
           ],
         },
         {
@@ -3092,7 +3092,7 @@
             globalDmg: 5,
             defFlat: 3,
             deflect: 2,
-            deflectPower: 2,
+            retaliation: 2,
             escalateRecoverPerHit: 10,
           },
         },
@@ -5252,7 +5252,7 @@
               buffs: [],
               singleDmg: 20,
               escalateDmg: 10,
-              deflectPower: 15,
+              retaliation: 15,
               deflect: 10,
               defFlat: 10,
               numCCperCCaction: 2,
@@ -5279,7 +5279,7 @@
               maxHp: 90,
               singleDmg: 15,
               defFlat: 15,
-              deflectPower: 10,
+              retaliation: 10,
               deflect: 0,
               wins: 3,
               buffs: [],
@@ -5302,7 +5302,7 @@
               hp: 30,
               maxHp: 30,
               defFlat: 15,
-              deflectPower: 15,
+              retaliation: 15,
               deflect: 0,
               wins: 3,
               buffs: [],
@@ -5328,7 +5328,7 @@
               wins: 3,
               singleDmg: 40,
               escalateDmg: 25,
-              deflectPower: 20,
+              retaliation: 20,
               deflect: 30,
               numCCperCCaction: 8,
               hasDoneFirstTurn: false,
@@ -5399,7 +5399,7 @@
           singleDmgMult: 0,
           escalateDmgMult: 0,
           globalDmgMult: 0,
-          deflectPower: 5,
+          retaliation: 5,
           deflect: 0,
           deflectCharge: 0,
           deflectChargeReflect: 0,
@@ -5844,7 +5844,7 @@
         "maxHp",
         "wins",
         "selfPromoteHeal",
-        "deflectPower",
+        "retaliation",
         "deflect",
         "followUpChance",
         "escalateRecoverPerHit",
@@ -5919,7 +5919,7 @@
         maxHp: { label: "Max Credibility", shortName: "Max Cred" },
         wins: { label: "Wins", shortName: "Wins" },
         selfPromoteHeal: { label: "Self-Promote Heal", shortName: "Self-Promote" },
-        deflectPower: { label: "Retaliation", shortName: "Retal" },
+        retaliation: { label: "Retaliation", shortName: "Retal" },
         deflect: { label: "Deflect Reduction", shortName: "Reduce" },
         followUpChance: { label: "Follow Up Chance", shortName: "Follow Up" },
         escalateRecoverPerHit: {
@@ -5983,7 +5983,7 @@
         if (u.globalDmgMult == null) u.globalDmgMult = 0;
         if (u.maxHp == null) u.maxHp = 0;
         if (u.wins == null) u.wins = 0;
-        if (u.deflectPower == null) u.deflectPower = 5;
+        if (u.retaliation == null) u.retaliation = 5;
         if (u.deflect == null || u.deflect === 0) u.deflect = 5;
         if (u.deflectCharge == null) u.deflectCharge = 0;
         if (u.deflectChargeReflect == null) u.deflectChargeReflect = 0;
@@ -6307,7 +6307,7 @@
 
       function getUnitDeflectReflect(u) {
         const stats = computeUnitStats(u);
-        return stats.deflectPower || 0;
+        return stats.retaliation || 0;
       }
 
       function getUnitDeflectReduce(u) {
@@ -8596,7 +8596,7 @@
           singleDmgMult: 0,
           escalateDmgMult: 0,
           globalDmgMult: 0,
-            deflectPower: 3,
+            retaliation: 3,
             deflect: 0,
             deflectCharge: 0,
             deflectChargeReflect: 0,
@@ -9006,8 +9006,8 @@
         if (effect.special) parts.push(effect.special);
         const statText = formatStatsText(effect);
         if (statText) parts.push(statText);
-        if (effect.deflectPower)
-          parts.push(`Retaliation +${effect.deflectPower}`);
+        if (effect.retaliation)
+          parts.push(`Retaliation +${effect.retaliation}`);
         if (effect.deflect) parts.push(`Deflect reduce +${effect.deflect}`);
         if (effect.selfPromoteHeal)
           parts.push(`Self-Promote +${effect.selfPromoteHeal}`);
@@ -9050,8 +9050,8 @@
             if (stats.selfPromoteHeal)
               chunks.push(`${stats.selfPromoteHeal} self-promote`);
             if (stats.deflect) chunks.push(`${stats.deflect} deflect reduce`);
-            if (stats.deflectPower)
-              chunks.push(`${stats.deflectPower} retaliation`);
+            if (stats.retaliation)
+              chunks.push(`${stats.retaliation} retaliation`);
             if (chunks.length) {
               const formatted = chunks.map((chunk) =>
                 chunk.trim().startsWith("-") ? chunk : `+${chunk}`,
@@ -9208,8 +9208,8 @@
         if (stats.endRep) parts.push(`+${stats.endRep} end REP`);
         if (stats.defFlat) parts.push(`+${stats.defFlat} defense`);
         if (stats.deflect) parts.push(`+${stats.deflect} deflect`);
-        if (stats.deflectPower)
-          parts.push(`+${stats.deflectPower} retaliation`);
+        if (stats.retaliation)
+          parts.push(`+${stats.retaliation} retaliation`);
         if (stats.heal) parts.push(`+${stats.heal} cred/turn`);
         if (stats.selfPromoteHeal)
           parts.push(`Self-Promote +${stats.selfPromoteHeal}`);
