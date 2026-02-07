@@ -6767,9 +6767,33 @@
         if (item.eff) {
           snapshot.eff = JSON.parse(JSON.stringify(item.eff));
         }
+        if (item.statWindows) {
+          snapshot.statWindows = JSON.parse(JSON.stringify(item.statWindows));
+        }
+        if (item.scalers) {
+          snapshot.scalers = JSON.parse(JSON.stringify(item.scalers));
+        }
+        if (item.deptScalers) {
+          snapshot.deptScalers = JSON.parse(JSON.stringify(item.deptScalers));
+        }
         const stats = {};
         STAT_FIELDS.forEach((field) => {
           if (typeof item[field] === "number") stats[field] = item[field];
+        });
+        const otherFields = [
+          "replyDeptCleave",
+          "replySecondaryHalf",
+          "deflectBoostSingle",
+          "deflectBoostEscalate",
+          "disableReplyTo",
+          "addSingleToEscalate",
+          "replyAllPerActive",
+          "escalatePerActive",
+          "winScaleSingleDmg",
+          "winScaleSingleDmgMult",
+        ];
+        otherFields.forEach((field) => {
+          if (item[field] !== undefined) snapshot[field] = item[field];
         });
         if (Object.keys(stats).length) snapshot.stats = stats;
         return Object.keys(snapshot).length ? snapshot : null;
@@ -9733,6 +9757,16 @@
 
       function openItemDetails(item, options = {}) {
         if (!item || !options.anchorEl) return;
+
+        logGameEvent("item_view", {
+          itemId: item.id || null,
+          name: item.name || null,
+          itemType: item.itemType || null,
+          mode: options.mode || "direct",
+          fromOwned: !!options.fromOwned,
+          effects: snapshotItemEffects(item),
+        });
+
         const mode = options.mode === "pack" ? "pack-option" : "direct";
         showShopItemOverlay(mode, item, options.anchorEl, {
           fromOwned: !!options.fromOwned,
