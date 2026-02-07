@@ -3023,8 +3023,8 @@
             winsDelta: -1,
             addressBook: ["cc_colin_information_technology"],
             signatureIds: ["it_ticket"],
-            salutationId: "hi",
-            signOffId: "thanks",
+            salutationId: "update",
+            signOffId: "until_next",
           },
         },
         {
@@ -3282,6 +3282,18 @@
           ],
         },
         {
+          id: "until_next",
+          name: "Until next time,",
+          rarity: "common",
+          effects: [
+            {
+              event: "remove_stakeholder",
+              type: "add_random_cc_bonus",
+              threadLimit: 1,
+            },
+          ],
+        },
+        {
           id: "respectfully",
           name: "Respectfully,",
           rarity: "common",
@@ -3289,7 +3301,7 @@
             {
               event: "reply_all",
               type: "add_random_cc_bonus",
-              threadLimit: 2,
+              threadLimit: 3,
             },
           ],
         },
