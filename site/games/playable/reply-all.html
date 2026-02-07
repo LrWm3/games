@@ -1236,6 +1236,13 @@
             TRY AGAIN
           </button>
           <button
+            id="continue-btn"
+            onclick="continueCampaign()"
+            class="mt-2 w-full py-2 retro-button font-bold text-sm hidden"
+          >
+            CONTINUE
+          </button>
+          <button
             onclick="downloadGameLog()"
             class="mt-2 w-full py-2 retro-button font-bold text-sm"
           >
@@ -8428,7 +8435,6 @@
         state.isProcessing = true;
         generateShopItems();
         setTimeout(() => {
-          transitionTo("summary-screen");
           const summary = computeSummary();
           const effectsResult = runUnitEffects(state.player, "rep_adjust", {
             summary,
@@ -8448,6 +8454,16 @@
             winsRemaining: state.player.currentWins || 0,
           });
 
+          const isFinalMission =
+            state.currentMissionIndex === MISSIONS.length - 1;
+          if (isFinalMission) {
+            state.winGame = true;
+            state.gameOver = true;
+            setTimeout(showLoseScreen, 1200);
+            return;
+          }
+
+          transitionTo("summary-screen");
           // Advance mission index
           state.currentMissionIndex =
             (state.currentMissionIndex + 1) % MISSIONS.length;
@@ -8756,6 +8772,7 @@
 
       function showLoseScreen() {
         const p = state.player;
+        const isWin = !!state.winGame;
         const boardSnapshot = {
           missionId: (MISSIONS[state.currentMissionIndex] || MISSIONS[0])?.id,
           turn: state.turn,
@@ -8776,30 +8793,75 @@
           })),
         };
         logGameEvent("game_over", {
-          reason: state.lossReason || "defeat",
+          reason: isWin ? "win" : state.lossReason || "defeat",
           turn: state.turn,
           board: boardSnapshot,
         });
-        logResolvedPlayerSheet("loss");
+        logResolvedPlayerSheet(isWin ? "win" : "loss");
         document.getElementById("lose-title").innerText = p.title.name;
         document.getElementById("lose-period").innerText =
           `${p.quarter} - YR ${p.year}`;
         document.getElementById("lose-total-rep").innerText = p.reputation;
         document.getElementById("lose-contacts").innerText =
           `${p.addressBook.length} Contacts`;
+        const loseHeader = document.querySelector("#lose-screen .bg-red-800 span");
+        const loseIcon = document.querySelector("#lose-screen .w-16.h-16");
+        const loseTitle = document.querySelector("#lose-screen h2");
+        const continueBtn = document.getElementById("continue-btn");
         const loseMessage = document.getElementById("lose-message");
-        if (loseMessage) {
-          if (state.lossReason === "timeout") {
+        if (isWin) {
+          if (loseHeader) loseHeader.innerText = "SYSTEM ACCESS RESTORED";
+          if (loseIcon) loseIcon.className =
+            "w-16 h-16 bg-emerald-600 retro-border flex items-center justify-center mb-6";
+          if (loseTitle) loseTitle.innerText = "EMPLOYMENT SECURED";
+          if (loseMessage) {
             loseMessage.innerText =
-              '"It has come to our attention that this thread was not resolved within the required time window. The Executive Council\'s Office values timeliness and must serve as a role model for other departments. As a result, your access has been revoked."';
-          } else {
-            loseMessage.innerText =
-              '"Credibility is of utmost importance for ECO staff. As a result of correspondence recently brought to our attention, your role here has come to an end."';
+              '"It has come to our attention that your thread performance exceeds executive benchmarks. Your access has been reinstated and your next rotation is ready."';
+          }
+          if (continueBtn) continueBtn.classList.remove("hidden");
+        } else {
+          if (loseHeader) loseHeader.innerText = "SYSTEM LOCKOUT - SECURITY BREACH";
+          if (loseIcon) loseIcon.className =
+            "w-16 h-16 bg-red-600 retro-border flex items-center justify-center mb-6";
+          if (loseTitle) loseTitle.innerText = "NOTICE OF TERMINATION";
+          if (continueBtn) continueBtn.classList.add("hidden");
+          if (loseMessage) {
+            if (state.lossReason === "timeout") {
+              loseMessage.innerText =
+                '"It has come to our attention that this thread was not resolved within the required time window. The Executive Council\'s Office values timeliness and must serve as a role model for other departments. As a result, your access has been revoked."';
+            } else {
+              loseMessage.innerText =
+                '"Credibility is of utmost importance for ECO staff. As a result of correspondence recently brought to our attention, your role here has come to an end."';
+            }
           }
         }
-        clearSavedGame();
-        initLoginOption();
+        if (!isWin) {
+          clearSavedGame();
+          initLoginOption();
+        }
         transitionTo("lose-screen");
+      }
+
+      function continueCampaign() {
+        const scaleNumber = (value) =>
+          typeof value === "number" ? value * 2 : value;
+        const scaleStats = (obj) => {
+          if (!obj) return;
+          Object.keys(obj).forEach((key) => {
+            obj[key] = scaleNumber(obj[key]);
+          });
+        };
+        MISSIONS.forEach((mission) => {
+          if (mission.opponentBaseStats) scaleStats(mission.opponentBaseStats);
+          if (Array.isArray(mission.opponents)) {
+            mission.opponents.forEach((opp) => scaleStats(opp));
+          }
+        });
+        state.winGame = false;
+        state.gameOver = false;
+        state.currentMissionIndex = 0;
+        saveGame();
+        showInbox();
       }
 
       function tryAgain() {
