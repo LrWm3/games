@@ -6864,6 +6864,18 @@
           plans[a.id] = decideAiAction(a, alive, state.player);
         });
         state.aiPlannedActions = plans;
+        logGameEvent("ai_plans", {
+          plans: Object.entries(plans).map(([id, plan]) => ({
+            actorId: id,
+            actorName: opponents.find((o) => o.id === id)?.name || null,
+            action: plan?.type || null,
+            targetId: plan?.target?.id || null,
+            targetName: plan?.target?.name || null,
+            ccTargets: plan?.ccTargets
+              ? plan.ccTargets.map((c) => c.id)
+              : [],
+          })),
+        });
         renderDraftingIndicators();
       }
 
