@@ -223,6 +223,7 @@
         font-size: 14px;
         cursor: pointer;
         background: var(--win-grey);
+        width: 24px;
       }
       .prestige-btn.locked {
         color: #808080;
@@ -267,6 +268,36 @@
         background: var(--win-grey);
         border: 2px solid white;
         box-shadow: inset -1px -1px 0px var(--win-border-dark);
+      }
+      .induction-prestige-grid {
+        display: none !important;
+      }
+      .induction-prestige-compact {
+        display: block !important;
+      }
+      @media (max-width: 360px) {
+        #induction-screen .window-titlebar {
+          font-size: 10px;
+        }
+        #induction-screen .p-3,
+        #induction-screen .p-4 {
+          padding: 0.5rem;
+        }
+        #induction-screen .nav-btn {
+          width: 26px;
+          height: 24px;
+        }
+        #induction-screen h2 {
+          font-size: 1rem;
+        }
+        #induction-screen .text-[10px] {
+          font-size: 9px;
+        }
+      }
+      @media (max-width: 640px) {
+        #induction-icon-frame {
+          display: none;
+        }
       }
       .pack-drop-zone.over {
         background: rgba(191, 219, 254, 0.7);
@@ -1472,9 +1503,9 @@
     <!-- PERSONNEL INTRODUCTION WIZARD -->
     <div
       id="induction-screen"
-      class="hidden fixed inset-0 z-[110] flex items-center justify-center bg-[#008080] p-2"
+      class="hidden fixed inset-0 z-[110] flex items-start sm:items-center justify-center bg-[#008080] p-2"
     >
-      <div class="w-full max-w-2xl bg-[#c0c0c0] retro-border flex flex-col min-h-[500px] sm:h-[540px]">
+      <div class="w-full max-w-2xl bg-[#c0c0c0] retro-border flex flex-col max-h-[95vh]">
         <div class="window-titlebar text-white px-1 py-0.5 flex justify-between items-center select-none">
           <div class="flex items-center gap-1.5 px-1">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
@@ -1493,7 +1524,7 @@
           </div>
 
           <div class="flex-1 flex flex-col bg-white sm:bg-[#c0c0c0] overflow-hidden">
-            <div class="p-4 sm:p-6 flex-1 flex flex-col overflow-hidden">
+            <div class="p-3 sm:p-6 flex-1 flex flex-col overflow-y-auto">
               <div class="mb-4">
                 <h2 id="induction-dept-name" class="text-lg sm:text-xl font-bold leading-none mb-1 text-black">Executive Council Office</h2>
                 <div class="h-[1px] w-full bg-black mb-1"></div>
@@ -1548,12 +1579,16 @@
                 </div>
               </div>
 
-              <div class="mt-4 shrink-0">
+              <div class="mt-3 shrink-0">
                 <div class="flex justify-between items-end mb-1 px-1">
                   <span class="text-[9px] font-bold uppercase text-gray-500">Prestige Clearance</span>
                   <span id="induction-prestige-desc" class="text-[10px] font-bold italic text-blue-900">Standard Ops</span>
                 </div>
-                <div id="induction-prestige-grid" class="grid grid-cols-4 sm:grid-cols-8 gap-1.5 p-1.5 bg-white retro-border-inset"></div>
+                <div id="induction-prestige-compact" class="induction-prestige-compact hidden text-[10px] font-bold uppercase text-gray-600 px-2 py-1 bg-white retro-border-inset">
+                  <div>Prestige: <span id="induction-prestige-compact-value" class="text-blue-900"></span></div>
+                  <div id="induction-prestige-row" class="flex gap-1 mt-1"></div>
+                </div>
+                <div id="induction-prestige-grid" class="induction-prestige-grid grid grid-cols-4 sm:grid-cols-8 gap-1.5 p-1.5 bg-white retro-border-inset"></div>
               </div>
             </div>
 
@@ -6304,34 +6339,42 @@
         ensureStartDefaults();
         const dept = START_DEPARTMENTS[inductionIndex] || START_DEPARTMENTS[0];
         const grid = document.getElementById("induction-prestige-grid");
+        const compact = document.getElementById("induction-prestige-compact-value");
+        const row = document.getElementById("induction-prestige-row");
         if (!grid || !dept) return;
         const maxUnlocked = state.startUnlocks?.[dept.id] ?? 0;
         grid.innerHTML = "";
-        for (let i = 0; i < START_PRESTIGE_TITLES.length; i++) {
-          const unlockedDepartments = metaState.departmentUnlocks || {};
-          const deptUnlocked = dept.id === "executive" || unlockedDepartments[dept.id];
-          const isLocked = !deptUnlocked || i > maxUnlocked;
-          const btn = document.createElement("div");
-          btn.className = `prestige-btn retro-border ${isLocked ? "locked" : ""}`;
-          if (i === state.startConfig.prestige && !isLocked) {
-            btn.classList.add("selected");
-          }
-          btn.innerText = i;
-          if (!isLocked) {
-            btn.onclick = () => {
-              state.startConfig.prestige = i;
-              const desc = document.getElementById("induction-prestige-desc");
-              if (desc) desc.innerText = START_PRESTIGE_TITLES[i];
-              renderInductionPrestige();
-            };
-          }
-          grid.appendChild(btn);
-        }
         const desc = document.getElementById("induction-prestige-desc");
         if (desc)
           desc.innerText =
             START_PRESTIGE_TITLES[state.startConfig.prestige] ||
             START_PRESTIGE_TITLES[0];
+        if (compact)
+          compact.innerText =
+            START_PRESTIGE_TITLES[state.startConfig.prestige] ||
+            START_PRESTIGE_TITLES[0];
+
+        const unlockedDepartments = metaState.departmentUnlocks || {};
+        const deptUnlocked = dept.id === "executive" || unlockedDepartments[dept.id];
+        if (row) {
+          row.innerHTML = "";
+          for (let i = 0; i < START_PRESTIGE_TITLES.length; i++) {
+            const isLocked = !deptUnlocked || i > maxUnlocked;
+            const btn = document.createElement("button");
+            btn.className = `prestige-btn retro-border ${isLocked ? "locked" : ""}`;
+            btn.innerText = i + 1;
+            if (i === state.startConfig.prestige && !isLocked) {
+              btn.classList.add("selected");
+            }
+            if (!isLocked) {
+              btn.onclick = () => {
+                state.startConfig.prestige = i;
+                renderInductionPrestige();
+              };
+            }
+            row.appendChild(btn);
+          }
+        }
       }
 
       function openInductionAdvanced() {
