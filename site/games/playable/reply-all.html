@@ -12347,7 +12347,9 @@
         activeOpponents.forEach((a) => {
           if (a.preDeflectedThisTurn) return;
           if (a.deflectChargeReduce > 0 || a.deflectChargeReflect > 0) return;
-          if (Math.random() >= 0.15) return;
+          const plan =
+            state.aiPlannedActions && state.aiPlannedActions[a.id];
+          if (!plan || plan.type !== "deflect") return;
           a.preDeflectedThisTurn = true;
           a.deflectChargeReflect = getUnitDeflectReflect(a);
           a.deflectChargeReduce = getUnitDeflectReduce(a);
