@@ -941,18 +941,40 @@
                     <div id="profile-hp-bar" class="h-full bg-[#00ff00] border-r-2 border-[#008000]"></div>
                   </div>
                 </div>
-                <div class="grid grid-cols-2 gap-2">
-                  <div class="bg-white retro-border-inset p-2 flex items-center gap-2">
-                    <div>
-                      <div class="text-[9px] text-gray-500 font-bold uppercase">Wins</div>
-                      <div id="profile-wins" class="text-sm font-mono font-bold leading-none"></div>
-                    </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="bg-white retro-border-inset p-2">
+                    <div class="text-[9px] text-gray-500 font-bold uppercase">Reply To Dmg</div>
+                    <div id="profile-replyto" class="text-sm font-mono font-bold leading-none"></div>
                   </div>
-                  <div class="bg-white retro-border-inset p-2 flex items-center gap-2">
-                    <div>
-                      <div class="text-[9px] text-gray-500 font-bold uppercase">Dmg</div>
-                      <div id="profile-dmg" class="text-sm font-mono font-bold leading-none"></div>
+                  <div class="bg-white retro-border-inset p-2">
+                    <div class="text-[9px] text-gray-500 font-bold uppercase">Escalate Dmg</div>
+                    <div id="profile-escalate" class="text-sm font-mono font-bold leading-none"></div>
+                  </div>
+                  <div class="bg-white retro-border-inset p-2">
+                    <div class="text-[9px] text-gray-500 font-bold uppercase">Reply All Dmg</div>
+                    <div id="profile-replyall" class="text-sm font-mono font-bold leading-none"></div>
+                  </div>
+                  <div class="bg-white retro-border-inset p-2">
+                    <div class="text-[9px] text-gray-500 font-bold uppercase">Deflect</div>
+                    <div class="text-[11px] font-mono font-bold leading-none">
+                      <span id="profile-deflect"></span>
+                      <span class="text-[9px] text-gray-400">/</span>
+                      <span id="profile-retaliate"></span>
                     </div>
+                    <div class="text-[8px] uppercase text-gray-400">Reduce / Retaliate</div>
+                  </div>
+                  <div class="bg-white retro-border-inset p-2">
+                    <div class="text-[9px] text-gray-500 font-bold uppercase">Self-Promote</div>
+                    <div class="text-[11px] font-mono font-bold leading-none">
+                      <span id="profile-selfpromote"></span>
+                      <span class="text-[9px] text-gray-400">/</span>
+                      <span id="profile-wins"></span>
+                    </div>
+                    <div class="text-[8px] uppercase text-gray-400">Heal / Wins</div>
+                  </div>
+                  <div class="bg-white retro-border-inset p-2">
+                    <div class="text-[9px] text-gray-500 font-bold uppercase">Defense</div>
+                    <div id="profile-defense" class="text-sm font-mono font-bold leading-none"></div>
                   </div>
                 </div>
                 <div class="space-y-1">
@@ -1016,24 +1038,113 @@
       id="stats-modal"
       class="hidden fixed inset-0 z-[160] bg-black/40 flex items-center justify-center p-4"
     >
-      <div class="bg-[#f7f4e8] retro-border w-full max-w-2xl shadow-2xl">
+      <div class="bg-[#c0c0c0] retro-border w-full max-w-md shadow-2xl flex flex-col max-h-[90vh]">
         <div
           class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold"
         >
           <span>EMPLOYEE FILE</span>
           <button id="stats-modal-close" class="px-1">✕</button>
         </div>
-        <div class="p-3 text-[10px] text-gray-800 space-y-3">
-          <div id="stats-modal-header" class="text-[11px] font-bold"></div>
-          <div
-            class="grid grid-cols-1 sm:grid-cols-2 gap-2"
-            id="stats-modal-totals"
-          ></div>
-          <div>
-            <div class="text-[10px] font-bold uppercase text-gray-500 mb-1">
-              Sources
+        <div class="window-body p-3 bg-[#c0c0c0] space-y-2 overflow-y-auto profile-window-body">
+          <div class="flex gap-4 mb-4 bg-white/20 p-3 retro-border-inset">
+            <div class="w-20 h-20 bg-gray-400 retro-border-inset flex items-center justify-center overflow-hidden flex-shrink-0">
+              <div class="text-[#606060] text-[8px] text-center p-1 leading-tight uppercase font-bold">
+                Identification<br />Missing
+              </div>
             </div>
-            <div id="stats-modal-sources" class="space-y-2"></div>
+            <div class="flex flex-col justify-center overflow-hidden">
+              <h1
+                id="stats-name"
+                class="text-xl font-bold leading-tight truncate uppercase tracking-tighter text-[#000080]"
+              ></h1>
+              <div
+                id="stats-title"
+                class="flex items-center gap-1 text-[9px] bg-[#000080] text-white self-start px-2 py-0.5 rounded-sm mt-1 uppercase font-bold"
+              ></div>
+            </div>
+          </div>
+
+          <div class="flex border-b-2 border-b-[#808080] relative z-0">
+            <button onclick="showStatsTab('summary')" id="stats-tab-summary" class="profile-tab-btn active">Summary</button>
+            <button onclick="showStatsTab('stats')" id="stats-tab-stats" class="profile-tab-btn">Full Stats</button>
+            <button onclick="showStatsTab('sources')" id="stats-tab-sources" class="profile-tab-btn">Sources</button>
+          </div>
+
+          <div class="bg-[#c0c0c0] border-l-2 border-r-2 border-b-2 border-white shadow-[inset_-2px_-2px_0_#808080] p-4 min-h-[260px]">
+            <div id="stats-panel-summary" class="profile-tab-panel active space-y-4">
+              <div>
+                <div class="flex justify-between text-[10px] font-bold mb-1 uppercase text-[#404040]">
+                  <span>Productivity HP</span>
+                  <span id="stats-hp-text"></span>
+                </div>
+                <div class="h-4 bg-[#808080] border border-white shadow-[inset_1px_1px_1px_black]">
+                  <div id="stats-hp-bar" class="h-full bg-[#00ff00] border-r-2 border-[#008000]"></div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <div class="bg-white retro-border-inset p-2">
+                  <div class="text-[9px] text-gray-500 font-bold uppercase">Reply To Dmg</div>
+                  <div id="stats-replyto" class="text-sm font-mono font-bold leading-none"></div>
+                </div>
+                <div class="bg-white retro-border-inset p-2">
+                  <div class="text-[9px] text-gray-500 font-bold uppercase">Escalate Dmg</div>
+                  <div id="stats-escalate" class="text-sm font-mono font-bold leading-none"></div>
+                </div>
+                <div class="bg-white retro-border-inset p-2">
+                  <div class="text-[9px] text-gray-500 font-bold uppercase">Reply All Dmg</div>
+                  <div id="stats-replyall" class="text-sm font-mono font-bold leading-none"></div>
+                </div>
+                <div class="bg-white retro-border-inset p-2">
+                  <div class="text-[9px] text-gray-500 font-bold uppercase">Deflect</div>
+                  <div class="text-[11px] font-mono font-bold leading-none">
+                    <span id="stats-deflect"></span>
+                    <span class="text-[9px] text-gray-400">/</span>
+                    <span id="stats-retaliate"></span>
+                  </div>
+                  <div class="text-[8px] uppercase text-gray-400">Reduce / Retaliate</div>
+                </div>
+                <div class="bg-white retro-border-inset p-2">
+                  <div class="text-[9px] text-gray-500 font-bold uppercase">Self-Promote</div>
+                  <div class="text-[11px] font-mono font-bold leading-none">
+                    <span id="stats-selfpromote"></span>
+                    <span class="text-[9px] text-gray-400">/</span>
+                    <span id="stats-wins"></span>
+                  </div>
+                  <div class="text-[8px] uppercase text-gray-400">Heal / Wins</div>
+                </div>
+                <div class="bg-white retro-border-inset p-2">
+                  <div class="text-[9px] text-gray-500 font-bold uppercase">Defense</div>
+                  <div id="stats-defense" class="text-sm font-mono font-bold leading-none"></div>
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <div class="text-[10px] font-bold text-gray-600 uppercase">Communication Preset</div>
+                <div class="bg-white retro-border-inset text-[11px] p-2 space-y-1">
+                  <div class="flex justify-between border-b border-dashed border-gray-200 pb-1">
+                    <span class="text-gray-400 uppercase text-[9px]">Greeting</span>
+                    <span id="stats-greeting" class="font-bold italic"></span>
+                  </div>
+                  <div class="flex justify-between border-b border-dashed border-gray-200 py-1">
+                    <span class="text-gray-400 uppercase text-[9px]">Sign-off</span>
+                    <span id="stats-signoff" class="font-bold italic"></span>
+                  </div>
+                  <div class="flex justify-between pt-1">
+                    <span class="text-gray-400 uppercase text-[9px]">Signatures</span>
+                    <span id="stats-signatures" class="font-bold"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="stats-panel-stats" class="profile-tab-panel space-y-2">
+              <div class="grid grid-cols-1 gap-1.5" id="stats-modal-totals"></div>
+            </div>
+
+            <div id="stats-panel-sources" class="profile-tab-panel space-y-2 custom-scroll overflow-y-auto max-h-[250px] pr-1">
+              <div id="stats-modal-sources" class="space-y-2"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -8436,6 +8547,14 @@
 
       function showShop() {
         state.shop.rerollCount = 0;
+        if (state.player && Array.isArray(state.player.buffs)) {
+          state.player.buffs = [];
+        }
+        if (Array.isArray(opponents)) {
+          opponents.forEach((o) => {
+            if (Array.isArray(o.buffs)) o.buffs = [];
+          });
+        }
         transitionTo("shop-screen");
         runUnitEffects(state.player, "shop_enter", {});
         updateShopUI();
@@ -10709,6 +10828,9 @@
             ghostClass: "shop-card-ghost",
             chosenClass: "shop-card-chosen",
             dragClass: "shop-card-drag",
+            filter:
+              ".profile-tab-btn, .profile-tab-panel, .profile-tab-panel *, button",
+            preventOnFilter: false,
             onMove: (evt) => {
               const dragged = evt.dragged;
               if (!dragged) return;
@@ -11326,44 +11448,70 @@
         });
       }
 
-      function renderStatsContent(header, totalsEl, sourcesEl) {
-        if (!header || !totalsEl || !sourcesEl) return;
+      function renderStatsContent(header, totalsEl, sourcesEl, summary = {}) {
+        if (!totalsEl || !sourcesEl) return;
         const p = state.player;
         const totals = computeUnitStats(p);
-        header.innerText = `${p.name} (${p.title ? p.title.name : "Unranked"})`;
+        const replyAllFromStats = (stats) => {
+          const replyAllBase = 20;
+          const singleBase = stats.singleDmg || 0;
+          const escalateBase = stats.escalateDmg || 0;
+          const singleMult = 1 + (stats.singleDmgMult || 0);
+          const escalateMult = 1 + (stats.escalateDmgMult || 0);
+          const globalFlat = stats.globalDmg || 0;
+          const total =
+            replyAllBase +
+            (singleBase * singleMult) / 4 +
+            (escalateBase * escalateMult) / 2 +
+            globalFlat;
+          return Math.floor(total);
+        };
+        const titleName = p.title ? p.title.name : "Unranked";
+        if (header) header.innerText = `${p.name} (${titleName})`;
+        if (summary.nameEl) summary.nameEl.innerText = p.name || "";
+        if (summary.titleEl) summary.titleEl.innerText = titleName;
+        if (summary.hpTextEl && summary.hpBarEl) {
+          const maxHp = getUnitMaxHp(p);
+          const hp = Math.max(0, p.hp || 0);
+          summary.hpTextEl.innerText = `${hp}/${maxHp}`;
+          const pct = maxHp > 0 ? Math.min(100, Math.round((hp / maxHp) * 100)) : 0;
+          summary.hpBarEl.style.width = `${pct}%`;
+        }
+        if (summary.replyToEl)
+          summary.replyToEl.innerText = `${totals.singleDmg || 0}`;
+        if (summary.escalateEl)
+          summary.escalateEl.innerText = `${totals.escalateDmg || 0}`;
+        if (summary.replyAllEl)
+          summary.replyAllEl.innerText = `${replyAllFromStats(totals)}`;
+        if (summary.deflectEl)
+          summary.deflectEl.innerText = `${totals.deflect || 0}`;
+        if (summary.retaliateEl)
+          summary.retaliateEl.innerText = `${totals.retaliation || 0}`;
+        if (summary.selfPromoteEl)
+          summary.selfPromoteEl.innerText = `${totals.selfPromoteHeal || 0}`;
+        if (summary.winsEl)
+          summary.winsEl.innerText = `${p.currentWins ?? p.wins ?? 0}`;
+        if (summary.defenseEl)
+          summary.defenseEl.innerText = `${totals.defFlat || 0}`;
+        if (summary.greetEl)
+          summary.greetEl.innerText = p.salutation ? `"${p.salutation.name}"` : "None";
+        if (summary.signoffEl)
+          summary.signoffEl.innerText = p.signOff ? `"${p.signOff.name}"` : "None";
+        if (summary.sigsEl)
+          summary.sigsEl.innerText =
+            p.signatures && p.signatures.length
+              ? p.signatures.map((s) => s.name).join(", ")
+              : "None";
 
         totalsEl.innerHTML = "";
-        const summaryItems = [
-          {
-            label: "Greeting",
-            value: p.salutation ? p.salutation.name : "None",
-          },
-          {
-            label: "Sign-off",
-            value: p.signOff ? p.signOff.name : "None",
-          },
-          {
-            label: "Signatures",
-            value:
-              p.signatures && p.signatures.length
-                ? p.signatures.map((s) => s.name).join(", ")
-                : "None",
-          },
-        ];
-        summaryItems.forEach((item) => {
-          const div = document.createElement("div");
-          div.className =
-            "col-span-1 sm:col-span-2 flex flex-col sm:flex-row sm:justify-between gap-1 bg-white retro-border px-2 py-1";
-          div.innerHTML = `<span class="uppercase text-gray-500">${item.label}</span><span class="text-[10px]">${item.value}</span>`;
-          totalsEl.appendChild(div);
-        });
         STAT_FIELDS.forEach((field) => {
           const value = totals[field];
           if (!value) return;
           const div = document.createElement("div");
           div.className =
-            "flex justify-between bg-white retro-border px-2 py-1";
-          div.innerHTML = `<span class="uppercase text-gray-500">${field}</span><span class="font-mono">${value}</span>`;
+            "stat-row flex justify-between items-center bg-white/40 px-3 py-1.5 border border-white/50";
+          const meta = getStatMeta(field);
+          div.innerHTML = `<span class="text-[10px] font-bold uppercase text-gray-700">${meta.label}</span><span class="font-mono text-xs font-bold">${value}</span>`;
           totalsEl.appendChild(div);
         });
 
@@ -11379,25 +11527,41 @@
             .map(([k, v]) => `<span class="font-mono">${k}: ${v}</span>`)
             .join(", ");
           const div = document.createElement("div");
-          div.className = "p-2 bg-white retro-border";
-          div.innerHTML = `<div class="font-bold">${src.label}</div><div class="text-[10px] text-gray-600">${rows}</div>`;
+          div.className = "bg-white retro-border-inset p-2";
+          div.innerHTML = `<div class="text-[11px] font-bold text-[#000080] flex items-center gap-1 mb-1">${src.label}</div><div class="text-[9px] text-gray-500 font-mono leading-tight bg-gray-50 p-1 border border-inset">${rows}</div>`;
           sourcesEl.appendChild(div);
         });
       }
 
       function renderStatsModal() {
         const modal = document.getElementById("stats-modal");
-        const header = document.getElementById("stats-modal-header");
         const totalsEl = document.getElementById("stats-modal-totals");
         const sourcesEl = document.getElementById("stats-modal-sources");
-        if (!modal || !header || !totalsEl || !sourcesEl) return;
-        renderStatsContent(header, totalsEl, sourcesEl);
+        if (!modal || !totalsEl || !sourcesEl) return;
+        renderStatsContent(null, totalsEl, sourcesEl, {
+          nameEl: document.getElementById("stats-name"),
+          titleEl: document.getElementById("stats-title"),
+          hpTextEl: document.getElementById("stats-hp-text"),
+          hpBarEl: document.getElementById("stats-hp-bar"),
+          replyToEl: document.getElementById("stats-replyto"),
+          escalateEl: document.getElementById("stats-escalate"),
+          replyAllEl: document.getElementById("stats-replyall"),
+          deflectEl: document.getElementById("stats-deflect"),
+          retaliateEl: document.getElementById("stats-retaliate"),
+          selfPromoteEl: document.getElementById("stats-selfpromote"),
+          winsEl: document.getElementById("stats-wins"),
+          defenseEl: document.getElementById("stats-defense"),
+          greetEl: document.getElementById("stats-greeting"),
+          signoffEl: document.getElementById("stats-signoff"),
+          sigsEl: document.getElementById("stats-signatures"),
+        });
       }
 
       function openStatsModal() {
         const modal = document.getElementById("stats-modal");
         if (!modal) return;
         renderStatsModal();
+        showStatsTab("summary");
         modal.classList.remove("hidden");
       }
 
@@ -11405,6 +11569,16 @@
         const modal = document.getElementById("stats-modal");
         if (!modal) return;
         modal.classList.add("hidden");
+      }
+
+      function showStatsTab(tabId) {
+        const tabs = ["summary", "stats", "sources"];
+        tabs.forEach((tab) => {
+          const btn = document.getElementById(`stats-tab-${tab}`);
+          const panel = document.getElementById(`stats-panel-${tab}`);
+          if (btn) btn.classList.toggle("active", tab === tabId);
+          if (panel) panel.classList.toggle("active", tab === tabId);
+        });
       }
 
       function showProfileTab(tabId) {
@@ -11477,14 +11651,25 @@
         const titleEl = document.getElementById("profile-title");
         const hpTextEl = document.getElementById("profile-hp-text");
         const hpBarEl = document.getElementById("profile-hp-bar");
+        const replyToEl = document.getElementById("profile-replyto");
+        const escalateEl = document.getElementById("profile-escalate");
+        const replyAllEl = document.getElementById("profile-replyall");
+        const deflectEl = document.getElementById("profile-deflect");
+        const retaliateEl = document.getElementById("profile-retaliate");
+        const selfPromoteEl = document.getElementById("profile-selfpromote");
         const winsEl = document.getElementById("profile-wins");
-        const dmgEl = document.getElementById("profile-dmg");
+        const defenseEl = document.getElementById("profile-defense");
         const greetEl = document.getElementById("profile-greeting");
         const signoffEl = document.getElementById("profile-signoff");
         const sigsEl = document.getElementById("profile-signatures");
         if (!totalsEl || !sourcesEl || !nameEl || !titleEl) return;
         const p = state.player;
         const totals = computeUnitStats(p);
+        const totalsNoContacts = computeUnitStats({
+          ...p,
+          buffs: [],
+          threadBonuses: {},
+        });
         const titleName = p.title ? p.title.name : "Unranked";
         header && (header.innerText = `${p.name} (${titleName})`);
         nameEl.innerText = p.name || "";
@@ -11496,8 +11681,33 @@
           const pct = maxHp > 0 ? Math.min(100, Math.round((hp / maxHp) * 100)) : 0;
           hpBarEl.style.width = `${pct}%`;
         }
+        const replyAllFromStats = (stats) => {
+          const replyAllBase = 20;
+          const singleBase = stats.singleDmg || 0;
+          const escalateBase = stats.escalateDmg || 0;
+          const singleMult = 1 + (stats.singleDmgMult || 0);
+          const escalateMult = 1 + (stats.escalateDmgMult || 0);
+          const globalFlat = stats.globalDmg || 0;
+          const total =
+            replyAllBase +
+            (singleBase * singleMult) / 4 +
+            (escalateBase * escalateMult) / 2 +
+            globalFlat;
+          return Math.floor(total);
+        };
+        if (replyToEl) replyToEl.innerText = `${totalsNoContacts.singleDmg || 0}`;
+        if (escalateEl)
+          escalateEl.innerText = `${totalsNoContacts.escalateDmg || 0}`;
+        if (replyAllEl)
+          replyAllEl.innerText = `${replyAllFromStats(totalsNoContacts)}`;
+        if (deflectEl) deflectEl.innerText = `${totalsNoContacts.deflect || 0}`;
+        if (retaliateEl)
+          retaliateEl.innerText = `${totalsNoContacts.retaliation || 0}`;
+        if (selfPromoteEl)
+          selfPromoteEl.innerText = `${totalsNoContacts.selfPromoteHeal || 0}`;
         if (winsEl) winsEl.innerText = `${p.currentWins ?? p.wins ?? 0}`;
-        if (dmgEl) dmgEl.innerText = `${totals.singleDmg || 0}`;
+        if (defenseEl)
+          defenseEl.innerText = `${totalsNoContacts.defFlat || 0}`;
         if (greetEl)
           greetEl.innerText = p.salutation ? `"${p.salutation.name}"` : "None";
         if (signoffEl)
