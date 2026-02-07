@@ -6522,6 +6522,15 @@
           body += `<strong>${salutation.name}</strong><br><br>`;
         }
         body += content;
+
+        const windowStats = getSalutationWindowStats(sender);
+        if (windowStats) {
+          const statsText = formatStatsText(windowStats);
+          if (statsText) {
+            body += `<br><br><span class="text-[10px] text-blue-600 font-semibold italic">Time-based bonus active: ${statsText}</span>`;
+          }
+        }
+
         const signOff =
           sender.signOff || (sender.signoff ? { name: sender.signoff } : null);
         if (signOff) {
