@@ -5407,6 +5407,7 @@
           followUpChance: 0,
           escalateRecoverPerHit: 0,
           bccLimit: 2,
+          contactTrainingLimit: 3,
           contactUpgrades: {},
           contactPermanentBoosts: {},
           contactTrainingCount: {},
@@ -5684,6 +5685,7 @@
 
       function startNewGame() {
         clearSavedGame();
+        state.player.contactTrainingCount = {};
         startGame();
       }
 
@@ -5854,6 +5856,7 @@
         "addressLimit",
         "numCCperCCaction",
         "bccLimit",
+        "contactTrainingLimit",
       ];
       const ITEM_TYPE_LABELS = {
         contact: {
@@ -5916,7 +5919,7 @@
         maxHp: { label: "Max Credibility", shortName: "Max Cred" },
         wins: { label: "Wins", shortName: "Wins" },
         selfPromoteHeal: { label: "Self-Promote Heal", shortName: "Self-Promote" },
-        deflectPower: { label: "Deflect Reflection", shortName: "Reflect" },
+        deflectPower: { label: "Retaliation", shortName: "Retal" },
         deflect: { label: "Deflect Reduction", shortName: "Reduce" },
         followUpChance: { label: "Follow Up Chance", shortName: "Follow Up" },
         escalateRecoverPerHit: {
@@ -5931,6 +5934,7 @@
         addressLimit: { label: "Address Limit", shortName: "Address" },
         numCCperCCaction: { label: "CCs per Action", shortName: "CC / Action" },
         bccLimit: { label: "BCC Limit", shortName: "BCC Limit" },
+        contactTrainingLimit: { label: "Training Limit", shortName: "Training Limit" },
       };
 
       function getStatMeta(key) {
@@ -5995,6 +5999,7 @@
         if (u.addressLimit == null) u.addressLimit = 0;
         if (u.numCCperCCaction == null) u.numCCperCCaction = 1;
         if (u.bccLimit == null) u.bccLimit = 0;
+        if (u.contactTrainingLimit == null) u.contactTrainingLimit = 3;
         if (!Array.isArray(u.deflectLines) || u.deflectLines.length === 0) {
           u.deflectLines = [
             "I'm pausing to document this thread before responding further.",
@@ -7076,7 +7081,9 @@
           player.contactTrainingCount = {};
 
         const currentCount = player.contactTrainingCount[contactId] || 0;
-        if (currentCount >= 3) return;
+        const trainingLimit =
+          computeUnitStats(player).contactTrainingLimit ?? 3;
+        if (currentCount >= trainingLimit) return;
         player.contactTrainingCount[contactId] = currentCount + 1;
 
         const current = player.contactPermanentBoosts[contactId] || {};
@@ -7145,7 +7152,12 @@
       }
 
       function applyRandomCcBoost(player, stats, applyImmediate = true) {
-        const pool = player.buffs.filter((b) => b.usedBy === player.name && (player.contactTrainingCount?.[b.id] || 0) < 3);
+        const trainingLimit = computeUnitStats(player).contactTrainingLimit ?? 3;
+        const pool = player.buffs.filter(
+          (b) =>
+            b.usedBy === player.name &&
+            (player.contactTrainingCount?.[b.id] || 0) < trainingLimit,
+        );
         if (pool.length === 0) return null;
         const picked = pool[Math.floor(Math.random() * pool.length)];
         applyContactPermanentBoost(player, picked.id, stats);
@@ -8995,7 +9007,7 @@
         const statText = formatStatsText(effect);
         if (statText) parts.push(statText);
         if (effect.deflectPower)
-          parts.push(`Deflect reflect +${effect.deflectPower}`);
+          parts.push(`Retaliation +${effect.deflectPower}`);
         if (effect.deflect) parts.push(`Deflect reduce +${effect.deflect}`);
         if (effect.selfPromoteHeal)
           parts.push(`Self-Promote +${effect.selfPromoteHeal}`);
@@ -9039,7 +9051,7 @@
               chunks.push(`${stats.selfPromoteHeal} self-promote`);
             if (stats.deflect) chunks.push(`${stats.deflect} deflect reduce`);
             if (stats.deflectPower)
-              chunks.push(`${stats.deflectPower} deflect reflect`);
+              chunks.push(`${stats.deflectPower} retaliation`);
             if (chunks.length) {
               const formatted = chunks.map((chunk) =>
                 chunk.trim().startsWith("-") ? chunk : `+${chunk}`,
@@ -9095,8 +9107,12 @@
             (state.player.contactTrainingCount &&
               state.player.contactTrainingCount[item.id]) ||
             0;
+          const trainingLimit =
+            computeUnitStats(state.player).contactTrainingLimit ?? 3;
           const trainingLabel =
-            tCount >= 3 ? "Fully Trained" : `Training ${tCount}/3`;
+            tCount >= trainingLimit
+              ? "Fully Trained"
+              : `Training ${tCount}/${trainingLimit}`;
           const boosts =
             state.player.contactPermanentBoosts &&
             state.player.contactPermanentBoosts[item.id];
@@ -9193,7 +9209,7 @@
         if (stats.defFlat) parts.push(`+${stats.defFlat} defense`);
         if (stats.deflect) parts.push(`+${stats.deflect} deflect`);
         if (stats.deflectPower)
-          parts.push(`+${stats.deflectPower} deflect reflect`);
+          parts.push(`+${stats.deflectPower} retaliation`);
         if (stats.heal) parts.push(`+${stats.heal} cred/turn`);
         if (stats.selfPromoteHeal)
           parts.push(`Self-Promote +${stats.selfPromoteHeal}`);
@@ -11806,7 +11822,7 @@
             a.name,
             "everyone@gov.org",
             "Holding Response",
-            `${formatMessageBody(a, deflectLine)}<br><br><strong>Deflection Ready:</strong> Reduce ${a.deflectChargeReduce}, Reflect ${a.deflectChargeReflect}`,
+            `${formatMessageBody(a, deflectLine)}<br><br><strong>Deflection Ready:</strong> Reduce ${a.deflectChargeReduce}, Retaliate ${a.deflectChargeReflect}`,
             "bg-blue-50",
           );
         });
@@ -12024,7 +12040,7 @@
             p.name,
             "everyone@gov.org",
             "Holding Response",
-            `${formatMessageBody(p, line)}<br><br><strong>Deflection Ready:</strong> Reduce ${p.deflectChargeReduce}, Reflect ${p.deflectChargeReflect}`,
+            `${formatMessageBody(p, line)}<br><br><strong>Deflection Ready:</strong> Reduce ${p.deflectChargeReduce}, Retaliate ${p.deflectChargeReflect}`,
             "bg-blue-50 border-l-4 border-blue-500",
           );
         } else if (type === "PROMOTE") {
@@ -12349,7 +12365,7 @@
                   a.name,
                   "everyone@gov.org",
                   "Holding Response",
-                  `${formatMessageBody(a, deflectLine)}<br><br><strong>Deflection Ready:</strong> Reduce ${a.deflectChargeReduce}, Reflect ${a.deflectChargeReflect}`,
+                  `${formatMessageBody(a, deflectLine)}<br><br><strong>Deflection Ready:</strong> Reduce ${a.deflectChargeReduce}, Retaliate ${a.deflectChargeReflect}`,
                   "bg-blue-50",
                 );
               }
@@ -12762,11 +12778,38 @@
         const boosts =
           state.player.contactPermanentBoosts &&
           state.player.contactPermanentBoosts[contact.id];
+        const effectBoosts =
+          state.player.contactEffectBoosts &&
+          state.player.contactEffectBoosts[contact.id];
         const upgrades =
           state.player.contactUpgrades && state.player.contactUpgrades[contact.id];
-        const tCount = (state.player.contactTrainingCount && state.player.contactTrainingCount[contact.id]) || 0;
-        const trainingLabel = tCount >= 3 ? "Fully Trained" : `Training ${tCount}/3`;
-        const trainingText = boosts ? `${formatStatsText(boosts)} (${trainingLabel})` : (tCount > 0 ? `(${trainingLabel})` : "");
+        const tCount =
+          (state.player.contactTrainingCount &&
+            state.player.contactTrainingCount[contact.id]) ||
+          0;
+        const trainingLimit =
+          computeUnitStats(state.player).contactTrainingLimit ?? 3;
+        const trainingLabel =
+          tCount >= trainingLimit
+            ? "Fully Trained"
+            : `Training ${tCount}/${trainingLimit}`;
+        const hasEffectTraining =
+          Array.isArray(contact.effects) &&
+          contact.effects.some(
+            (e) =>
+              e &&
+              (e.type === "add_thread_bonus" ||
+                e.type === "add_thread_bonus_scaled"),
+          );
+        const trainingStats =
+          hasEffectTraining && effectBoosts && Object.keys(effectBoosts).length
+            ? effectBoosts
+            : boosts;
+        const trainingText = trainingStats
+          ? `${formatStatsText(trainingStats)} (${trainingLabel})`
+          : tCount > 0
+            ? `(${trainingLabel})`
+            : "";
         const upgradeText =
           upgrades && upgrades.eff ? formatStatsText(upgrades.eff) : "";
         const showSpecialization =
