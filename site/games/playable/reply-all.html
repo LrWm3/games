@@ -32,6 +32,7 @@
         --win-border-dark: #404040;
         --shop-taskbar-height: 28px;
         --shop-header-height: 30px;
+        --win-wizard-text: #7b7b7b;
       }
       body {
         font-family: "Inter", sans-serif;
@@ -202,7 +203,7 @@
         transform: rotate(180deg);
         font-size: 2rem;
         font-weight: 900;
-        color: rgba(255, 255, 255, 0.1);
+        color: var(--win-wizard-text);
         pointer-events: none;
         user-select: none;
       }
@@ -2219,8 +2220,8 @@
           loopInText:
             "I'm looping in <strong>{name}</strong> to keep our technical support aligned and logged.",
           eff: {
-            singleDmg: 5,
             escalateDmg: 3,
+            escalateRecoverPerHit: 3,
           },
           usedBy: null,
         },
@@ -3005,10 +3006,10 @@
         {
           id: "it",
           name: "IT Support & Systems",
-          short: "IT_DEPT",
+          short: "IT DEPT",
           code: "SYS-ADM-04",
           unlocked: true,
-          lockCondition: null,
+          lockCondition: "Have Colin opt out of a thread.",
           manifest: {
             Reputation: "4.0 (Stable)",
             "Key Contact": "Colin (IT)",
@@ -3032,7 +3033,7 @@
           short: "FINANCE",
           code: "FISC-ACC-09",
           unlocked: true,
-          lockCondition: null,
+          lockCondition: "Accumulate more than 30 Reputation.",
           manifest: {
             Reputation: "14.0 (Venture Cap)",
             "Key Contact": "N/A (Liquid)",
@@ -5798,6 +5799,28 @@
       let opponents = [];
 
       const SAVE_KEY = "reply_all_save_v1";
+      const META_KEY = "reply_all_meta_v1";
+
+      function getMetaState() {
+        try {
+          const raw = localStorage.getItem(META_KEY);
+          if (raw) return JSON.parse(raw);
+        } catch (e) {}
+        return null;
+      }
+
+      function saveMetaState() {
+        try {
+          localStorage.setItem(META_KEY, JSON.stringify(metaState));
+        } catch (e) {}
+      }
+
+      let metaState =
+        getMetaState() || {
+          discoveredSets: [],
+          startUnlocks: { executive: 0, it: 0, finance: 0 },
+          departmentUnlocks: { executive: true, it: false, finance: false },
+        };
 
       let state = {
         analytics: {
@@ -6069,6 +6092,13 @@
       }
 
       function ensureStartDefaults() {
+        if (!metaState) {
+          metaState = {
+            discoveredSets: [],
+            startUnlocks: { executive: 0, it: 0, finance: 0 },
+            departmentUnlocks: { executive: true, it: false, finance: false },
+          };
+        }
         if (!state.startConfig) {
           state.startConfig = { departmentId: "executive", prestige: 0, seedInput: "" };
         }
@@ -6078,6 +6108,25 @@
         if (!state.startConfig.departmentId) state.startConfig.departmentId = "executive";
         if (state.startConfig.prestige == null) state.startConfig.prestige = 0;
         if (state.startConfig.seedInput == null) state.startConfig.seedInput = "";
+        if (!metaState.startUnlocks) metaState.startUnlocks = { executive: 0, it: 0, finance: 0 };
+        if (!metaState.departmentUnlocks) {
+          metaState.departmentUnlocks = { executive: true, it: false, finance: false };
+        }
+        if (!Array.isArray(metaState.discoveredSets)) metaState.discoveredSets = [];
+        state.startUnlocks = { ...metaState.startUnlocks };
+      }
+
+      function checkDepartmentUnlocks() {
+        if (!metaState || !metaState.departmentUnlocks) return;
+        let changed = false;
+        if (
+          !metaState.departmentUnlocks.finance &&
+          (state.player?.reputation || 0) >= 30
+        ) {
+          metaState.departmentUnlocks.finance = true;
+          changed = true;
+        }
+        if (changed) saveMetaState();
       }
 
       function getBasePlayerState(name, email) {
@@ -6153,6 +6202,7 @@
         state.player.signOff = start.signOffId
           ? SIGNOFFS.find((s) => s.id === start.signOffId) || null
           : null;
+        state.player.discoveredSets = [...(metaState.discoveredSets || [])];
       }
 
       let inductionIndex = 0;
@@ -6185,6 +6235,8 @@
         const iconFrame = document.getElementById("induction-icon-frame");
         const codeEl = document.getElementById("induction-dept-code");
         const manifestBody = document.getElementById("induction-manifest-body");
+        const unlockedDepartments = metaState.departmentUnlocks || {};
+        const deptUnlocked = dept.id === "executive" || unlockedDepartments[dept.id];
         if (nameEl) nameEl.innerText = dept.name;
         if (sidebarEl) sidebarEl.innerText = dept.short;
         if (iconFrame) iconFrame.innerHTML = dept.icon || "";
@@ -6204,7 +6256,7 @@
         const overlay = document.getElementById("induction-lock-overlay");
         const conditionText = document.getElementById("induction-lock-condition");
         const startBtn = document.getElementById("induction-start-btn");
-        const isLocked = !dept.unlocked;
+        const isLocked = !deptUnlocked;
         if (overlay && conditionText && startBtn) {
           if (isLocked) {
             overlay.classList.remove("hidden");
@@ -6230,7 +6282,9 @@
         const maxUnlocked = state.startUnlocks?.[dept.id] ?? 0;
         grid.innerHTML = "";
         for (let i = 0; i < START_PRESTIGE_TITLES.length; i++) {
-          const isLocked = !dept.unlocked || i > maxUnlocked;
+          const unlockedDepartments = metaState.departmentUnlocks || {};
+          const deptUnlocked = dept.id === "executive" || unlockedDepartments[dept.id];
+          const isLocked = !deptUnlocked || i > maxUnlocked;
           const btn = document.createElement("div");
           btn.className = `prestige-btn retro-border ${isLocked ? "locked" : ""}`;
           if (i === state.startConfig.prestige && !isLocked) {
@@ -6425,6 +6479,7 @@
             messageLog: document.getElementById("message-log")?.innerHTML || "",
             activeScreen: [
               "start-screen",
+              "induction-screen",
               "game-ui",
               "inbox-screen",
               "summary-screen",
@@ -6447,7 +6502,25 @@
           player: hydratePlayer(save.state.player),
           shop: hydrateShop(save.state.shop),
         };
+        metaState = getMetaState() || metaState;
         ensureStartDefaults();
+        if (state.startUnlocks) {
+          Object.keys(state.startUnlocks).forEach((key) => {
+            const current = metaState.startUnlocks?.[key] ?? 0;
+            const incoming = state.startUnlocks[key] ?? 0;
+            if (incoming > current) {
+              metaState.startUnlocks[key] = incoming;
+            }
+          });
+        }
+        if (Array.isArray(state.player.discoveredSets)) {
+          state.player.discoveredSets.forEach((id) => {
+            if (!metaState.discoveredSets.includes(id)) {
+              metaState.discoveredSets.push(id);
+            }
+          });
+        }
+        saveMetaState();
         if (!state.seed) state.seed = Date.now() >>> 0;
         if (!state.rngStates) state.rngStates = {};
         resetRngStreams();
@@ -6584,6 +6657,7 @@
       }
 
       function showInbox() {
+        checkDepartmentUnlocks();
         transitionTo("inbox-screen");
         const list = document.getElementById("inbox-list");
         list.innerHTML = "";
@@ -6840,6 +6914,10 @@
         if (active && u === state.player) {
           if (!state.player.discoveredSets.includes(set.id)) {
             state.player.discoveredSets.push(set.id);
+            if (!metaState.discoveredSets.includes(set.id)) {
+              metaState.discoveredSets.push(set.id);
+              saveMetaState();
+            }
           }
         }
         return active;
@@ -9092,6 +9170,7 @@
               : summary.totalRep;
           summary.totalRep = repAward;
           state.player.reputation += repAward;
+          checkDepartmentUnlocks();
           logGameEvent("thread_end", {
             totalRep: repAward,
             baseRep: summary.baseRep,
@@ -9466,6 +9545,12 @@
             const currentUnlock = state.startUnlocks?.[deptId] ?? 0;
             state.startUnlocks = state.startUnlocks || {};
             state.startUnlocks[deptId] = Math.max(currentUnlock, nextUnlock);
+            metaState.startUnlocks = metaState.startUnlocks || {};
+            metaState.startUnlocks[deptId] = Math.max(
+              metaState.startUnlocks?.[deptId] ?? 0,
+              state.startUnlocks[deptId],
+            );
+            saveMetaState();
           }
           if (loseHeader) loseHeader.innerText = "SYSTEM ACCESS RESTORED";
           if (loseHeaderBar) {
@@ -10470,6 +10555,7 @@
 
       function updateShopUI() {
         hideShopItemOverlay();
+        checkDepartmentUnlocks();
         document.getElementById("shop-reputation-display").innerText =
           `REP:${state.player.reputation}`;
         const shopQuarter = document.getElementById("shop-taskbar-quarter");
@@ -12625,6 +12711,17 @@
           actorName: o.name,
           byPlayer,
         });
+        if (o.employeeId === "colin_information_technology") {
+          metaState.departmentUnlocks = metaState.departmentUnlocks || {
+            executive: true,
+            it: false,
+            finance: false,
+          };
+          if (!metaState.departmentUnlocks.it) {
+            metaState.departmentUnlocks.it = true;
+            saveMetaState();
+          }
+        }
         if (byPlayer) {
           state.removedByPlayer++;
           o.removedByPlayer = true;
@@ -12717,6 +12814,7 @@
 
       function updateUI() {
         if (state.gameOver) return;
+        checkDepartmentUnlocks();
         const p = state.player;
         updateGreetingReputationScaling(p);
         const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
