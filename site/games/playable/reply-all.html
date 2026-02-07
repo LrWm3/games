@@ -1908,6 +1908,7 @@
         if (!overlay || overlay.style.display === "none") return;
         if (overlay.contains(e.target)) return;
         if (e.target.closest(".shop-card-item")) return;
+        if (e.target.closest(".target-pill")) return;
         hideShopItemOverlay();
       });
 
@@ -6863,6 +6864,7 @@
           plans[a.id] = decideAiAction(a, alive, state.player);
         });
         state.aiPlannedActions = plans;
+        renderDraftingIndicators();
       }
 
       function isPlannedActionValid(ai, plan) {
@@ -6897,7 +6899,13 @@
         return opponents.some((o) => o.employeeId === contact.employeeId);
       }
 
-      function openCcProfile(contact) {
+      function openCcProfile(contact, anchorEl) {
+        if (!contact) return;
+        if (anchorEl) {
+          const item = contact.itemType ? contact : { ...contact, itemType: "contact" };
+          showGameItemOverlay(item, anchorEl);
+          return;
+        }
         const deptName = getDepartmentName(contact.departmentId);
         document.getElementById("cc-profile-title").innerText = "CC Profile";
         document.getElementById("cc-profile-name").innerText = contact.name;
@@ -10947,6 +10955,107 @@
         }
       }
 
+      function showGameItemOverlay(item, anchorEl, opts = {}) {
+        const overlay = document.getElementById("shop-item-overlay");
+        if (!overlay || !item || !anchorEl) return;
+        if (shopOverlayState.visible && shopOverlayState.itemId === item.id) {
+          hideShopItemOverlay();
+          return;
+        }
+        overlay.innerHTML = "";
+        overlay.style.width = "260px";
+        renderItemOverlay(item, {
+          anchorEl,
+          mode: "game-contact",
+          preferRight: opts.preferRight ?? true,
+        });
+        shopOverlayState.itemId = item.id || null;
+      }
+
+      function showStakeholderOverlay(opponent, anchorEl) {
+        const overlay = document.getElementById("shop-item-overlay");
+        if (!overlay || !opponent || !anchorEl) return;
+        if (shopOverlayState.visible && shopOverlayState.itemId === opponent.id) {
+          hideShopItemOverlay();
+          return;
+        }
+        overlay.innerHTML = "";
+        overlay.style.width = "260px";
+        const stats = computeUnitStats(opponent);
+        const maxHp = getUnitMaxHp(opponent);
+        const hp = Math.max(0, opponent.hp || 0);
+        const replyAllBase = 20;
+        const replyAllDmg = Math.floor(
+          replyAllBase +
+            ((stats.singleDmg || 0) * (1 + (stats.singleDmgMult || 0))) / 4 +
+            ((stats.escalateDmg || 0) * (1 + (stats.escalateDmgMult || 0))) / 2 +
+            (stats.globalDmg || 0),
+        );
+        const promoteHeal = getUnitSelfPromoteHeal(opponent, 15);
+        const deptName = getDepartmentName(opponent.departmentId) || "Department N/A";
+        const titleName = opponent.title || opponent.role || "Stakeholder";
+        const container = document.createElement("div");
+        container.className = "relative";
+        container.innerHTML = `
+          <div class="p-3 bg-[#e0e0e0] retro-border shadow-2xl flex flex-col gap-2">
+            <div class="flex justify-between items-start font-bold text-[11px] gap-2 border-b border-[#808080] pb-2">
+              <div class="truncate flex flex-col">
+                <span class="truncate text-[#000080] text-sm leading-none mb-1">${opponent.name || ""}</span>
+                <span class="text-[9px] text-[#404040] opacity-70 uppercase">${titleName}</span>
+                <span class="text-[9px] text-[#404040] opacity-70 uppercase">${deptName}</span>
+              </div>
+              <button class="px-2 retro-button text-[10px] font-bold text-red-700">✕</button>
+            </div>
+            <div>
+              <div class="flex justify-between text-[10px] font-bold mb-1 uppercase text-[#404040]">
+                <span>Productivity HP</span>
+                <span>${hp}/${maxHp}</span>
+              </div>
+              <div class="h-3 bg-[#808080] border border-white shadow-[inset_1px_1px_1px_black]">
+                <div class="h-full bg-[#00ff00] border-r-2 border-[#008000]" style="width: ${maxHp > 0 ? Math.min(100, Math.round((hp / maxHp) * 100)) : 0}%"></div>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-[10px]">
+              <div class="bg-white retro-border-inset p-2">
+                <div class="text-[9px] text-gray-500 font-bold uppercase">Reply To</div>
+                <div class="font-mono font-bold">${stats.singleDmg || 0}</div>
+              </div>
+              <div class="bg-white retro-border-inset p-2">
+                <div class="text-[9px] text-gray-500 font-bold uppercase">Escalate</div>
+                <div class="font-mono font-bold">${stats.escalateDmg || 0}</div>
+              </div>
+              <div class="bg-white retro-border-inset p-2">
+                <div class="text-[9px] text-gray-500 font-bold uppercase">Reply All</div>
+                <div class="font-mono font-bold">${replyAllDmg}</div>
+              </div>
+              <div class="bg-white retro-border-inset p-2">
+                <div class="text-[9px] text-gray-500 font-bold uppercase">Deflect</div>
+                <div class="font-mono font-bold">${stats.deflect || 0} / ${stats.retaliation || 0}</div>
+              </div>
+              <div class="bg-white retro-border-inset p-2">
+                <div class="text-[9px] text-gray-500 font-bold uppercase">Self-Promote</div>
+                <div class="font-mono font-bold">${promoteHeal || 0} / ${opponent.wins || 0}</div>
+              </div>
+              <div class="bg-white retro-border-inset p-2">
+                <div class="text-[9px] text-gray-500 font-bold uppercase">Defense</div>
+                <div class="font-mono font-bold">${stats.defFlat || 0}</div>
+              </div>
+            </div>
+          </div>
+        `;
+        const closeBtn = container.querySelector("button");
+        if (closeBtn) {
+          closeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            hideShopItemOverlay();
+          });
+        }
+        overlay.appendChild(container);
+        showShopOverlayAnimated(anchorEl, { preferRight: true });
+        overlay.onclick = (e) => e.stopPropagation();
+        shopOverlayState.itemId = opponent.id || null;
+      }
+
       function renderItemOverlay(item, opts = {}) {
         const overlay = document.getElementById("shop-item-overlay");
         if (!overlay || !item || !opts.anchorEl) return;
@@ -11017,29 +11126,41 @@
           const eligibility = canAcquireItem(item);
           const isPack = opts.mode === "pack-option";
           const isOwnedContact = opts.mode === "owned-contact";
+          const isGameContact = opts.mode === "game-contact";
+          const isPlayerCc = item.usedBy === state.player.name;
           const baseAction = eligibility.ok
             ? "REACH OUT"
             : eligibility.actionLabel || "UNAVAILABLE";
-          const actionLabel = isOwnedContact
-            ? `ARCHIVE CONTACT +${Math.floor(cost / 2)} REP`
-            : isPack
-              ? "SELECT"
-              : `${baseAction} (${cost} REP)`;
-          const actionDisabled = isOwnedContact ? false : !eligibility.ok;
-          const onAction = isOwnedContact
-            ? () => {
-                sellItem("contact", item);
-                updateShopUI();
-              }
-            : isPack
-              ? () => confirmPackOption(item)
-              : () => buyDirectItem(item, cost);
+          const actionLabel = isGameContact
+            ? isPlayerCc
+              ? "IN THREAD"
+              : "IMPLICATED"
+            : isOwnedContact
+              ? `ARCHIVE CONTACT +${Math.floor(cost / 2)} REP`
+              : isPack
+                ? "SELECT"
+                : `${baseAction} (${cost} REP)`;
+          const actionDisabled = isGameContact
+            ? true
+            : isOwnedContact
+              ? false
+              : !eligibility.ok;
+          const onAction = isGameContact
+            ? null
+            : isOwnedContact
+              ? () => {
+                  sellItem("contact", item);
+                  updateShopUI();
+                }
+              : isPack
+                ? () => confirmPackOption(item)
+                : () => buyDirectItem(item, cost);
           const card = renderItemCard(item, {
             detailsStateKey: isOwnedContact ? "shopAddressBookDetailsOpen" : null,
             actionLabel,
             actionDisabled,
             onAction,
-            hideDetails: !isOwnedContact,
+            hideDetails: !isOwnedContact && !isGameContact,
             showRarityBadge: true,
             showCloseButton: true,
             onClose: () => hideShopItemOverlay(),
@@ -11934,8 +12055,14 @@
           if (o.hp > oppMaxHp) o.hp = oppMaxHp;
           const pct = Math.max(0, (o.hp / oppMaxHp) * 100);
           const pill = document.createElement("div");
-          pill.onclick = () => {
-            if (o.hp > 0) state.targetId = o.id;
+          pill.onclick = (e) => {
+            e.stopPropagation();
+            if (o.hp <= 0) return;
+            if (state.targetId === o.id) {
+              showStakeholderOverlay(o, pill);
+              return;
+            }
+            state.targetId = o.id;
             updateUI();
           };
           pill.className = `target-pill px-2 py-0.5 flex flex-col min-w-[90px] cursor-pointer bg-white ${isActive ? "active" : "opacity-60 grayscale"}`;
@@ -12002,7 +12129,10 @@
             pill.type = "button";
             const subtitle = b.subtitle ? ` • ${b.subtitle}` : "";
             pill.innerHTML = `${b.name}${subtitle} (by ${b.usedBy})`;
-            pill.onclick = () => openCcProfile(b);
+            pill.onclick = (e) => {
+              e.stopPropagation();
+              openCcProfile(b, pill);
+            };
             container.appendChild(pill);
           });
           ccDisplay.appendChild(container);
