@@ -3641,7 +3641,7 @@
         {
           id: "broadcast_training",
           name: "Broadcast Comms.",
-          bonus: "One of your in-thread contacts gains a +3 escalate specialization.",
+          bonus: "One of your in-thread contacts gains a +4 escalate specialization.",
           rarity: "common",
           effect: "contactUpgradeEscalate",
           logText:
@@ -6166,6 +6166,7 @@
           globalDmgMult: 0,
           retaliation: 5,
           deflect: 0,
+          selfPromoteHeal: 5,
           deflectCharge: 0,
           deflectChargeReflect: 0,
           deflectChargeReduce: 0,
@@ -6360,6 +6361,7 @@
           globalDmgMult: 0,
           retaliation: 5,
           deflect: 0,
+          selfPromoteHeal: 5,
           deflectCharge: 0,
           deflectChargeReflect: 0,
           deflectChargeReduce: 0,
@@ -9063,41 +9065,43 @@
           {
             id: "upgrade_single",
             name: "Reply to Focus",
-            singleDmg: 2,
+            singleDmg: 5,
             apply: () => {
-              state.player.singleDmg += 2;
+              state.player.singleDmg += 5;
             },
           },
           {
             id: "upgrade_escalate",
             name: "Escalation Focus",
-            escalateDmg: 2,
+            escalateDmg: 4,
             apply: () => {
-              state.player.escalateDmg += 2;
+              state.player.escalateDmg += 4;
             },
           },
           {
             id: "upgrade_global",
             name: "Agency-Wide Influence",
-            globalDmg: 1,
+            globalDmg: 3,
             apply: () => {
-              state.player.globalDmg += 1;
+              state.player.globalDmg += 3;
             },
           },
           {
             id: "upgrade_hp",
             name: "Resilience Training",
-            maxHp: 5,
+            maxHp: 10,
             apply: () => {
-              state.player.maxHp += 5;
+              state.player.maxHp += 10;
             },
           },
           {
             id: "upgrade_deflect",
             name: "Deflection Coaching",
             deflect: 2,
+            retaliation: 3,
             apply: () => {
               state.player.deflect += 2;
+              state.player.retaliation += 3;
             },
           },
           {
@@ -15005,12 +15009,12 @@
             } else if (bcc.effect === "contactUpgradeSingle") {
               upgrade = {
                 subtitle: "Reply Precision",
-                eff: { singleDmg: 3 },
+                eff: { singleDmg: 5 },
               };
             } else if (bcc.effect === "contactUpgradeEscalate") {
               upgrade = {
                 subtitle: "Escalation Trained",
-                eff: { escalateDmg: 3 },
+                eff: { escalateDmg: 4 },
               };
             } else if (bcc.effect === "contactUpgradeRep") {
               upgrade = {
