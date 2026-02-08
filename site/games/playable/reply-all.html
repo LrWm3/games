@@ -762,6 +762,11 @@
       }
       .message-entry {
         animation: slideIn 0.3s ease-out;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      .message-entry.interactable-email:hover {
+        border-color: #000080;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 128, 0.1);
       }
       @keyframes slideIn {
         from {
@@ -13096,6 +13101,21 @@
           mission && mission.subject ? mission.subject : subject;
 
         entry.className = `message-entry p-0 border-2 border-gray-100 bg-white shadow-sm ${classes}`;
+
+        // Allow targeting stakeholders by tapping their emails
+        const opponent = (typeof opponents !== "undefined") ? opponents.find((o) => (o.name === from || o.email === from) && o.hp > 0) : null;
+        if (opponent) {
+          entry.classList.add("cursor-pointer", "interactable-email");
+          entry.addEventListener("click", () => {
+            if (state.targetId === opponent.id) {
+              showStakeholderOverlay(opponent, entry);
+            } else {
+              state.targetId = opponent.id;
+              updateUI();
+            }
+          });
+        }
+
         entry.innerHTML = `
                 <div class="email-header p-2">
                     <div class="flex flex-wrap gap-x-3 gap-y-1">
