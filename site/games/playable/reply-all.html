@@ -9281,9 +9281,9 @@
 
       function generatePack(type, tier) {
         const tiers = {
-          small: { cost: 4, options: 2, picks: 1 },
-          medium: { cost: 6, options: 3, picks: 1 },
-          large: { cost: 8, options: 3, picks: 2 },
+          small: { cost: 3, options: 2, picks: 1 },
+          medium: { cost: 5, options: 3, picks: 1 },
+          large: { cost: 7, options: 3, picks: 2 },
         };
         const shopKey = getShopStreamKey();
         const t = tiers[tier];
@@ -10160,7 +10160,7 @@
 
       function getItemCostByType(rarity, type) {
         const table = {
-          contact: { common: 4, uncommon: 7, rare: 12 },
+          contact: { common: 3, uncommon: 4, rare: 6 },
           signature: { common: 3, uncommon: 6, rare: 10 },
           salutation: { common: 3, uncommon: 6, rare: 10 },
           signoff: { common: 3, uncommon: 6, rare: 10 },
