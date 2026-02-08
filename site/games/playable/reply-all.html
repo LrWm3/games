@@ -7455,7 +7455,8 @@
       function isContactInLoop(contactId) {
         if (state.player.buffs.some((b) => b.id === contactId)) return true;
         for (const opp of opponents) {
-          if (opp.buffs.some((b) => b.id === contactId)) return true;
+          if (opp.hp > 0 && opp.buffs.some((b) => b.id === contactId))
+            return true;
         }
         return false;
       }
@@ -7712,7 +7713,9 @@
 
       function isContactImplicated(contact) {
         if (!contact || !contact.employeeId) return false;
-        return opponents.some((o) => o.employeeId === contact.employeeId);
+        return opponents.some(
+          (o) => o.hp > 0 && o.employeeId === contact.employeeId,
+        );
       }
 
       function openCcProfile(contact, anchorEl) {
@@ -12790,6 +12793,7 @@
         if (o.isDefeated) return;
         o.hp = 0;
         o.isDefeated = true;
+        o.buffs = [];
         logGameEvent("stakeholder_opt_out", {
           actorId: o.employeeId || o.id,
           actorName: o.name,
