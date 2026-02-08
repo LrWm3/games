@@ -7588,8 +7588,11 @@
           playerTarget,
         ];
         const weights = pool.map((t) => {
+          if (t.id === "player") {
+            return t.departmentId === ai.departmentId ? 0.5 : 1.5;
+          }
           if (t.departmentId === ai.departmentId) return 0;
-          return t.id === "player" ? 2.0 : 1.0;
+          return 1.0;
         });
         let totalWeight = weights.reduce((acc, w) => acc + w, 0);
         let random = rngNext(combatKey) * totalWeight;
