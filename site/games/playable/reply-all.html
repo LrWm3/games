@@ -36,7 +36,7 @@
       }
       body {
         font-family: "Inter", sans-serif;
-        background-color: #008080;
+        background-color: #000;
         height: 100dvh;
         overflow: hidden;
         touch-action: manipulation;
@@ -83,6 +83,11 @@
       }
       .terminal-font {
         font-family: "VT323", monospace;
+      }
+      .scanline-overlay {
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+        background-size: 100% 4px;
+        z-index: 0;
       }
     </style>
     <style>
@@ -789,10 +794,12 @@
     </style>
   </head>
   <body class="flex items-center justify-center p-0 md:p-2">
+    <canvas id="bgCanvas" style="position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; image-rendering: pixelated;"></canvas>
+    <div id="bgScanlines" class="scanline-overlay fixed inset-0 pointer-events-none" style="z-index: 0;"></div>
     <!-- INBOX SCREEN -->
     <div
       id="inbox-screen"
-      class="hidden fixed inset-0 z-[90] flex items-center justify-center bg-[#008080] p-4"
+      class="hidden fixed inset-0 z-[90] flex items-center justify-center bg-transparent p-4"
     >
       <div
         class="bg-[#c0c0c0] retro-border max-w-2xl w-full h-[80dvh] flex flex-col shadow-2xl"
@@ -932,7 +939,7 @@
     <!-- SHOP SCREEN (HR Self-Service Portal) -->
     <div
       id="shop-screen"
-      class="hidden fixed inset-0 z-[130] bg-[#008080] flex flex-col items-center"
+      class="hidden fixed inset-0 z-[130] bg-transparent flex flex-col items-center"
     >
       <div
         class="bg-[#c0c0c0] retro-border w-full max-w-4xl shadow-2xl flex flex-col min-h-0 flex-1"
@@ -1436,7 +1443,7 @@
     <!-- START SCREEN -->
     <div
       id="start-screen"
-      class="fixed inset-0 z-[100] flex items-center justify-center bg-[#008080] p-4"
+      class="fixed inset-0 z-[100] flex items-center justify-center bg-transparent p-4"
     >
       <div class="bg-[#c0c0c0] p-4 retro-border max-w-sm w-full shadow-2xl">
         <div
@@ -1503,7 +1510,7 @@
     <!-- PERSONNEL INTRODUCTION WIZARD -->
     <div
       id="induction-screen"
-      class="hidden fixed inset-0 z-[110] flex items-start sm:items-center justify-center bg-[#008080] p-2"
+      class="hidden fixed inset-0 z-[110] flex items-start sm:items-center justify-center bg-transparent p-2"
     >
       <div class="w-full max-w-2xl bg-[#c0c0c0] retro-border flex flex-col max-h-[95vh]">
         <div class="window-titlebar text-white px-1 py-0.5 flex justify-between items-center select-none">
@@ -1976,6 +1983,69 @@
     </div>
 
     <script>
+      // --- BACKGROUND ENGINE ---
+      const BG_CONFIG = {"l1":{"p":"checkers","w":"sine","a":"9","c1":"#00ffff","c2":"#9ed7ff"},"l2":{"p":"grid","w":"sine","a":"90","c1":"#0000ff","c2":"#ff00ff"},"mix":"screen","speed":"71"};
+      const bgWaves = {
+        sine: (y, t, f, a) => Math.sin((y + t) / f) * a,
+        square: (y, t, f, a) => Math.sign(Math.sin((y + t) / f)) * a,
+        saw: (y, t, f, a) => (((y + t) % (f * 2)) / f - 1) * a,
+        none: () => 0
+      };
+      const bgHexToRgb = (hex) => {
+        const res = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return res ? { r: parseInt(res[1], 16), g: parseInt(res[2], 16), b: parseInt(res[3], 16) } : { r: 0, g: 0, b: 0 };
+      };
+      let bgTick = 0;
+      const BG_INTERNAL_W = 256;
+      const BG_INTERNAL_H = 224;
+      function initBackgroundEngine() {
+        const canvas = document.getElementById('bgCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d', { alpha: false });
+        canvas.width = BG_INTERNAL_W; canvas.height = BG_INTERNAL_H;
+        const b1 = document.createElement('canvas'); const b2 = document.createElement('canvas');
+        [b1, b2].forEach(c => { c.width = BG_INTERNAL_W; c.height = BG_INTERNAL_H; });
+        const ctx1 = b1.getContext('2d'); const ctx2 = b2.getContext('2d');
+        function renderLayer(context, config) {
+          const pattern = config.p; const wave = config.w; const amp = parseInt(config.a);
+          const c1 = bgHexToRgb(config.c1); const c2 = bgHexToRgb(config.c2);
+          const imgData = context.createImageData(BG_INTERNAL_W, BG_INTERNAL_H);
+          const data = imgData.data;
+          const cx = BG_INTERNAL_W / 2, cy = BG_INTERNAL_H / 2;
+          for (let y = 0; y < BG_INTERNAL_H; y++) {
+            const ox = bgWaves[wave](y, bgTick, 12, amp);
+            for (let x = 0; x < BG_INTERNAL_W; x++) {
+              const i = (y * BG_INTERNAL_W + x) * 4;
+              const vx = x + ox, vy = y;
+              const dx = vx - cx, dy = vy - cy;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              let f = 0;
+              switch (pattern) {
+                case 'spiral': f = (Math.sin(Math.atan2(dy, dx) * 4 + dist / 8 + bgTick / 10) + 1) / 2; break;
+                case 'tunnel': f = (Math.sin(Math.atan2(dy, dx) * 8) * Math.sin(800 / dist + bgTick / 5) + 1) / 2; break;
+                case 'concentric': f = (Math.sin(dist / 12 - bgTick / 8) + 1) / 2; break;
+                case 'checkers': f = (((vx + bgTick / 2) / 20 % 2 < 1) ^ ((vy + bgTick / 4) / 20 % 2 < 1)) ? 1 : 0; break;
+                case 'diamonds': f = (Math.abs((vx + bgTick / 2) % 40 - 20) + Math.abs((vy + bgTick / 3) % 40 - 20) < 20) ? 1 : 0; break;
+                case 'grid': f = (((vx + bgTick / 2) % 32 < 2) || ((vy + bgTick / 4) % 32 < 2)) ? 1 : 0; break;
+                case 'plasma': f = (Math.sin(vx / 16 + bgTick / 10) + Math.sin(vy / 16 + bgTick / 15) + Math.sin((vx + vy) / 16) + 1) / 3; break;
+                case 'noise': f = Math.random(); break;
+              }
+              data[i] = c1.r + (c2.r - c1.r) * f; data[i + 1] = c1.g + (c2.g - c1.g) * f; data[i + 2] = c1.b + (c2.b - c1.b) * f; data[i + 3] = 255;
+            }
+          }
+          context.putImageData(imgData, 0, 0);
+        }
+        function animate() {
+          bgTick += (parseInt(BG_CONFIG.speed) / 100);
+          renderLayer(ctx1, BG_CONFIG.l1); renderLayer(ctx2, BG_CONFIG.l2);
+          ctx.globalCompositeOperation = 'source-over'; ctx.drawImage(b2, 0, 0);
+          ctx.globalCompositeOperation = BG_CONFIG.mix; ctx.drawImage(b1, 0, 0);
+          requestAnimationFrame(animate);
+        }
+        animate();
+      }
+      initBackgroundEngine();
+
       // --- GAME DATA ---
       let sfxEnabled = false;
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
