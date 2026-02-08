@@ -3958,6 +3958,18 @@
               missionId: "calendar_chaos",
             },
             {
+              text: "I've calculated the replacement cost including inflation and the emotional labor of walking to the store. You owe me $4.85.",
+              missionId: "fridge_theft_sho",
+            },
+            {
+              text: "This yogurt was a pre-allocated asset for my 10:30 break. Now my productivity is in a deficit.",
+              missionId: "fridge_theft_sho",
+            },
+            {
+              text: "I am logging this as an 'unauthorized withdrawal' from the departmental cooling unit.",
+              missionId: "fridge_theft_sho",
+            },
+            {
               text: "The cost of delay is real. Please treat this as priority.",
               missionId: null,
             },
@@ -4610,6 +4622,18 @@
               missionId: "holiday_reply_all",
             },
             {
+              text: "I’m literally on page 42 of the BCR report; I don't have the bandwidth to discuss probiotics.",
+              missionId: "fridge_theft_sho",
+            },
+            {
+              text: "Unless your email provides a path to finishing this BCR report, please remove me from this thread.",
+              missionId: "fridge_theft_sho",
+            },
+            {
+              text: "If I ate it—which I didn't—it would be a justifiable business expense given how long I've been working on this BCR.",
+              missionId: "fridge_theft_sho",
+            },
+            {
               text: "I'm this close to completing the BCR report; I need a little time to get it over the line.",
               missionId: null,
             },
@@ -4811,6 +4835,18 @@
             {
               text: "Your 'digital-only' proposal fails to meet the standards for admissible evidence in a council hearing.",
               missionId: "paper",
+            },
+            {
+              text: "Unless you have a chain-of-custody log for the dairy in question, this is a civil matter, not a disciplinary one.",
+              missionId: "fridge_theft_sho",
+            },
+            {
+              text: "Communal appliances operate under 'Implied Waiver' laws. If you didn't want it eaten, you should have kept it at your desk.",
+              missionId: "fridge_theft_sho",
+            },
+            {
+              text: "I’m drafting a non-disclosure agreement for anyone who witnessed the consumption of the alleged Greek yogurt.",
+              missionId: "fridge_theft_sho",
             },
             {
               text: "I'm flagging this thread for potential liability issues. We need paper trails, not email trails.",
@@ -5391,6 +5427,44 @@
               employeeId: "christina_policy",
               wins: 2,
               addressBook: ["cc_samantha_executive_council_office"],
+            },
+          ],
+        },
+        {
+          id: "fridge_theft_sho",
+          subject: "RE: URGENT: Unauthorized Consumption of Personal Assets",
+          from: "p.finance@gov.org",
+          turns: 12,
+          opponentBaseStats: {
+            hp: 45,
+            maxHp: 45,
+            singleDmg: 10,
+            defFlat: 0,
+            deflect: 5,
+            retaliation: 5,
+            wins: 1,
+          },
+          intro:
+            "Hi team,<br><br>I am writing to express my absolute shock. I went to the fridge to grab my mid-morning Greek yogurt—which was clearly labeled and positioned according to the 'Shared Space Efficiency module'—and it has been removed without authorization.<br><br><strong>{playerName}</strong>, I noticed your department's printing logs coincide with the window of the incident. <strong>{opp0}</strong>, please advise on the disciplinary framework for theft of personal property. <strong>{opp1}</strong>, I know you are under pressure with the <strong>BCR report</strong>, but 'stress-eating' is not a valid line item for budget reallocation.<br><br>I expect a full reimbursement or a formal apology by the EOD reporting cutoff.",
+          opponents: [
+            {
+              id: 1,
+              employeeId: "megan_legal",
+              defFlat: 5,
+              addressBook: ["cc_casey_legal", "cc_christina_policy"],
+            },
+            {
+              id: 2,
+              employeeId: "sho_marketing",
+              hp: 55,
+              maxHp: 55,
+              addressBook: ["cc_lisa_marketing", "cc_malik_marketing"],
+            },
+            {
+              id: 3,
+              employeeId: "priya_finance",
+              heal: 3,
+              addressBook: ["cc_adam_finance", "cc_karen_human_resources"],
             },
           ],
         },
