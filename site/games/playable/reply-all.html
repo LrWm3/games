@@ -2194,6 +2194,21 @@
           usedBy: null,
         },
         {
+          id: "cc_brit_marketing",
+          name: "Brit",
+          title: "Social Harmony Lead",
+          rarity: "common",
+          departmentId: "marketing",
+          employeeId: "brit_marketing",
+          loopInText:
+            "I'm looping in <strong>{name}</strong> to assess the vibes and ensure brand synergy.",
+          eff: {
+            retaliation: 5,
+            deflect: -2,
+          },
+          usedBy: null,
+        },
+        {
           id: "cc_elsie",
           name: "Elsie",
           title: "The Baby",
@@ -3736,6 +3751,18 @@
             "I'm going to need a minute to process this. Or an hour. Maybe a day.",
           ],
           lines: [
+            {
+              text: "I have no preference regarding the brand, provided the BTU output does not exceed fire marshal regulations.",
+              missionId: "bbq_deadlock",
+            },
+            {
+              text: "I am muting all mentions of 'vibrations' or 'family.' Is there a legal challenge, or can I go back to my redlines?",
+              missionId: "bbq_deadlock",
+            },
+            {
+              text: "Whether you attend the meeting or not, you are still bound by the 'Shared Appliance Usage Policy'.",
+              missionId: "bbq_deadlock",
+            },
             { text: "Fine.", missionId: null },
             { text: "Noted.", missionId: null },
             { text: "I'll look into it. Eventually.", missionId: null },
@@ -4401,6 +4428,18 @@
           ],
           lines: [
             {
+              text: "Please don't fight! I just want us to flip burgers and be a family... why is that so much to ask? sniff",
+              missionId: "bbq_deadlock",
+            },
+            {
+              text: "When you declined the invite, it felt like you were declining our friendship. My heart is at 2% capacity right now.",
+              missionId: "bbq_deadlock",
+            },
+            {
+              text: "I stayed up all night color-coding the BBQ invitation. I just want everyone to be happy!",
+              missionId: "bbq_deadlock",
+            },
+            {
               text: "I need both bankable time off and weekends off, otherwise I never see my kids. That's the reality.",
               missionId: "bankable_time_off",
             },
@@ -4623,6 +4662,55 @@
             },
             {
               text: "I'm almost done with the BCR report—just need time to make it presentable.",
+              missionId: null,
+            },
+          ],
+        },
+        {
+          id: "brit_marketing",
+          name: "Brit (Mkt)",
+          email: "b.marketing@gov.org",
+          departmentId: "marketing",
+          eff: { endRep: 2, singleDmg: 2 },
+          color: "text-pink-600",
+          defeatMessage:
+            "This thread is literally exhausting. I’m starting a new one with just the people who actually matter. Don't check your inbox, you aren't invited.",
+          selfPromote:
+            "I just curated the 'Internal Vibes' playlist for the department. If you haven't heard it, you're probably not on the 'A' list.",
+          deflectLines: [
+            "I'm pausing to discuss your tone with the rest of the clique.",
+          ],
+          lines: [
+            {
+              text: "The Coleman is for people who still use spreadsheets from 2012. If we don't get the Grill King, our brand synergy is basically dead.",
+              missionId: "bbq_deadlock",
+            },
+            {
+              text: "I’m not saying your absence is a 'performance issue,' but the *clique* definitely noticed you weren't there.",
+              missionId: "bbq_deadlock",
+            },
+            {
+              text: "Is anyone else getting a 'low-vibe' vibe from this thread? Maybe some people just don't belong on the committee.",
+              missionId: "bbq_deadlock",
+            },
+            {
+              text: "I noticed you’re using the default font in your replies. That’s a choice, I guess.",
+              missionId: null,
+            },
+            {
+              text: "We usually discuss these things over organic lattes, but I guess we can use 'Reply All' for the commoners.",
+              missionId: null,
+            },
+            {
+              text: "I’ve CC’d the Chief Aesthetic Officer to address your lack of visual consistency.",
+              missionId: null,
+            },
+            {
+              text: "Your energy is really cluttering my feed. Can you keep it under 20 words?",
+              missionId: null,
+            },
+            {
+              text: "Marketing is the heartbeat of this office. If you aren't with us, you're just... background noise.",
               missionId: null,
             },
           ],
@@ -5447,6 +5535,50 @@
                 "cc_steph_eco",
                 "cc_meghan_cassedy_executive_council_office",
               ],
+            },
+          ],
+        },
+        {
+          id: "bbq_deadlock",
+          subject: "RE: URGENT: Fun Committee BBQ Selection – 3hr Sync Required",
+          from: "b.marketing@gov.org",
+          turns: 12,
+          opponentBaseStats: {
+            hp: 60,
+            maxHp: 60,
+            singleDmg: 10,
+            defFlat: 0,
+            deflect: 5,
+            retaliation: 5,
+            wins: 2,
+          },
+          intro:
+            "Hi colleagues,<br><br>I’m honestly a bit confused why <strong>{playerName}</strong> RSVP’d 'Declined' for our 3-hour BBQ strategy session. We’re deciding between the <strong>Coleman Pro</strong> and the <strong>Grill King</strong>, and frankly, it’s a culture-defining choice.<br><br><strong>{opp1}</strong> is actually quite upset about the lack of interest in the 'Social Harmony Initiative.' <strong>{opp2}</strong>, I assume you’ve finished the liability check on the propane tanks so we can move forward with the <em>right</em> choice (The Grill King).<br><br>If you're too 'busy' for team-building, maybe you shouldn't be on the Fun Committee distribution list at all?",
+          opponents: [
+            {
+              id: 1,
+              employeeId: "brit_marketing",
+              singleDmg: 15,
+              retaliation: 10,
+              addressBook: ["cc_malik_marketing", "cc_lisa_marketing"],
+            },
+            {
+              id: 2,
+              employeeId: "rachel_marketing",
+              hp: 75,
+              maxHp: 75,
+              heal: 5,
+              addressBook: [
+                "cc_samantha_executive_council_office",
+                "cc_jonah_finance",
+              ],
+            },
+            {
+              id: 3,
+              employeeId: "andrew_legal",
+              defFlat: 15,
+              singleDmg: 5,
+              addressBook: ["cc_casey_legal", "cc_christina_policy"],
             },
           ],
         },
