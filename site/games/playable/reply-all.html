@@ -13155,13 +13155,19 @@
           if (existing) existing.remove();
           return;
         }
-        const typeText = {
-          attack: "drafting a reply...",
-          escalate: "preparing to escalate...",
-          promote: "readies a recent win...",
-          deflect: "planning retaliation...",
-          cc: "looping in a contact...",
+        const numToWord = (n) => {
+          const words = ["zero", "one", "two", "three", "four"];
+          return words[n] || n.toString();
         };
+        const formatList = (items) => {
+          if (items.length === 0) return "";
+          if (items.length === 1) return items[0];
+          if (items.length === 2) return `${items[0]} and ${items[1]}`;
+          return (
+            items.slice(0, -1).join(", ") + ", and " + items[items.length - 1]
+          );
+        };
+
         const container = existing || document.createElement("div");
         container.id = "drafting-indicators";
         container.className =
@@ -13175,13 +13181,36 @@
               plan = decideAiAction(o, alive, state.player);
               if (state.aiPlannedActions) state.aiPlannedActions[o.id] = plan;
             }
-            let text = typeText[plan?.type] || typeText.attack;
-            if (
-              (o.employeeId === "jen_lavallee" || o.id === "jen_lavallee") &&
-              plan?.type === "deflect"
-            ) {
-              text = "granting aJENts SMTP access...";
+
+            let text = "";
+            const type = plan?.type || "attack";
+            if (type === "attack") {
+              text = `drafting a reply... (${getUnitDamage(o, "single")})`;
+            } else if (type === "escalate") {
+              text = `preparing to escalate... (${getUnitDamage(o, "escalate")})`;
+            } else if (type === "promote") {
+              text = `readies a recent win... (${getUnitSelfPromoteHeal(o, 15)}/${o.wins})`;
+            } else if (type === "deflect") {
+              if (o.employeeId === "jen_lavallee" || o.id === "jen_lavallee") {
+                text = "granting aJENts SMTP access...";
+              } else {
+                text = `planning retaliation... (${getUnitDeflectReduce(o)}/${getUnitDeflectReflect(o)})`;
+              }
+            } else if (type === "cc") {
+              const avail = (o.addressBook || [])
+                .map((id) => CONTACTS.find((c) => c.id === id))
+                .filter(
+                  (c) => c && !isContactInLoop(c.id) && !isContactImplicated(c),
+                );
+              const availNames = avail.map((c) => c.name);
+              const count = plan.ccTargets ? plan.ccTargets.length : 0;
+              const label =
+                count > 1 ? "looping in contacts" : "looping in a contact";
+              text = `${label}... (${numToWord(count)} of ${formatList(availNames)})`;
+            } else {
+              text = `drafting a reply... (${getUnitDamage(o, "single")})`;
             }
+
             return `<div><strong>${o.name}</strong> is ${text}</div>`;
           })
           .join("");
