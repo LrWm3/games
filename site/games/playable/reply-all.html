@@ -7377,10 +7377,12 @@
         return blocks;
       }
 
-      function getSalutationWindowStats(u) {
+      function getSalutationWindowStats(u, turnOverride = null) {
         if (!u || !u.salutation || !Array.isArray(u.salutation.statWindows))
           return null;
-        const timeMinutes = getAdjustedTurnMinutes(state.turn);
+        const timeMinutes = getAdjustedTurnMinutes(
+          typeof turnOverride === "number" ? turnOverride : state.turn,
+        );
         const matches = u.salutation.statWindows.filter((win) => {
           if (!win || !win.stats) return false;
           const start =
@@ -7466,7 +7468,7 @@
         runUnitEffects(player, "rep_tick", { rep: player.reputation || 0 });
       }
 
-      function computeUnitStats(u) {
+      function computeUnitStats(u, turnOverride = null) {
         const stats = Object.fromEntries(STAT_FIELDS.map((f) => [f, 0]));
         getUnitStatBlocks(u).forEach((block) => {
           if (!block) return;
@@ -7495,7 +7497,7 @@
             stats[s.stat] = (stats[s.stat] || 0) + per * count;
           });
         }
-        const salutationWindowStats = getSalutationWindowStats(u);
+        const salutationWindowStats = getSalutationWindowStats(u, turnOverride);
         if (salutationWindowStats) {
           STAT_FIELDS.forEach((field) => {
             const value = salutationWindowStats[field];
@@ -7643,8 +7645,8 @@
         return (base || 0) + (stats.selfPromoteHeal || 0);
       }
 
-      function getUnitDamage(u, type) {
-        const stats = computeUnitStats(u);
+      function getUnitDamage(u, type, turnOverride = null) {
+        const stats = computeUnitStats(u, turnOverride);
         const fieldMap = {
           single: { dmg: "singleDmg", mult: "singleDmgMult" },
           escalate: { dmg: "escalateDmg", mult: "escalateDmgMult" },
@@ -13333,15 +13335,19 @@
           playerHpBar.style.background = `linear-gradient(90deg, ${fill} 0%, ${fill} ${hpPct}%, ${empty} ${hpPct}%, ${empty} 100%)`;
         }
 
-        const singleDmg = getUnitDamage(p, "single");
-        const escalateDmg = getUnitDamage(p, "escalate");
-        const replyAllDmg = getUnitDamage(p, "replyAll");
+        const previewTurn = state.turn + 1;
+        const previewStats = computeUnitStats(p, previewTurn);
+        const singleDmg = getUnitDamage(p, "single", previewTurn);
+        const escalateDmg = getUnitDamage(p, "escalate", previewTurn);
+        const replyAllDmg = getUnitDamage(p, "replyAll", previewTurn);
         const target = opponents.find((o) => o.id === state.targetId) || null;
         const replyDisabled =
           p.signOff && p.signOff.disableReplyTo === true;
         const selfPromoteHeal = getUnitSelfPromoteHeal(p, 20);
         const targetName =
           target && target.name ? target.name : "stakeholder";
+        const previewDeflectReduce = previewStats.deflect || 0;
+        const previewRetaliation = previewStats.retaliation || 0;
         const targetDef = target ? getUnitFlatDef(target) : 0;
         const replyNet = Math.max(0, Math.floor(singleDmg - targetDef));
         setActionHint(
@@ -13364,8 +13370,8 @@
         );
         setActionHint(
           "deflect-btn",
-          `Deflect: Reduce ${Math.floor(getUnitDeflectReduce(p))}, Retaliate ${Math.floor(
-            getUnitDeflectReflect(p),
+          `Deflect: Reduce ${Math.floor(previewDeflectReduce)}, Retaliate ${Math.floor(
+            previewRetaliation,
           )}.`,
         );
         setActionHint(
