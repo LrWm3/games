@@ -3417,7 +3417,7 @@
             {
               event: "reply_to",
               type: "add_random_cc_bonus",
-              count: 2,
+              threadLimit: 2,
             },
           ],
         },
@@ -3429,7 +3429,7 @@
             {
               event: "deflect_proc",
               type: "add_random_cc_bonus",
-              threadLimit: 2,
+              threadLimit: 3,
             },
           ],
         },
@@ -3451,9 +3451,9 @@
           rarity: "common",
           effects: [
             {
-              event: "remove_stakeholder",
+              event: "escalate",
               type: "add_random_cc_bonus",
-              threadLimit: 2,
+              threadLimit: 3,
             },
           ],
         },
@@ -3501,8 +3501,9 @@
           rarity: "uncommon",
           effects: [
             {
-              event: "thread_end",
-              type: "add_cc_bonus_by_dept_pairs",
+              event: "reply_to",
+              type: "add_random_cc_bonus",
+              requiresHpFull: true,
             },
           ],
         },
@@ -3527,7 +3528,12 @@
             {
               event: "bcc_use",
               type: "add_random_cc_bonus",
-              count: 2,
+              count: 3,
+            },
+            {
+              event: "cc_add",
+              type: "add_cc_bonus",
+              threadLimit: 1,
             },
           ],
         },
@@ -8867,16 +8873,18 @@
               const dept = b.departmentId || "unknown";
               countsByDept[dept] = (countsByDept[dept] || 0) + 1;
             });
+            let totalPairs = 0;
+            Object.values(countsByDept).forEach((count) => {
+              if (count >= 2) totalPairs += Math.floor((count * (count - 1)) / 2);
+            });
+            if (totalPairs <= 0) return;
+            const scaled = {};
+            Object.keys(effect.stats || {}).forEach((key) => {
+              const value = effect.stats[key];
+              if (typeof value !== "number") return;
+              scaled[key] = value * totalPairs;
+            });
             playerCcs.forEach((b) => {
-              const dept = b.departmentId || "unknown";
-              const sameDept = Math.max(0, (countsByDept[dept] || 0) - 1);
-              if (sameDept <= 0) return;
-              const scaled = {};
-              Object.keys(effect.stats || {}).forEach((key) => {
-                const value = effect.stats[key];
-                if (typeof value !== "number") return;
-                scaled[key] = value * sameDept;
-              });
               applyContactPermanentBoost(state.player, b.id, scaled);
               applyBuffStats(b, scaled);
               const originalContact = CONTACTS.find((c) => c.id === b.id);
@@ -10723,6 +10731,8 @@
         if (stats.bccLimit) parts.push(`+${stats.bccLimit} BCC limit`);
         if (stats.numCCperCCaction)
           parts.push(`+${stats.numCCperCCaction} CC per action`);
+        if (stats.contactTrainingLimit)
+          parts.push(`+${stats.contactTrainingLimit} training limit`);
         return parts.join(", ");
       }
 
@@ -10854,8 +10864,8 @@
             : `${eventText}: ${upgradeVerb} all ${contactNoun}s`;
         } else if (effect.type === "add_cc_bonus_by_dept_pairs") {
           result = statsText
-            ? `${eventText}: each ${contactNoun} gains ${statsText} per same-dept ${contactNoun}`
-            : `${eventText}: ${upgradeVerb} each ${contactNoun} per same-dept ${contactNoun}`;
+            ? `${eventText}: all active ${contactNoun}s gain ${statsText} for each same-dept pair`
+            : `${eventText}: ${upgradeVerb} all active ${contactNoun}s for each same-dept pair`;
         } else if (effect.type === "add_signoff_bonus_by_dept_pairs") {
           result = `${eventText}: gain ${formatStatsText(effect.stats || {})} per same-dept pair`;
         } else if (effect.type === "rep_half_to_cc_escalate") {
@@ -10873,6 +10883,9 @@
           !/per thread|up to/i.test(result)
         ) {
           result += ` (${formatThreadLimitLabel(effect.threadLimit)})`;
+        }
+        if (effect.requiresHpFull) {
+          result += " (requires full credibility)";
         }
         return result;
       }
