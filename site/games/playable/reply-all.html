@@ -9361,8 +9361,8 @@
       const SHOP_DIRECT_TYPE_WEIGHTS = {
         contact: 80,
         signature: 60,
+        signoff: 50,
         salutation: 40,
-        signoff: 40,
         bcc: 30,
         dev: 30,
       };
@@ -9370,8 +9370,8 @@
       const SHOP_PACK_TYPE_WEIGHTS = {
         contact: 110,
         email: 70,
-        dev: 60,
-        bcc: 40,
+        bcc: 60,
+        dev: 40,
       };
 
       function pickWeighted(items, count, rngKey = "misc") {
@@ -10290,10 +10290,10 @@
       function getItemCostByType(rarity, type) {
         const table = {
           contact: { common: 3, uncommon: 4, rare: 6 },
-          signature: { common: 3, uncommon: 6, rare: 10 },
-          salutation: { common: 3, uncommon: 6, rare: 10 },
-          signoff: { common: 3, uncommon: 6, rare: 10 },
-          bcc: { common: 2, uncommon: 3, rare: 5 },
+          signature: { common: 3, uncommon: 4, rare: 6 },
+          salutation: { common: 3, uncommon: 5, rare: 8 },
+          signoff: { common: 3, uncommon: 5, rare: 8 },
+          bcc: { common: 2, uncommon: 3, rare: 4 },
         };
         const row = table[type] || table.contact;
         return row[rarity] ?? row.common;
