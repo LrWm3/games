@@ -33,14 +33,18 @@
         --shop-taskbar-height: 28px;
         --shop-header-height: 30px;
         --win-wizard-text: #7b7b7b;
+        --win-bg: #568fb5;
       }
       body {
         font-family: "Inter", sans-serif;
-        background-color: #008080;
+        background-color: var(--win-bg);
         height: 100dvh;
         overflow: hidden;
         touch-action: manipulation;
         color: black;
+      }
+      .win-bg {
+        background-color: var(--win-bg);
       }
       .retro-border {
         border-top: 2px solid var(--win-border-light);
@@ -78,6 +82,10 @@
         color: #808080;
         cursor: not-allowed;
         opacity: 0.6;
+      }
+      .action-btn.action-armed {
+        outline: 2px dotted #000;
+        outline-offset: -3px;
       }
       .terminal-font {
         font-family: "VT323", monospace;
@@ -734,6 +742,24 @@
       .profile-tab-panel.active {
         display: block;
       }
+      .momentum-meter {
+        display: flex;
+        gap: 1px;
+        width: 100%;
+        height: 5px;
+        background: #444;
+        padding: 1px;
+        margin-top: 2px;
+        border: 1px solid var(--win-border-dark);
+      }
+      .momentum-segment {
+        flex: 1;
+        background: #222;
+      }
+      .momentum-segment.charged {
+        background: #ffff00;
+        box-shadow: 0 0 2px #ffff00;
+      }
       @keyframes profileFadeIn {
         from {
           opacity: 0;
@@ -804,14 +830,38 @@
         text-decoration: underline;
         margin-left: 4px;
       }
-      .target-pill {
-        transition: all 0.2s;
-        border: 1px solid #808080;
-        color: #111827;
+      .stakeholder-pill {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 6px;
+        font-size: 9px;
+        font-weight: bold;
+        cursor: pointer;
+        border: 1px solid var(--win-border-dark);
+        box-shadow: 1px 1px 0px #000;
+        min-width: 50px;
+        white-space: nowrap;
+        background: #d4d4d4;
+        position: relative;
+        transition: transform 0.1s;
       }
-      .target-pill.active {
-        border: 2px solid #000080;
-        box-shadow: 0 0 0 1px #ffffff inset;
+      .stakeholder-pill.active {
+        border: 1px solid var(--win-blue);
+        outline: 1px solid var(--win-blue);
+        transform: translateY(-1px);
+        z-index: 10;
+      }
+      .stakeholder-pill .pill-text {
+        position: relative;
+        z-index: 2;
+        text-shadow: 0px 0px 2px white;
+      }
+      .stakeholder-pill .pill-hp {
+        font-size: 8px;
+        opacity: 0.7;
+        position: relative;
+        z-index: 2;
       }
       .no-scrollbar::-webkit-scrollbar {
         display: none;
@@ -853,7 +903,7 @@
     <!-- INBOX SCREEN -->
     <div
       id="inbox-screen"
-      class="hidden fixed inset-0 z-[90] flex items-center justify-center bg-[#008080] p-4"
+      class="hidden fixed inset-0 z-[90] flex items-center justify-center win-bg p-4"
     >
       <div
         class="bg-[#c0c0c0] retro-border max-w-2xl w-full h-[80dvh] flex flex-col shadow-2xl"
@@ -993,7 +1043,7 @@
     <!-- SHOP SCREEN (HR Self-Service Portal) -->
     <div
       id="shop-screen"
-      class="hidden fixed inset-0 z-[130] bg-[#008080] flex flex-col items-center"
+      class="hidden fixed inset-0 z-[130] win-bg flex flex-col items-center"
     >
       <div class="shop-layout">
         <div
@@ -1445,7 +1495,7 @@
     <!-- START SCREEN -->
     <div
       id="start-screen"
-      class="fixed inset-0 z-[100] flex items-center justify-center bg-[#008080] p-4"
+      class="fixed inset-0 z-[100] flex items-center justify-center win-bg p-4"
     >
       <div class="bg-[#c0c0c0] p-4 retro-border max-w-sm w-full shadow-2xl">
         <div
@@ -1512,7 +1562,7 @@
     <!-- PERSONNEL INTRODUCTION WIZARD -->
     <div
       id="induction-screen"
-      class="hidden fixed inset-0 z-[110] flex items-start sm:items-center justify-center bg-[#008080] p-2"
+      class="hidden fixed inset-0 z-[110] flex items-start sm:items-center justify-center win-bg p-2"
     >
       <div class="w-full max-w-2xl bg-[#c0c0c0] retro-border flex flex-col max-h-[95vh]">
         <div class="window-titlebar text-white px-1 py-0.5 flex justify-between items-center select-none">
@@ -1640,27 +1690,9 @@
         </div>
       </div>
 
-      <div
-        class="flex gap-1 p-1 bg-[#c0c0c0] border-b border-[#808080] overflow-x-auto shrink-0 no-scrollbar"
-      >
-        <button
-          class="retro-button text-[10px] font-bold flex items-center gap-1"
-          onclick="handleInboxButton()"
-        >
-          <svg
-            class="w-3 h-3"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path d="M3 10l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V10z"></path>
-          </svg>
-          Inbox
-        </button>
-        <button class="retro-button text-[10px]" onclick="openGameSettings()">
-          Settings
-        </button>
-        <div class="flex-grow"></div>
+      <div class="flex gap-4 px-2 py-0.5 border-b border-gray-500 text-[11px] shrink-0">
+        <span class="cursor-default hover:bg-[#000080] hover:text-white px-1" onclick="handleInboxButton()">Inbox</span>
+        <span class="cursor-default hover:bg-[#000080] hover:text-white px-1" onclick="openGameSettings()">Settings</span>
       </div>
 
       <div class="flex flex-grow overflow-hidden relative">
@@ -1686,7 +1718,7 @@
             <div class="flex items-center gap-2">
               <span class="font-bold w-12 text-right">To:</span>
               <div
-                id="target-selector"
+                id="stakeholder-loop"
                 class="flex gap-1 overflow-x-auto no-scrollbar py-0.5"
               ></div>
             </div>
@@ -1710,15 +1742,11 @@
 
           <!-- STATS BAR -->
           <div
-            class="bg-[#dfdfdf] border-t border-[#808080] px-2 py-1.5 flex flex-col gap-1 shrink-0"
+            class="bg-[#dfdfdf] border-t border-[#808080] px-2 py-2 flex flex-col gap-2 shrink-0"
           >
-            <div class="flex justify-between items-end">
-              <span class="text-[9px] font-bold uppercase text-[#000080]"
-                >Credibility</span
-              >
-              <span id="player-hp-label" class="text-[9px] font-mono font-bold"
-                >100/100</span
-              >
+            <div class="flex items-center justify-between text-[9px] font-bold uppercase text-[#000080]">
+              <span>Credibility</span>
+              <span id="player-hp-label" class="font-mono">100/100</span>
             </div>
             <div class="h-3.5 w-full bg-white border border-[#808080] relative">
               <div
@@ -1727,91 +1755,83 @@
                 style="width: 100%"
               ></div>
             </div>
-            <div class="flex justify-between items-center mt-0.5">
-              <div class="flex gap-3">
-                <div class="flex items-center gap-1">
-                  <span class="text-[8px] font-bold uppercase opacity-60"
-                    >Leverage:</span
-                  >
-                  <div class="w-16 h-1.5 bg-white border border-[#808080]">
-                    <div
-                      id="player-ult-fill"
-                      class="h-full bg-yellow-400 transition-all"
-                      style="width: 0%"
-                    ></div>
-                  </div>
-                </div>
-              </div>
-              <div
-                id="player-win-status"
-                class="text-[8px] font-bold bg-[#c0c0c0] px-1 border border-inset border-white uppercase"
-              >
-                New Wins: 3 Available
-              </div>
+            <div
+              id="player-win-status"
+              class="text-[8px] font-bold uppercase bg-[#c0c0c0] border border-white shadow-[inset_-1px_-1px_0_#808080] px-2 py-1 text-gray-700"
+            >
+              New Wins: 3 Available
             </div>
           </div>
 
           <!-- Action Panel -->
           <div class="p-2 bg-[#c0c0c0] border-t-2 border-white shrink-0">
+            <!-- Mini Status Bar -->
+            <div class="bg-[#c0c0c0] border border-[#808080] px-1 flex gap-px text-[8px] h-6 items-center mb-2">
+              <div
+                id="main-status"
+                class="retro-border-inset px-2 flex items-center flex-grow h-4 bg-gray-100 italic truncate overflow-hidden"
+              >
+                Ready.
+              </div>
+              <div
+                class="retro-border-inset px-2 flex items-center w-[67px] h-4 bg-gray-100 justify-center"
+                id="status-bar-email"
+              >
+                9:00 AM
+              </div>
+            </div>
             <div class="grid grid-cols-3 gap-1.5 max-w-lg mx-auto">
               <button
+                id="attack-btn"
                 onclick="performAction('ATTACK')"
-                class="retro-button py-2 flex flex-col items-center"
+                class="retro-button py-2 flex flex-col items-center action-btn"
               >
                 <span class="text-[11px] font-bold">Reply to</span>
-                <span id="attack-subtext" class="text-[9px] opacity-70"
-                  >Target Reply</span
-                >
               </button>
               <button
+                id="escalate-btn"
                 onclick="performAction('ESCALATE')"
-                class="retro-button py-2 flex flex-col items-center"
+                class="retro-button py-2 flex flex-col items-center action-btn"
               >
                 <span class="text-[11px] font-bold">Escalate</span>
-                <span id="escalate-subtext" class="text-[9px] opacity-70"
-                  >Threadwide Nudge</span
-                >
               </button>
               <button
-                onclick="openAddressBook()"
-                class="retro-button py-2 flex flex-col items-center"
+                id="cc-btn"
+                onclick="performAction('CC')"
+                class="retro-button py-2 flex flex-col items-center action-btn"
               >
-                <span class="text-[11px] font-bold">Loop Personnel</span>
-                <span id="loop-subtext" class="text-[9px] opacity-70"
-                  >Add Witness</span
-                >
+                <span class="text-[11px] font-bold">Contact CC</span>
               </button>
               <button
                 id="win-btn"
                 onclick="performAction('PROMOTE')"
-                class="retro-button py-2 flex flex-col items-center"
+                class="retro-button py-2 flex flex-col items-center action-btn relative"
               >
                 <span class="text-[11px] font-bold">Self-Promote</span>
-                <span id="promote-subtext" class="text-[9px] opacity-70"
-                  >Log a Win</span
+                <div
+                  id="win-badge"
+                  class="absolute -top-1 -right-1 bg-blue-700 text-white border border-black text-[8px] px-1 font-bold shadow-sm"
                 >
+                  <span id="win-count">0</span>
+                </div>
               </button>
               <button
+                id="deflect-btn"
                 onclick="performAction('DEFLECT')"
-                class="retro-button py-2 flex flex-col items-center"
+                class="retro-button py-2 flex flex-col items-center action-btn"
               >
                 <span class="text-[11px] font-bold">Deflect</span>
-                <span id="deflect-subtext" class="text-[9px] opacity-70"
-                  >Hold Line</span
-                >
               </button>
               <button
                 id="reply-all-btn"
                 onclick="performAction('ULT')"
-                class="retro-button py-2 flex flex-col items-center disabled:opacity-50"
+                class="retro-button py-2 flex flex-col items-center disabled:opacity-50 action-btn"
                 disabled
               >
                 <span class="text-[11px] font-bold text-red-800"
                   >REPLY ALL</span
                 >
-                <span id="ult-subtext" class="text-[9px] opacity-70"
-                  >Mass Takedown</span
-                >
+                <div id="momentum-meter" class="momentum-meter"></div>
               </button>
             </div>
           </div>
@@ -1825,12 +1845,6 @@
               title="View stats"
             >
               Logged Out
-            </div>
-            <div
-              class="retro-border-inset px-2 flex items-center w-24 justify-center"
-              id="status-bar-email"
-            >
-              9:00 AM
             </div>
             <div
               class="retro-border-inset px-2 flex items-center w-20 justify-center"
@@ -6236,6 +6250,7 @@
       };
 
       let rngStreams = {};
+      const LEVERAGE_MAX = 8;
 
       function hashSeed(base, label) {
         let h = 2166136261;
@@ -8925,7 +8940,7 @@
             if (effect.requiresPackType && context.pack) {
               if (context.pack.type !== effect.requiresPackType) return;
             }
-            if (effect.requiresFullLeverage && unit.ult < 100) return;
+            if (effect.requiresFullLeverage && unit.ult < LEVERAGE_MAX) return;
             if (
               effect.requiresHpFull &&
               unit.hp < getUnitMaxHp(unit)
@@ -13170,6 +13185,28 @@
         return `${subject} (resolution due by ${due})`;
       }
 
+      function initActionHintBar() {
+        if (window.__actionHintInit) return;
+        window.__actionHintInit = true;
+        const hintBar = document.getElementById("main-status");
+        if (!hintBar) return;
+        const defaultText = hintBar.innerText || "Ready.";
+        document.querySelectorAll(".action-btn").forEach((btn) => {
+          btn.addEventListener("mouseenter", () => {
+            const text = btn.dataset.hint || defaultText;
+            hintBar.innerText = text;
+          });
+          btn.addEventListener("mouseleave", () => {
+            hintBar.innerText = defaultText;
+          });
+        });
+      }
+
+      function setActionHint(buttonId, text) {
+        const btn = document.getElementById(buttonId);
+        if (btn) btn.dataset.hint = text;
+      }
+
       function triggerTimeoutLoss() {
         if (state.gameOver) return;
         state.gameOver = true;
@@ -13193,14 +13230,26 @@
         const totalMaxHp = getUnitMaxHp(p);
         if (p.hp > totalMaxHp) p.hp = totalMaxHp;
         const hpPct = Math.max(0, (p.hp / totalMaxHp) * 100);
-        const ultPct = Math.min(100, p.ult);
+        const ultPct = Math.min(100, (p.ult / LEVERAGE_MAX) * 100);
 
         document.getElementById("player-hp-fill").style.width = hpPct + "%";
         document.getElementById("player-hp-label").innerText =
           `${Math.ceil(p.hp)}/${totalMaxHp}`;
-        document.getElementById("player-ult-fill").style.width = ultPct + "%";
-        document.getElementById("player-win-status").innerText =
-          `New Wins: ${p.currentWins} Available`;
+        const ultFill = document.getElementById("player-ult-fill");
+        if (ultFill) ultFill.style.width = ultPct + "%";
+        const momentumContainer = document.getElementById("momentum-meter");
+        if (momentumContainer) {
+          momentumContainer.innerHTML = "";
+          for (let i = 0; i < LEVERAGE_MAX; i++) {
+            const seg = document.createElement("div");
+            seg.className = `momentum-segment ${i < Math.floor(p.ult) ? "charged" : ""}`;
+            momentumContainer.appendChild(seg);
+          }
+        }
+        const winStatus = document.getElementById("player-win-status");
+        if (winStatus) winStatus.classList.add("hidden");
+        const winCount = document.getElementById("win-count");
+        if (winCount) winCount.innerText = p.currentWins;
 
         if (hpPct < 30)
           document.getElementById("player-hp-fill").className =
@@ -13215,49 +13264,69 @@
         const singleDmg = getUnitDamage(p, "single");
         const escalateDmg = getUnitDamage(p, "escalate");
         const replyAllDmg = getUnitDamage(p, "replyAll");
+        const target = opponents.find((o) => o.id === state.targetId) || null;
         const replyDisabled =
           p.signOff && p.signOff.disableReplyTo === true;
-        document.getElementById("attack-subtext").innerText = replyDisabled
-          ? "Disabled by sign-off"
-          : `-${Math.floor(singleDmg)} Cred to Target`;
-        document.getElementById("escalate-subtext").innerText =
-          `-${Math.floor(escalateDmg)} Cred to All`;
         const selfPromoteHeal = getUnitSelfPromoteHeal(p, 20);
-        document.getElementById("promote-subtext").innerText =
-          `+${Math.floor(selfPromoteHeal)} Cred, -1 Win`;
-        document.getElementById("deflect-subtext").innerText =
-          `Reduce ${Math.floor(getUnitDeflectReduce(p))}, Reflect ${Math.floor(
+        const targetName =
+          target && target.name ? target.name : "stakeholder";
+        setActionHint(
+          "attack-btn",
+          replyDisabled
+            ? "Reply to disabled by sign-off."
+            : `Reply to ${targetName}; -${Math.floor(singleDmg)} credibility.`,
+        );
+        setActionHint(
+          "escalate-btn",
+          `Escalate things; -${Math.floor(escalateDmg)} credibility to stakeholders.`,
+        );
+        setActionHint(
+          "cc-btn",
+          `Contact CC: ${p.addressBook.length}/${getUnitAddressLimit(p)} in address book.`,
+        );
+        setActionHint(
+          "win-btn",
+          `Self-Promote: +${Math.floor(selfPromoteHeal)} Cred, -1 Win.`,
+        );
+        setActionHint(
+          "deflect-btn",
+          `Deflect: Reduce ${Math.floor(getUnitDeflectReduce(p))}, Retaliate ${Math.floor(
             getUnitDeflectReflect(p),
-          )}`;
-        document.getElementById("ult-subtext").innerText =
-          `-${Math.floor(replyAllDmg)} Cred to All`;
-        document.getElementById("loop-subtext").innerText =
-          `${p.addressBook.length}/${getUnitAddressLimit(p)} Contacts`;
+          )}.`,
+        );
+        setActionHint(
+          "reply-all-btn",
+          `Reply All: -${Math.floor(replyAllDmg)} Cred to all (costs ${LEVERAGE_MAX} leverage).`,
+        );
+
+        if (state.actionArmed) {
+          updateMainStatus(getActionHintText(state.actionArmed));
+        }
 
         const replyAllBtn = document.getElementById("reply-all-btn");
-        if (replyAllBtn) replyAllBtn.disabled = p.ult < 100;
+        if (replyAllBtn) replyAllBtn.disabled = p.ult < LEVERAGE_MAX;
         const attackBtn = document.getElementById("attack-btn");
         if (attackBtn)
           attackBtn.disabled = replyDisabled || state.isProcessing;
         const winBtn = document.getElementById("win-btn");
         if (winBtn) winBtn.disabled = p.currentWins <= 0;
 
+        const shopQuarter = document.getElementById("shop-taskbar-quarter");
+        if (shopQuarter) shopQuarter.innerText = `${p.quarter} • YR ${p.year}`;
         const statusQuarter = document.getElementById("status-bar-quarter");
         if (statusQuarter)
           statusQuarter.innerText = `YR${p.year} ${p.quarter}`;
-        const shopQuarter = document.getElementById("shop-taskbar-quarter");
-        if (shopQuarter) shopQuarter.innerText = `${p.quarter} • YR ${p.year}`;
-        document.getElementById("status-bar-name").innerText =
-          `${p.name} (${p.title.name}) - View Profile`;
+        const statusName = document.getElementById("status-bar-name");
+        if (statusName)
+          statusName.innerText = `${p.name} (${p.title.name}) - View Profile`;
         const statsModal = document.getElementById("stats-modal");
         if (statsModal && !statsModal.classList.contains("hidden"))
           renderStatsModal();
 
-        const selector = document.getElementById("target-selector");
+        const selector =
+          document.getElementById("stakeholder-loop") ||
+          document.getElementById("target-selector");
         selector.innerHTML = "";
-        const oppContainer = document.createElement("div");
-        oppContainer.className = "contacts-container";
-        const maxOppPreview = 4;
 
         // Sort so active opponents are at the front
         const sortedOpponents = [...opponents].sort((a, b) => {
@@ -13291,23 +13360,14 @@
             state.targetId = o.id;
             updateUI();
           };
-          pill.className = `target-pill px-2 py-0.5 flex items-center min-w-[100px] cursor-pointer ${isActive ? "active" : ""}`;
+          pill.className = `stakeholder-pill ${isActive ? "active" : ""}`;
           pill.style.background = getTargetBg(pct, o.hp <= 0);
-          pill.innerHTML = `<div class="flex justify-between gap-2 w-full font-bold text-[10px] truncate"><span class="truncate">${o.name}</span><span class="flex-shrink-0">${Math.max(0, Math.ceil(o.hp))} Cred</span></div>`;
-          oppContainer.appendChild(pill);
+          pill.innerHTML = `
+            <span class="pill-text">${o.name}</span>
+            <span class="pill-hp">${Math.max(0, Math.ceil(o.hp))}</span>
+          `;
+          selector.appendChild(pill);
         });
-        selector.appendChild(oppContainer);
-        if (opponents.length > maxOppPreview) {
-          const more = document.createElement("span");
-          const hiddenCount = opponents.length - maxOppPreview;
-          more.className = "contacts-more text-[9px]";
-          more.innerText = `+ ${hiddenCount} more`;
-          more.onclick = () => {
-            const expanded = oppContainer.classList.toggle("expanded");
-            more.innerText = expanded ? "Show less" : `+ ${hiddenCount} more`;
-          };
-          selector.appendChild(more);
-        }
 
         const ccDisplay = document.getElementById("cc-display");
         const activeBuffs = [
@@ -13571,8 +13631,67 @@
         });
       }
 
+      function updateMainStatus(text) {
+        const el = document.getElementById("main-status");
+        if (el) el.innerText = text || "Ready.";
+      }
+
+      function getActionButtonId(type) {
+        const map = {
+          ATTACK: "attack-btn",
+          ESCALATE: "escalate-btn",
+          CC: "cc-btn",
+          PROMOTE: "win-btn",
+          DEFLECT: "deflect-btn",
+          ULT: "reply-all-btn",
+        };
+        return map[type] || null;
+      }
+
+      function getActionHintText(type) {
+        const btnId = getActionButtonId(type);
+        const btn = btnId ? document.getElementById(btnId) : null;
+        return (btn && btn.dataset.hint) || "Ready.";
+      }
+
+      function clearArmedAction() {
+        state.actionArmed = null;
+        document
+          .querySelectorAll(".action-btn.action-armed")
+          .forEach((el) => el.classList.remove("action-armed"));
+        updateMainStatus("Ready.");
+      }
+
+      function armAction(type) {
+        state.actionArmed = type;
+        document
+          .querySelectorAll(".action-btn.action-armed")
+          .forEach((el) => el.classList.remove("action-armed"));
+        const btnId = getActionButtonId(type);
+        const btn = btnId ? document.getElementById(btnId) : null;
+        if (btn) btn.classList.add("action-armed");
+        updateMainStatus(getActionHintText(type));
+      }
+
       function performAction(type) {
         if (state.isProcessing || state.gameOver) return;
+        const btnId = getActionButtonId(type);
+        const btn = btnId ? document.getElementById(btnId) : null;
+        const isDisabled = !!(btn && btn.disabled);
+        if (type === "CC") {
+          clearArmedAction();
+          openAddressBook();
+          return;
+        }
+        if (state.actionArmed !== type) {
+          armAction(type);
+          return;
+        }
+        if (isDisabled) {
+          clearArmedAction();
+          return;
+        }
+        clearArmedAction();
         if (
           type === "ATTACK" &&
           state.player.signOff &&
@@ -13642,8 +13761,8 @@
           const cleaveResult = cleaveActive
             ? applyDepartmentCleave(p, target, d)
             : { hits: 0, total: 0 };
-          let levGain = getPlayerLeverageGain(20);
-          p.ult += levGain;
+          let levGain = getPlayerLeverageGain(2);
+          p.ult = Math.min(LEVERAGE_MAX, p.ult + levGain);
 
           const followUpChance = getUnitFollowUpChance(p);
           const followUpHit =
@@ -13800,8 +13919,8 @@
             hpBefore: escHpBefore,
             hpAfter: p.hp,
           });
-          let levGain = getPlayerLeverageGain(10);
-          p.ult += levGain;
+          let levGain = getPlayerLeverageGain(1);
+          p.ult = Math.min(LEVERAGE_MAX, p.ult + levGain);
           const line = drawFromLineBag(
             p,
             getPlayerLineBagKey("escalate", missionId, titleId),
@@ -15360,6 +15479,8 @@
           document.getElementById("address-book").classList.add("hidden");
         }
       }
+
+      initActionHintBar();
     </script>
   </body>
 </html>
