@@ -1611,12 +1611,12 @@
       <div
         class="window-titlebar text-white p-1 flex justify-between items-center shrink-0"
       >
-        <div class="flex items-center gap-2 px-1">
-          <span id="game-header-subject" class="text-xs font-bold truncate"
+        <div class="flex items-center gap-2 px-1 min-w-0">
+          <span id="game-header-subject" class="text-xs font-bold truncate min-w-0"
             >Outlook Express - [RE: URGENT: Breakroom Smell]</span
           >
         </div>
-        <div class="flex gap-1 pr-1">
+        <div class="flex gap-1 pr-1 flex-shrink-0">
           <button
             class="w-4 h-4 bg-[#c0c0c0] border border-white text-black text-[10px] flex items-center justify-center"
           >
@@ -1635,6 +1635,7 @@
       >
         <button
           class="retro-button text-[10px] font-bold flex items-center gap-1"
+          onclick="handleInboxButton()"
         >
           <svg
             class="w-3 h-3"
@@ -1646,7 +1647,9 @@
           </svg>
           Inbox
         </button>
-        <button class="retro-button text-[10px]">Mark as Read</button>
+        <button class="retro-button text-[10px]" onclick="openGameSettings()">
+          Settings
+        </button>
         <div class="flex-grow"></div>
       </div>
 
@@ -1746,7 +1749,7 @@
                 class="retro-button py-2 flex flex-col items-center"
               >
                 <span class="text-[11px] font-bold">Reply to</span>
-                <span id="attack-subtext" class="text-[9px] opacity-70 italic"
+                <span id="attack-subtext" class="text-[9px] opacity-70"
                   >Target Reply</span
                 >
               </button>
@@ -1755,7 +1758,7 @@
                 class="retro-button py-2 flex flex-col items-center"
               >
                 <span class="text-[11px] font-bold">Escalate</span>
-                <span id="escalate-subtext" class="text-[9px] opacity-70 italic"
+                <span id="escalate-subtext" class="text-[9px] opacity-70"
                   >Threadwide Nudge</span
                 >
               </button>
@@ -1764,7 +1767,7 @@
                 class="retro-button py-2 flex flex-col items-center"
               >
                 <span class="text-[11px] font-bold">Loop Personnel</span>
-                <span id="loop-subtext" class="text-[9px] opacity-70 italic"
+                <span id="loop-subtext" class="text-[9px] opacity-70"
                   >Add Witness</span
                 >
               </button>
@@ -1774,7 +1777,7 @@
                 class="retro-button py-2 flex flex-col items-center"
               >
                 <span class="text-[11px] font-bold">Self-Promote</span>
-                <span id="promote-subtext" class="text-[9px] opacity-70 italic"
+                <span id="promote-subtext" class="text-[9px] opacity-70"
                   >Log a Win</span
                 >
               </button>
@@ -1783,7 +1786,7 @@
                 class="retro-button py-2 flex flex-col items-center"
               >
                 <span class="text-[11px] font-bold">Deflect</span>
-                <span id="deflect-subtext" class="text-[9px] opacity-70 italic"
+                <span id="deflect-subtext" class="text-[9px] opacity-70"
                   >Hold Line</span
                 >
               </button>
@@ -1796,7 +1799,7 @@
                 <span class="text-[11px] font-bold text-red-800"
                   >REPLY ALL</span
                 >
-                <span id="ult-subtext" class="text-[9px] opacity-70 italic"
+                <span id="ult-subtext" class="text-[9px] opacity-70"
                   >Mass Takedown</span
                 >
               </button>
@@ -2118,6 +2121,7 @@
         if (overlay.contains(e.target)) return;
         if (e.target.closest(".shop-card-item")) return;
         if (e.target.closest(".target-pill")) return;
+        if (e.target.closest(".interactable-email")) return;
         hideShopItemOverlay();
       });
 
@@ -6927,6 +6931,100 @@
         state.player.email = email;
         updateStatusBarTime();
         showInbox();
+      }
+
+      function handleInboxButton() {
+        if (state.activeScreen === "inbox-screen") {
+          startQuarter();
+        } else {
+          showInbox();
+        }
+      }
+
+      function openGameSettings() {
+        const existing = document.getElementById("game-settings-modal");
+        if (existing) return;
+        const modal = document.createElement("div");
+        modal.id = "game-settings-modal";
+        modal.className =
+          "fixed inset-0 bg-black/40 z-[170] flex items-center justify-center p-4";
+        modal.innerHTML = `
+          <div class="bg-[#c0c0c0] retro-border p-0.25 w-full max-w-[280px] shadow-2xl">
+            <div class="window-titlebar text-white px-2 py-1 text-[10px] font-bold flex justify-between items-center">
+              <span>System Settings</span>
+              <button id="game-settings-close" class="w-3.5 h-3.5 bg-[#c0c0c0] border border-white shadow-[1px_1px_0px_black] text-black text-[9px] flex items-center justify-center font-bold">✕</button>
+            </div>
+            <div class="p-3 space-y-2">
+              <button id="game-settings-restart" class="w-full retro-button text-[11px] font-bold py-1.5">Restart Career</button>
+              <button id="game-settings-menu" class="w-full retro-button text-[11px] font-bold py-1.5">Return to Menu</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+        const closeBtn = document.getElementById("game-settings-close");
+        const restartBtn = document.getElementById("game-settings-restart");
+        const menuBtn = document.getElementById("game-settings-menu");
+        if (closeBtn)
+          closeBtn.addEventListener("click", () => closeGameSettings());
+        if (restartBtn)
+          restartBtn.addEventListener("click", () => restartFromSettings());
+        if (menuBtn)
+          menuBtn.addEventListener("click", () => returnToMenuFromSettings());
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) closeGameSettings();
+        });
+      }
+
+      function closeGameSettings() {
+        const modal = document.getElementById("game-settings-modal");
+        if (modal) modal.remove();
+      }
+
+      function restartFromSettings() {
+        closeGameSettings();
+        const name = state.player?.name || "eke vdh";
+        const email = name.toLowerCase().replace(/\s+/g, ".") + "@gov.org";
+        const deptId = state.startConfig?.departmentId || "executive";
+        const prestige = state.startConfig?.prestige || 0;
+        clearSavedGame();
+        ensureStartDefaults();
+        state.aiPlannedActions = {};
+        state.seed = null;
+        state.rngStates = {};
+        state.shopVisitIndex = 0;
+        state.missionCycle = 0;
+        state.currentMissionIndex = 0;
+        state.turn = 0;
+        state.lossReason = null;
+        state.isProcessing = false;
+        state.gameOver = false;
+        state.winGame = false;
+        state.removedByPlayer = 0;
+        state.removedTotal = 0;
+        state.postPromotionScreen = null;
+        state.ccPicksTaken = 0;
+        state.ccPicksLeft = 0;
+        state.shop = { directItems: [], packs: [], rerollCount: 0 };
+        state.pendingTraining = null;
+        state.roundEndUpgrades = {};
+        state.expenseReportActive = false;
+        opponents = [];
+        state.player = getBasePlayerState(name, email);
+        state.startConfig = {
+          departmentId: deptId,
+          prestige,
+          seedInput: state.startConfig?.seedInput || "",
+        };
+        const parsedSeed = parseSeedInput(state.startConfig.seedInput);
+        state.seed = parsedSeed != null ? parsedSeed : Date.now() >>> 0;
+        resetRngStreams();
+        applyStartConfigToPlayer(state.startConfig);
+        startGame();
+      }
+
+      function returnToMenuFromSettings() {
+        closeGameSettings();
+        openInductionWizard();
       }
 
       function showInbox() {
@@ -13179,7 +13277,9 @@
           if (isOut) return "#e5e7eb";
           const pct = Math.max(0, Math.min(100, hpPct));
           const hue = (pct / 100) * 120;
-          return `hsl(${hue} 60% 90%)`;
+          const fill = `hsl(${hue} 70% 75%)`;
+          const empty = "#f3f4f6";
+          return `linear-gradient(90deg, ${fill} 0%, ${fill} ${pct}%, ${empty} ${pct}%, ${empty} 100%)`;
         };
 
         sortedOpponents.forEach((o) => {
