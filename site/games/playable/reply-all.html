@@ -3526,7 +3526,7 @@
               event: "thread_end",
               type: "add_random_cc_bonus",
               requiresHpFull: true,
-              count: 2,
+              count: 3,
             },
           ],
         },
@@ -10364,12 +10364,20 @@
 
       function getRarityMeta(rarity) {
         const meta = {
-          common: { label: "COMMON", className: "bg-gray-200 text-gray-700" },
+          common: {
+            label: "COMMON",
+            className: "bg-slate-100 text-slate-500 border border-slate-300",
+          },
           uncommon: {
             label: "UNCOMMON",
-            className: "bg-emerald-100 text-emerald-700",
+            className:
+              "bg-emerald-600 text-white border border-emerald-800 font-bold",
           },
-          rare: { label: "RARE", className: "bg-amber-100 text-amber-700" },
+          rare: {
+            label: "RARE",
+            className:
+              "bg-amber-400 text-amber-950 border border-amber-600 font-bold shadow-sm",
+          },
         };
         return meta[rarity] || meta.common;
       }
@@ -12490,15 +12498,15 @@
         }) => {
           const container = document.createElement("div");
           container.className = "relative";
-          const rarityText = (rarity || "").toUpperCase();
+          const rarityMeta = getRarityMeta(rarity);
           const repText =
             typeof cost === "number" && cost > 0 ? `${cost} REP` : "";
           const buttonLabel = repText
             ? `${actionLabel || "REQUEST"} (${repText})`
             : actionLabel || "REQUEST";
           container.innerHTML = `
-            <span class="absolute -top-3 -left-2 z-10 text-[9px] font-bold uppercase px-2 py-0.5 rounded-sm bg-amber-400 text-amber-950 shadow-sm border border-amber-600">
-              ${rarityText || "COMMON"}
+            <span class="absolute -top-3 -left-2 z-10 text-[9px] font-bold uppercase px-2 py-0.5 rounded-sm ${rarityMeta.className} shadow-sm">
+              ${rarityMeta.label}
             </span>
             <div class="p-3 bg-[#e0e0e0] retro-border shadow-2xl flex flex-col gap-3">
               <div class="flex justify-between items-start font-bold text-[11px] gap-2 border-b border-[#808080] pb-2">
