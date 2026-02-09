@@ -6957,6 +6957,7 @@
             <div class="p-3 space-y-2">
               <button id="game-settings-restart" class="w-full retro-button text-[11px] font-bold py-1.5">Restart Career</button>
               <button id="game-settings-menu" class="w-full retro-button text-[11px] font-bold py-1.5">Return to Menu</button>
+              <button id="game-settings-back" class="w-full retro-button text-[11px] font-bold py-1.5">Back to Game</button>
             </div>
           </div>
         `;
@@ -6964,12 +6965,15 @@
         const closeBtn = document.getElementById("game-settings-close");
         const restartBtn = document.getElementById("game-settings-restart");
         const menuBtn = document.getElementById("game-settings-menu");
+        const backBtn = document.getElementById("game-settings-back");
         if (closeBtn)
           closeBtn.addEventListener("click", () => closeGameSettings());
         if (restartBtn)
           restartBtn.addEventListener("click", () => restartFromSettings());
         if (menuBtn)
           menuBtn.addEventListener("click", () => returnToMenuFromSettings());
+        if (backBtn)
+          backBtn.addEventListener("click", () => closeGameSettings());
         modal.addEventListener("click", (e) => {
           if (e.target === modal) closeGameSettings();
         });
