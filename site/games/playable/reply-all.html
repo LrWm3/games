@@ -525,6 +525,12 @@
         display: block;
         font-weight: 600;
       }
+      #sig-list:has(.shop-card-ghost) #empty-sig-list {
+        display: none;
+      }
+      #sig-list.sig-has-ghost #empty-sig-list {
+        display: none;
+      }
       #shop-owned-salutation .shop-card-ghost,
       #shop-owned-signoff .shop-card-ghost {
         height: auto;
@@ -940,7 +946,7 @@
       class="hidden fixed inset-0 z-[130] bg-[#008080] flex flex-col items-center"
     >
       <div
-        class="bg-[#c0c0c0] retro-border w-full max-w-4xl shadow-2xl flex flex-col min-h-0 flex-1"
+        class="bg-[#c0c0c0] retro-border w-[calc(100%-1rem)] max-w-4xl shadow-2xl flex flex-col min-h-0 flex-1 m-2"
       >
         <div
           class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold shrink-0"
@@ -1005,7 +1011,7 @@
           <div id="shop-pack-options" class="border border-gray-200 bg-white shop-card-list p-2"></div>
         </div>
       </div>
-      <div class="w-full max-w-4xl mt-3 flex flex-col min-h-0 shop-assets-container">
+      <div class="w-[calc(100%-1rem)] max-w-4xl mt-3 flex flex-col min-h-0 shop-assets-container m-2">
         <div id="assets-window-contacts" class="hidden assets-window bg-[#c0c0c0] retro-border shadow-2xl">
           <div class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
             <span>CONTACTS</span>
@@ -1027,18 +1033,6 @@
           </div>
           <div class="window-body p-3 bg-[#c0c0c0] space-y-2 relative profile-drop-target profile-window-body">
             <div id="profile-drop-overlay" class="profile-drop-overlay"></div>
-            <div class="bg-white/20 p-3 retro-border-inset flex gap-4">
-              <div class="w-16 h-16 bg-gray-400 retro-border-inset flex items-center justify-center overflow-hidden flex-shrink-0">
-                <div class="text-[#606060] text-[8px] text-center p-1 leading-tight uppercase font-bold">
-                  Identification<br />Missing
-                </div>
-              </div>
-              <div class="flex flex-col justify-center overflow-hidden">
-                <h1 id="profile-name" class="text-lg font-bold leading-tight truncate uppercase tracking-tighter text-[#000080]"></h1>
-                <div id="profile-title" class="flex items-center gap-1 text-[9px] bg-[#000080] text-white self-start px-2 py-0.5 rounded-sm mt-1 uppercase font-bold"></div>
-              </div>
-            </div>
-
             <div class="flex border-b-2 border-b-[#808080] relative z-0">
               <button onclick="showProfileTab('summary')" id="profile-tab-summary" class="profile-tab-btn active">Summary</button>
               <button onclick="showProfileTab('stats')" id="profile-tab-stats" class="profile-tab-btn">Full Stats</button>
@@ -1049,7 +1043,7 @@
               <div id="profile-panel-summary" class="profile-tab-panel active space-y-3">
                 <div>
                   <div class="flex justify-between text-[10px] font-bold mb-1 uppercase text-[#404040]">
-                    <span>Productivity HP</span>
+                    <span>Credibility</span>
                     <span id="profile-hp-text"></span>
                   </div>
                   <div class="h-3 bg-[#808080] border border-white shadow-[inset_1px_1px_1px_black]">
@@ -1090,23 +1084,6 @@
                   <div class="bg-white retro-border-inset p-2">
                     <div class="text-[9px] text-gray-500 font-bold uppercase">Defense</div>
                     <div id="profile-defense" class="text-sm font-mono font-bold leading-none"></div>
-                  </div>
-                </div>
-                <div class="space-y-1">
-                  <div class="text-[10px] font-bold text-gray-600 uppercase">Communication Preset</div>
-                  <div class="bg-white retro-border-inset text-[11px] p-2 space-y-1">
-                    <div class="flex justify-between border-b border-dashed border-gray-200 pb-1">
-                      <span class="text-gray-400 uppercase text-[9px]">Greeting</span>
-                      <span id="profile-greeting" class="font-bold italic"></span>
-                    </div>
-                    <div class="flex justify-between border-b border-dashed border-gray-200 py-1">
-                      <span class="text-gray-400 uppercase text-[9px]">Sign-off</span>
-                      <span id="profile-signoff" class="font-bold italic"></span>
-                    </div>
-                    <div class="flex justify-between pt-1">
-                      <span class="text-gray-400 uppercase text-[9px]">Signatures</span>
-                      <span id="profile-signatures" class="font-bold"></span>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1467,7 +1444,7 @@
             <input
               id="player-name-input"
               type="text"
-              placeholder="eke vdh"
+              placeholder="eke"
               class="w-full p-2 bg-white retro-border-inset outline-none text-sm"
             />
           </div>
@@ -1612,7 +1589,7 @@
     <!-- MAIN GAME INTERFACE -->
     <div
       id="game-ui"
-      class="hidden flex flex-col w-full h-full max-w-5xl bg-[#c0c0c0] retro-border overflow-hidden"
+      class="hidden flex flex-col w-[calc(100%-1rem)] h-[calc(100%-1rem)] max-w-5xl bg-[#c0c0c0] retro-border overflow-hidden m-2"
     >
       <div
         class="window-titlebar text-white p-1 flex justify-between items-center shrink-0"
@@ -10903,7 +10880,6 @@
             <div class="email-template-container border border-gray-200 rounded p-4 bg-white shadow-inner">
               <div class="email-template-header font-sans text-[10px] text-gray-700 space-y-1">
                 <div><strong>To:</strong> everyone@gov.org</div>
-                <div><strong>Subject:</strong> ${subject}</div>
               </div>
               <div id="shop-owned-salutation" class="drop-zone min-h-6 bg-gray-50 my-2 p-1 text-[9px]"></div>
               <div class="flex-grow py-2 text-gray-400 italic text-[10px] select-none leading-relaxed">
@@ -11002,6 +10978,13 @@
               };
               sigList.appendChild(row);
             });
+            if (!state.player.signatures.length) {
+              const empty = document.createElement("div");
+              empty.className = "px-2 py-2 text-[10px] italic text-gray-400";
+              empty.id = "empty-sig-list";
+              empty.innerText = "No signatures available.";
+              sigList.appendChild(empty);
+            }
           }
         }
 
@@ -12907,8 +12890,6 @@
         const header = document.getElementById("profile-modal-header");
         const totalsEl = document.getElementById("profile-modal-totals");
         const sourcesEl = document.getElementById("profile-modal-sources");
-        const nameEl = document.getElementById("profile-name");
-        const titleEl = document.getElementById("profile-title");
         const hpTextEl = document.getElementById("profile-hp-text");
         const hpBarEl = document.getElementById("profile-hp-bar");
         const replyToEl = document.getElementById("profile-replyto");
@@ -12919,10 +12900,7 @@
         const selfPromoteEl = document.getElementById("profile-selfpromote");
         const winsEl = document.getElementById("profile-wins");
         const defenseEl = document.getElementById("profile-defense");
-        const greetEl = document.getElementById("profile-greeting");
-        const signoffEl = document.getElementById("profile-signoff");
-        const sigsEl = document.getElementById("profile-signatures");
-        if (!totalsEl || !sourcesEl || !nameEl || !titleEl) return;
+        if (!totalsEl || !sourcesEl) return;
         const p = state.player;
         const totals = computeUnitStats(p);
         const totalsNoContacts = computeUnitStats({
@@ -12932,8 +12910,6 @@
         });
         const titleName = p.title ? p.title.name : "Unranked";
         header && (header.innerText = `${p.name} (${titleName})`);
-        nameEl.innerText = p.name || "";
-        titleEl.innerText = titleName;
         if (hpTextEl && hpBarEl) {
           const maxHp = getUnitMaxHp(p);
           const hp = Math.max(0, p.hp || 0);
@@ -12968,16 +12944,6 @@
         if (winsEl) winsEl.innerText = `${p.currentWins ?? p.wins ?? 0}`;
         if (defenseEl)
           defenseEl.innerText = `${totalsNoContacts.defFlat || 0}`;
-        if (greetEl)
-          greetEl.innerText = p.salutation ? `"${p.salutation.name}"` : "None";
-        if (signoffEl)
-          signoffEl.innerText = p.signOff ? `"${p.signOff.name}"` : "None";
-        if (sigsEl)
-          sigsEl.innerText =
-            p.signatures && p.signatures.length
-              ? p.signatures.map((s) => s.name).join(", ")
-              : "None";
-
         totalsEl.innerHTML = "";
         const compactFields = STAT_FIELDS.filter((field) => totals[field]);
         compactFields.forEach((field) => {
