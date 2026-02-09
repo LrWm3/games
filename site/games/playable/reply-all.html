@@ -69,8 +69,6 @@
         border-left: 2px solid var(--win-border-dark);
         border-bottom: 2px solid var(--win-border-light);
         border-right: 2px solid var(--win-border-light);
-        padding-top: 5px;
-        padding-bottom: 3px;
       }
       .window-titlebar {
         background: linear-gradient(90deg, var(--win-blue), var(--win-blue-light)) !important;
@@ -386,7 +384,7 @@
       }
       .shop-card-item {
         width: 100%;
-        max-width: 88px;
+        max-width: 84px;
         height: 120px;
         display: flex;
         text-align: center;
@@ -443,6 +441,10 @@
         font-style: italic;
         border: 1px dashed #d1d5db;
         background: #f9fafb;
+      }
+      .shop-card-list:has(.shop-card-item) .shop-empty-state,
+      .shop-card-list:has(.shop-card-ghost) .shop-empty-state {
+        display: none;
       }
       .shop-card-item.address-book-drag-preview {
         height: auto;
@@ -1084,7 +1086,7 @@
               <div id="profile-drop-overlay" class="profile-drop-overlay"></div>
               <div class="flex border-b-2 border-b-[#808080] relative z-0">
                 <button onclick="showProfileTab('summary')" id="profile-tab-summary" class="profile-tab-btn active">Summary</button>
-                <button onclick="showProfileTab('stats')" id="profile-tab-stats" class="profile-tab-btn">Full Stats</button>
+                <button onclick="showProfileTab('stats')" id="profile-tab-stats" class="profile-tab-btn">All</button>
                 <button onclick="showProfileTab('sources')" id="profile-tab-sources" class="profile-tab-btn">Sources</button>
               </div>
 
@@ -1099,7 +1101,7 @@
                       <div id="profile-hp-bar" class="h-full bg-[#00ff00] border-r-2 border-[#008000]"></div>
                     </div>
                   </div>
-                  <div class="grid grid-cols-3 gap-2">
+                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     <div class="bg-white retro-border-inset p-2">
                       <div class="text-[9px] text-gray-500 font-bold uppercase">Reply To</div>
                       <div id="profile-replyto" class="text-sm font-mono font-bold leading-none"></div>
@@ -1148,6 +1150,23 @@
             </div>
           </div>
         </div>
+      </div>
+      <div class="shop-taskbar bg-[#c0c0c0] border-t border-[#808080] px-2 py-1 text-[9px] w-full mt-auto flex items-center gap-2">
+        <button
+          id="assets-tab-email"
+          class="retro-button text-[9px] px-2 py-0.5"
+          onclick="showAssetsWindow('email')"
+        >
+          Email
+        </button>
+        <button
+          id="assets-tab-profile"
+          class="retro-button text-[9px] px-2 py-0.5"
+          onclick="showAssetsWindow('profile')"
+        >
+          Profile
+        </button>
+        <div class="ml-auto text-[9px] uppercase text-gray-700 font-semibold" id="shop-taskbar-quarter"></div>
       </div>
     </div>
 
@@ -3069,7 +3088,7 @@
             "Key Contact": "Colin (IT)",
             "Greeting": "Update,",
             "Sign-off": "Thanks,",
-            "Signatures": "IT Service Desk | Ticket Resolved",
+            "Signatures": "33 Tickets Resolved",
             Liability: "-1 Win (Ops)",
           },
           icon: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#000080" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="12" y1="17" x2="12" y2="21"></line><line x1="8" y1="21" x2="16" y2="21"></line></svg>`,
@@ -10929,7 +10948,7 @@
             return {
               ok: false,
               reason: "limit",
-              actionLabel: "REMOVE SIGNATURE TO APPLY",
+              actionLabel: "NO SIGNATURE SPACE",
             };
           }
           return { ok: true, actionLabel: "" };
@@ -11028,10 +11047,11 @@
                 <div id="sig-count-header" class="text-[9px] font-bold text-gray-600 uppercase mb-2">
                   Signatures (${state.player.signatures.length}/${state.player.title.sigLimit})
                 </div>
+              <div id="sig-list" class="space-y-1 relative">
                 <div id="sig-drop-overlay" class="sig-drop-overlay"></div>
-                <div id="sig-list" class="space-y-1"></div>
               </div>
             </div>
+          </div>
           `;
 
           const salutationSlot = document.getElementById(
@@ -11127,10 +11147,8 @@
         const directList = document.getElementById("shop-direct-list");
         if (directList) {
           directList.innerHTML = "";
-          let hasDirect = false;
           state.shop.directItems.forEach((item) => {
             if (item.purchased) return;
-            hasDirect = true;
             const row = document.createElement("div");
             row.className = "shop-card-item";
             row.dataset.itemId = item.id;
@@ -11152,22 +11170,18 @@
             };
             directList.appendChild(row);
           });
-          if (!hasDirect) {
-            const empty = document.createElement("div");
-            empty.className = "shop-empty-state";
-            empty.innerText = "No individual opportunities available.";
-            directList.appendChild(empty);
-          }
+          const empty = document.createElement("div");
+          empty.className = "shop-empty-state";
+          empty.innerText = "No individual opportunities available.";
+          directList.appendChild(empty);
         }
 
         // --- PACKS ---
         const packList = document.getElementById("shop-packs-list");
         if (packList) {
           packList.innerHTML = "";
-          let hasPacks = false;
           state.shop.packs.forEach((pack) => {
             if (pack.purchased) return;
-            hasPacks = true;
             const row = document.createElement("div");
             row.className = "shop-card-item";
             row.dataset.itemId = pack.id;
@@ -11188,12 +11202,10 @@
             };
             packList.appendChild(row);
           });
-          if (!hasPacks) {
-            const empty = document.createElement("div");
-            empty.className = "shop-empty-state";
-            empty.innerText = "No group trainings available.";
-            packList.appendChild(empty);
-          }
+          const empty = document.createElement("div");
+          empty.className = "shop-empty-state";
+          empty.innerText = "No group trainings available.";
+          packList.appendChild(empty);
         }
         initShopSortables();
         initOwnedSortables();
@@ -11205,12 +11217,18 @@
           email: document.getElementById("assets-window-email"),
           profile: document.getElementById("assets-window-profile"),
         };
+        const tabs = {
+          email: document.getElementById("assets-tab-email"),
+          profile: document.getElementById("assets-tab-profile"),
+        };
         const kinds = Object.keys(windows);
         if (kinds.some((k) => !windows[k])) return;
         if (kind === "none") {
           windows.profile.classList.add("hidden");
           windows.contacts.classList.remove("hidden");
           windows.email.classList.remove("hidden");
+          if (tabs.email) tabs.email.classList.add("retro-border-inset");
+          if (tabs.profile) tabs.profile.classList.remove("retro-border-inset");
           return;
         }
         if (!windows[kind]) return;
@@ -11222,15 +11240,21 @@
             target.classList.add("hidden");
             windows.contacts.classList.remove("hidden");
             windows.email.classList.remove("hidden");
+            if (tabs.profile) tabs.profile.classList.remove("retro-border-inset");
+            if (tabs.email) tabs.email.classList.remove("retro-border-inset");
           } else {
             windows.contacts.classList.add("hidden");
             windows.email.classList.add("hidden");
             windows.profile.classList.remove("hidden");
+            if (tabs.profile) tabs.profile.classList.add("retro-border-inset");
+            if (tabs.email) tabs.email.classList.remove("retro-border-inset");
           }
         } else {
           windows.profile.classList.add("hidden");
           windows.contacts.classList.remove("hidden");
           windows.email.classList.remove("hidden");
+          if (tabs.email) tabs.email.classList.add("retro-border-inset");
+          if (tabs.profile) tabs.profile.classList.remove("retro-border-inset");
         }
 
         resizeAssetsWindows();
@@ -11306,6 +11330,8 @@
             group: { name: "shop-direct", pull: true, put: false },
             animation: 150,
             forceFallback: true,
+            fallbackOnBody: true,
+            scroll: false,
             easing: "cubic-bezier(0.2, 0, 0, 1)",
             ghostClass: "shop-card-ghost",
             chosenClass: "shop-card-chosen",
@@ -11385,6 +11411,8 @@
             group: { name: "shop-direct", pull: true, put: false },
             animation: 150,
             forceFallback: true,
+            fallbackOnBody: true,
+            scroll: false,
             easing: "cubic-bezier(0.2, 0, 0, 1)",
             ghostClass: "shop-card-ghost",
             chosenClass: "shop-card-chosen",
@@ -11467,6 +11495,8 @@
           group: { name: "shop-direct", pull: true, put: false },
           animation: 150,
           forceFallback: true,
+          fallbackOnBody: true,
+          scroll: false,
           easing: "cubic-bezier(0.2, 0, 0, 1)",
           ghostClass: "shop-card-ghost",
           chosenClass: "shop-card-chosen",
@@ -12679,19 +12709,14 @@
         header.innerText = `Address Book (${state.player.addressBook.length}/${addressLimit})`;
         list.appendChild(header);
 
+        const contactList = document.createElement("div");
+        contactList.id = "shop-address-book-list-contacts";
+        contactList.className = "relative";
+        list.appendChild(contactList);
         const overlay = document.createElement("div");
         overlay.id = "contacts-drop-overlay";
         overlay.className = "contacts-drop-overlay";
-        list.appendChild(overlay);
-
-        const bccOverlay = document.createElement("div");
-        bccOverlay.id = "bcc-drop-overlay";
-        bccOverlay.className = "bcc-drop-overlay";
-        list.appendChild(bccOverlay);
-
-        const contactList = document.createElement("div");
-        contactList.id = "shop-address-book-list-contacts";
-        list.appendChild(contactList);
+        contactList.appendChild(overlay);
 
         renderAddressBookList({
           container: contactList,
@@ -12725,7 +12750,12 @@
         list.appendChild(headerBcc);
         const bccList = document.createElement("div");
         bccList.id = "shop-address-book-list-bcc";
+        bccList.className = "relative";
         list.appendChild(bccList);
+        const bccOverlay = document.createElement("div");
+        bccOverlay.id = "bcc-drop-overlay";
+        bccOverlay.className = "bcc-drop-overlay";
+        bccList.appendChild(bccOverlay);
 
         renderAddressBookList({
           container: bccList,
