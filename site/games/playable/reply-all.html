@@ -649,16 +649,21 @@
         max-width: 64rem;
         margin: 0.5rem;
         align-items: stretch;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
       }
       .shop-layout-main {
         min-width: 0;
         min-height: 0;
+        overflow: hidden;
       }
       .shop-layout-assets {
         min-width: 0;
         min-height: 0;
         display: grid;
         gap: 12px;
+        overflow: hidden;
       }
       .shop-layout-assets #assets-window-profile {
         grid-column: 1 / -1;
@@ -667,7 +672,7 @@
       .shop-layout-assets .assets-window.hidden {
         display: none;
       }
-      @media (min-width: 430px) {
+      @media (min-width: 630px) {
         .shop-layout {
           grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
           grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
@@ -682,7 +687,7 @@
           grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
         }
       }
-      @media (max-width: 429px) {
+      @media (max-width: 629px) {
         .shop-layout {
           grid-template-columns: minmax(0, 1fr);
           grid-template-rows: auto auto;
@@ -706,7 +711,8 @@
       }
       .assets-window .window-body {
         overflow-y: auto;
-        height: 100%;
+        flex: 1;
+        min-height: 0;
       }
       .profile-window-body {
         max-height: 70vh;
@@ -1054,7 +1060,7 @@
     <!-- SHOP SCREEN (HR Self-Service Portal) -->
     <div
       id="shop-screen"
-      class="hidden fixed inset-0 z-[130] win-bg flex flex-col items-center"
+      class="hidden fixed inset-0 z-[130] win-bg flex flex-col items-stretch"
     >
       <div class="shop-layout">
         <div
@@ -1146,9 +1152,9 @@
             <div class="window-body p-3 bg-[#c0c0c0] space-y-2 relative profile-drop-target profile-window-body">
               <div id="profile-drop-overlay" class="profile-drop-overlay"></div>
               <div class="flex border-b-2 border-b-[#808080] relative z-0">
-                <button onclick="showProfileTab('summary')" id="profile-tab-summary" class="profile-tab-btn active">Summary</button>
+                <button onclick="showProfileTab('summary')" id="profile-tab-summary" class="profile-tab-btn active">Sum</button>
                 <button onclick="showProfileTab('stats')" id="profile-tab-stats" class="profile-tab-btn">All</button>
-                <button onclick="showProfileTab('sources')" id="profile-tab-sources" class="profile-tab-btn">Sources</button>
+                <button onclick="showProfileTab('sources')" id="profile-tab-sources" class="profile-tab-btn">More</button>
               </div>
 
               <div class="bg-[#c0c0c0] border-l-2 border-r-2 border-b-2 border-white shadow-[inset_-2px_-2px_0_#808080] p-3">
@@ -9853,8 +9859,8 @@
         const zone = document.getElementById("pack-drop-zone");
         if (!zone) return;
         const label = cost
-          ? `Drop pack here to open (${cost} REP)`
-          : "Drop pack here to open";
+          ? `Open Pack (${cost} REP)`
+          : "Open Pack";
         zone.innerText = label;
         zone.classList.toggle("active", packDragState.active);
         zone.classList.toggle("over", !!over);
