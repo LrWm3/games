@@ -2265,20 +2265,22 @@
           },
           usedBy: null,
           noShop: true,
+          noTraining: true,
         },
         {
           id: "cc_tater_the_dog",
           name: "Tater the Dog",
-          title: "The Goodest Boy",
+          title: "Poopus",
           rarity: "rare",
           departmentId: "facilities_and_administration",
           loopInText:
-            "I'm looping in <strong>{name}</strong>! Who's a good boy?",
+            "I'm looping in <strong>{name}</strong>! She's a dog.",
           eff: {
             followUpChance: 0.5,
           },
           usedBy: null,
           noShop: true,
+          noTraining: true,
         },
         {
           id: "cc_andrew_legal",
@@ -2739,7 +2741,7 @@
           employeeId: "steph_eco",
           setId: "pod_set",
           loopInText:
-            "I'm looping in <strong>{name}</strong>. She's great with cats and even better with help desk tickets.",
+            "I'm looping in Steph to get her opinion on this discussion",
           effects: [
             {
               event: "deflect_action",
@@ -3075,6 +3077,38 @@
           deptScalers: [
             { departmentId: "m4_agency", stat: "followUpChance", per: 0.2, step: 3 },
           ],
+        },
+        {
+          id: "meeting_maestro",
+          name: "Meeting Maestro",
+          rarity: "common",
+          effects: [
+            {
+              event: "stakeholder_opt_out_other",
+              type: "gain_rep",
+              amount: 2,
+            },
+          ],
+        },
+        {
+          id: "leed_certified",
+          name: "My inbox is LEED certified",
+          rarity: "uncommon",
+          escalateDmg: 0,
+          effects: [
+            {
+              event: "stakeholder_opt_out",
+              type: "grow_sig_stat",
+              stat: "escalateDmg",
+              amount: 2,
+            },
+          ],
+        },
+        {
+          id: "go_getter",
+          name: "Go getter",
+          rarity: "common",
+          levGainReply: 1,
         },
       ];
 
@@ -7837,7 +7871,7 @@
           total += result.dmg;
           hits += 1;
           if (u !== state.player && u.hp <= 0) {
-            handleOpponentDefeat(u, attacker && attacker.id === "player");
+            handleOpponentDefeat(u, attacker && attacker.id === "player", attacker);
           }
         });
         return { total, hits };
@@ -8586,6 +8620,7 @@
           .filter(
             (b) =>
               b.usedBy === player.name &&
+              !b.noTraining &&
               (player.contactTrainingCount?.[b.id] || 0) < trainingLimit,
           )
           .sort((a, b) => (a.id || "").localeCompare(b.id || ""));
@@ -8613,7 +8648,7 @@
       function applyRandomCcBoostMultiple(player, stats, count) {
         if (!player || !stats || !count) return [];
         const pool = player.buffs
-          .filter((b) => b.usedBy === player.name)
+          .filter((b) => b.usedBy === player.name && !b.noTraining)
           .sort((a, b) => (a.id || "").localeCompare(b.id || ""));
         if (pool.length === 0) return [];
         const picked = [];
@@ -8791,6 +8826,15 @@
               });
             }
             applyUnitThreadBonus(unit, stats);
+          },
+          grow_sig_stat: (effect, owner) => {
+            if (owner && owner.itemType === "signature") {
+              owner[effect.stat] = (owner[effect.stat] || 0) + effect.amount;
+            }
+          },
+          gain_rep: (effect) => {
+            if (unit.id !== "player") return;
+            state.player.reputation += effect.amount || 0;
           },
           add_thread_bonus_scaled: (effect, owner, contactEffectBoosts) => {
             const step = effect.step || 1;
@@ -9475,7 +9519,7 @@
         return pool[rngInt(rngKey, pool.length)];
       }
 
-      function generatePack(type, tier) {
+      function generatePack(type, tier, excludedIds = new Set()) {
         const tiers = {
           small: { cost: 3, options: 2, picks: 1 },
           medium: { cost: 5, options: 3, picks: 1 },
@@ -9487,18 +9531,18 @@
         let typedPools = null;
         if (type === "contact") {
           pool = CONTACTS.filter(
-            (c) => !state.player.addressBook.includes(c.id) && !c.noShop,
+            (c) => !state.player.addressBook.includes(c.id) && !c.noShop && !excludedIds.has(c.id),
           ).map((c) => ({ ...c, itemType: "contact" }));
         } else if (type === "email") {
           const sals = SALUTATIONS.filter(
             (s) =>
-              !state.player.salutation || state.player.salutation.id !== s.id,
+              (!state.player.salutation || state.player.salutation.id !== s.id) && !excludedIds.has(s.id),
           ).map((s) => ({ ...s, itemType: "salutation" }));
           const offs = SIGNOFFS.filter(
-            (s) => !state.player.signOff || state.player.signOff.id !== s.id,
+            (s) => (!state.player.signOff || state.player.signOff.id !== s.id) && !excludedIds.has(s.id),
           ).map((s) => ({ ...s, itemType: "signoff" }));
           const sigs = SIGNATURES.filter(
-            (s) => !state.player.signatures.some((sig) => sig.id === s.id),
+            (s) => !state.player.signatures.some((sig) => sig.id === s.id) && !excludedIds.has(s.id),
           ).map((s) => ({ ...s, itemType: "signature" }));
           typedPools = {
             salutation: sals,
@@ -9506,9 +9550,9 @@
             signature: sigs,
           };
         } else if (type === "dev") {
-          pool = getTrainingUpgrades().map((u) => ({ ...u, itemType: "dev" }));
+          pool = getTrainingUpgrades().filter(u => !excludedIds.has(u.id)).map((u) => ({ ...u, itemType: "dev" }));
         } else if (type === "bcc") {
-          pool = BCC_CONTACTS.map((b) => ({ ...b, itemType: "bcc" }));
+          pool = BCC_CONTACTS.filter(b => !excludedIds.has(b.id)).map((b) => ({ ...b, itemType: "bcc" }));
         }
 
         const packNames = {
@@ -9550,12 +9594,14 @@
             const picked = pickWeighted(typedPools[pickedType], 1, shopKey)[0];
             if (!picked) break;
             options.push(picked);
+            excludedIds.add(picked.id);
             typedPools[pickedType] = typedPools[pickedType].filter(
               (item) => item.id !== picked.id,
             );
           }
         } else {
           options = pickWeighted(pool, t.options, shopKey);
+          options.forEach(o => excludedIds.add(o.id));
         }
         return {
           id: `pack_${type}_${tier}_${state.shopVisitIndex || 0}_${rngInt(shopKey, 1000000000)}`,
@@ -9601,16 +9647,17 @@
           bcc: bccPool,
           dev: devPool,
         };
-        state.shop.directItems = generateDirectItems(directPools, shopKey);
+        const excludedIds = new Set();
+        state.shop.directItems = generateDirectItems(directPools, shopKey, excludedIds);
 
         const packTiers = ["small", "medium", "large"];
         state.shop.packs = [];
         for (let i = 0; i < 2; i++) {
           const packTypePools = {
-            contact: contactPool,
-            email: [...salPool, ...offPool],
-            dev: getTrainingUpgrades(),
-            bcc: bccPool,
+            contact: contactPool.filter(c => !excludedIds.has(c.id)),
+            email: [...salPool, ...offPool].filter(e => !excludedIds.has(e.id)),
+            dev: getTrainingUpgrades().filter(d => !excludedIds.has(d.id)),
+            bcc: bccPool.filter(b => !excludedIds.has(b.id)),
           };
           const eligiblePackTypes = Object.keys(packTypePools).filter(
             (type) => packTypePools[type].length > 0,
@@ -9623,12 +9670,15 @@
           );
           if (!type) break;
           const tier = packTiers[rngInt(shopKey, packTiers.length)];
-          state.shop.packs.push(generatePack(type, tier));
+          state.shop.packs.push(generatePack(type, tier, excludedIds));
         }
       }
 
-      function generateDirectItems(directPools, rngKey = "misc") {
-        const pools = { ...directPools };
+      function generateDirectItems(directPools, rngKey = "misc", excludedIds = new Set()) {
+        const pools = {};
+        for (const type in directPools) {
+          pools[type] = directPools[type].filter(item => !excludedIds.has(item.id));
+        }
         const directItems = [];
         for (let i = 0; i < 2; i++) {
           const availableTypes = Object.keys(pools).filter(
@@ -9644,6 +9694,7 @@
           const selected = pickWeighted(pools[pickedType], 1, rngKey)[0];
           if (!selected) break;
           directItems.push({ ...selected, purchased: false });
+          excludedIds.add(selected.id);
           pools[pickedType] = pools[pickedType].filter(
             (item) => item.id !== selected.id,
           );
@@ -9735,6 +9786,10 @@
           5,
           Math.floor(state.player.reputation / 5),
         );
+        const maestroSig = state.player.signatures.find(s => s.id === 'meeting_maestro');
+        if (maestroSig) {
+          bonusRep += state.player.buffs.filter(b => b.usedBy === state.player.name).length * 2;
+        }
         const flooredBonus = Math.floor(bonusRep);
         const winsRep = Math.max(0, state.player.currentWins || 0) * 2;
         const totalRep =
@@ -9907,7 +9962,15 @@
             bcc: bccPool,
             dev: devPool,
           };
-          state.shop.directItems = generateDirectItems(directPools);
+          const excludedIds = new Set();
+          if (state.shop.packs) {
+            state.shop.packs.forEach((pack) => {
+              if (pack.options) {
+                pack.options.forEach((opt) => excludedIds.add(opt.id));
+              }
+            });
+          }
+          state.shop.directItems = generateDirectItems(directPools, "misc", excludedIds);
           logGameEvent("shop_reroll_view", {
             directItems: (state.shop.directItems || [])
               .filter((item) => !item.purchased)
@@ -13207,7 +13270,7 @@
         });
       }
 
-      function handleOpponentDefeat(o, byPlayer = false) {
+      function handleOpponentDefeat(o, byPlayer = false, attacker = null) {
         if (o.isDefeated) return;
         o.hp = 0;
         o.isDefeated = true;
@@ -13217,6 +13280,10 @@
           actorName: o.name,
           byPlayer,
         });
+        runUnitEffects(state.player, "stakeholder_opt_out", { target: o, byPlayer, attacker });
+        if (!byPlayer && attacker && attacker.id !== "player") {
+          runUnitEffects(state.player, "stakeholder_opt_out_other", { target: o, attacker });
+        }
         if (o.employeeId === "colin_information_technology") {
           metaState.departmentUnlocks = metaState.departmentUnlocks || {
             executive: true,
@@ -14123,7 +14190,7 @@
             "border-l-4 border-blue-600",
           );
           runUnitEffects(p, "reply_to", { target, damage: d });
-          if (target.hp <= 0) handleOpponentDefeat(target, true);
+          if (target.hp <= 0) handleOpponentDefeat(target, true, p);
         } else if (type === "ESCALATE") {
           const d = getUnitDamage(p, "escalate");
           let totalBlocked = 0;
@@ -14191,7 +14258,7 @@
             "bg-orange-50 border-l-4 border-orange-500",
           );
           runUnitEffects(p, "escalate", {});
-          defeated.forEach((o) => handleOpponentDefeat(o, true));
+          defeated.forEach((o) => handleOpponentDefeat(o, true, p));
         } else if (type === "DEFLECT") {
           p.deflectChargeReflect = getUnitDeflectReflect(p);
           p.deflectChargeReduce = getUnitDeflectReduce(p);
@@ -14322,7 +14389,7 @@
             replyBody,
             "bg-yellow-50 font-bold border-l-4 border-yellow-500",
           );
-          defeated.forEach((o) => handleOpponentDefeat(o, true));
+          defeated.forEach((o) => handleOpponentDefeat(o, true, p));
         }
 
         clearOpponentDeflects();
@@ -14596,7 +14663,7 @@
                     a.hp = Math.min(getUnitMaxHp(a), a.hp + recoverPerHit);
                   }
                   if (t !== state.player && t.hp <= 0)
-                    handleOpponentDefeat(t);
+                    handleOpponentDefeat(t, false, a);
                 }
               });
               logGameEvent("action_result", {
@@ -14831,12 +14898,12 @@
                   body,
                   "text-gray-500 text-[11px]",
                 );
-                if (target.hp <= 0) handleOpponentDefeat(target);
+                if (target.hp <= 0) handleOpponentDefeat(target, false, a);
               }
             }
 
             if (a.hp <= 0) {
-              handleOpponentDefeat(a);
+              handleOpponentDefeat(a, false, target === state.player ? state.player : target);
               return;
             }
 
