@@ -838,6 +838,7 @@
       }
       .contacts-container.expanded {
         max-height: 140px;
+        overflow-y: auto;
       }
       .contacts-more {
         cursor: pointer;
@@ -13425,10 +13426,16 @@
           });
 
           ccDisplay.className = "flex items-center gap-1 text-gray-600";
+          if (state.ccExpanded) {
+            ccDisplay.classList.remove("items-center");
+            ccDisplay.classList.add("items-start");
+          } else {
+            ccDisplay.classList.add("items-center");
+            ccDisplay.classList.remove("items-start");
+          }
           ccDisplay.innerHTML = "";
           const container = document.createElement("div");
           container.className = "contacts-container";
-          const maxPreview = 4;
           sortedBuffs.forEach((b) => {
             const pill = document.createElement("button");
             pill.className = "cc-pill";
@@ -13443,17 +13450,45 @@
           });
           ccDisplay.appendChild(container);
 
-          if (sortedBuffs.length > maxPreview) {
-            const more = document.createElement("span");
-            const hiddenCount = sortedBuffs.length - maxPreview;
-            more.className = "contacts-more text-[9px]";
-            more.innerText = `+ ${hiddenCount} more`;
-            more.onclick = () => {
-              const expanded = container.classList.toggle("expanded");
-              more.innerText = expanded ? "Show less" : `+ ${hiddenCount} more`;
-            };
-            ccDisplay.appendChild(more);
+          const more = document.createElement("span");
+          more.className = "contacts-more text-[9px] hidden";
+          ccDisplay.appendChild(more);
+          const expanded = !!state.ccExpanded;
+
+          if (state.ccExpanded) {
+            container.classList.add("expanded");
+          } else {
+            container.classList.remove("expanded");
           }
+          requestAnimationFrame(() => {
+            const pills = Array.from(container.children);
+            if (!pills.length) return;
+            const firstRowTop = pills[0].offsetTop;
+            let wrapCount = 0;
+            pills.forEach((pill) => {
+              const onFirstRow = pill.offsetTop === firstRowTop;
+              if (!onFirstRow) wrapCount += 1;
+            });
+            pills.forEach((pill) => {
+              const onFirstRow = pill.offsetTop === firstRowTop;
+              if (!expanded && !onFirstRow) {
+                pill.style.display = "none";
+              } else {
+                pill.style.display = "";
+              }
+            });
+            if (wrapCount > 0) {
+              more.classList.remove("hidden");
+              more.innerText = expanded ? "Show less" : `+ ${wrapCount} more`;
+              more.onclick = () => {
+                state.ccExpanded = !state.ccExpanded;
+                updateUI();
+              };
+            } else {
+              more.classList.add("hidden");
+              more.onclick = null;
+            }
+          });
         }
 
         updateStatusBarTime();
