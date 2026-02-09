@@ -5493,7 +5493,7 @@
             wins: 1,
           },
           intro:
-            "Hi team,<br><br>I am absolutely disgusted. Someone heated up fish in the breakroom microwave. <strong>{playerName}</strong>, I'm sure you noticed the stench. <strong>{opp1}</strong>, I know you have the policy manual out already. <strong>{opp0}</strong>, please document this.<br><br>Please advise immediately on who is responsible for this violation of shared space ethics.",
+            "Hi team,<br><br>I was absolutely disgusted by the scent in the lunch room today. It appears someone heated up fish in the breakroom microwave, in direct violation of the posted policy.<br><strong>{playerName}</strong>, I'm sure you noticed the stench. <strong>{opp1}</strong>, I know you have the policy manual out already. <strong>{opp0}</strong>, please document this.<br><br>Please advise immediately on who is responsible for this violation of shared space ethics.",
           opponents: [
             {
               id: 1,
@@ -6252,6 +6252,7 @@
         lossReason: null,
         isProcessing: false,
         gameOver: false,
+        missionActive: false,
         removedByPlayer: 0,
         removedTotal: 0,
         postPromotionScreen: null,
@@ -6935,10 +6936,20 @@
 
       function handleInboxButton() {
         if (state.activeScreen === "inbox-screen") {
-          startQuarter();
+          if (state.missionActive) {
+            resumeCurrentMission();
+          } else {
+            startQuarter();
+          }
         } else {
           showInbox();
         }
+      }
+
+      function resumeCurrentMission() {
+        transitionTo("game-ui");
+        updateStatusBarTime();
+        updateUI();
       }
 
       function openGameSettings() {
@@ -6949,7 +6960,7 @@
         modal.className =
           "fixed inset-0 bg-black/40 z-[170] flex items-center justify-center p-4";
         modal.innerHTML = `
-          <div class="bg-[#c0c0c0] retro-border p-0.25 w-full max-w-[280px] shadow-2xl">
+          <div class="bg-[#c0c0c0] retro-border p-0.25 w-full max-w-[252px] shadow-2xl">
             <div class="window-titlebar text-white px-2 py-1 text-[10px] font-bold flex justify-between items-center">
               <span>System Settings</span>
               <button id="game-settings-close" class="w-3.5 h-3.5 bg-[#c0c0c0] border border-white shadow-[1px_1px_0px_black] text-black text-[9px] flex items-center justify-center font-bold">✕</button>
@@ -7043,7 +7054,13 @@
         const urgent = document.createElement("div");
         urgent.className =
           "grid grid-cols-12 p-2 border-b border-gray-100 bg-blue-50 cursor-pointer hover:bg-blue-200 font-bold border-l-4 border-l-blue-600";
-        urgent.onclick = startQuarter;
+        urgent.onclick = () => {
+          if (state.missionActive) {
+            resumeCurrentMission();
+          } else {
+            startQuarter();
+          }
+        };
         urgent.innerHTML = `<div class="col-span-1 text-red-600">!</div><div class="col-span-4 text-blue-800">${mission.from}</div><div class="col-span-7">${mission.subject}</div>`;
         list.appendChild(urgent);
 
@@ -9115,6 +9132,7 @@
       function startQuarter() {
         transitionTo("game-ui");
         state.gameOver = false;
+        state.missionActive = true;
         state.turn = 0;
         state.lossReason = null;
         state.isProcessing = false;
@@ -9546,6 +9564,7 @@
 
       function endQuarter() {
         state.isProcessing = true;
+        state.missionActive = false;
         state.shopVisitIndex = (state.shopVisitIndex || 0) + 1;
         generateShopItems();
         setTimeout(() => {
@@ -13185,6 +13204,7 @@
       function triggerTimeoutLoss() {
         if (state.gameOver) return;
         state.gameOver = true;
+        state.missionActive = false;
         state.lossReason = "timeout";
         updateUI();
         setTimeout(showLoseScreen, 1500);
