@@ -11011,15 +11011,17 @@
           const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
           const subject = mission && mission.subject ? mission.subject : "Thread";
           ownedEmailTemplate.innerHTML = `
-            <div class="email-template-container border border-gray-200 rounded p-4 bg-white shadow-inner">
+            <div class="email-template-container border border-gray-200 bg-white shadow-inner">
               <div class="email-template-header font-sans text-[10px] text-gray-700 space-y-1">
                 <div><strong>To:</strong> everyone@gov.org</div>
               </div>
-              <div id="shop-owned-salutation" class="drop-zone min-h-6 bg-gray-50 my-2 p-1 text-[9px]"></div>
-              <div class="flex-grow py-2 text-gray-400 italic text-[10px] select-none leading-relaxed">
-                Please be advised that the quarterly strategy session has been rescheduled. We remain committed to organizational excellence...
+              <div id="shop-owned-salutation" class="drop-zone min-h-6 bg-gray-50 mt-2 p-1 text-[9px] relative">
+                <div id="salutation-compare-overlay" class="slot-compare-overlay"></div>
               </div>
-              <div id="shop-owned-signoff" class="drop-zone min-h-6 bg-gray-50 p-1 text-[9px]"></div>
+              <div class="flex-grow py-2 text-gray-400 italic text-[10px] select-none leading-relaxed">&lt;EMAIL CONTENT&gt;</div>
+              <div id="shop-owned-signoff" class="drop-zone min-h-6 bg-gray-50 p-1 text-[9px] relative">
+                <div id="signoff-compare-overlay" class="slot-compare-overlay"></div>
+              </div>
               <div id="drawer-owned-signatures" class="space-y-1 pt-4 border-t border-gray-100 relative">
                 <div id="sig-count-header" class="text-[9px] font-bold text-gray-600 uppercase mb-2">
                   Signatures (${state.player.signatures.length}/${state.player.title.sigLimit})
@@ -11058,10 +11060,6 @@
                 `<div class="text-[10px] italic text-gray-400">No greeting set.</div>`;
               salutationSlot.onclick = null;
             }
-            const compare = document.createElement("div");
-            compare.id = "salutation-compare-overlay";
-            compare.className = "slot-compare-overlay";
-            salutationSlot.appendChild(compare);
           }
 
           const signoffSlot = document.getElementById("shop-owned-signoff");
@@ -11086,10 +11084,6 @@
                 `<div class="text-[10px] italic text-gray-400">No sign-off set.</div>`;
               signoffSlot.onclick = null;
             }
-            const compare = document.createElement("div");
-            compare.id = "signoff-compare-overlay";
-            compare.className = "slot-compare-overlay";
-            signoffSlot.appendChild(compare);
           }
 
           const sigList = document.getElementById("sig-list");
