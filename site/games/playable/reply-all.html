@@ -10935,12 +10935,6 @@
           return { ok: true, actionLabel: "" };
         }
         if (type === "salutation") {
-          if (state.player.salutation)
-            return {
-              ok: false,
-              reason: "limit",
-              actionLabel: "DELETE GREETING TO APPLY",
-            };
           return { ok: true, actionLabel: "" };
         }
         if (type === "signoff")
@@ -12316,15 +12310,19 @@
           typeLabel,
           description,
           rarity,
-          repLabel,
           actionLabel,
           actionDisabled,
           onAction,
+          cost,
         }) => {
           const container = document.createElement("div");
           container.className = "relative";
           const rarityText = (rarity || "").toUpperCase();
-          const repText = repLabel || "";
+          const repText =
+            typeof cost === "number" && cost > 0 ? `${cost} REP` : "";
+          const buttonLabel = repText
+            ? `${actionLabel || "REQUEST"} (${repText})`
+            : actionLabel || "REQUEST";
           container.innerHTML = `
             <span class="absolute -top-3 -left-2 z-10 text-[9px] font-bold uppercase px-2 py-0.5 rounded-sm bg-amber-400 text-amber-950 shadow-sm border border-amber-600">
               ${rarityText || "COMMON"}
@@ -12335,18 +12333,13 @@
                   <span class="truncate text-[#000080] text-sm leading-none mb-1">${title || ""}</span>
                   <span class="text-[9px] text-[#404040] opacity-70 uppercase">${typeLabel || ""}</span>
                 </div>
-                ${
-                  repText
-                    ? `<div class="text-blue-800 font-mono bg-blue-100 px-1 border border-blue-200">${repText}</div>`
-                    : ""
-                }
               </div>
               <div class="text-[10px] leading-snug text-gray-800 bg-white/50 p-2 border border-[#808080] italic">
                 ${description || ""}
               </div>
               <div class="flex gap-2">
                 <button class="flex-1 retro-button text-[10px] font-bold py-2 uppercase">
-                  ${actionLabel || "REQUEST"}
+                  ${buttonLabel}
                 </button>
                 <button class="px-3 retro-button text-[10px] font-bold py-2 text-red-700">✕</button>
               </div>
@@ -12434,9 +12427,9 @@
             typeLabel: getItemTypeLabel(item.itemType),
             description: getItemBonusText(item) || item.description || "",
             rarity: item.rarity,
-            repLabel: "",
             actionLabel: `DISCARD BCC +${refund} REP`,
             actionDisabled: false,
+            cost: 0,
             onAction: () => {
               sellItem("bcc", item);
               updateShopUI();
@@ -12446,16 +12439,14 @@
 
         if (!content) {
           if (opts.mode === "pack") {
-            const repLabel =
-              item.cost && item.cost > 0 ? `${item.cost} REP` : "";
             content = buildNonContactOverlay({
               title: item.name,
               typeLabel: getItemTypeLabel(item.itemType || item.type),
               description: item.description || "",
               rarity: item.rarity,
-              repLabel,
               actionLabel: item.purchased ? "COMPLETED" : "ATTEND EVENT",
               actionDisabled: !!item.purchased || (state.player.reputation < (item.cost || 0)),
+              cost: item.cost || 0,
               onAction: () => buyPack(item),
             });
           } else if (opts.mode === "pack-option") {
@@ -12468,9 +12459,9 @@
               typeLabel: getItemTypeLabel(item.itemType),
               description: bonusDesc,
               rarity: item.rarity,
-              repLabel: "",
               actionLabel: "SELECT",
               actionDisabled: false,
+              cost: 0,
               onAction: () => confirmPackOption(item),
             });
           } else {
@@ -12490,24 +12481,23 @@
                 typeLabel: getItemTypeLabel(item.itemType),
                 description: getItemBonusText(item) || item.description || "",
                 rarity: item.rarity,
-                repLabel: "",
                 actionLabel: `ARCHIVE +${refund} REP`,
                 actionDisabled: false,
+                cost: 0,
                 onAction: () => {
                   sellItem(item.itemType, item);
                   updateShopUI();
                 },
               });
             } else {
-              const repLabel = cost > 0 ? `${cost} REP` : "";
               content = buildNonContactOverlay({
                 title: item.name,
                 typeLabel: getItemTypeLabel(item.itemType),
                 description: getItemBonusText(item) || item.description || "",
                 rarity: item.rarity,
-                repLabel,
                 actionLabel: getItemActionLabel(item, "shop", eligibility),
                 actionDisabled: !eligibility.ok || owned,
+                cost,
                 onAction: () => buyDirectItem(item, cost),
               });
             }
