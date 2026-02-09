@@ -2761,6 +2761,7 @@
             "I'm looping in <strong>{name}</strong> to stabilize the account and reframe the narrative.",
           eff: {
             globalDmg: 5,
+            levGainReply: 1,
           },
           usedBy: null,
         },
@@ -2948,6 +2949,18 @@
           name: "Sent from the breakroom",
           rarity: "uncommon",
           heal: 3,
+        },
+        {
+          id: "toastmaster_member",
+          name: "Toastmaster Member",
+          rarity: "uncommon",
+          levGainPromote: 8,
+        },
+        {
+          id: "bare_minimum_mondays",
+          name: "Bare minimum Mondays",
+          rarity: "uncommon",
+          levGainDeflect: 3,
         },
         {
           id: "thanks_advance",
@@ -7166,6 +7179,10 @@
         "defFlat",
         "heal",
         "levMult",
+        "levGainReply",
+        "levGainEscalate",
+        "levGainDeflect",
+        "levGainPromote",
         "repBonus",
         "endRep",
         "addressLimit",
@@ -7244,6 +7261,10 @@
         defFlat: { label: "Flat Defense", shortName: "Flat Def" },
         heal: { label: "Heal", shortName: "Heal" },
         levMult: { label: "Leverage Multiplier", shortName: "Leverage x" },
+        levGainReply: { label: "Reply To Leverage", shortName: "Reply Lev" },
+        levGainEscalate: { label: "Escalate Leverage", shortName: "Esc Lev" },
+        levGainDeflect: { label: "Deflect Leverage", shortName: "Def Lev" },
+        levGainPromote: { label: "Self-Promote Leverage", shortName: "Promo Lev" },
         repBonus: { label: "Bonus Reputation", shortName: "Bonus Rep" },
         endRep: { label: "End Reputation", shortName: "End Rep" },
         addressLimit: { label: "Address Limit", shortName: "Address" },
@@ -7309,6 +7330,10 @@
         if (u.defFlat == null) u.defFlat = 0;
         if (u.heal == null) u.heal = 0;
         if (u.levMult == null) u.levMult = 0;
+        if (u.levGainReply == null) u.levGainReply = 0;
+        if (u.levGainEscalate == null) u.levGainEscalate = 0;
+        if (u.levGainDeflect == null) u.levGainDeflect = 0;
+        if (u.levGainPromote == null) u.levGainPromote = 0;
         if (u.repBonus == null) u.repBonus = 0;
         if (u.endRep == null) u.endRep = 0;
         if (u.addressLimit == null) u.addressLimit = 0;
@@ -7837,10 +7862,18 @@
         return null;
       }
 
-      function getPlayerLeverageGain(base) {
+      function getPlayerLeverageGain(actionType, base) {
         const p = state.player;
         const stats = computeUnitStats(p);
-        return base * (1 + stats.levMult);
+        const bonusMap = {
+          reply_to: stats.levGainReply || 0,
+          escalate: stats.levGainEscalate || 0,
+          deflect: stats.levGainDeflect || 0,
+          promote: stats.levGainPromote || 0,
+        };
+        const bonus = bonusMap[actionType] || 0;
+        const totalBase = base + bonus;
+        return totalBase * (1 + stats.levMult);
       }
 
       function formatMessageBody(sender, content) {
@@ -10762,6 +10795,14 @@
           parts.push(`+${stats.numCCperCCaction} CC per action`);
         if (stats.contactTrainingLimit)
           parts.push(`+${stats.contactTrainingLimit} training limit`);
+        if (stats.levGainReply)
+          parts.push(`Reply to +${stats.levGainReply} leverage`);
+        if (stats.levGainEscalate)
+          parts.push(`Escalate +${stats.levGainEscalate} leverage`);
+        if (stats.levGainDeflect)
+          parts.push(`Deflect +${stats.levGainDeflect} leverage`);
+        if (stats.levGainPromote)
+          parts.push(`Self-Promote +${stats.levGainPromote} leverage`);
         return parts.join(", ");
       }
 
@@ -13963,7 +14004,7 @@
           const cleaveResult = cleaveActive
             ? applyDepartmentCleave(p, target, d)
             : { hits: 0, total: 0 };
-          let levGain = getPlayerLeverageGain(2);
+          let levGain = getPlayerLeverageGain("reply_to", 2);
           p.ult = Math.min(LEVERAGE_MAX, p.ult + levGain);
 
           const followUpChance = getUnitFollowUpChance(p);
@@ -14121,7 +14162,7 @@
             hpBefore: escHpBefore,
             hpAfter: p.hp,
           });
-          let levGain = getPlayerLeverageGain(1);
+          let levGain = getPlayerLeverageGain("escalate", 1);
           p.ult = Math.min(LEVERAGE_MAX, p.ult + levGain);
           const line = drawFromLineBag(
             p,
@@ -14154,6 +14195,8 @@
         } else if (type === "DEFLECT") {
           p.deflectChargeReflect = getUnitDeflectReflect(p);
           p.deflectChargeReduce = getUnitDeflectReduce(p);
+          let levGain = getPlayerLeverageGain("deflect", 0);
+          p.ult = Math.min(LEVERAGE_MAX, p.ult + levGain);
           if (p.salutation && p.salutation.deflectBoostSingle) {
             p.singleDmg += p.salutation.deflectBoostSingle;
           }
@@ -14185,6 +14228,8 @@
           );
         } else if (type === "PROMOTE") {
           p.currentWins--;
+          let levGain = getPlayerLeverageGain("promote", 0);
+          p.ult = Math.min(LEVERAGE_MAX, p.ult + levGain);
           const promoteHeal = getUnitSelfPromoteHeal(p, 20);
           const promoteHpBefore = p.hp;
           const promotePotential = p.hp + promoteHeal;
