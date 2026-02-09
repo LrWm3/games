@@ -773,6 +773,9 @@
         position: relative;
         text-align: center;
       }
+      .action-btn.is-disabled {
+        opacity: 0.5;
+      }
       #reply-all-btn {
         text-align: left;
       }
@@ -1803,7 +1806,7 @@
                 Ready.
               </div>
               <div
-                class="retro-border-inset px-2.5 flex items-center w-[74px] h-5 bg-gray-100 justify-center"
+                class="retro-border-inset px-2.5 flex items-center w-[74px] h-5 bg-gray-100 justify-center flex-shrink-0"
                 id="status-bar-email"
               >
                 9:00 AM
@@ -1854,8 +1857,7 @@
               <button
                 id="reply-all-btn"
                 onclick="performAction('ULT')"
-                class="retro-button py-2 flex flex-col items-center disabled:opacity-50 action-btn"
-                disabled
+                class="retro-button py-2 flex flex-col items-center action-btn"
               >
                 <span class="text-[11px] font-bold text-red-800"
                   >REPLY ALL</span
@@ -13335,7 +13337,12 @@
         }
 
         const replyAllBtn = document.getElementById("reply-all-btn");
-        if (replyAllBtn) replyAllBtn.disabled = p.ult < LEVERAGE_MAX;
+        if (replyAllBtn) {
+          const disabled = p.ult < LEVERAGE_MAX;
+          replyAllBtn.dataset.disabled = disabled ? "true" : "false";
+          replyAllBtn.setAttribute("aria-disabled", disabled ? "true" : "false");
+          replyAllBtn.classList.toggle("is-disabled", disabled);
+        }
         const attackBtn = document.getElementById("attack-btn");
         if (attackBtn)
           attackBtn.disabled = replyDisabled || state.isProcessing;
@@ -13820,7 +13827,12 @@
         if (state.isProcessing || state.gameOver) return;
         const btnId = getActionButtonId(type);
         const btn = btnId ? document.getElementById(btnId) : null;
-        const isDisabled = !!(btn && btn.disabled);
+        const isDisabled = !!(
+          btn &&
+          (btn.disabled ||
+            btn.dataset.disabled === "true" ||
+            btn.classList.contains("is-disabled"))
+        );
         if (type === "CC") {
           clearArmedAction();
           openAddressBook();
