@@ -1000,7 +1000,7 @@
               <div id="shop-pack-title" class="text-sm font-bold">Training</div>
               <div id="shop-pack-subtitle" class="text-[10px] text-gray-600">Choose 0 more</div>
             </div>
-            <button onclick="closePackView()" class="retro-button text-[10px] px-2 py-1">Back</button>
+            <button onclick="closePackView()" class="retro-button text-[10px] px-2 py-1">take nothing</button>
           </div>
           <div id="shop-pack-options" class="border border-gray-200 bg-white shop-card-list p-2"></div>
         </div>
@@ -8238,6 +8238,8 @@
         if (mainContent) mainContent.classList.remove("hidden");
         if (packView) packView.classList.add("hidden");
         currentPackOptions = [];
+        state.pendingTraining = null;
+        updateShopUI();
       }
 
       function resolvePackSelection(opt, options = {}) {
@@ -10841,7 +10843,9 @@
 
       function buyPack(pack) {
         hideShopItemOverlay();
-        state.player.reputation -= pack.cost;
+        const cost = pack.cost || 0;
+        if (state.player.reputation < cost || pack.purchased) return;
+        state.player.reputation -= cost;
         pack.purchased = true;
         logGameEvent("purchase", {
           source: "shop",
@@ -10852,6 +10856,7 @@
           effects: snapshotItemEffects(pack),
         });
         runUnitEffects(state.player, "pack_purchase", { pack });
+        updateShopUI();
         startPackOpening(pack);
       }
 
@@ -11061,6 +11066,7 @@
                 </div>
                 <div class="shop-card-frame" style="background:${typeMeta.paneBg}; color:${typeMeta.paneText};">
                   <div class="shop-card-name">${pack.name}</div>
+                  <div class="mt-auto text-[9px] font-bold text-blue-800">${pack.cost} REP</div>
                 </div>
               </div>
             `;
@@ -12337,7 +12343,7 @@
               rarity: item.rarity,
               repLabel,
               actionLabel: item.purchased ? "COMPLETED" : "ATTEND EVENT",
-              actionDisabled: !!item.purchased,
+              actionDisabled: !!item.purchased || (state.player.reputation < (item.cost || 0)),
               onAction: () => buyPack(item),
             });
           } else if (opts.mode === "pack-option") {
