@@ -880,6 +880,30 @@
         position: relative;
         z-index: 2;
       }
+      .cc-pill {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 6px;
+        font-size: 9px;
+        font-weight: bold;
+        cursor: pointer;
+        border: 1px solid var(--win-border-dark);
+        box-shadow: 1px 1px 0px #000;
+        min-width: 50px;
+        white-space: nowrap;
+        background: #fde68a;
+        position: relative;
+        transition: transform 0.1s;
+      }
+      .cc-pill:hover {
+        background: #fcd34d;
+      }
+      .cc-pill .pill-text {
+        position: relative;
+        z-index: 2;
+        text-shadow: 0px 0px 2px #fff8db;
+      }
       .no-scrollbar::-webkit-scrollbar {
         display: none;
       }
@@ -7671,8 +7695,10 @@
         const attackerHpBefore =
           attacker && attacker.hp != null ? attacker.hp : null;
         let dmg = Math.max(0, Math.floor(rawDamage));
-        const flatDef = getUnitFlatDef(target);
-        dmg = Math.max(0, dmg - flatDef);
+        if (!options.ignoreDefense) {
+          const flatDef = getUnitFlatDef(target);
+          dmg = Math.max(0, dmg - flatDef);
+        }
         let blocked = 0;
         if (
           (target.deflectChargeReduce > 0 ||
@@ -13407,11 +13433,10 @@
           const maxPreview = 4;
           sortedBuffs.forEach((b) => {
             const pill = document.createElement("button");
-            pill.className =
-              "bg-blue-800 text-white px-1 text-[9px] rounded-sm hover:bg-blue-700";
+            pill.className = "cc-pill";
             pill.type = "button";
             const subtitle = b.subtitle ? ` • ${b.subtitle}` : "";
-            pill.innerHTML = `${b.name}${subtitle} (by ${b.usedBy})`;
+            pill.innerHTML = `<span class="pill-text">${b.name}${subtitle} (by ${b.usedBy})</span>`;
             pill.onclick = (e) => {
               e.stopPropagation();
               openCcProfile(b, pill);
@@ -13942,7 +13967,7 @@
           for (let wave = 0; wave < waves; wave++) {
             activeOpponents.forEach((o) => {
               if (o.hp > 0) {
-                const result = applyDamage(p, o, d);
+                const result = applyDamage(p, o, d, { ignoreDefense: true });
                 totalBlocked += result.blocked;
                 totalReflected += result.reflected;
                 if (recoverPerHit > 0) {
