@@ -1727,20 +1727,20 @@
             class="p-2 bg-[#f0f0f0] border-b border-[#808080] text-[10px] shrink-0 space-y-1"
           >
             <div class="flex items-center gap-2">
-              <span class="font-bold w-12 text-right">To:</span>
+              <span class="font-bold w-4 text-right">To:</span>
               <div
                 id="stakeholder-loop"
                 class="flex gap-1 overflow-x-auto no-scrollbar py-0.5"
               ></div>
             </div>
             <div class="flex gap-2 items-center" id="active-ccs">
-              <span class="font-bold w-12 text-right">CC:</span>
+              <span class="font-bold w-4 text-right">CC:</span>
               <div id="cc-display" class="flex gap-1 text-gray-400 italic">
                 No one in loop.
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <span class="font-bold w-12 text-right">Sub:</span>
+              <span class="font-bold w-4 text-right">Sub:</span>
               <div id="thread-subject" class="truncate text-gray-700"></div>
             </div>
           </div>
@@ -6248,6 +6248,7 @@
         pendingTraining: null,
         roundEndUpgrades: {},
         expenseReportActive: false,
+        messageLogEntries: [],
       };
 
       let rngStreams = {};
@@ -6355,6 +6356,9 @@
         }
         if (!state.startUnlocks) {
           state.startUnlocks = { executive: 0, it: 0, finance: 0 };
+        }
+        if (!state.messageLogEntries) {
+          state.messageLogEntries = [];
         }
         if (!state.startConfig.departmentId) state.startConfig.departmentId = "executive";
         if (state.startConfig.prestige == null) state.startConfig.prestige = 0;
@@ -6737,7 +6741,6 @@
               shop: serializeShop(state.shop),
             },
             opponents,
-            messageLog: document.getElementById("message-log")?.innerHTML || "",
             activeScreen: [
               "start-screen",
               "induction-screen",
@@ -6824,9 +6827,7 @@
         const screen = save.activeScreen || "inbox-screen";
         transitionTo(screen);
         if (screen === "game-ui") {
-          const log = document.getElementById("message-log");
-          if (log) log.innerHTML = save.messageLog || "";
-          rebindEmailRetargeting();
+          renderMessageLog();
           updateUI();
         } else if (screen === "shop-screen") {
           updateShopUI();
@@ -9202,6 +9203,7 @@
         planAiActions();
 
         document.getElementById("message-log").innerHTML = "";
+        state.messageLogEntries = [];
         document.getElementById("game-header-subject").innerText =
           getMissionHeaderSubject(mission);
         updateStatusBarTime();
@@ -13295,7 +13297,7 @@
         );
         setActionHint(
           "reply-all-btn",
-          `Reply All: -${Math.floor(replyAllDmg)} Cred to all (costs ${LEVERAGE_MAX} leverage).`,
+          `Reply All: -${Math.floor(replyAllDmg)} Cred to all (costs ${LEVERAGE_MAX} leverage)`,
         );
 
         if (state.actionArmed) {
@@ -13435,71 +13437,88 @@
         renderDraftingIndicators();
       }
 
-      function addEmailToLog(from, to, subject, body, classes = "") {
-        const log = document.getElementById("message-log");
-        const entry = document.createElement("div");
+      function buildEmailEntryData(from, to, subject, body, classes = "") {
         const time = getCurrentTimeString();
-        const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
-        const reCount =
-          state.turn > 0 ? "RE: ".repeat(Math.min(state.turn, 4)) : "";
-        const baseSubject =
-          mission && mission.subject ? mission.subject : subject;
+        const opponent =
+          typeof opponents !== "undefined"
+            ? opponents.find((o) => (o.name === from || o.email === from) && o.hp > 0)
+            : null;
+        return {
+          from,
+          to,
+          subject,
+          body,
+          classes,
+          time,
+          opponentId: opponent ? opponent.id : null,
+          isIntro: classes.includes("intro-message"),
+        };
+      }
 
-        entry.className = `message-entry p-0 border-2 border-gray-100 bg-white shadow-sm ${classes}`;
+      function renderEmailEntry(entryData, { prepend } = {}) {
+        const log = document.getElementById("message-log");
+        if (!log) return null;
+        const entry = document.createElement("div");
+        entry.className = `message-entry p-0 border-2 border-gray-100 bg-white shadow-sm ${entryData.classes || ""}`;
 
-        // Allow targeting stakeholders by tapping their emails
-        const opponent = (typeof opponents !== "undefined") ? opponents.find((o) => (o.name === from || o.email === from) && o.hp > 0) : null;
-        if (opponent) {
-          entry.classList.add("cursor-pointer", "interactable-email");
-          entry.dataset.opponentId = opponent.id;
-          entry.addEventListener("click", () => {
-            if (state.targetId === opponent.id) {
-              showStakeholderOverlay(opponent, entry);
-            } else {
-              state.targetId = opponent.id;
-              updateUI();
-            }
-          });
+        if (entryData.opponentId) {
+          const opponent = opponents.find((o) => o.id === entryData.opponentId);
+          if (opponent) {
+            entry.classList.add("cursor-pointer", "interactable-email");
+            entry.dataset.opponentId = opponent.id;
+            entry.addEventListener("click", () => {
+              if (state.targetId === opponent.id) {
+                showStakeholderOverlay(opponent, entry);
+              } else {
+                state.targetId = opponent.id;
+                updateUI();
+              }
+            });
+          }
         }
 
         entry.innerHTML = `
                 <div class="email-header p-2">
                     <div class="flex flex-wrap gap-x-3 gap-y-1">
-                        <div><strong>From:</strong> ${from}</div>
-                        <div><strong>To:</strong> ${to}</div>
-                        <div><strong>Sent:</strong> Today, ${time}</div>
+                        <div><strong>From:</strong> ${entryData.from}</div>
+                        <div><strong>To:</strong> ${entryData.to}</div>
+                        <div><strong>Sent:</strong> Today, ${entryData.time}</div>
                     </div>
                 </div>
                 <div class="email-body px-3 py-2 font-serif">
-                    ${body}
+                    ${entryData.body}
                 </div>
             `;
         const drafting = document.getElementById("drafting-indicators");
-        if (drafting && classes.includes("intro-message")) {
+        if (drafting && entryData.isIntro) {
           drafting.insertAdjacentElement("afterend", entry);
-        } else {
+        } else if (prepend) {
           log.prepend(entry);
+        } else {
+          log.append(entry);
         }
+        return entry;
       }
 
-      function rebindEmailRetargeting() {
+      function renderMessageLog() {
         const log = document.getElementById("message-log");
         if (!log) return;
-        log.querySelectorAll(".interactable-email").forEach((entry) => {
-          if (entry.dataset.bound) return;
-          const opponentId = entry.dataset.opponentId;
-          const opponent = opponents.find((o) => o.id === opponentId);
-          if (!opponent) return;
-          entry.addEventListener("click", () => {
-            if (state.targetId === opponent.id) {
-              showStakeholderOverlay(opponent, entry);
-            } else {
-              state.targetId = opponent.id;
-              updateUI();
-            }
-          });
-          entry.dataset.bound = "true";
+        log.innerHTML = "";
+        const entries = Array.isArray(state.messageLogEntries)
+          ? state.messageLogEntries
+          : [];
+        entries.forEach((entry) => {
+          renderEmailEntry(entry, { prepend: false });
         });
+      }
+
+      function addEmailToLog(from, to, subject, body, classes = "") {
+        const entryData = buildEmailEntryData(from, to, subject, body, classes);
+        if (!Array.isArray(state.messageLogEntries)) {
+          state.messageLogEntries = [];
+        }
+        state.messageLogEntries.unshift(entryData);
+        renderEmailEntry(entryData, { prepend: true });
       }
 
       function renderDraftingIndicators() {
