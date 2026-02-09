@@ -3621,6 +3621,33 @@
             },
           ],
         },
+        {
+          id: "bye_for_now",
+          name: "Bye for now,",
+          rarity: "rare",
+          effects: [
+            {
+              event: "reply_to",
+              type: "add_random_cc_bonus",
+            },
+          ],
+        },
+        {
+          id: "love",
+          name: "Love,",
+          rarity: "rare",
+          effects: [
+            {
+              event: "reply_to",
+              type: "add_random_cc_bonus",
+            },
+            {
+              event: "thread_end",
+              type: "add_signoff_bonus",
+              stats: { contactTrainingLimit: 1 },
+            },
+          ],
+        }
       ];
 
       const BCC_CONTACTS = [
