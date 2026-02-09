@@ -966,15 +966,13 @@
             </button>
           </div>
         </div>
-        <div
-          class="bg-[#dfdfdf] border-b border-[#808080] p-1 flex gap-2 text-[10px]"
-        >
-          <button class="px-2 py-0.5 retro-border bg-[#c0c0c0]">File</button>
-          <button class="px-2 py-0.5 retro-border bg-[#c0c0c0]">Edit</button>
-          <button class="px-2 py-0.5 retro-border bg-[#c0c0c0]">View</button>
-          <button class="px-2 py-0.5 retro-border bg-[#c0c0c0]">Tools</button>
-          <button class="px-2 py-0.5 retro-border bg-[#c0c0c0]">Message</button>
-          <button class="px-2 py-0.5 retro-border bg-[#c0c0c0]">Help</button>
+        <div class="flex gap-4 px-2 py-0.5 border-b border-gray-500 text-[11px] shrink-0">
+          <span class="cursor-default hover:bg-[#000080] hover:text-white px-1">File</span>
+          <span class="cursor-default hover:bg-[#000080] hover:text-white px-1">Edit</span>
+          <span class="cursor-default hover:bg-[#000080] hover:text-white px-1">View</span>
+          <span class="cursor-default hover:bg-[#000080] hover:text-white px-1">Tools</span>
+          <span class="cursor-default hover:bg-[#000080] hover:text-white px-1">Message</span>
+          <span class="cursor-default hover:bg-[#000080] hover:text-white px-1">Help</span>
         </div>
         <div class="flex-grow flex overflow-hidden">
           <div
@@ -13218,7 +13216,7 @@
       function getMissionSubSubject(mission) {
         const subject = mission && mission.subject ? mission.subject : "Thread";
         const due = getMissionDeadlineTime(mission);
-        return `${subject} (resolution due by ${due})`;
+        return `${subject} (due by ${due})`;
       }
 
       function initActionHintBar() {
