@@ -379,8 +379,8 @@
       }
       .shop-card-item {
         width: 100%;
-        max-width: 110px;
-        height: 150px;
+        max-width: 88px;
+        height: 120px;
         display: flex;
         text-align: center;
         padding: 0;
@@ -390,14 +390,14 @@
         border-right: 2px solid #404040;
         border-bottom: 2px solid #404040;
         box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
-        font-size: 11px;
+        font-size: 9px;
         font-weight: 600;
         cursor: pointer;
         user-select: none;
       }
       .shop-card-header {
         width: 100%;
-        font-size: 9px;
+        font-size: 7px;
         font-weight: 700;
         text-transform: uppercase;
         color: #ffffff;
@@ -406,7 +406,7 @@
       }
       .shop-card-frame {
         flex: 1;
-        margin: 6px;
+        margin: 5px;
         background: #808080;
         border-top: 2px solid #404040;
         border-left: 2px solid #404040;
@@ -415,10 +415,10 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 6px;
+        padding: 5px;
       }
       .shop-card-item .shop-card-name {
-        font-size: 12px;
+        font-size: 10px;
         line-height: 1.2;
         color: #111827;
       }
@@ -624,22 +624,61 @@
         outline: 2px solid #fbbf24;
         box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.35);
       }
-      .shop-taskbar {
-        height: var(--shop-taskbar-height);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-shrink: 0;
+      .shop-layout {
+        display: grid;
+        gap: 12px;
+        width: calc(100% - 1rem);
+        max-width: 64rem;
+        margin: 0.5rem;
+        align-items: stretch;
       }
-      .shop-taskbar .retro-button.retro-border-inset {
-        border-top: 2px solid var(--win-border-dark) !important;
-        border-left: 2px solid var(--win-border-dark) !important;
-        border-bottom: 2px solid var(--win-border-light) !important;
-        border-right: 2px solid var(--win-border-light) !important;
+      .shop-layout-main {
+        min-width: 0;
+        min-height: 0;
       }
-      .shop-assets-container {
-        max-height: 40vh;
-        overflow-y: auto;
+      .shop-layout-assets {
+        min-width: 0;
+        min-height: 0;
+        display: grid;
+        gap: 12px;
+      }
+      .shop-layout-assets #assets-window-profile {
+        grid-column: 1 / -1;
+        grid-row: 1 / -1;
+      }
+      .shop-layout-assets .assets-window.hidden {
+        display: none;
+      }
+      @media (min-width: 900px) {
+        .shop-layout {
+          grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+          grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+        }
+        .shop-layout-main {
+          grid-column: 1 / 2;
+          grid-row: 1 / 3;
+        }
+        .shop-layout-assets {
+          grid-column: 2 / 3;
+          grid-row: 1 / 3;
+          grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+        }
+      }
+      @media (max-width: 899px) {
+        .shop-layout {
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-rows: auto auto;
+        }
+        .shop-layout-main {
+          grid-column: 1 / 2;
+          grid-row: 1 / 2;
+        }
+        .shop-layout-assets {
+          grid-column: 1 / 2;
+          grid-row: 2 / 3;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          grid-template-rows: auto;
+        }
       }
       .assets-window {
         display: flex;
@@ -945,9 +984,10 @@
       id="shop-screen"
       class="hidden fixed inset-0 z-[130] bg-[#008080] flex flex-col items-center"
     >
-      <div
-        class="bg-[#c0c0c0] retro-border w-[calc(100%-1rem)] max-w-4xl shadow-2xl flex flex-col min-h-0 flex-1 m-2"
-      >
+      <div class="shop-layout">
+        <div
+          class="bg-[#c0c0c0] retro-border shadow-2xl flex flex-col min-h-0 shop-layout-main"
+        >
         <div
           class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold shrink-0"
         >
@@ -1010,118 +1050,95 @@
           </div>
           <div id="shop-pack-options" class="border border-gray-200 bg-white shop-card-list p-2"></div>
         </div>
-      </div>
-      <div class="w-[calc(100%-1rem)] max-w-4xl mt-3 flex flex-col min-h-0 shop-assets-container m-2">
-        <div id="assets-window-contacts" class="hidden assets-window bg-[#c0c0c0] retro-border shadow-2xl">
-          <div class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
-            <span>CONTACTS</span>
-            <button onclick="showAssetsWindow('none')" class="px-1">✕</button>
-          </div>
-          <div class="window-body p-2 bg-white space-y-2"></div>
         </div>
-        <div id="assets-window-email" class="hidden assets-window bg-[#c0c0c0] retro-border shadow-2xl">
-          <div class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
-            <span>EMAIL TEMPLATE</span>
-            <button onclick="showAssetsWindow('none')" class="px-1">✕</button>
-          </div>
-          <div class="window-body p-2 bg-white space-y-2"></div>
-        </div>
-        <div id="assets-window-profile" class="hidden assets-window bg-[#c0c0c0] retro-border shadow-2xl">
-          <div class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
-            <span>MY PROFILE</span>
-            <button onclick="showAssetsWindow('none')" class="px-1">✕</button>
-          </div>
-          <div class="window-body p-3 bg-[#c0c0c0] space-y-2 relative profile-drop-target profile-window-body">
-            <div id="profile-drop-overlay" class="profile-drop-overlay"></div>
-            <div class="flex border-b-2 border-b-[#808080] relative z-0">
-              <button onclick="showProfileTab('summary')" id="profile-tab-summary" class="profile-tab-btn active">Summary</button>
-              <button onclick="showProfileTab('stats')" id="profile-tab-stats" class="profile-tab-btn">Full Stats</button>
-              <button onclick="showProfileTab('sources')" id="profile-tab-sources" class="profile-tab-btn">Sources</button>
+        <div class="shop-layout-assets shop-assets-container">
+          <div id="assets-window-contacts" class="assets-window bg-[#c0c0c0] retro-border shadow-2xl">
+            <div class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+              <span>CONTACTS</span>
+              <button onclick="showAssetsWindow('none')" class="px-1">✕</button>
             </div>
+            <div class="window-body p-2 bg-white space-y-2"></div>
+          </div>
+          <div id="assets-window-email" class="assets-window bg-[#c0c0c0] retro-border shadow-2xl">
+            <div class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+              <span>EMAIL TEMPLATE</span>
+              <button onclick="showAssetsWindow('none')" class="px-1">✕</button>
+            </div>
+            <div class="window-body p-2 bg-white space-y-2"></div>
+          </div>
+          <div id="assets-window-profile" class="hidden assets-window bg-[#c0c0c0] retro-border shadow-2xl">
+            <div class="window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+              <span>MY PROFILE</span>
+              <button onclick="showAssetsWindow('none')" class="px-1">✕</button>
+            </div>
+            <div class="window-body p-3 bg-[#c0c0c0] space-y-2 relative profile-drop-target profile-window-body">
+              <div id="profile-drop-overlay" class="profile-drop-overlay"></div>
+              <div class="flex border-b-2 border-b-[#808080] relative z-0">
+                <button onclick="showProfileTab('summary')" id="profile-tab-summary" class="profile-tab-btn active">Summary</button>
+                <button onclick="showProfileTab('stats')" id="profile-tab-stats" class="profile-tab-btn">Full Stats</button>
+                <button onclick="showProfileTab('sources')" id="profile-tab-sources" class="profile-tab-btn">Sources</button>
+              </div>
 
-            <div class="bg-[#c0c0c0] border-l-2 border-r-2 border-b-2 border-white shadow-[inset_-2px_-2px_0_#808080] p-3">
-              <div id="profile-panel-summary" class="profile-tab-panel active space-y-3">
-                <div>
-                  <div class="flex justify-between text-[10px] font-bold mb-1 uppercase text-[#404040]">
-                    <span>Credibility</span>
-                    <span id="profile-hp-text"></span>
+              <div class="bg-[#c0c0c0] border-l-2 border-r-2 border-b-2 border-white shadow-[inset_-2px_-2px_0_#808080] p-3">
+                <div id="profile-panel-summary" class="profile-tab-panel active space-y-3">
+                  <div>
+                    <div class="flex justify-between text-[10px] font-bold mb-1 uppercase text-[#404040]">
+                      <span>Credibility</span>
+                      <span id="profile-hp-text"></span>
+                    </div>
+                    <div class="h-3 bg-[#808080] border border-white shadow-[inset_1px_1px_1px_black]">
+                      <div id="profile-hp-bar" class="h-full bg-[#00ff00] border-r-2 border-[#008000]"></div>
+                    </div>
                   </div>
-                  <div class="h-3 bg-[#808080] border border-white shadow-[inset_1px_1px_1px_black]">
-                    <div id="profile-hp-bar" class="h-full bg-[#00ff00] border-r-2 border-[#008000]"></div>
+                  <div class="grid grid-cols-3 gap-2">
+                    <div class="bg-white retro-border-inset p-2">
+                      <div class="text-[9px] text-gray-500 font-bold uppercase">Reply To</div>
+                      <div id="profile-replyto" class="text-sm font-mono font-bold leading-none"></div>
+                    </div>
+                    <div class="bg-white retro-border-inset p-2">
+                      <div class="text-[9px] text-gray-500 font-bold uppercase">Escalate</div>
+                      <div id="profile-escalate" class="text-sm font-mono font-bold leading-none"></div>
+                    </div>
+                    <div class="bg-white retro-border-inset p-2">
+                      <div class="text-[9px] text-gray-500 font-bold uppercase">Reply All</div>
+                      <div id="profile-replyall" class="text-sm font-mono font-bold leading-none"></div>
+                    </div>
+                    <div class="bg-white retro-border-inset p-2">
+                      <div class="text-[9px] text-gray-500 font-bold uppercase">Deflect</div>
+                      <div class="text-[11px] font-mono font-bold leading-none">
+                        <span id="profile-deflect"></span>
+                        <span class="text-[9px] text-gray-400">/</span>
+                        <span id="profile-retaliate"></span>
+                      </div>
+                      <div class="text-[8px] uppercase text-gray-400">Reduce / Retaliate</div>
+                    </div>
+                    <div class="bg-white retro-border-inset p-2">
+                      <div class="text-[9px] text-gray-500 font-bold uppercase">Self-Promote</div>
+                      <div class="text-[11px] font-mono font-bold leading-none">
+                        <span id="profile-selfpromote"></span>
+                        <span class="text-[9px] text-gray-400">/</span>
+                        <span id="profile-wins"></span>
+                      </div>
+                      <div class="text-[8px] uppercase text-gray-400">Heal / Wins</div>
+                    </div>
+                    <div class="bg-white retro-border-inset p-2">
+                      <div class="text-[9px] text-gray-500 font-bold uppercase">Defense</div>
+                      <div id="profile-defense" class="text-sm font-mono font-bold leading-none"></div>
+                    </div>
                   </div>
                 </div>
-                <div class="grid grid-cols-3 gap-2">
-                  <div class="bg-white retro-border-inset p-2">
-                    <div class="text-[9px] text-gray-500 font-bold uppercase">Reply To</div>
-                    <div id="profile-replyto" class="text-sm font-mono font-bold leading-none"></div>
-                  </div>
-                  <div class="bg-white retro-border-inset p-2">
-                    <div class="text-[9px] text-gray-500 font-bold uppercase">Escalate</div>
-                    <div id="profile-escalate" class="text-sm font-mono font-bold leading-none"></div>
-                  </div>
-                  <div class="bg-white retro-border-inset p-2">
-                    <div class="text-[9px] text-gray-500 font-bold uppercase">Reply All</div>
-                    <div id="profile-replyall" class="text-sm font-mono font-bold leading-none"></div>
-                  </div>
-                  <div class="bg-white retro-border-inset p-2">
-                    <div class="text-[9px] text-gray-500 font-bold uppercase">Deflect</div>
-                    <div class="text-[11px] font-mono font-bold leading-none">
-                      <span id="profile-deflect"></span>
-                      <span class="text-[9px] text-gray-400">/</span>
-                      <span id="profile-retaliate"></span>
-                    </div>
-                    <div class="text-[8px] uppercase text-gray-400">Reduce / Retaliate</div>
-                  </div>
-                  <div class="bg-white retro-border-inset p-2">
-                    <div class="text-[9px] text-gray-500 font-bold uppercase">Self-Promote</div>
-                    <div class="text-[11px] font-mono font-bold leading-none">
-                      <span id="profile-selfpromote"></span>
-                      <span class="text-[9px] text-gray-400">/</span>
-                      <span id="profile-wins"></span>
-                    </div>
-                    <div class="text-[8px] uppercase text-gray-400">Heal / Wins</div>
-                  </div>
-                  <div class="bg-white retro-border-inset p-2">
-                    <div class="text-[9px] text-gray-500 font-bold uppercase">Defense</div>
-                    <div id="profile-defense" class="text-sm font-mono font-bold leading-none"></div>
-                  </div>
+
+                <div id="profile-panel-stats" class="profile-tab-panel space-y-2">
+                  <div class="grid grid-cols-1 gap-1.5" id="profile-modal-totals"></div>
                 </div>
-              </div>
 
-              <div id="profile-panel-stats" class="profile-tab-panel space-y-2">
-                <div class="grid grid-cols-1 gap-1.5" id="profile-modal-totals"></div>
-              </div>
-
-              <div id="profile-panel-sources" class="profile-tab-panel space-y-2 custom-scroll overflow-y-auto max-h-[250px] pr-1">
-                <div id="profile-modal-sources" class="space-y-2"></div>
+                <div id="profile-panel-sources" class="profile-tab-panel space-y-2 custom-scroll overflow-y-auto max-h-[250px] pr-1">
+                  <div id="profile-modal-sources" class="space-y-2"></div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-      <div class="shop-taskbar bg-[#c0c0c0] border-t border-[#808080] px-2 py-1 text-[9px] w-full mt-2">
-        <button
-          id="assets-tab-contacts"
-          class="retro-button text-[9px] px-2 py-0.5"
-          onclick="showAssetsWindow('contacts')"
-        >
-          Contacts
-        </button>
-        <button
-          id="assets-tab-email"
-          class="retro-button text-[9px] px-2 py-0.5"
-          onclick="showAssetsWindow('email')"
-        >
-          Email Template
-        </button>
-        <button
-          id="assets-tab-profile"
-          class="retro-button text-[9px] px-2 py-0.5"
-          onclick="showAssetsWindow('profile')"
-        >
-          My Profile
-        </button>
-        <div class="ml-auto text-[9px] uppercase text-gray-700 font-semibold" id="shop-taskbar-quarter"></div>
       </div>
     </div>
 
@@ -1166,7 +1183,7 @@
             <div id="stats-panel-summary" class="profile-tab-panel active space-y-4">
               <div>
                 <div class="flex justify-between text-[10px] font-bold mb-1 uppercase text-[#404040]">
-                  <span>Productivity HP</span>
+                  <span>Credibility</span>
                   <span id="stats-hp-text"></span>
                 </div>
                 <div class="h-4 bg-[#808080] border border-white shadow-[inset_1px_1px_1px_black]">
@@ -1598,11 +1615,6 @@
           <span id="game-header-subject" class="text-xs font-bold truncate"
             >Outlook Express - [RE: URGENT: Breakroom Smell]</span
           >
-          <span
-            id="game-quarter-display"
-            class="text-[10px] bg-white text-blue-900 px-1 font-bold"
-            >Q3 - YR 1</span
-          >
         </div>
         <div class="flex gap-1 pr-1">
           <button
@@ -1636,12 +1648,6 @@
         </button>
         <button class="retro-button text-[10px]">Mark as Read</button>
         <div class="flex-grow"></div>
-        <div
-          id="turn-clock"
-          class="text-[10px] bg-white px-2 py-1 retro-border-inset font-mono"
-        >
-          09:00 AM
-        </div>
       </div>
 
       <div class="flex flex-grow overflow-hidden relative">
@@ -1695,7 +1701,7 @@
           >
             <div class="flex justify-between items-end">
               <span class="text-[9px] font-bold uppercase text-[#000080]"
-                >Professional Credibility</span
+                >Credibility</span
               >
               <span id="player-hp-label" class="text-[9px] font-mono font-bold"
                 >100/100</span
@@ -1811,12 +1817,13 @@
               class="retro-border-inset px-2 flex items-center w-24 justify-center"
               id="status-bar-email"
             >
-              Online
+              9:00 AM
             </div>
             <div
-              class="retro-border-inset px-2 flex items-center w-12 justify-center"
+              class="retro-border-inset px-2 flex items-center w-20 justify-center"
+              id="status-bar-quarter"
             >
-              NUM
+              YR1 Q3
             </div>
           </div>
         </div>
@@ -6918,7 +6925,7 @@
         const email =
           state.player.name.toLowerCase().replace(/\s+/g, ".") + "@gov.org";
         state.player.email = email;
-        document.getElementById("status-bar-email").innerText = "Online";
+        updateStatusBarTime();
         showInbox();
       }
 
@@ -9093,8 +9100,7 @@
         document.getElementById("message-log").innerHTML = "";
         document.getElementById("game-header-subject").innerText =
           getMissionHeaderSubject(mission);
-        const clock = document.getElementById("turn-clock");
-        if (clock) clock.innerText = formatTurnTime(0);
+        updateStatusBarTime();
         updateUI();
 
         // Templating the intro
@@ -9390,7 +9396,7 @@
 
         const packTiers = ["small", "medium", "large"];
         state.shop.packs = [];
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 2; i++) {
           const packTypePools = {
             contact: contactPool,
             email: [...salPool, ...offPool],
@@ -9415,7 +9421,7 @@
       function generateDirectItems(directPools, rngKey = "misc") {
         const pools = { ...directPools };
         const directItems = [];
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 2; i++) {
           const availableTypes = Object.keys(pools).filter(
             (type) => pools[type].length > 0,
           );
@@ -9656,7 +9662,7 @@
       }
 
       function rerollShop() {
-        const cost = 5 + (state.shop.rerollCount || 0);
+        const cost = 2 + (state.shop.rerollCount || 0);
         if (state.player.reputation >= cost) {
           state.player.reputation -= cost;
           state.shop.rerollCount = (state.shop.rerollCount || 0) + 1;
@@ -10517,9 +10523,16 @@
         const suffix = h >= 12 ? "PM" : "AM";
         if (h > 12) h -= 12;
         if (h === 0) h = 12;
-        return `${h.toString().padStart(2, "0")}:${m
-          .toString()
-          .padStart(2, "0")} ${suffix}`;
+        return `${h}:${m.toString().padStart(2, "0")} ${suffix}`;
+      }
+
+      function getCurrentTimeString() {
+        return formatTurnTime(state.turn || 0);
+      }
+
+      function updateStatusBarTime() {
+        const timeEl = document.getElementById("status-bar-email");
+        if (timeEl) timeEl.innerText = getCurrentTimeString();
       }
 
       function formatThreadLimitLabel(limit) {
@@ -10848,7 +10861,7 @@
 
         const rerollBtn = document.getElementById("shop-reroll-btn");
         if (rerollBtn) {
-          const cost = 5 + (state.shop.rerollCount || 0);
+          const cost = 2 + (state.shop.rerollCount || 0);
           rerollBtn.innerText = `Request alternate arrangements (${cost} REP)`;
           rerollBtn.disabled = state.player.reputation < cost;
         }
@@ -10862,7 +10875,7 @@
           ownedContacts.innerHTML = `
             <div class="text-[10px] font-bold uppercase text-gray-500">Address Book (${state.player.addressBook.length}/${addressLimit})</div>
             <div class="address-book-panels mt-2">
-              <div class="address-book-list w-5/12 border border-gray-300 bg-white">
+              <div class="shop-address-book-list-container w-full border border-gray-300 bg-white">
                 <div id="shop-address-book-list" class="max-h-72 overflow-y-auto relative"></div>
               </div>
             </div>
@@ -11075,38 +11088,32 @@
           email: document.getElementById("assets-window-email"),
           profile: document.getElementById("assets-window-profile"),
         };
-        const tabs = {
-          contacts: document.getElementById("assets-tab-contacts"),
-          email: document.getElementById("assets-tab-email"),
-          profile: document.getElementById("assets-tab-profile"),
-        };
         const kinds = Object.keys(windows);
-        if (kinds.some((k) => !windows[k] || !tabs[k])) return;
+        if (kinds.some((k) => !windows[k])) return;
         if (kind === "none") {
-          kinds.forEach((k) => {
-            windows[k].classList.add("hidden");
-            tabs[k].classList.remove("retro-border-inset");
-          });
+          windows.profile.classList.add("hidden");
+          windows.contacts.classList.remove("hidden");
+          windows.email.classList.remove("hidden");
           return;
         }
         if (!windows[kind]) return;
         const target = windows[kind];
-        const targetTab = tabs[kind];
         const isOpen = !target.classList.contains("hidden");
 
-        if (isOpen && !opts.forceOpen) {
-          target.classList.add("hidden");
-          targetTab.classList.remove("retro-border-inset");
+        if (kind === "profile") {
+          if (isOpen && !opts.forceOpen) {
+            target.classList.add("hidden");
+            windows.contacts.classList.remove("hidden");
+            windows.email.classList.remove("hidden");
+          } else {
+            windows.contacts.classList.add("hidden");
+            windows.email.classList.add("hidden");
+            windows.profile.classList.remove("hidden");
+          }
         } else {
-          kinds.forEach((k) => {
-            if (k === kind) {
-              windows[k].classList.remove("hidden");
-              tabs[k].classList.add("retro-border-inset");
-            } else {
-              windows[k].classList.add("hidden");
-              tabs[k].classList.remove("retro-border-inset");
-            }
-          });
+          windows.profile.classList.add("hidden");
+          windows.contacts.classList.remove("hidden");
+          windows.email.classList.remove("hidden");
         }
 
         resizeAssetsWindows();
@@ -12130,7 +12137,7 @@
             </div>
             <div>
               <div class="flex justify-between text-[10px] font-bold mb-1 uppercase text-[#404040]">
-                <span>Productivity HP</span>
+                <span>Credibility</span>
                 <span>${hp}/${maxHp}</span>
               </div>
               <div class="h-3 bg-[#808080] border border-white shadow-[inset_1px_1px_1px_black]">
@@ -13064,7 +13071,7 @@
       function getMissionHeaderSubject(mission) {
         const subject = mission && mission.subject ? mission.subject : "Thread";
         const due = getMissionDeadlineTime(mission);
-        return `Outlook Express - [${subject} (${due})]`;
+        return `Outlook Express - ${subject} (${due})`;
       }
 
       function getMissionSubSubject(mission) {
@@ -13144,8 +13151,9 @@
         const winBtn = document.getElementById("win-btn");
         if (winBtn) winBtn.disabled = p.currentWins <= 0;
 
-        document.getElementById("game-quarter-display").innerText =
-          `${p.quarter} - YR ${p.year}`;
+        const statusQuarter = document.getElementById("status-bar-quarter");
+        if (statusQuarter)
+          statusQuarter.innerText = `YR${p.year} ${p.quarter}`;
         const shopQuarter = document.getElementById("shop-taskbar-quarter");
         if (shopQuarter) shopQuarter.innerText = `${p.quarter} • YR ${p.year}`;
         document.getElementById("status-bar-name").innerText =
@@ -13268,9 +13276,7 @@
           }
         }
 
-        document.getElementById("turn-clock").innerText = formatTurnTime(
-          state.turn,
-        );
+        updateStatusBarTime();
         const headerSubject = getMissionHeaderSubject(mission);
         document.getElementById("game-header-subject").innerText =
           headerSubject;
@@ -13283,7 +13289,7 @@
       function addEmailToLog(from, to, subject, body, classes = "") {
         const log = document.getElementById("message-log");
         const entry = document.createElement("div");
-        const time = document.getElementById("turn-clock").innerText;
+        const time = getCurrentTimeString();
         const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
         const reCount =
           state.turn > 0 ? "RE: ".repeat(Math.min(state.turn, 4)) : "";
