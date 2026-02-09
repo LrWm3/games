@@ -367,6 +367,14 @@
         color: #6b7280;
         margin: 0 6px;
       }
+      .template-link {
+        color: #1d4ed8;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+      .template-link:hover {
+        color: #1e40af;
+      }
       .shop-card-list {
         display: flex;
         flex-wrap: wrap;
@@ -649,7 +657,7 @@
       .shop-layout-assets .assets-window.hidden {
         display: none;
       }
-      @media (min-width: 900px) {
+      @media (min-width: 430px) {
         .shop-layout {
           grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
           grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
@@ -664,7 +672,7 @@
           grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
         }
       }
-      @media (max-width: 899px) {
+      @media (max-width: 429px) {
         .shop-layout {
           grid-template-columns: minmax(0, 1fr);
           grid-template-rows: auto auto;
@@ -688,6 +696,7 @@
       }
       .assets-window .window-body {
         overflow-y: auto;
+        height: 100%;
       }
       .profile-window-body {
         max-height: 70vh;
@@ -10994,8 +11003,7 @@
         const addressLimit = getUnitAddressLimit(state.player);
         if (ownedContacts) {
           ownedContacts.innerHTML = `
-            <div class="text-[10px] font-bold uppercase text-gray-500">Address Book (${state.player.addressBook.length}/${addressLimit})</div>
-            <div class="address-book-panels mt-2">
+            <div class="address-book-panels">
               <div class="shop-address-book-list-container w-full border border-gray-300 bg-white">
                 <div id="shop-address-book-list" class="max-h-72 overflow-y-auto relative"></div>
               </div>
@@ -11011,8 +11019,8 @@
           const mission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
           const subject = mission && mission.subject ? mission.subject : "Thread";
           ownedEmailTemplate.innerHTML = `
-            <div class="email-template-container border border-gray-200 bg-white shadow-inner">
-              <div class="email-template-header font-sans text-[10px] text-gray-700 space-y-1">
+            <div class="email-template-container bg-white shadow-inner">
+              <div class="email-template-header pt-1 font-sans text-[10px] text-gray-700 space-y-1">
                 <div><strong>To:</strong> everyone@gov.org</div>
               </div>
               <div id="shop-owned-salutation" class="drop-zone min-h-6 bg-gray-50 mt-2 p-1 text-[9px] relative">
@@ -11038,7 +11046,7 @@
           if (salutationSlot) {
             salutationSlot.classList.add("relative");
             if (state.player.salutation) {
-              salutationSlot.innerHTML = `<p class="text-[10px] font-semibold cursor-pointer inline-block w-fit pr-2">${state.player.salutation.name}</p>`;
+              salutationSlot.innerHTML = `<p class="text-[14px] font-semibold template-link inline-block w-fit pr-2">${state.player.salutation.name}</p>`;
               salutationSlot.onclick = (e) => {
                 e.stopPropagation();
                 const ownedItem = {
@@ -11057,7 +11065,7 @@
               };
             } else {
               salutationSlot.innerHTML =
-                `<div class="text-[10px] italic text-gray-400">No greeting set.</div>`;
+                `<div class="text-[11px] italic text-gray-400">No greeting set.</div>`;
               salutationSlot.onclick = null;
             }
           }
@@ -11066,7 +11074,7 @@
           if (signoffSlot) {
             signoffSlot.classList.add("relative");
             if (state.player.signOff) {
-              signoffSlot.innerHTML = `<p class="text-[10px] font-semibold cursor-pointer inline-block w-fit pr-2">${state.player.signOff.name}</p>`;
+              signoffSlot.innerHTML = `<p class="text-[14px] font-semibold template-link inline-block w-fit pr-2">${state.player.signOff.name}</p>`;
               signoffSlot.onclick = (e) => {
                 e.stopPropagation();
                 const ownedItem = { ...state.player.signOff, itemType: "signoff" };
@@ -11081,7 +11089,7 @@
               };
             } else {
               signoffSlot.innerHTML =
-                `<div class="text-[10px] italic text-gray-400">No sign-off set.</div>`;
+                `<div class="text-[11px] italic text-gray-400">No sign-off set.</div>`;
               signoffSlot.onclick = null;
             }
           }
@@ -11093,7 +11101,7 @@
               const row = document.createElement("div");
               row.className = "sig-item text-[10px] font-semibold text-gray-700";
               row.dataset.sigIndex = idx;
-              row.innerHTML = `<p class="cursor-pointer inline-block w-fit pr-2">${sig.name}</p>`;
+              row.innerHTML = `<p class="template-link inline-block w-fit pr-2">${sig.name}</p>`;
               row.onclick = (e) => {
                 e.stopPropagation();
                 const ownedItem = { ...sig, itemType: "signature" };
@@ -12673,10 +12681,12 @@
         const list = document.getElementById("shop-address-book-list");
         if (!list) return;
         list.innerHTML = "";
+        const addressLimit = getUnitAddressLimit(state.player);
+        const bccLimit = computeUnitStats(state.player).bccLimit || 0;
         const header = document.createElement("div");
         header.className =
           "address-book-header text-[10px] font-bold bg-gray-200 p-1 uppercase sticky top-0";
-        header.innerText = "Address Book";
+        header.innerText = `Address Book (${state.player.addressBook.length}/${addressLimit})`;
         list.appendChild(header);
 
         const overlay = document.createElement("div");
@@ -12721,7 +12731,7 @@
         const headerBcc = document.createElement("div");
         headerBcc.className =
           "address-book-header text-[10px] font-bold bg-gray-200 p-1 mt-3 uppercase sticky top-0";
-        headerBcc.innerText = "Help Desk (BCC)";
+        headerBcc.innerText = `Help Desk (BCC) (${state.player.bccContacts.length}/${bccLimit})`;
         list.appendChild(headerBcc);
         const bccList = document.createElement("div");
         bccList.id = "shop-address-book-list-bcc";
@@ -14583,7 +14593,7 @@
         const headerCC = document.createElement("div");
         headerCC.className =
           "text-[10px] font-bold bg-gray-200 p-1 uppercase sticky top-0";
-        headerCC.innerText = "Address Book";
+        headerCC.innerText = `Address Book (${state.player.addressBook.length}/${getUnitAddressLimit(state.player)})`;
         list.appendChild(headerCC);
 
         const selections = [];
@@ -14614,7 +14624,8 @@
           const headerBCC = document.createElement("div");
           headerBCC.className =
             "text-[10px] font-bold bg-gray-200 p-1 mt-4 uppercase sticky top-0";
-          headerBCC.innerText = "Help Desk (BCC)";
+          const bccLimit = computeUnitStats(state.player).bccLimit || 0;
+          headerBCC.innerText = `Help Desk (BCC) (${state.player.bccContacts.length}/${bccLimit})`;
           list.appendChild(headerBCC);
 
         renderAddressBookList({
