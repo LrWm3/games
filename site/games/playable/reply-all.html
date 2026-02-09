@@ -1759,7 +1759,7 @@
               <span class="font-bold w-4 text-right">To:</span>
               <div
                 id="stakeholder-loop"
-                class="flex gap-1 overflow-x-auto no-scrollbar py-0.5"
+                class="contacts-container flex gap-1 overflow-x-auto no-scrollbar py-0.5"
               ></div>
             </div>
             <div class="flex gap-2 items-center" id="active-ccs">
@@ -13399,6 +13399,47 @@
             <span class="pill-hp">${Math.max(0, Math.ceil(o.hp))}</span>
           `;
           selector.appendChild(pill);
+        });
+
+        const more = document.createElement("span");
+        more.className = "contacts-more text-[9px] hidden";
+        selector.appendChild(more);
+        const expanded = !!state.stakeholdersExpanded;
+
+        if (expanded) {
+          selector.classList.add("expanded");
+        } else {
+          selector.classList.remove("expanded");
+        }
+
+        requestAnimationFrame(() => {
+          const pills = Array.from(selector.querySelectorAll(".stakeholder-pill"));
+          if (!pills.length) return;
+          const firstRowTop = pills[0].offsetTop;
+          let wrapCount = 0;
+          pills.forEach((pill) => {
+            const onFirstRow = pill.offsetTop === firstRowTop;
+            if (!onFirstRow) wrapCount += 1;
+          });
+          pills.forEach((pill) => {
+            const onFirstRow = pill.offsetTop === firstRowTop;
+            if (!expanded && !onFirstRow) {
+              pill.style.display = "none";
+            } else {
+              pill.style.display = "";
+            }
+          });
+          if (wrapCount > 0) {
+            more.classList.remove("hidden");
+            more.innerText = expanded ? "Show less" : `+ ${wrapCount} more`;
+            more.onclick = () => {
+              state.stakeholdersExpanded = !state.stakeholdersExpanded;
+              updateUI();
+            };
+          } else {
+            more.classList.add("hidden");
+            more.onclick = null;
+          }
         });
 
         const ccDisplay = document.getElementById("cc-display");
