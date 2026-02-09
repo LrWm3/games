@@ -796,11 +796,11 @@
       .target-pill {
         transition: all 0.2s;
         border: 1px solid #808080;
+        color: #111827;
       }
       .target-pill.active {
-        background: #000080 !important;
-        color: white !important;
-        border-color: #ffffff;
+        border: 2px solid #000080;
+        box-shadow: 0 0 0 1px #ffffff inset;
       }
       .no-scrollbar::-webkit-scrollbar {
         display: none;
@@ -1746,7 +1746,7 @@
                 class="retro-button py-2 flex flex-col items-center"
               >
                 <span class="text-[11px] font-bold">Reply to</span>
-                <span id="attack-subtext" class="text-[8px] opacity-70 italic"
+                <span id="attack-subtext" class="text-[9px] opacity-70 italic"
                   >Target Reply</span
                 >
               </button>
@@ -1755,7 +1755,7 @@
                 class="retro-button py-2 flex flex-col items-center"
               >
                 <span class="text-[11px] font-bold">Escalate</span>
-                <span id="escalate-subtext" class="text-[8px] opacity-70 italic"
+                <span id="escalate-subtext" class="text-[9px] opacity-70 italic"
                   >Threadwide Nudge</span
                 >
               </button>
@@ -1764,7 +1764,7 @@
                 class="retro-button py-2 flex flex-col items-center"
               >
                 <span class="text-[11px] font-bold">Loop Personnel</span>
-                <span id="loop-subtext" class="text-[8px] opacity-70 italic"
+                <span id="loop-subtext" class="text-[9px] opacity-70 italic"
                   >Add Witness</span
                 >
               </button>
@@ -1774,7 +1774,7 @@
                 class="retro-button py-2 flex flex-col items-center"
               >
                 <span class="text-[11px] font-bold">Self-Promote</span>
-                <span id="promote-subtext" class="text-[8px] opacity-70 italic"
+                <span id="promote-subtext" class="text-[9px] opacity-70 italic"
                   >Log a Win</span
                 >
               </button>
@@ -1783,7 +1783,7 @@
                 class="retro-button py-2 flex flex-col items-center"
               >
                 <span class="text-[11px] font-bold">Deflect</span>
-                <span id="deflect-subtext" class="text-[8px] opacity-70 italic"
+                <span id="deflect-subtext" class="text-[9px] opacity-70 italic"
                   >Hold Line</span
                 >
               </button>
@@ -1796,7 +1796,7 @@
                 <span class="text-[11px] font-bold text-red-800"
                   >REPLY ALL</span
                 >
-                <span id="ult-subtext" class="text-[8px] opacity-70 italic"
+                <span id="ult-subtext" class="text-[9px] opacity-70 italic"
                   >Mass Takedown</span
                 >
               </button>
@@ -13175,6 +13175,13 @@
           return 0;
         });
 
+        const getTargetBg = (hpPct, isOut) => {
+          if (isOut) return "#e5e7eb";
+          const pct = Math.max(0, Math.min(100, hpPct));
+          const hue = (pct / 100) * 120;
+          return `hsl(${hue} 60% 90%)`;
+        };
+
         sortedOpponents.forEach((o) => {
           const isActive = state.targetId === o.id;
           const oppMaxHp = getUnitMaxHp(o);
@@ -13191,20 +13198,10 @@
             state.targetId = o.id;
             updateUI();
           };
-          pill.className = `target-pill px-2 py-0.5 flex flex-col min-w-[90px] cursor-pointer bg-white ${isActive ? "active" : "opacity-60 grayscale"}`;
-          const textClass = isActive ? "text-white" : "text-gray-900";
-          const lastPct = typeof o._lastHpPct === "number" ? o._lastHpPct : pct;
-          pill.innerHTML = `<div class="flex justify-between font-bold text-[8px] truncate ${isActive ? "text-white" : "text-gray-800"}"><span class="mr-2">${o.name}</span><span>${o.hp > 0 ? o.wins + "w" : "UNSUBBED"}</span></div>
-                                <div class="h-1 w-full bg-gray-200 mt-0.5"><div class="h-full bg-red-500 transition-[width] duration-300 ease-out" data-opp-hp style="width: ${lastPct}%"></div></div>
-                                <div class="text-[8px] mt-0.5 ${textClass}">${Math.max(0, Math.ceil(o.hp))}/${oppMaxHp} Cred</div>`;
+          pill.className = `target-pill px-2 py-0.5 flex items-center min-w-[120px] cursor-pointer ${isActive ? "active" : ""}`;
+          pill.style.background = getTargetBg(pct, o.hp <= 0);
+          pill.innerHTML = `<div class="flex justify-between gap-2 w-full font-bold text-[10px] truncate"><span class="truncate">${o.name}</span><span class="flex-shrink-0">${Math.max(0, Math.ceil(o.hp))} Cred</span></div>`;
           oppContainer.appendChild(pill);
-          const fill = pill.querySelector("[data-opp-hp]");
-          if (fill) {
-            requestAnimationFrame(() => {
-              fill.style.width = pct + "%";
-            });
-          }
-          o._lastHpPct = pct;
         });
         selector.appendChild(oppContainer);
         if (opponents.length > maxOppPreview) {
