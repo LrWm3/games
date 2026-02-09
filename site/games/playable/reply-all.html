@@ -177,17 +177,17 @@
         left: 0;
         right: 0;
         bottom: 0;
-        height: 30vh;
+        height: 18vh;
         background: rgba(255, 255, 255, 0.55);
         border-top: 2px dashed #93c5fd;
         display: none;
         align-items: flex-start;
         justify-content: center;
         padding-top: 12px;
-        font-size: 11px;
+        font-size: 1.5rem;
         font-weight: 700;
         text-transform: uppercase;
-        color: #1d4ed8;
+        color: #091e58;
         pointer-events: none;
         z-index: 180;
       }
@@ -369,7 +369,6 @@
       }
       .template-link {
         color: #1d4ed8;
-        text-decoration: underline;
         cursor: pointer;
       }
       .template-link:hover {
@@ -436,7 +435,8 @@
       }
       .shop-empty-state {
         width: 100%;
-        padding: 10px 8px;
+        padding: 40px 8px;
+        margin: 5px;
         text-align: center;
         font-size: 10px;
         color: #6b7280;
@@ -2931,7 +2931,7 @@
         },
         {
           id: "ops_dispatch",
-          name: "Operations Desk | Dispatch Confirmed",
+          name: "Shipments Confirmed",
           rarity: "common",
           deptScalers: [
             { departmentId: "operations", stat: "singleDmg", per: 1, step: 1 },
@@ -2939,7 +2939,7 @@
         },
         {
           id: "it_ticket",
-          name: "IT Service Desk | Ticket Resolved",
+          name: "33 Tickets Resolved",
           rarity: "common",
           deptScalers: [
             { departmentId: "information_technology", stat: "escalateDmg", per: 1, step: 1 },
@@ -2947,7 +2947,7 @@
         },
         {
           id: "eco_brief",
-          name: "Executive Council Office | Alignment Brief",
+          name: "Aligned on Brief",
           rarity: "uncommon",
           deptScalers: [
             { departmentId: "executive_council_office", stat: "globalDmg", per: 1, step: 2 },
@@ -2955,7 +2955,7 @@
         },
         {
           id: "facilities_notice",
-          name: "Facilities & Admin | Service Window Notice",
+          name: "24 Hour Service Window Notice",
           rarity: "common",
           deptScalers: [
             { departmentId: "facilities_and_administration", stat: "deflect", per: 1, step: 1 },
@@ -2963,7 +2963,7 @@
         },
         {
           id: "brand_brief",
-          name: "Brand Team | Brief Approved",
+          name: "Concept Approved",
           rarity: "common",
           deptScalers: [
             { departmentId: "marketing", stat: "singleDmg", per: 1, step: 1 },
@@ -2971,7 +2971,7 @@
         },
         {
           id: "public_facing",
-          name: "Constituent Services | Public Response Cleared",
+          name: "Public Response Cleared",
           rarity: "uncommon",
           deptScalers: [
             { departmentId: "constituent_services", stat: "globalDmg", per: 1, step: 2 },
@@ -2979,7 +2979,7 @@
         },
         {
           id: "policy_memo",
-          name: "Policy Unit | Internal Memo",
+          name: "Circulating Internal Memos",
           rarity: "common",
           deptScalers: [
             { departmentId: "policy", stat: "defFlat", per: 1, step: 1 },
@@ -2987,7 +2987,7 @@
         },
         {
           id: "budget_line",
-          name: "Finance | Budget Line Verified",
+          name: "Budget Lines Verified",
           rarity: "uncommon",
           deptScalers: [
             { departmentId: "finance", stat: "maxHp", per: 3, step: 2 },
@@ -2995,7 +2995,7 @@
         },
         {
           id: "hr_record",
-          name: "Human Resources | File Noted",
+          name: "Personnel File Noted",
           rarity: "common",
           deptScalers: [
             { departmentId: "human_resources", stat: "deflect", per: 1, step: 1 },
@@ -3003,7 +3003,7 @@
         },
         {
           id: "legal_hold",
-          name: "Legal | Hold Notice Acknowledged",
+          name: "Active Hold Notice",
           rarity: "rare",
           deptScalers: [
             { departmentId: "legal", stat: "defFlat", per: 2, step: 2 },
@@ -3011,7 +3011,7 @@
         },
         {
           id: "m4_release",
-          name: "M4 Agency | Release Cleared",
+          name: "M4 on retainer",
           rarity: "uncommon",
           deptScalers: [
             { departmentId: "m4_agency", stat: "followUpChance", per: 0.2, step: 3 },
@@ -11046,7 +11046,7 @@
           if (salutationSlot) {
             salutationSlot.classList.add("relative");
             if (state.player.salutation) {
-              salutationSlot.innerHTML = `<p class="text-[14px] font-semibold template-link inline-block w-fit pr-2">${state.player.salutation.name}</p>`;
+              salutationSlot.innerHTML = `<p class="text-xs font-semibold template-link inline-block w-fit pr-2">${state.player.salutation.name}</p>`;
               salutationSlot.onclick = (e) => {
                 e.stopPropagation();
                 const ownedItem = {
@@ -11074,7 +11074,7 @@
           if (signoffSlot) {
             signoffSlot.classList.add("relative");
             if (state.player.signOff) {
-              signoffSlot.innerHTML = `<p class="text-[14px] font-semibold template-link inline-block w-fit pr-2">${state.player.signOff.name}</p>`;
+              signoffSlot.innerHTML = `<p class="text-xs font-semibold template-link inline-block w-fit pr-2">${state.player.signOff.name}</p>`;
               signoffSlot.onclick = (e) => {
                 e.stopPropagation();
                 const ownedItem = { ...state.player.signOff, itemType: "signoff" };
