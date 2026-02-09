@@ -745,12 +745,15 @@
       .momentum-meter {
         display: flex;
         gap: 1px;
-        width: 100%;
+        width: calc(100% - 8px);
         height: 5px;
         background: #444;
         padding: 1px;
-        margin-top: 2px;
         border: 1px solid var(--win-border-dark);
+        position: absolute;
+        left: 4px;
+        right: 4px;
+        bottom: 4px;
       }
       .momentum-segment {
         flex: 1;
@@ -759,6 +762,14 @@
       .momentum-segment.charged {
         background: #ffff00;
         box-shadow: 0 0 2px #ffff00;
+      }
+      .action-btn {
+        position: relative;
+        height: 44px;
+        text-align: center;
+      }
+      #reply-all-btn {
+        text-align: left;
       }
       @keyframes profileFadeIn {
         from {
@@ -1756,15 +1767,15 @@
           <!-- Action Panel -->
           <div class="p-2 bg-[#c0c0c0] border-t-1 border-white shrink-0">
             <!-- Mini Status Bar -->
-            <div class="bg-[#c0c0c0] border border-[#808080] px-1 flex gap-px text-[10px] h-6 items-center mb-2">
+            <div class="bg-[#c0c0c0] border border-[#808080] px-1.5 flex gap-px text-[10px] h-7 items-center mb-2">
               <div
                 id="main-status"
-                class="retro-border-inset px-2 flex items-center flex-grow h-4 bg-gray-100 truncate overflow-hidden"
+                class="retro-border-inset px-2.5 flex items-center flex-grow h-5 bg-gray-100 truncate overflow-hidden"
               >
                 Ready.
               </div>
               <div
-                class="retro-border-inset px-2 flex items-center w-[67px] h-4 bg-gray-100 justify-center"
+                class="retro-border-inset px-2.5 flex items-center w-[74px] h-5 bg-gray-100 justify-center"
                 id="status-bar-email"
               >
                 9:00 AM
@@ -6815,6 +6826,7 @@
         if (screen === "game-ui") {
           const log = document.getElementById("message-log");
           if (log) log.innerHTML = save.messageLog || "";
+          rebindEmailRetargeting();
           updateUI();
         } else if (screen === "shop-screen") {
           updateShopUI();
@@ -13439,6 +13451,7 @@
         const opponent = (typeof opponents !== "undefined") ? opponents.find((o) => (o.name === from || o.email === from) && o.hp > 0) : null;
         if (opponent) {
           entry.classList.add("cursor-pointer", "interactable-email");
+          entry.dataset.opponentId = opponent.id;
           entry.addEventListener("click", () => {
             if (state.targetId === opponent.id) {
               showStakeholderOverlay(opponent, entry);
@@ -13467,6 +13480,26 @@
         } else {
           log.prepend(entry);
         }
+      }
+
+      function rebindEmailRetargeting() {
+        const log = document.getElementById("message-log");
+        if (!log) return;
+        log.querySelectorAll(".interactable-email").forEach((entry) => {
+          if (entry.dataset.bound) return;
+          const opponentId = entry.dataset.opponentId;
+          const opponent = opponents.find((o) => o.id === opponentId);
+          if (!opponent) return;
+          entry.addEventListener("click", () => {
+            if (state.targetId === opponent.id) {
+              showStakeholderOverlay(opponent, entry);
+            } else {
+              state.targetId = opponent.id;
+              updateUI();
+            }
+          });
+          entry.dataset.bound = "true";
+        });
       }
 
       function renderDraftingIndicators() {
