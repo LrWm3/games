@@ -1741,35 +1741,25 @@
           ></div>
 
           <!-- STATS BAR -->
-          <div
-            class="bg-[#dfdfdf] border-t border-[#808080] px-2 py-2 flex flex-col gap-2 shrink-0"
-          >
-            <div class="flex items-center justify-between text-[9px] font-bold uppercase text-[#000080]">
-              <span>Credibility</span>
-              <span id="player-hp-label" class="font-mono">100/100</span>
-            </div>
-            <div class="h-3.5 w-full bg-white border border-[#808080] relative">
-              <div
-                id="player-hp-fill"
-                class="h-full bg-green-500 transition-all duration-300"
-                style="width: 100%"
-              ></div>
-            </div>
+          <div class="bg-[#dfdfdf] border-t border-[#808080] flex flex-col gap-1 shrink-0">
             <div
-              id="player-win-status"
-              class="text-[8px] font-bold uppercase bg-[#c0c0c0] border border-white shadow-[inset_-1px_-1px_0_#808080] px-2 py-1 text-gray-700"
+              id="player-hp-bar"
+              class="h-5 w-full border border-[#808080] relative bg-[#e5e7eb] px-2"
             >
-              New Wins: 3 Available
+              <div class="flex items-center justify-between text-[9px] font-bold uppercase text-[#000080] h-full">
+                <span>Credibility</span>
+                <span id="player-hp-label" class="font-mono">100/100</span>
+              </div>
             </div>
           </div>
 
           <!-- Action Panel -->
-          <div class="p-2 bg-[#c0c0c0] border-t-2 border-white shrink-0">
+          <div class="p-2 bg-[#c0c0c0] border-t-1 border-white shrink-0">
             <!-- Mini Status Bar -->
-            <div class="bg-[#c0c0c0] border border-[#808080] px-1 flex gap-px text-[8px] h-6 items-center mb-2">
+            <div class="bg-[#c0c0c0] border border-[#808080] px-1 flex gap-px text-[10px] h-6 items-center mb-2">
               <div
                 id="main-status"
-                class="retro-border-inset px-2 flex items-center flex-grow h-4 bg-gray-100 italic truncate overflow-hidden"
+                class="retro-border-inset px-2 flex items-center flex-grow h-4 bg-gray-100 truncate overflow-hidden"
               >
                 Ready.
               </div>
@@ -13232,7 +13222,6 @@
         const hpPct = Math.max(0, (p.hp / totalMaxHp) * 100);
         const ultPct = Math.min(100, (p.ult / LEVERAGE_MAX) * 100);
 
-        document.getElementById("player-hp-fill").style.width = hpPct + "%";
         document.getElementById("player-hp-label").innerText =
           `${Math.ceil(p.hp)}/${totalMaxHp}`;
         const ultFill = document.getElementById("player-ult-fill");
@@ -13246,20 +13235,16 @@
             momentumContainer.appendChild(seg);
           }
         }
-        const winStatus = document.getElementById("player-win-status");
-        if (winStatus) winStatus.classList.add("hidden");
         const winCount = document.getElementById("win-count");
         if (winCount) winCount.innerText = p.currentWins;
 
-        if (hpPct < 30)
-          document.getElementById("player-hp-fill").className =
-            "h-full bg-red-600 transition-[width] duration-300 ease-out";
-        else if (hpPct < 60)
-          document.getElementById("player-hp-fill").className =
-            "h-full bg-yellow-500 transition-[width] duration-300 ease-out";
-        else
-          document.getElementById("player-hp-fill").className =
-            "h-full bg-green-500 transition-[width] duration-300 ease-out";
+        const playerHpBar = document.getElementById("player-hp-bar");
+        if (playerHpBar) {
+          const hue = (hpPct / 100) * 120;
+          const fill = `hsl(${hue} 70% 75%)`;
+          const empty = "#f3f4f6";
+          playerHpBar.style.background = `linear-gradient(90deg, ${fill} 0%, ${fill} ${hpPct}%, ${empty} ${hpPct}%, ${empty} 100%)`;
+        }
 
         const singleDmg = getUnitDamage(p, "single");
         const escalateDmg = getUnitDamage(p, "escalate");
@@ -13270,11 +13255,13 @@
         const selfPromoteHeal = getUnitSelfPromoteHeal(p, 20);
         const targetName =
           target && target.name ? target.name : "stakeholder";
+        const targetDef = target ? getUnitFlatDef(target) : 0;
+        const replyNet = Math.max(0, Math.floor(singleDmg - targetDef));
         setActionHint(
           "attack-btn",
           replyDisabled
             ? "Reply to disabled by sign-off."
-            : `Reply to ${targetName}; -${Math.floor(singleDmg)} credibility.`,
+            : `Reply to ${targetName}; -${replyNet} credibility.`,
         );
         setActionHint(
           "escalate-btn",
