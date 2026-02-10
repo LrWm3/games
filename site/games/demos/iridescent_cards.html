@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Foil & Holo Showcase</title>
+    <meta name="game-description" content="Shiny cards">
+    <meta name="game-tags" content="effects, cards">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* --- 1. GOLD FOIL EFFECT --- */
+        .gold-foil {
+            background: linear-gradient(
+                135deg,
+                #8a6e2f 0%, 
+                #c5a059 20%, 
+                #fcf6ba 40%, 
+                #bf953f 50%, 
+                #fcf6ba 60%, 
+                #d4af37 80%, 
+                #8a6e2f 100%
+            );
+            background-size: 400% 400%;
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            animation: foil-shimmer 8s ease infinite;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+        }
+
+        /* --- 2. SILVER FOIL EFFECT --- */
+        .silver-foil {
+            background: linear-gradient(
+                135deg,
+                #777 0%,
+                #ccc 20%,
+                #fff 40%,
+                #999 50%,
+                #fff 60%,
+                #888 80%,
+                #777 100%
+            );
+            background-size: 400% 400%;
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            animation: foil-shimmer 10s ease-in-out infinite;
+        }
+
+        /* --- 3. HOLOGRAPHIC CARD EFFECT --- */
+        .holo-card {
+            position: relative;
+            width: 280px;
+            height: 400px;
+            border-radius: 18px;
+            background: #222;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            transition: transform 0.1s ease-out;
+            z-index: 1;
+        }
+
+        .holo-overlay {
+            position: absolute;
+            inset: -50%;
+            opacity: 0.5;
+            background: linear-gradient(
+                115deg,
+                transparent 0%,
+                rgba(255, 0, 255, 0.4) 15%,
+                rgba(0, 255, 255, 0.4) 30%,
+                rgba(255, 255, 0, 0.4) 45%,
+                rgba(0, 255, 0, 0.4) 60%,
+                rgba(0, 0, 255, 0.4) 75%,
+                transparent 100%
+            );
+            background-size: 200% 200%;
+            mix-blend-mode: color-dodge;
+            pointer-events: none;
+            z-index: 2;
+            animation: holo-slide 6s linear infinite;
+        }
+
+        /* Sparkle effect */
+        .sparkles {
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle, white 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.1;
+            mix-blend-mode: overlay;
+            z-index: 3;
+        }
+
+        /* Keyframes for continuous movement (Mobile Friendly fallback) */
+        @keyframes foil-shimmer {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes holo-slide {
+            0% { transform: translate(-10%, -10%) rotate(0deg); }
+            50% { transform: translate(10%, 10%) rotate(5deg); }
+            100% { transform: translate(-10%, -10%) rotate(0deg); }
+        }
+
+        /* Perspective Container */
+        .perspective-container {
+            perspective: 1000px;
+        }
+
+        .button-metallic {
+            padding: 12px 24px;
+            border-radius: 9999px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: none;
+            cursor: pointer;
+            background: linear-gradient(135deg, #444, #111);
+            position: relative;
+            color: white;
+            overflow: hidden;
+        }
+
+        .button-metallic::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg, 
+                transparent, 
+                rgba(255,255,255,0.3), 
+                transparent
+            );
+            transform: rotate(45deg);
+            animation: button-shine 3s infinite;
+        }
+
+        @keyframes button-shine {
+            0% { left: -100%; transition-property: left; }
+            100% { left: 100%; transition-property: left; }
+        }
+
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            display: inline-block;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body class="p-6 md:p-12 flex flex-col items-center gap-12">
+
+    <!-- Header Section -->
+    <header class="text-center max-w-md">
+        <h1 class="text-5xl font-black gold-foil uppercase tracking-tighter">Premium Foil</h1>
+        <p class="text-slate-400 mt-2">Mobile-optimized visual effects using CSS gradients and animations.</p>
+    </header>
+
+    <!-- Interactive Section -->
+    <main class="w-full flex flex-col items-center gap-16">
+        
+        <!-- 1. The Holographic Card -->
+        <section class="flex flex-col items-center gap-4">
+            <h2 class="silver-foil text-2xl font-bold uppercase tracking-widest">Holo Card</h2>
+            <div class="perspective-container" id="cardContainer">
+                <div class="holo-card" id="card">
+                    <div class="holo-overlay" id="overlay"></div>
+                    <div class="sparkles"></div>
+                    <!-- Card Content -->
+                    <div class="absolute inset-0 p-6 flex flex-col justify-between z-10">
+                        <div class="flex justify-between items-start">
+                            <span class="text-xs font-mono opacity-50">LTD EDITION</span>
+                            <div class="w-8 h-8 rounded-full bg-white/20"></div>
+                        </div>
+                        <div>
+                            <div class="h-40 w-full bg-white/5 rounded-lg mb-4 border border-white/10 flex items-center justify-center">
+                                <span class="text-4xl">💎</span>
+                            </div>
+                            <h3 class="text-xl font-bold">CRYSTAL SHARD</h3>
+                            <p class="text-xs opacity-70">Interactive touch-tilt effect</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="sensorInfo" class="status-badge text-xs opacity-50">
+                Fallback: Auto-animation active
+            </div>
+        </section>
+
+        <!-- 2. Metallic UI Elements -->
+        <section class="flex flex-col items-center gap-8 w-full max-w-sm">
+            <h2 class="silver-foil text-2xl font-bold uppercase tracking-widest">Metallic UI</h2>
+            
+            <div class="w-full p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+                <h4 class="gold-foil font-bold text-lg">Golden Tier Access</h4>
+                <p class="text-sm text-slate-400 mb-4">Silver foil text below for contrast.</p>
+                <div class="silver-foil font-mono text-sm mb-6">TX-990-ALPHA-SILVER</div>
+                
+                <button class="button-metallic w-full">
+                    Upgrade Now
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        const card = document.getElementById('card');
+        const overlay = document.getElementById('overlay');
+        const sensorInfo = document.getElementById('sensorInfo');
+        const permissionBtn = document.getElementById('requestPermission');
+
+        // 1. Touch-based tilt (Better than mouse on mobile)
+        let isTouching = false;
+
+        document.addEventListener('touchstart', () => isTouching = true);
+        document.addEventListener('touchend', () => {
+            isTouching = false;
+            card.style.transform = `rotateX(0deg) rotateY(0deg)`;
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isTouching) return;
+            const touch = e.touches[0];
+            updateEffect(touch.clientX, touch.clientY);
+        });
+
+        // 2. Mouse-based tilt (for desktop testing)
+        document.addEventListener('mousemove', (e) => {
+            updateEffect(e.clientX, e.clientY);
+        });
+
+        function updateEffect(x, y) {
+            const rect = card.getBoundingClientRect();
+            const cardX = x - rect.left - rect.width / 2;
+            const cardY = y - rect.top - rect.height / 2;
+            
+            // Limit the tilt
+            const rotateX = (cardY / (rect.height / 2)) * -15;
+            const rotateY = (cardX / (rect.width / 2)) * 15;
+
+            card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+            
+            // Move the holo gradient based on position
+            const moveX = (cardX / rect.width) * 100;
+            const moveY = (cardY / rect.height) * 100;
+            overlay.style.backgroundPosition = `${50 + moveX}% ${50 + moveY}%`;
+        }
+    </script>
+</body>
+</html>
