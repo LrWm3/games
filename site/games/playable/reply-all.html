@@ -429,6 +429,13 @@
         align-items: center;
         justify-content: center;
         padding: 5px;
+        position: relative;
+      }
+      .shop-card-badge {
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        pointer-events: none;
       }
       .shop-card-item .shop-card-name {
         font-size: 10px;
@@ -685,6 +692,19 @@
           grid-column: 2 / 3;
           grid-row: 1 / 3;
           grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+        }
+      }
+      @media (min-width: 980px) {
+        .shop-layout-assets {
+          grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+        }
+        .shop-layout-assets #assets-window-profile {
+          grid-column: 1 / -1;
+          grid-row: auto;
+          display: flex !important;
+        }
+        .shop-layout-assets .assets-window.hidden {
+          display: flex;
         }
       }
       @media (max-width: 629px) {
@@ -3440,7 +3460,7 @@
             {
               event: "remove_stakeholder",
               type: "add_random_cc_bonus",
-              threadLimit: 1,
+              threadLimit: 2,
             },
           ],
         },
@@ -6333,6 +6353,7 @@
           contactUpgrades: {},
           contactPermanentBoosts: {},
           contactTrainingCount: {},
+          coachingBoosts: {},
           salutationBonuses: {},
           signoffBonuses: {},
           ...DEFAULT_PLAYER_LINES,
@@ -6470,6 +6491,9 @@
         if (!state.messageLogEntries) {
           state.messageLogEntries = [];
         }
+        if (state.player && !state.player.coachingBoosts) {
+          state.player.coachingBoosts = {};
+        }
         if (!state.startConfig.departmentId) state.startConfig.departmentId = "executive";
         if (state.startConfig.prestige == null) state.startConfig.prestige = 0;
         if (state.startConfig.seedInput == null) state.startConfig.seedInput = "";
@@ -6534,6 +6558,7 @@
           contactUpgrades: {},
           contactPermanentBoosts: {},
           contactTrainingCount: {},
+          coachingBoosts: {},
           salutationBonuses: {},
           signoffBonuses: {},
           ...DEFAULT_PLAYER_LINES,
@@ -6794,6 +6819,7 @@
           bccContacts,
           discoveredSets: saved.discoveredSets || [],
           contactTrainingCount: saved.contactTrainingCount || {},
+          coachingBoosts: saved.coachingBoosts || {},
         };
         applyUnitDefaults(player);
         return player;
@@ -7430,6 +7456,8 @@
         if (u.salutation) blocks.push(u.salutation);
         if (u.signOff) blocks.push(u.signOff);
         if (Array.isArray(u.signatures)) blocks.push(...u.signatures);
+        if (u.coachingBoosts && Object.keys(u.coachingBoosts).length)
+          blocks.push(u.coachingBoosts);
         if (Array.isArray(u.buffs))
           blocks.push(...u.buffs.map((b) => (b.eff ? b.eff : b)));
         blocks.push(...getUnitSetBonuses(u));
@@ -7525,6 +7553,17 @@
       function updateGreetingReputationScaling(player) {
         if (!player) return;
         runUnitEffects(player, "rep_tick", { rep: player.reputation || 0 });
+      }
+
+      function applyCoachingBoosts(player, stats) {
+        if (!player || !stats) return;
+        if (!player.coachingBoosts) player.coachingBoosts = {};
+        Object.keys(stats).forEach((key) => {
+          const value = stats[key];
+          if (typeof value !== "number") return;
+          player.coachingBoosts[key] =
+            (player.coachingBoosts[key] || 0) + value;
+        });
       }
 
       function computeUnitStats(u, turnOverride = null) {
@@ -7666,6 +7705,9 @@
         if (Array.isArray(u.signatures)) {
           u.signatures.forEach((s) => pushSource(`Signature: ${s.name}`, s));
         }
+        if (u.coachingBoosts && Object.keys(u.coachingBoosts).length) {
+          pushSource("Coaching", u.coachingBoosts);
+        }
         if (u.threadBonuses && Object.keys(u.threadBonuses).length) {
           sources.push({ label: "Thread bonuses", stats: u.threadBonuses });
         }
@@ -7744,7 +7786,30 @@
 
       function getUnitFollowUpChance(u) {
         const chance = computeUnitStats(u).followUpChance;
-        return Math.max(0, Math.min(1, chance));
+        return Math.max(0, chance || 0);
+      }
+
+      function resolveFollowUps({
+        attacker,
+        target,
+        baseDamage,
+        combatKey,
+        onHit,
+        onExtras,
+      }) {
+        const results = [];
+        let chance = getUnitFollowUpChance(attacker);
+        while (chance > 0 && target && target.hp > 0) {
+          const hit = rngNext(combatKey) < chance;
+          if (!hit) break;
+          const result = applyDamage(attacker, target, baseDamage);
+          results.push(result);
+          if (typeof onHit === "function") onHit(result, results.length);
+          if (typeof onExtras === "function") onExtras(result, results.length);
+          chance = Math.max(chance - 1, 0);
+          if (attacker.hp != null && attacker.hp <= 0) break;
+        }
+        return results;
       }
 
       function getUnitEscalateRecover(u) {
@@ -8410,12 +8475,14 @@
           btn.className = "shop-card-item";
           btn.dataset.itemId = opt.id;
           const typeMeta = getItemTypeMeta(opt.itemType);
+          const rarityBadge = formatRarityBadge(opt.rarity || "common");
           btn.innerHTML = `
             <div class="w-full h-full flex flex-col">
               <div class="shop-card-header" style="background:${typeMeta.headerBg}; color:${typeMeta.headerText};">
                 ${typeMeta.label}
               </div>
               <div class="shop-card-frame" style="background:${typeMeta.paneBg}; color:${typeMeta.paneText};">
+                <div class="shop-card-badge">${rarityBadge}</div>
                 <div class="shop-card-name">${opt.name}</div>
               </div>
             </div>
@@ -9381,7 +9448,7 @@
             name: "Reply to Focus",
             singleDmg: 5,
             apply: () => {
-              state.player.singleDmg += 5;
+              applyCoachingBoosts(state.player, { singleDmg: 5 });
             },
           },
           {
@@ -9389,7 +9456,7 @@
             name: "Escalation Focus",
             escalateDmg: 4,
             apply: () => {
-              state.player.escalateDmg += 4;
+              applyCoachingBoosts(state.player, { escalateDmg: 4 });
             },
           },
           {
@@ -9397,7 +9464,7 @@
             name: "Agency-Wide Influence",
             globalDmg: 3,
             apply: () => {
-              state.player.globalDmg += 3;
+              applyCoachingBoosts(state.player, { globalDmg: 3 });
             },
           },
           {
@@ -9405,7 +9472,7 @@
             name: "Resilience Training",
             maxHp: 10,
             apply: () => {
-              state.player.maxHp += 10;
+              applyCoachingBoosts(state.player, { maxHp: 10 });
             },
           },
           {
@@ -9414,8 +9481,10 @@
             deflect: 2,
             retaliation: 3,
             apply: () => {
-              state.player.deflect += 2;
-              state.player.retaliation += 3;
+              applyCoachingBoosts(state.player, {
+                deflect: 2,
+                retaliation: 3,
+              });
             },
           },
           {
@@ -9423,7 +9492,7 @@
             name: "Visibility Coaching",
             selfPromoteHeal: 5,
             apply: () => {
-              state.player.selfPromoteHeal += 5;
+              applyCoachingBoosts(state.player, { selfPromoteHeal: 5 });
             },
           },
         ];
@@ -12495,19 +12564,20 @@
           actionDisabled,
           onAction,
           cost,
+          showRarityBadge = true,
         }) => {
           const container = document.createElement("div");
           container.className = "relative";
-          const rarityMeta = getRarityMeta(rarity);
+          const rarityBadge = showRarityBadge
+            ? formatRarityBadge(rarity || "common")
+            : "";
           const repText =
             typeof cost === "number" && cost > 0 ? `${cost} REP` : "";
           const buttonLabel = repText
             ? `${actionLabel || "REQUEST"} (${repText})`
             : actionLabel || "REQUEST";
           container.innerHTML = `
-            <span class="absolute -top-3 -left-2 z-10 text-[9px] font-bold uppercase px-2 py-0.5 rounded-sm ${rarityMeta.className} shadow-sm">
-              ${rarityMeta.label}
-            </span>
+            ${rarityBadge || ""}
             <div class="p-3 bg-[#e0e0e0] retro-border shadow-2xl flex flex-col gap-3">
               <div class="flex justify-between items-start font-bold text-[11px] gap-2 border-b border-[#808080] pb-2">
                 <div class="truncate flex flex-col">
@@ -12625,6 +12695,7 @@
               typeLabel: getItemTypeLabel(item.itemType || item.type),
               description: item.description || "",
               rarity: item.rarity,
+              showRarityBadge: false,
               actionLabel: item.purchased ? "COMPLETED" : "ATTEND EVENT",
               actionDisabled: !!item.purchased || (state.player.reputation < (item.cost || 0)),
               cost: item.cost || 0,
@@ -13322,6 +13393,7 @@
         if (opponents.every((opp) => opp.hp <= 0)) {
           if (!state.gameOver) {
             runUnitEffects(state.player, "thread_end", {});
+            state.player.hp = getUnitMaxHp(state.player);
             state.gameOver = true;
             saveGame();
             endQuarter();
@@ -14082,10 +14154,46 @@
           let levGain = getPlayerLeverageGain("reply_to", 2);
           p.ult = Math.min(LEVERAGE_MAX, p.ult + levGain);
 
-          const followUpChance = getUnitFollowUpChance(p);
-          const followUpHit =
-            followUpChance > 0 && rngNext(combatKey) < followUpChance;
-          const followUpResult = followUpHit ? applyDamage(p, target, d) : null;
+          const followUpSecondary = [];
+          const followUpBounces = [];
+          const followUpCleaveTotals = [];
+          const followUpResults = resolveFollowUps({
+            attacker: p,
+            target,
+            baseDamage: d,
+            combatKey,
+            onHit: () => {
+              runUnitEffects(p, "reply_to", { target, damage: d });
+            },
+            onExtras: (res, idx) => {
+              const cleave = cleaveActive
+                ? applyDepartmentCleave(p, target, d)
+                : { hits: 0, total: 0 };
+              if (cleave && cleave.hits > 0) followUpCleaveTotals[idx - 1] = cleave;
+              const secondary = secondaryActive
+                ? pickSecondaryTarget(p, target)
+                : null;
+              if (secondary) {
+                const secRes = applyDamage(p, secondary, Math.floor(d * 0.5));
+                followUpSecondary[idx - 1] = {
+                  target: secondary,
+                  result: secRes,
+                };
+              }
+              if (bounceDamage) {
+                const bounceTarget = pickBounceTarget(p, target);
+                if (bounceTarget) {
+                  const bounceRes = applyDamage(p, bounceTarget, bounceDamage, {
+                    ignoreReflect: true,
+                  });
+                  followUpBounces[idx - 1] = {
+                    target: bounceTarget,
+                    result: bounceRes,
+                  };
+                }
+              }
+            },
+          });
           const secondaryActive =
             p.salutation && p.salutation.replySecondaryHalf === true;
           const secondaryTarget = secondaryActive
@@ -14116,16 +14224,14 @@
             targetHpAfter: result.targetHpAfter,
             attackerHpBefore: result.attackerHpBefore,
             attackerHpAfter: result.attackerHpAfter,
-            followUp: followUpResult
-              ? {
-                  damageDealt: followUpResult.dmg,
-                  reflected: followUpResult.reflected,
-                  targetHpBefore: followUpResult.targetHpBefore,
-                  targetHpAfter: followUpResult.targetHpAfter,
-                  attackerHpBefore: followUpResult.attackerHpBefore,
-                  attackerHpAfter: followUpResult.attackerHpAfter,
-                }
-              : null,
+            followUps: followUpResults.map((res) => ({
+              damageDealt: res.dmg,
+              reflected: res.reflected,
+              targetHpBefore: res.targetHpBefore,
+              targetHpAfter: res.targetHpAfter,
+              attackerHpBefore: res.attackerHpBefore,
+              attackerHpAfter: res.attackerHpAfter,
+            })),
             secondary: secondaryResult && secondaryTarget
               ? {
                   targetId: secondaryTarget.id,
@@ -14164,13 +14270,35 @@
               `<strong>Deflected:</strong> ${result.reflected} reflected.`,
             );
           }
-          if (followUpResult) {
-            let followUpLine = `<strong>Follow-up Reply:</strong> -${followUpResult.dmg}`;
-            if (followUpResult.reflected > 0) {
-              followUpLine += ` (Deflected ${followUpResult.reflected})`;
-            }
-            followUpLine += ".";
-            extras.push(followUpLine);
+          if (followUpResults.length) {
+            followUpResults.forEach((res, idx) => {
+              let followUpLine = `<strong>Follow-up Reply ${idx + 1}:</strong> -${res.dmg}`;
+              if (res.reflected > 0) {
+                followUpLine += ` (Deflected ${res.reflected})`;
+              }
+              followUpLine += ".";
+              extras.push(followUpLine);
+              const cleave = followUpCleaveTotals[idx];
+              if (cleave && cleave.hits > 0) {
+                extras.push(
+                  `<strong>Department Cleave:</strong> ${cleave.hits} hit for ${cleave.total}.`,
+                );
+              }
+              const sec = followUpSecondary[idx];
+              if (sec && sec.target) {
+                extras.push(
+                  `<strong>Secondary Reply:</strong> ${sec.target.name} -${sec.result.dmg}.`,
+                );
+              }
+              const bounce = followUpBounces[idx];
+              if (bounce && bounce.target) {
+                let bounceLine = `<strong>Bounce:</strong> ${bounce.target.name} -${bounce.result.dmg}.`;
+                if (bounce.result.reflected > 0) {
+                  bounceLine += ` (Deflected ${bounce.result.reflected})`;
+                }
+                extras.push(bounceLine);
+              }
+            });
           }
           if (cleaveResult.hits > 0) {
             extras.push(
@@ -14198,7 +14326,51 @@
             "border-l-4 border-blue-600",
           );
           runUnitEffects(p, "reply_to", { target, damage: d });
-          if (target.hp <= 0) handleOpponentDefeat(target, true, p);
+          if (followUpResults.length) {
+            followUpResults.forEach((res, idx) => {
+              const followLine =
+                "Following up on my previous note to ensure this doesn't stall.";
+              let followBody = formatMessageBody(p, followLine);
+              const followExtras = [];
+              if (res.reflected > 0) {
+                followExtras.push(
+                  `<strong>Deflected:</strong> ${res.reflected} reflected.`,
+                );
+              }
+              followExtras.push(
+                `<strong>Damage to Credibility: -${res.dmg}</strong>`,
+              );
+              const cleave = followUpCleaveTotals[idx];
+              if (cleave && cleave.hits > 0) {
+                followExtras.push(
+                  `<strong>Department Cleave:</strong> ${cleave.hits} hit for ${cleave.total}.`,
+                );
+              }
+              const sec = followUpSecondary[idx];
+              if (sec && sec.target) {
+                followExtras.push(
+                  `<strong>Secondary Reply:</strong> ${sec.target.name} -${sec.result.dmg}.`,
+                );
+              }
+              const bounce = followUpBounces[idx];
+              if (bounce && bounce.target) {
+                let bounceLine = `<strong>Bounce:</strong> ${bounce.target.name} -${bounce.result.dmg}.`;
+                if (bounce.result.reflected > 0) {
+                  bounceLine += ` (Deflected ${bounce.result.reflected})`;
+                }
+                followExtras.push(bounceLine);
+              }
+              followBody = appendEmailExtras(followBody, followExtras);
+              addEmailToLog(
+                p.name,
+                target.name,
+                "Follow-up Reply",
+                followBody,
+                "border-l-4 border-blue-500",
+              );
+            });
+          }
+          if (target.hp <= 0) handleOpponentDefeat(target, true);
         } else if (type === "ESCALATE") {
           const d = getUnitDamage(p, "escalate");
           let totalBlocked = 0;
@@ -14730,9 +14902,6 @@
               );
               let body = formatMessageBody(a, q);
               const extras = [];
-              const followUpChance = getUnitFollowUpChance(a);
-              const followUpHit =
-                followUpChance > 0 && rngNext(combatKey) < followUpChance;
               const bounceDamage = getUnitBounceDamage(a);
 
               if (target.id === "player") {
@@ -14753,9 +14922,41 @@
                   );
                 } else {
                   const result = applyDamage(a, state.player, d);
-                  const followUpResult = followUpHit
-                    ? applyDamage(a, state.player, d)
-                    : null;
+                  const followUpBounces = [];
+                  const followUpResults = resolveFollowUps({
+                    attacker: a,
+                    target: state.player,
+                    baseDamage: d,
+                    combatKey,
+                    onHit: () => {
+                      runUnitEffects(a, "reply_to", {
+                        target: state.player,
+                        damage: d,
+                      });
+                    },
+                    onExtras: (res, idx) => {
+                      if (bounceDamage) {
+                        const bounceTarget = pickBounceTarget(
+                          a,
+                          state.player,
+                        );
+                        if (bounceTarget) {
+                          const bounceRes = applyDamage(
+                            a,
+                            bounceTarget,
+                            bounceDamage,
+                            {
+                              ignoreReflect: true,
+                            },
+                          );
+                          followUpBounces[idx - 1] = {
+                            target: bounceTarget,
+                            result: bounceRes,
+                          };
+                        }
+                      }
+                    },
+                  });
                   const bounceTarget = bounceDamage
                     ? pickBounceTarget(a, state.player)
                     : null;
@@ -14777,15 +14978,13 @@
                     targetHpAfter: result.targetHpAfter,
                     attackerHpBefore: result.attackerHpBefore,
                     attackerHpAfter: result.attackerHpAfter,
-                    followUp: followUpResult
-                      ? {
-                          damageDealt: followUpResult.dmg,
-                          targetHpBefore: followUpResult.targetHpBefore,
-                          targetHpAfter: followUpResult.targetHpAfter,
-                          attackerHpBefore: followUpResult.attackerHpBefore,
-                          attackerHpAfter: followUpResult.attackerHpAfter,
-                        }
-                      : null,
+                    followUps: followUpResults.map((res) => ({
+                      damageDealt: res.dmg,
+                      targetHpBefore: res.targetHpBefore,
+                      targetHpAfter: res.targetHpAfter,
+                      attackerHpBefore: res.attackerHpBefore,
+                      attackerHpAfter: res.attackerHpAfter,
+                    })),
                     bounce: bounceResult && bounceTarget
                       ? {
                           targetId: bounceTarget.id,
@@ -14803,10 +15002,18 @@
                       `<strong>Deflected:</strong> ${result.reflected} reflected.`,
                     );
                   }
-                  if (followUpResult) {
-                    extras.push(
-                      `<strong>Follow-up Reply:</strong> -${followUpResult.dmg}.`,
-                    );
+                  if (followUpResults.length) {
+                    followUpResults.forEach((res, idx) => {
+                      extras.push(
+                        `<strong>Follow-up Reply ${idx + 1}:</strong> -${res.dmg}.`,
+                      );
+                      const bounce = followUpBounces[idx];
+                      if (bounce && bounce.target) {
+                        extras.push(
+                          `<strong>Bounce:</strong> ${bounce.target.name} -${bounce.result.dmg}.`,
+                        );
+                      }
+                    });
                   }
                   if (bounceResult && bounceTarget) {
                     extras.push(
@@ -14824,6 +15031,31 @@
                     body,
                     "bg-red-50 border-l-2 border-red-400",
                   );
+                  if (followUpResults.length) {
+                    followUpResults.forEach((res, idx) => {
+                      let followBody = formatMessageBody(
+                        a,
+                        "Following up to confirm receipt.",
+                      );
+                      const followExtras = [
+                        `<strong>Damage to Credibility: -${res.dmg}</strong>`,
+                      ];
+                      const bounce = followUpBounces[idx];
+                      if (bounce && bounce.target) {
+                        followExtras.push(
+                          `<strong>Bounce:</strong> ${bounce.target.name} -${bounce.result.dmg}.`,
+                        );
+                      }
+                      followBody = appendEmailExtras(followBody, followExtras);
+                      addEmailToLog(
+                        a.name,
+                        state.player.name,
+                        "Follow-up Reply",
+                        followBody,
+                        "bg-red-50 border-l-2 border-red-300",
+                      );
+                    });
+                  }
                   document.getElementById("game-ui").classList.add("shaking");
                   setTimeout(
                     () =>
@@ -14835,9 +15067,35 @@
                 }
               } else {
                 const result = applyDamage(a, target, d);
-                const followUpResult = followUpHit
-                  ? applyDamage(a, target, d)
-                  : null;
+                const followUpBounces = [];
+                const followUpResults = resolveFollowUps({
+                  attacker: a,
+                  target,
+                  baseDamage: d,
+                  combatKey,
+                  onHit: () => {
+                    runUnitEffects(a, "reply_to", { target, damage: d });
+                  },
+                  onExtras: (res, idx) => {
+                    if (bounceDamage) {
+                      const bounceTarget = pickBounceTarget(a, target);
+                      if (bounceTarget) {
+                        const bounceRes = applyDamage(
+                          a,
+                          bounceTarget,
+                          bounceDamage,
+                          {
+                            ignoreReflect: true,
+                          },
+                        );
+                        followUpBounces[idx - 1] = {
+                          target: bounceTarget,
+                          result: bounceRes,
+                        };
+                      }
+                    }
+                  },
+                });
                 const bounceTarget = bounceDamage
                   ? pickBounceTarget(a, target)
                   : null;
@@ -14859,15 +15117,13 @@
                   targetHpAfter: result.targetHpAfter,
                   attackerHpBefore: result.attackerHpBefore,
                   attackerHpAfter: result.attackerHpAfter,
-                  followUp: followUpResult
-                    ? {
-                        damageDealt: followUpResult.dmg,
-                        targetHpBefore: followUpResult.targetHpBefore,
-                        targetHpAfter: followUpResult.targetHpAfter,
-                        attackerHpBefore: followUpResult.attackerHpBefore,
-                        attackerHpAfter: followUpResult.attackerHpAfter,
-                      }
-                    : null,
+                  followUps: followUpResults.map((res) => ({
+                    damageDealt: res.dmg,
+                    targetHpBefore: res.targetHpBefore,
+                    targetHpAfter: res.targetHpAfter,
+                    attackerHpBefore: res.attackerHpBefore,
+                    attackerHpAfter: res.attackerHpAfter,
+                  })),
                   bounce: bounceResult && bounceTarget
                     ? {
                         targetId: bounceTarget.id,
@@ -14885,10 +15141,18 @@
                     `<strong>Deflected:</strong> ${result.reflected} reflected.`,
                   );
                 }
-                if (followUpResult) {
-                  extras.push(
-                    `<strong>Follow-up Reply:</strong> -${followUpResult.dmg}.`,
-                  );
+                if (followUpResults.length) {
+                  followUpResults.forEach((res, idx) => {
+                    extras.push(
+                      `<strong>Follow-up Reply ${idx + 1}:</strong> -${res.dmg}.`,
+                    );
+                    const bounce = followUpBounces[idx];
+                    if (bounce && bounce.target) {
+                      extras.push(
+                        `<strong>Bounce:</strong> ${bounce.target.name} -${bounce.result.dmg}.`,
+                      );
+                    }
+                  });
                 }
                 if (bounceResult && bounceTarget) {
                   extras.push(
@@ -14906,7 +15170,32 @@
                   body,
                   "text-gray-500 text-[11px]",
                 );
-                if (target.hp <= 0) handleOpponentDefeat(target, false, a);
+                if (followUpResults.length) {
+                  followUpResults.forEach((res, idx) => {
+                    let followBody = formatMessageBody(
+                      a,
+                      "Following up to keep this moving.",
+                    );
+                    const followExtras = [
+                      `<strong>Damage to Credibility: -${res.dmg}</strong>`,
+                    ];
+                    const bounce = followUpBounces[idx];
+                    if (bounce && bounce.target) {
+                      followExtras.push(
+                        `<strong>Bounce:</strong> ${bounce.target.name} -${bounce.result.dmg}.`,
+                      );
+                    }
+                    followBody = appendEmailExtras(followBody, followExtras);
+                    addEmailToLog(
+                      a.name,
+                      target.name,
+                      "Follow-up Reply",
+                      followBody,
+                      "text-gray-500 text-[11px]",
+                    );
+                  });
+                }
+                if (target.hp <= 0) handleOpponentDefeat(target);
               }
             }
 
