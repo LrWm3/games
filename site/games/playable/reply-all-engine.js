@@ -402,19 +402,139 @@
     return state;
   }
 
-  function resolveTurn(state) {
+  function resolveTurn(state, playerAction, aiActions = [], helpers = {}) {
+    const actions = Array.isArray(aiActions) ? aiActions : [];
+    // Pre-resolve AI deflects before player action.
+    actions.forEach((a) => {
+      if (a.type !== "DEFLECT") return;
+      const unit = (state.opponents || []).find((o) => o.id === a.actorId);
+      if (!unit) return;
+      if ((unit.deflectChargeReduce || 0) > 0 || (unit.deflectChargeReflect || 0) > 0)
+        return;
+      resolveDeflect(state, unit, helpers);
+    });
+
+    if (playerAction) {
+      resolveAction(state, playerAction, helpers);
+    }
+
+    actions.forEach((a) => {
+      resolveAction(state, a, helpers);
+    });
+
     return state;
   }
 
-  function resolveAction(state, action) {
-    return state;
+  function resolveAction(state, action, helpers = {}) {
+    if (!action || !action.type) return { ok: false, reason: "invalid" };
+    const actor =
+      action.actorId === "player"
+        ? state.player
+        : (state.opponents || []).find((o) => o.id === action.actorId);
+    if (!actor) return { ok: false, reason: "missing_actor" };
+
+    const statCtx = state._statCtx || helpers.statCtx;
+    const damageType =
+      action.type === "ATTACK" ? "single" :
+      action.type === "ESCALATE" ? "escalate" :
+      action.type === "ULT" ? "replyAll" : null;
+
+    if (action.type === "DEFLECT") {
+      resolveDeflect(state, actor, helpers);
+      return { ok: true, action };
+    }
+
+    if (action.type === "PROMOTE") {
+      const stats = statCtx && ReplyAllEngine.stats?.computeUnitStats
+        ? ReplyAllEngine.stats.computeUnitStats(statCtx, actor)
+        : actor;
+      const maxHp = stats?.maxHp ?? actor.maxHp ?? actor.hp;
+      const heal = ReplyAllEngine.stats?.getUnitSelfPromoteHeal
+        ? ReplyAllEngine.stats.getUnitSelfPromoteHeal(statCtx, actor, 20)
+        : 20;
+      actor.currentWins = Math.max(0, (actor.currentWins || 0) - 1);
+      const before = actor.hp;
+      actor.hp = Math.min(maxHp, (actor.hp || 0) + heal);
+      return { ok: true, action, heal, before, after: actor.hp };
+    }
+
+    if (damageType) {
+      if (action.type === "ESCALATE" || action.type === "ULT") {
+        const targets = (state.opponents || []).filter((o) => o.hp > 0);
+        const results = targets.map((t) =>
+          resolveDamage(
+            state,
+            actor,
+            t,
+            ReplyAllEngine.stats.getUnitDamage(statCtx, actor, damageType),
+            { ignoreDefense: action.type === "ESCALATE" || action.type === "ULT" },
+          ),
+        );
+        if (action.type === "ULT") actor.ult = 0;
+        return { ok: true, action, results };
+      }
+
+      const target =
+        (state.opponents || []).find((o) => o.id === action.targetId) ||
+        (action.targetId === "player" ? state.player : null);
+      if (!target) return { ok: false, reason: "missing_target" };
+      const result = resolveDamage(
+        state,
+        actor,
+        target,
+        ReplyAllEngine.stats.getUnitDamage(statCtx, actor, damageType),
+        { ignoreDefense: false },
+      );
+      return { ok: true, action, result };
+    }
+
+    return { ok: false, reason: "unhandled" };
   }
 
   function resolveDamage(state, attacker, target, amount, options = {}) {
-    return { dmg: 0, blocked: 0, reflected: 0 };
+    if (!target) return { dmg: 0, blocked: 0, reflected: 0 };
+    const statCtx = state._statCtx;
+    let dmg = Math.max(0, Math.floor(amount || 0));
+    if (!options.ignoreDefense && ReplyAllEngine.stats?.getUnitFlatDef && statCtx) {
+      const flatDef = ReplyAllEngine.stats.getUnitFlatDef(statCtx, target);
+      dmg = Math.max(0, dmg - flatDef);
+    }
+    let blocked = 0;
+    if ((target.deflectChargeReduce || 0) > 0 && dmg > 0) {
+      const reducedBy = Math.min(target.deflectChargeReduce, dmg);
+      dmg -= reducedBy;
+      blocked += reducedBy;
+    }
+    const targetHpBefore = target.hp;
+    target.hp -= dmg;
+    let reflected = 0;
+    if (!options.ignoreReflect && (target.deflectChargeReflect || 0) > 0 && attacker) {
+      reflected = target.deflectChargeReflect;
+      blocked += reflected;
+      if (attacker.id === "player") {
+        state.player.hp -= reflected;
+      } else if (attacker.hp != null) {
+        attacker.hp -= reflected;
+      }
+    }
+    return {
+      dmg,
+      blocked,
+      reflected,
+      targetHpBefore,
+      targetHpAfter: target.hp,
+    };
   }
 
   function resolveDeflect(state, unit) {
+    if (!unit) return state;
+    const statCtx = state._statCtx;
+    if (statCtx && ReplyAllEngine.stats?.getUnitDeflectReflect) {
+      unit.deflectChargeReflect =
+        ReplyAllEngine.stats.getUnitDeflectReflect(statCtx, unit);
+      unit.deflectChargeReduce =
+        ReplyAllEngine.stats.getUnitDeflectReduce(statCtx, unit);
+    }
     return state;
   }
 
