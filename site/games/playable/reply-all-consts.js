@@ -4091,6 +4091,8 @@ const STAT_FIELDS = [
   "bccLimit",
   "contactTrainingLimit",
 ];
+
+const LEVERAGE_MAX = 8;
 const ITEM_TYPE_LABELS = {
   contact: {
     label: "Contact",
@@ -4179,3 +4181,30 @@ const STAT_METADATA = {
     shortName: "Training Limit",
   },
 };
+
+const SPAM_SUBJECTS = [
+  "Hot Stocks!",
+  "Refinance Now",
+  "Enlarge your career",
+  "Inheritance Notification",
+  "Meeting?",
+  "Action Required: Password Reset",
+  "Last Chance: Office Supply Lottery",
+  "Invoice Attached",
+  "Team Lunch Sign-Up",
+  "Weekly Pipeline Digest",
+  "Travel Reimbursement Pending",
+  "Urgent: Calendar Sync",
+  "Wellness Survey Reminder",
+  "FW: Please Review",
+  "Recruitment Outreach",
+  "Security Notice",
+  "New Policy Update",
+  "Printer Status Alert",
+  "Quarterly Town Hall",
+  "Zoom Recording Available",
+];
+
+const PACK_TIERS = ["small", "medium", "large"];
+const QUARTERS = ["Q3", "Q4", "Q1", "Q2"];
+const NUM_WORDS = ["zero", "one", "two", "three", "four"];
