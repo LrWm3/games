@@ -543,16 +543,350 @@
   }
 
   // 3.4 Effect Engine Hooks
-  function runUnitEffects(state, unit, event, payload = {}) {
-    return [];
+  function getEffectHandlers(helpers = {}) {
+    return {
+      add_random_cc_bonus: (state, unit, effect) => {
+        if (unit.id !== "player") return;
+        const count = effect.count || 1;
+        for (let i = 0; i < count; i++) {
+          helpers.applyRandomCcBoost?.(state.player, effect.stats || {}, true);
+        }
+      },
+      add_cc_bonus: (state, unit, effect, ctx) => {
+        if (unit.id !== "player") return;
+        if (!ctx.contact) return;
+        helpers.applyContactPermanentBoost?.(
+          state.player,
+          ctx.contact.id,
+          effect.stats || {},
+        );
+      },
+      add_signoff_bonus: (state, unit, effect, owner) => {
+        helpers.applyUnitPermanentBoost?.(unit, owner.id, effect.stats || {});
+      },
+      add_salutation_bonus: (state, unit, effect, owner) => {
+        helpers.applySalutationPermanentBoost?.(unit, owner.id, effect.stats || {});
+      },
+      add_thread_bonus: (state, unit, effect, owner, contactEffectBoosts) => {
+        const stats = { ...(effect.stats || {}) };
+        if (contactEffectBoosts) {
+          Object.keys(contactEffectBoosts).forEach((key) => {
+            const value = contactEffectBoosts[key];
+            if (typeof value !== "number") return;
+            stats[key] = (stats[key] || 0) + value;
+          });
+        }
+        helpers.applyUnitThreadBonus?.(unit, stats);
+      },
+      grow_sig_stat: (state, unit, effect, owner) => {
+        if (owner && owner.itemType === "signature") {
+          owner[effect.stat] = (owner[effect.stat] || 0) + effect.amount;
+        }
+      },
+      gain_rep: (state, unit, effect) => {
+        if (unit.id !== "player") return;
+        state.player.reputation += effect.amount || 0;
+      },
+      add_thread_bonus_scaled: (state, unit, effect, owner, contactEffectBoosts, ctx) => {
+        const step = effect.step || 1;
+        let base = 0;
+        if (effect.scaleBy === "wins_remaining")
+          base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
+        if (effect.scaleBy === "hp") base = unit.hp || 0;
+        if (effect.scaleBy === "overflow") base = ctx.overflow || 0;
+        const steps = Math.floor(base / step);
+        if (steps > 0) {
+          const combinedStats = { ...(effect.stats || {}) };
+          if (contactEffectBoosts) {
+            Object.keys(contactEffectBoosts).forEach((key) => {
+              const value = contactEffectBoosts[key];
+              if (typeof value !== "number") return;
+              combinedStats[key] = (combinedStats[key] || 0) + value;
+            });
+          }
+          const scaled = {};
+          Object.keys(combinedStats).forEach((key) => {
+            const value = combinedStats[key];
+            if (typeof value !== "number") return;
+            scaled[key] = value * steps;
+          });
+          helpers.applyUnitThreadBonus?.(unit, scaled);
+        }
+      },
+      add_bcc: (state, unit, effect) => {
+        if (unit.id !== "player") return;
+        helpers.addRandomBccs?.(state.player, effect.count || 1);
+      },
+      duplicate_bcc: (state, unit, effect) => {
+        if (unit.id !== "player") return;
+        helpers.duplicateRandomOwnedBccs?.(state.player, effect.count || 1);
+      },
+      add_signoff_bonus_scaled: (state, unit, effect, owner, _boosts, ctx) => {
+        const step = effect.step || 1;
+        let base = 0;
+        if (effect.scaleBy === "hp") base = unit.hp || 0;
+        if (effect.scaleBy === "wins_remaining")
+          base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
+        if (effect.scaleBy === "overflow") base = ctx.overflow || 0;
+        const steps = Math.floor(base / step);
+        if (steps > 0) {
+          const scaled = {};
+          Object.keys(effect.stats || {}).forEach((key) => {
+            const value = effect.stats[key];
+            if (typeof value !== "number") return;
+            scaled[key] = value * steps;
+          });
+          helpers.applyUnitPermanentBoost?.(unit, owner.id, scaled);
+        }
+      },
+      add_random_cc_bonus_scaled: (state, unit, effect, _owner, _boosts, ctx) => {
+        if (unit.id !== "player") return;
+        const step = effect.step || 1;
+        let base = 0;
+        if (effect.scaleBy === "wins_remaining")
+          base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
+        if (effect.scaleBy === "hp") base = unit.hp || 0;
+        if (effect.scaleBy === "overflow")
+          base = typeof ctx.overflow === "number" ? ctx.overflow : 0;
+        if (effect.scaleBy === "active_cc_count")
+          base = Array.isArray(unit.buffs)
+            ? unit.buffs.filter((b) => b.usedBy === unit.name).length
+            : 0;
+        if (base <= 0) return;
+        const count = Math.floor(base / step);
+        if (count <= 0) return;
+        const scaled = {};
+        Object.keys(effect.stats || {}).forEach((key) => {
+          const value = effect.stats[key];
+          if (typeof value !== "number") return;
+          scaled[key] = value;
+        });
+        const limit =
+          effect.threadLimit != null ? Math.max(0, effect.threadLimit) : null;
+        const countToApply = limit != null ? Math.min(count, limit) : count;
+        helpers.applyRandomCcBoostMultiple?.(state.player, scaled, countToApply);
+      },
+      add_all_cc_bonus: (state, unit, effect) => {
+        if (unit.id !== "player") return;
+        const scope = effect.scope || "thread";
+        const ids =
+          scope === "addressBook"
+            ? state.player.addressBook
+            : state.player.buffs
+                .filter((b) => b.usedBy === state.player.name)
+                .map((b) => b.id);
+        ids.forEach((cid) => {
+          helpers.applyContactPermanentBoost?.(
+            state.player,
+            cid,
+            effect.stats || {},
+          );
+          const buff = state.player.buffs.find(
+            (b) => b.id === cid && b.usedBy === state.player.name,
+          );
+          if (buff) {
+            helpers.applyBuffStats?.(buff, effect.stats || {});
+            const originalContact = CONTACTS.find((c) => c.id === cid);
+            if (originalContact && originalContact.eff) {
+              helpers.applyBuffStats?.(buff, originalContact.eff);
+            }
+            const upgrade =
+              state.player.contactUpgrades &&
+              state.player.contactUpgrades[cid];
+            if (upgrade && upgrade.eff) {
+              helpers.applyBuffStats?.(buff, upgrade.eff);
+            }
+            const deptScalerBonus = helpers.getDeptScalerBonusForContact?.(
+              state.player,
+              cid,
+            );
+            if (deptScalerBonus) {
+              helpers.applyBuffStats?.(buff, deptScalerBonus);
+            }
+          }
+        });
+      },
+      add_cc_bonus_by_dept_pairs: (state, unit, effect) => {
+        if (unit.id !== "player") return;
+        const playerCcs = state.player.buffs.filter(
+          (b) => b.usedBy === state.player.name,
+        );
+        const countsByDept = {};
+        playerCcs.forEach((b) => {
+          const dept = b.departmentId || "unknown";
+          countsByDept[dept] = (countsByDept[dept] || 0) + 1;
+        });
+        let totalPairs = 0;
+        Object.values(countsByDept).forEach((count) => {
+          if (count >= 2) totalPairs += Math.floor((count * (count - 1)) / 2);
+        });
+        if (totalPairs <= 0) return;
+        const scaled = {};
+        Object.keys(effect.stats || {}).forEach((key) => {
+          const value = effect.stats[key];
+          if (typeof value !== "number") return;
+          scaled[key] = value * totalPairs;
+        });
+        playerCcs.forEach((b) => {
+          helpers.applyContactPermanentBoost?.(state.player, b.id, scaled);
+          helpers.applyBuffStats?.(b, scaled);
+          const originalContact = CONTACTS.find((c) => c.id === b.id);
+          if (originalContact && originalContact.eff) {
+            helpers.applyBuffStats?.(b, originalContact.eff);
+          }
+          const upgrade =
+            state.player.contactUpgrades && state.player.contactUpgrades[b.id];
+          if (upgrade && upgrade.eff) {
+            helpers.applyBuffStats?.(b, upgrade.eff);
+          }
+          const deptScalerBonus = helpers.getDeptScalerBonusForContact?.(
+            state.player,
+            b.id,
+          );
+          if (deptScalerBonus) {
+            helpers.applyBuffStats?.(b, deptScalerBonus);
+          }
+        });
+      },
+      add_signoff_bonus_by_dept_pairs: (state, unit, effect, owner) => {
+        const playerCcs = state.player.buffs.filter(
+          (b) => b.usedBy === state.player.name,
+        );
+        const countsByDept = {};
+        playerCcs.forEach((b) => {
+          const dept = b.departmentId || "unknown";
+          countsByDept[dept] = (countsByDept[dept] || 0) + 1;
+        });
+        let pairs = 0;
+        Object.values(countsByDept).forEach((count) => {
+          if (count >= 2) pairs += Math.floor((count * (count - 1)) / 2);
+        });
+        if (pairs > 0) {
+          const scaled = {};
+          Object.keys(effect.stats || {}).forEach((key) => {
+            const value = effect.stats[key];
+            if (typeof value !== "number") return;
+            scaled[key] = value * pairs;
+          });
+          helpers.applyUnitPermanentBoost?.(unit, owner.id, scaled);
+        }
+      },
+      rep_scale_salutation: (state, unit, effect, owner, _boosts, ctx) => {
+        const rep = typeof ctx.rep === "number" ? ctx.rep : 0;
+        const step = effect.step || 1;
+        const target = Math.floor(rep / step);
+        if (target <= 0) return;
+        const scaled = {};
+        Object.keys(effect.stats || {}).forEach((key) => {
+          const value = effect.stats[key];
+          if (typeof value !== "number") return;
+          scaled[key] = value * target;
+        });
+        helpers.setSalutationBonus?.(unit, owner.id, scaled);
+      },
+      rep_half_to_cc_escalate: (state, unit, effect, _owner, _boosts, ctx, results) => {
+        if (!ctx.summary) return;
+        const total = ctx.summary.totalRep || 0;
+        const repAward = Math.floor(total / 2);
+        const missed = total - repAward;
+        const step = effect.step || 1;
+        const steps = Math.floor(missed / step);
+        if (steps > 0) {
+          const scaled = {};
+          Object.keys(effect.stats || {}).forEach((key) => {
+            const value = effect.stats[key];
+            if (typeof value !== "number") return;
+            scaled[key] = value;
+          });
+          const limit =
+            effect.threadLimit != null ? Math.max(0, effect.threadLimit) : null;
+          const countToApply = limit != null ? Math.min(steps, limit) : steps;
+          helpers.applyRandomCcBoostMultiple?.(state.player, scaled, countToApply);
+        }
+        if (results) results.repAward = repAward;
+      },
+    };
   }
 
-  function applyEffect(state, unit, effect, payload = {}) {
-    return null;
+  function applyEffect(state, unit, effect, owner, context, contactEffectBoosts, results, handlers) {
+    const handler = handlers?.[effect.type];
+    if (handler) {
+      handler(state, unit, effect, owner, contactEffectBoosts, context, results);
+    }
   }
 
-  function getEffectHandlers() {
-    return {};
+  function runUnitEffectsPure(state, unit, event, context = {}, helpers = {}) {
+    if (!unit) return {};
+    const results = {};
+    const sources = [];
+    if (unit.salutation && Array.isArray(unit.salutation.effects))
+      sources.push({ owner: unit.salutation, id: unit.salutation.id });
+    if (unit.signOff && Array.isArray(unit.signOff.effects))
+      sources.push({ owner: unit.signOff, id: unit.signOff.id });
+    if (Array.isArray(unit.signatures)) {
+      unit.signatures.forEach((sig) => {
+        if (Array.isArray(sig.effects))
+          sources.push({ owner: sig, id: sig.id });
+      });
+    }
+    if (Array.isArray(unit.buffs)) {
+      unit.buffs
+        .filter((b) => b.usedBy === unit.name && Array.isArray(b.effects))
+        .forEach((b) => sources.push({ owner: b, id: b.id }));
+    }
+    const handlers = getEffectHandlers(helpers);
+    sources.forEach(({ owner, id }) => {
+      owner.effects.forEach((effect) => {
+        if (!effect || effect.event !== event) return;
+        const contactEffectBoosts =
+          unit.id === "player" &&
+          owner &&
+          owner.id &&
+          owner.id.startsWith("cc_") &&
+          state.player.contactEffectBoosts
+            ? state.player.contactEffectBoosts[owner.id]
+            : null;
+        if (effect.requiresPackType && context.pack) {
+          if (context.pack.type !== effect.requiresPackType) return;
+        }
+        if (effect.requiresFullLeverage && unit.ult < LEVERAGE_MAX) return;
+        if (effect.requiresHpFull && unit.hp < (helpers.getUnitMaxHp?.(unit) ?? unit.maxHp ?? unit.hp))
+          return;
+        if (effect.chance != null) {
+          const key = helpers.rngKeyForContext?.(state, context) || "misc";
+          const rngStore = getRngStore(state);
+          if (rngStore.next(state, key) > effect.chance) return;
+        }
+        if (effect.threadLimit != null) {
+          if (!state.threadEffectFlags) state.threadEffectFlags = {};
+          const key = `${event}:${id}:${effect.type}`;
+          const used = state.threadEffectFlags[key] || 0;
+          if (used >= effect.threadLimit) return;
+          state.threadEffectFlags[key] = used + 1;
+        }
+        applyEffect(state, unit, effect, owner, context, contactEffectBoosts, results, handlers);
+      });
+    });
+    return results;
+  }
+
+  function runUnitEffects(state, unit, event, context = {}, helpers = {}) {
+    const auto = state?._effectHelpers || {};
+    const mergedHelpers = {
+      ...auto,
+      ...helpers,
+    };
+    if (!mergedHelpers.getUnitMaxHp && state?._statCtx) {
+      mergedHelpers.getUnitMaxHp = (u) =>
+        ReplyAllEngine.stats.computeUnitStats(state._statCtx, u).maxHp;
+    }
+    if (!mergedHelpers.rngKeyForContext) {
+      mergedHelpers.rngKeyForContext = (s, ctx) => {
+        if (ctx?.pack) return getRngStore(s).shopKey(s);
+        return "misc";
+      };
+    }
+    return runUnitEffectsPure(state, unit, event, context, mergedHelpers);
   }
 
   function getRngStore(state) {
@@ -1081,6 +1415,7 @@
     resolveDamage,
     resolveDeflect,
     resolveFollowUps,
+    runUnitEffectsPure,
     runUnitEffects,
     applyEffect,
     getEffectHandlers,
