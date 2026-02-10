@@ -520,6 +520,149 @@
     return plans;
   }
 
+  function isContactInLoop(state, contactId) {
+    if (!state?.player || !contactId) return false;
+    if (state.player.buffs?.some((b) => b.id === contactId)) return true;
+    for (const opp of state.opponents || []) {
+      if (opp?.hp > 0 && opp.buffs?.some((b) => b.id === contactId))
+        return true;
+    }
+    return false;
+  }
+
+  function isContactImplicated(state, contact) {
+    if (!state?.opponents || !contact || !contact.employeeId) return false;
+    return state.opponents.some(
+      (o) => o.hp > 0 && o.employeeId === contact.employeeId,
+    );
+  }
+
+  function isPlannedActionValid(state, ai, plan, helpers = {}) {
+    if (!plan || !ai || ai.hp <= 0) return false;
+    const target =
+      plan.target &&
+      (plan.target.id === "player"
+        ? { id: "player" }
+        : (state.opponents || []).find((o) => o.id === plan.target.id));
+    const contactInLoop =
+      helpers.isContactInLoop || ((id) => isContactInLoop(state, id));
+    const contactImplicated =
+      helpers.isContactImplicated ||
+      ((c) => isContactImplicated(state, c));
+    if (plan.type === "cc") {
+      const available = (ai.addressBook || [])
+        .map((id) => CONTACTS.find((con) => con.id === id))
+        .filter((c) => c && !contactInLoop(c.id) && !contactImplicated(c));
+      if (!available.length) return false;
+      const plannedIds = (plan.ccTargets || []).map((c) => c.id);
+      return plannedIds.some((id) => available.some((c) => c.id === id));
+    }
+    if (plan.type === "attack") return !!target && target.id != null;
+    if (plan.type === "escalate") return true;
+    if (plan.type === "deflect")
+      return ai.deflectChargeReduce <= 0 && ai.deflectChargeReflect <= 0;
+    if (plan.type === "promote") return ai.wins > 0;
+    return false;
+  }
+
+  function getContactUsedBy(state, contactId) {
+    if (!state?.player || !contactId) return null;
+    const playerBuff = state.player.buffs?.find((b) => b.id === contactId);
+    if (playerBuff) return playerBuff.usedBy || state.player.name;
+    for (const opp of state.opponents || []) {
+      const buff = (opp.buffs || []).find((b) => b.id === contactId);
+      if (buff) return buff.usedBy || opp.name;
+    }
+    return null;
+  }
+
+  function getPlayerLeverageGain(state, actionType, base, helpers = {}) {
+    const p = state.player;
+    const statCtx = state._statCtx || helpers.statCtx;
+    const stats =
+      helpers.computeUnitStats?.(p) ??
+      (ReplyAllEngine.stats?.computeUnitStats
+        ? ReplyAllEngine.stats.computeUnitStats(statCtx, p)
+        : p);
+    const bonusMap = {
+      reply_to: stats.levGainReply || 0,
+      escalate: stats.levGainEscalate || 0,
+      deflect: stats.levGainDeflect || 0,
+      promote: stats.levGainPromote || 0,
+    };
+    const bonus = bonusMap[actionType] || 0;
+    const totalBase = base + bonus;
+    return totalBase * (1 + (stats.levMult || 0));
+  }
+
+  function pickRandomItem(state, list, fallback, rngKey = "misc") {
+    if (!Array.isArray(list) || list.length === 0) return fallback;
+    const rngStore = getRngStore(state);
+    return list[rngStore.int(state, rngKey, list.length)];
+  }
+
+  function shuffle(state, array, rngKey = "misc") {
+    const rngStore = getRngStore(state);
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = rngStore.int(state, rngKey, i + 1);
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  function drawFromLineBag(state, holder, key, source, fallback, rngKey = "misc") {
+    if (!holder) return fallback;
+    if (!holder._lineBags) holder._lineBags = {};
+    let bag = holder._lineBags[key];
+    if (!Array.isArray(bag) || bag.length === 0) {
+      const fresh = Array.isArray(source) ? [...source] : [];
+      if (fresh.length === 0) return fallback;
+      bag = shuffle(state, fresh, rngKey);
+    }
+    const next = bag.pop();
+    holder._lineBags[key] = bag;
+    return next == null ? fallback : next;
+  }
+
+  function getPlayerLineBagKey(action, missionId, titleId) {
+    return `player:${action}:${missionId || "default"}:${titleId || "base"}`;
+  }
+
+  function getPlayerActionLines(state, action, missionId) {
+    const p = state.player || {};
+    const titleId = p.title ? p.title.id : null;
+    const byMission = (p[`${action}LinesByMission`] || {})[missionId] || [];
+    const byTitle = (p[`${action}LinesByTitle`] || {})[titleId] || [];
+    let base = [];
+    if (action === "attack") base = p.attacks || [];
+    else if (action === "selfPromote") base = p.selfPromoteLines || [];
+    else if (action === "replyAll") base = p.replyAllLines || [];
+    else if (action === "escalate") base = p.escalateLines || [];
+    else if (action === "deflect") base = p.deflectLines || [];
+    return [...base, ...byMission, ...byTitle];
+  }
+
+  function getUnitSelfPromoteLines(unit) {
+    if (Array.isArray(unit?.selfPromoteLines) && unit.selfPromoteLines.length)
+      return unit.selfPromoteLines;
+    if (unit?.selfPromote) return [unit.selfPromote];
+    return [];
+  }
+
+  function getDepartmentName(departmentId) {
+    if (!departmentId) return "";
+    return DEPARTMENT_BY_ID[departmentId]?.name || departmentId;
+  }
+
+  function formatLoopInText(contact, fallback) {
+    if (!contact || !contact.loopInText) return fallback;
+    const departmentName = getDepartmentName(contact.departmentId);
+    return contact.loopInText
+      .replace(/{name}/g, contact.name || "")
+      .replace(/{title}/g, contact.title || "")
+      .replace(/{department}/g, departmentName);
+  }
+
   function applyPlayerAction(state, action, targetId) {
     return state;
   }
@@ -2171,6 +2314,19 @@
     resolveDeflect,
     resolveFollowUps,
     decideAiAction,
+    isContactInLoop,
+    isContactImplicated,
+    isPlannedActionValid,
+    getContactUsedBy,
+    getPlayerLeverageGain,
+    pickRandomItem,
+    shuffle,
+    drawFromLineBag,
+    getPlayerLineBagKey,
+    getPlayerActionLines,
+    getUnitSelfPromoteLines,
+    getDepartmentName,
+    formatLoopInText,
     runUnitEffectsPure,
     runUnitEffects,
     applyEffect,
