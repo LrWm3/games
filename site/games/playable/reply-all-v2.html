@@ -355,8 +355,57 @@
         state.player.discoveredSets = [...(metaState.discoveredSets || [])];
       }
     </script>
+
+    <!-- UI scripts -->
     <script>
       const e = React.createElement;
+
+    // //   We don't need any of these component, only an example of how to do it.
+    //   /*
+    //    1. Simple Presentational Component
+    //    */
+    //   function IconButton(props) {
+    //     return e(
+    //       "button",
+    //       {
+    //         className: "px-4 py-2 border rounded",
+    //         onClick: props.onClick,
+    //       },
+    //       e("i", { className: props.icon }),
+    //       " ",
+    //       props.label,
+    //     );
+    //   }
+
+    //   /*
+    //    2. Component with Children
+    //    */
+    //   function Card(props) {
+    //     return e(
+    //       "div",
+    //       { className: "border rounded p-4" },
+    //       e("h2", s, { className: "font-bold mb-2" }, props.title),
+    //       props.children,
+    //     );
+    //   }
+
+    //   /*
+    //    3. Stateful Component
+    //    */
+    //   function Counter() {
+    //     const [count, setCount] = React.useState(0);
+
+    //     return e(
+    //       "div",
+    //       null,
+    //       e("p", null, "Count: ", count),
+    //       e(IconButton, {
+    //         icon: "fa fa-plus",
+    //         label: "Increment",
+    //         onClick: () => setCount(count + 1),
+    //       }),
+    //     );
+    //   }
 
       function App() {
         const [items, setItems] = React.useState([
