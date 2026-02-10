@@ -120,6 +120,8 @@ def main() -> int:
         if not folder.exists():
             continue
         for path in sorted(folder.glob("*.html")):
+            if "reply-all" in path.name:
+                continue
             href = f"{folder.name}/{path.name}"
             title, blurb, tags = parse_game_page(path)
             entries.append(
