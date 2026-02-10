@@ -394,8 +394,130 @@
   }
 
   // 3.3 Action Resolution
-  function planAiActions(state) {
-    return {};
+  function decideAiAction(state, ai, alive, player, helpers = {}) {
+    if (!ai || !player) return null;
+    const rngStore = getRngStore(state);
+    const combatKey =
+      helpers.combatKey || rngStore.missionKey(state, MISSIONS, "combat");
+    const playerTarget = {
+      id: "player",
+      name: player.name,
+      email: player.email,
+      departmentId: player.departmentId,
+    };
+    const pool = [...alive.filter((o) => o.id !== ai.id), playerTarget];
+    const weights = pool.map((t) => {
+      if (t.id === "player") {
+        return t.departmentId === ai.departmentId ? 0.5 : 1.5;
+      }
+      if (t.departmentId === ai.departmentId) return 0;
+      return 1.0;
+    });
+    const totalWeight = weights.reduce((acc, w) => acc + w, 0);
+    let random = rngStore.next(state, combatKey) * totalWeight;
+    let target = pool[0];
+    for (let i = 0; i < pool.length; i++) {
+      random -= weights[i];
+      if (random <= 0) {
+        target = pool[i];
+        break;
+      }
+    }
+
+    const roll = rngStore.next(state, combatKey);
+    const statCtx = state._statCtx || helpers.statCtx;
+    const maxHp =
+      helpers.getUnitMaxHp?.(ai) ??
+      (statCtx && ReplyAllEngine.stats?.computeUnitStats
+        ? ReplyAllEngine.stats.computeUnitStats(statCtx, ai).maxHp
+        : ai.maxHp ?? ai.hp);
+    const aiHpBeforePassive = ai.hp;
+    const totalHeal =
+      helpers.getUnitTotalHeal?.(ai) ??
+      (ReplyAllEngine.stats?.getUnitTotalHeal
+        ? ReplyAllEngine.stats.getUnitTotalHeal(statCtx, ai)
+        : 0);
+    ai.hp = Math.min(maxHp, ai.hp + totalHeal);
+    if (helpers.logPassiveHeal) {
+      helpers.logPassiveHeal(state, ai, aiHpBeforePassive, ai.hp, "ai_turn_start");
+    }
+
+    const promoteHeal =
+      helpers.getUnitSelfPromoteHeal?.(ai, 15) ??
+      (ReplyAllEngine.stats?.getUnitSelfPromoteHeal
+        ? ReplyAllEngine.stats.getUnitSelfPromoteHeal(statCtx, ai, 15)
+        : 15);
+    const defFlat =
+      helpers.getUnitFlatDef?.(ai) ??
+      (ReplyAllEngine.stats?.getUnitFlatDef
+        ? ReplyAllEngine.stats.getUnitFlatDef(statCtx, ai)
+        : 0);
+    const defReduce = ai.deflectChargeReduce || 0;
+    const playerSingle =
+      helpers.getUnitDamage?.(player, "single") ??
+      (ReplyAllEngine.stats?.getUnitDamage
+        ? ReplyAllEngine.stats.getUnitDamage(statCtx, player, "single")
+        : 0);
+    const playerEscalate =
+      helpers.getUnitDamage?.(player, "escalate") ??
+      (ReplyAllEngine.stats?.getUnitDamage
+        ? ReplyAllEngine.stats.getUnitDamage(statCtx, player, "escalate")
+        : 0);
+    const dmgSingle = Math.max(0, playerSingle - defFlat - defReduce);
+    const dmgEscalate = Math.max(0, playerEscalate - defFlat - defReduce);
+    const inOneHitRange = dmgSingle >= ai.hp || dmgEscalate >= ai.hp;
+    const canUseFullPromote = promoteHeal > 0 && ai.hp + promoteHeal <= maxHp;
+    const selfPromoteEligible =
+      ai.hp < maxHp && ai.wins > 0 && inOneHitRange && canUseFullPromote;
+
+    const isContactInLoop = helpers.isContactInLoop || (() => false);
+    const isContactImplicated = helpers.isContactImplicated || (() => false);
+    const availFromBook = (ai.addressBook || [])
+      .map((id) => CONTACTS.find((con) => con.id === id))
+      .filter((c) => c && !isContactInLoop(c.id) && !isContactImplicated(c));
+    if (roll < 0.15 && availFromBook.length > 0) {
+      const numPicks =
+        helpers.computeUnitStats?.(ai)?.numCCperCCaction ??
+        (statCtx && ReplyAllEngine.stats?.computeUnitStats
+          ? ReplyAllEngine.stats.computeUnitStats(statCtx, ai).numCCperCCaction
+          : 1);
+      const picks = [];
+      for (let p = 0; p < numPicks; p++) {
+        const currentAvail = (ai.addressBook || [])
+          .map((id) => CONTACTS.find((con) => con.id === id))
+          .filter((c) => c && !isContactInLoop(c.id) && !isContactImplicated(c));
+        if (currentAvail.length === 0) break;
+        picks.push(currentAvail[rngStore.int(state, combatKey, currentAvail.length)]);
+      }
+      if (picks.length) {
+        return { type: "cc", target, ccTargets: picks };
+      }
+    }
+    if (roll < 0.3 && selfPromoteEligible) {
+      return { type: "promote", target, promoteHeal, maxHp };
+    }
+
+    const actionRoll = rngStore.next(state, combatKey);
+    if (
+      actionRoll < 0.15 &&
+      ai.deflectChargeReduce <= 0 &&
+      ai.deflectChargeReflect <= 0
+    ) {
+      return { type: "deflect", target };
+    }
+    if (actionRoll < 0.35) return { type: "escalate", target };
+    return { type: "attack", target };
+  }
+
+  function planAiActions(state, helpers = {}) {
+    const alive = (state.opponents || []).filter((o) => o.hp > 0);
+    const plans = {};
+    alive.forEach((a) => {
+      plans[a.id] = decideAiAction(state, a, alive, state.player, helpers);
+    });
+    state.aiPlannedActions = plans;
+    if (helpers.logPlans) helpers.logPlans(plans, alive);
+    return plans;
   }
 
   function applyPlayerAction(state, action, targetId) {
@@ -1765,6 +1887,273 @@
     return JSON.parse(JSON.stringify(meta || {}));
   }
 
+  // 3.8 Logging helpers (UI-agnostic)
+  function logEvent(state, type, data = {}) {
+    if (!state?.analytics) return;
+    const mission = MISSIONS[state.currentMissionIndex] || {};
+    const event = {
+      ts: Date.now(),
+      type,
+      turn: state.turn,
+      quarter: state.player?.quarter,
+      year: state.player?.year,
+      missionId: mission.id || null,
+      ...data,
+    };
+    state.analytics.events.push(event);
+  }
+
+  function snapshotItemEffects(item, options = {}) {
+    if (!item) return null;
+    const { otherFields = [], statFields = [] } = options;
+    const snapshot = {};
+    if (item.effects)
+      snapshot.effects = JSON.parse(JSON.stringify(item.effects));
+    if (item.eff) snapshot.eff = JSON.parse(JSON.stringify(item.eff));
+    if (item.statWindows)
+      snapshot.statWindows = JSON.parse(JSON.stringify(item.statWindows));
+    if (item.scalers)
+      snapshot.scalers = JSON.parse(JSON.stringify(item.scalers));
+    if (item.deptScalers)
+      snapshot.deptScalers = JSON.parse(JSON.stringify(item.deptScalers));
+    const stats = {};
+    statFields.forEach((field) => {
+      if (typeof item[field] === "number") stats[field] = item[field];
+    });
+    otherFields.forEach((field) => {
+      if (item[field] !== undefined) snapshot[field] = item[field];
+    });
+    if (Object.keys(stats).length) snapshot.stats = stats;
+    return Object.keys(snapshot).length ? snapshot : null;
+  }
+
+  function logInventorySnapshot(state, source) {
+    const p = state.player || {};
+    logEvent(state, "inventory_snapshot", {
+      source,
+      reputation: p.reputation,
+      addressBook: [...(p.addressBook || [])],
+      signatures: (p.signatures || []).map((s) => s.id),
+      salutation: p.salutation ? p.salutation.id : null,
+      signOff: p.signOff ? p.signOff.id : null,
+      bccs: (p.bccContacts || p.bccs || []).map((b) => b.id),
+    });
+  }
+
+  function logResolvedPlayerSheet(state, source, totals, sources) {
+    logEvent(state, "player_sheet", {
+      source,
+      totals,
+      sources,
+    });
+  }
+
+  function logPassiveHeal(state, unit, hpBefore, hpAfter, trigger) {
+    if (!unit) return;
+    const amount = Math.max(0, (hpAfter || 0) - (hpBefore || 0));
+    if (amount <= 0) return;
+    logEvent(state, "healing", {
+      source: "passive",
+      trigger: trigger || null,
+      unitId: unit.id || null,
+      unitName: unit.name || null,
+      amount,
+      hpBefore,
+      hpAfter,
+    });
+  }
+
+  function logBccGains(state, added, reason, extra = {}) {
+    if (!added || !added.length) return;
+    const snapshotOptions = extra.snapshotOptions || {};
+    logEvent(state, "bcc_gain", {
+      reason,
+      bccs: added.map((b) => ({
+        id: b.id,
+        name: b.name || null,
+        rarity: b.rarity || null,
+        effects: snapshotItemEffects(b, snapshotOptions),
+      })),
+      ...extra,
+    });
+  }
+
+  function snapshotContactStats(state, contact, usedBy) {
+    if (!contact || !state?.player) return null;
+    const baseEff = contact.eff ? { ...contact.eff } : null;
+    const boosts =
+      state.player.contactPermanentBoosts &&
+      state.player.contactPermanentBoosts[contact.id]
+        ? { ...state.player.contactPermanentBoosts[contact.id] }
+        : null;
+    const upgrades =
+      state.player.contactUpgrades && state.player.contactUpgrades[contact.id]
+        ? state.player.contactUpgrades[contact.id]
+        : null;
+    const upgradeEff = upgrades && upgrades.eff ? { ...upgrades.eff } : null;
+    const trainingCount =
+      (state.player.contactTrainingCount &&
+        state.player.contactTrainingCount[contact.id]) ||
+      0;
+    const deptScalerBonus =
+      usedBy === state.player.name
+        ? getDeptScalerBonusForContact(state, state.player, contact.id)
+        : null;
+    const effective = {};
+    const mergeInto = (target, stats) => {
+      if (!stats) return;
+      Object.keys(stats).forEach((key) => {
+        const value = stats[key];
+        if (typeof value !== "number") return;
+        target[key] = (target[key] || 0) + value;
+      });
+    };
+    mergeInto(effective, baseEff);
+    mergeInto(effective, boosts);
+    mergeInto(effective, upgradeEff);
+    mergeInto(effective, deptScalerBonus);
+    return {
+      baseEff,
+      boosts,
+      upgradeEff,
+      deptScalerBonus,
+      trainingCount,
+      effective,
+    };
+  }
+
+  ReplyAllEngine.log = {
+    logEvent,
+    snapshotItemEffects,
+    snapshotContactStats,
+    getStatBlockFromObject: (obj, statFields = []) => {
+      if (!obj) return null;
+      const stats = {};
+      let hasAny = false;
+      statFields.forEach((field) => {
+        const value = obj[field];
+        if (typeof value === "number" && value !== 0) {
+          stats[field] = value;
+          hasAny = true;
+        }
+      });
+      return hasAny ? stats : null;
+    },
+    getStatSources: (state, unit, ctx = {}) => {
+      const {
+        statFields = [],
+        getSalutationWindowStats,
+        getSalutationPersistentStats,
+        getSignoffPersistentStats,
+        getUnitWinScaleStats,
+        getUnitRemainingWins,
+        isSetActive,
+      } = ctx;
+      const sources = [];
+      const pushSource = (label, obj) => {
+        const stats = ReplyAllEngine.log.getStatBlockFromObject(obj, statFields);
+        if (stats) sources.push({ label, stats });
+      };
+      if (!unit) return sources;
+      pushSource("Base", unit);
+      if (unit.title) pushSource(`Title: ${unit.title.name}`, unit.title);
+      if (unit.salutation)
+        pushSource(`Greeting: ${unit.salutation.name}`, unit.salutation);
+      if (unit.salutation && Array.isArray(unit.salutation.scalers)) {
+        const ccCount = Array.isArray(unit.buffs)
+          ? unit.buffs.filter((b) => b.usedBy === unit.name).length
+          : 0;
+        const sigCount = Array.isArray(unit.signatures)
+          ? unit.signatures.length
+          : 0;
+        const counts = { cc: ccCount, sig: sigCount };
+        const scalerStats = {};
+        unit.salutation.scalers.forEach((s) => {
+          if (!s || !s.source || !s.stat) return;
+          const count = counts[s.source] || 0;
+          if (!count) return;
+          const per = typeof s.per === "number" ? s.per : 0;
+          if (!per) return;
+          scalerStats[s.stat] = (scalerStats[s.stat] || 0) + per * count;
+        });
+        if (Object.keys(scalerStats).length) {
+          sources.push({
+            label: `Greeting scaling (${ccCount} CC, ${sigCount} sig)`,
+            stats: scalerStats,
+          });
+        }
+      }
+      if (getSalutationWindowStats) {
+        const salutationWindowStats = getSalutationWindowStats(unit);
+        if (salutationWindowStats && unit.salutation) {
+          sources.push({
+            label: `Greeting window: ${unit.salutation.name}`,
+            stats: salutationWindowStats,
+          });
+        }
+      }
+      if (getSalutationPersistentStats) {
+        const salutationPersistentStats = getSalutationPersistentStats(unit);
+        if (salutationPersistentStats && unit.salutation) {
+          sources.push({
+            label: `Greeting progress: ${unit.salutation.name}`,
+            stats: salutationPersistentStats,
+          });
+        }
+      }
+      if (getUnitWinScaleStats) {
+        const winScaleStats = getUnitWinScaleStats(unit);
+        if (winScaleStats) {
+          const remaining = getUnitRemainingWins
+            ? getUnitRemainingWins(unit)
+            : undefined;
+          sources.push({
+            label:
+              remaining != null
+                ? `Win scaling (${remaining} remaining)`
+                : "Win scaling",
+            stats: winScaleStats,
+          });
+        }
+      }
+      if (unit.signOff) pushSource(`Sign-off: ${unit.signOff.name}`, unit.signOff);
+      if (getSignoffPersistentStats) {
+        const signoffPersistentStats = getSignoffPersistentStats(unit);
+        if (signoffPersistentStats && unit.signOff) {
+          sources.push({
+            label: `Sign-off progress: ${unit.signOff.name}`,
+            stats: signoffPersistentStats,
+          });
+        }
+      }
+      if (Array.isArray(unit.signatures)) {
+        unit.signatures.forEach((s) => pushSource(`Signature: ${s.name}`, s));
+      }
+      if (unit.coachingBoosts && Object.keys(unit.coachingBoosts).length) {
+        pushSource("Coaching", unit.coachingBoosts);
+      }
+      if (unit.threadBonuses && Object.keys(unit.threadBonuses).length) {
+        sources.push({ label: "Thread bonuses", stats: unit.threadBonuses });
+      }
+      if (Array.isArray(unit.buffs)) {
+        unit.buffs.forEach((b) => {
+          const name = b.name || b.id || "Contact";
+          pushSource(`Contact: ${name}`, b.eff ? b.eff : b);
+        });
+      }
+      if (typeof isSetActive === "function") {
+        SET_DEFS.forEach((set) => {
+          if (isSetActive(unit, set)) pushSource(`Set: ${set.name}`, set.effect);
+        });
+      }
+      return sources;
+    },
+    logInventorySnapshot,
+    logResolvedPlayerSheet,
+    logPassiveHeal,
+    logBccGains,
+  };
+
   ReplyAllEngine.core = {
     createInitialRunState,
     initRun,
@@ -1781,6 +2170,7 @@
     resolveDamage,
     resolveDeflect,
     resolveFollowUps,
+    decideAiAction,
     runUnitEffectsPure,
     runUnitEffects,
     applyEffect,
