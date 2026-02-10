@@ -663,6 +663,121 @@
       .replace(/{department}/g, departmentName);
   }
 
+  function addContactBuff(state, target, contact, usedBy, helpers = {}) {
+    if (!target || !contact) return null;
+    const buff = JSON.parse(JSON.stringify(contact));
+    buff.usedBy = usedBy;
+    if (usedBy === state.player?.name) {
+      const runEffects = helpers.runUnitEffects || runUnitEffects;
+      runEffects(state, state.player, "cc_add", { contact: buff });
+      const permanentBoost =
+        state.player.contactPermanentBoosts &&
+        state.player.contactPermanentBoosts[buff.id];
+      if (permanentBoost) {
+        const baseEff = buff.eff || {};
+        buff.eff = { ...baseEff };
+        Object.keys(permanentBoost).forEach((key) => {
+          const value = permanentBoost[key];
+          if (typeof value !== "number") return;
+          buff.eff[key] = (buff.eff[key] || 0) + value;
+        });
+      }
+    }
+    if (usedBy === state.player?.name && state.player.contactUpgrades) {
+      const upgrade = state.player.contactUpgrades[buff.id];
+      if (upgrade && upgrade.eff) {
+        applyBuffStats(buff, upgrade.eff);
+        buff.subtitle = upgrade.subtitle || buff.subtitle;
+      }
+    }
+    if (ReplyAllEngine.log?.logEvent) {
+      ReplyAllEngine.log.logEvent(state, "cc_added", {
+        actor: usedBy,
+        contactId: buff.id,
+        contactName: buff.name || null,
+        targetId: target.id || null,
+        targetName: target.name || null,
+        statsSnapshot: ReplyAllEngine.log.snapshotContactStats(
+          state,
+          buff,
+          usedBy,
+        ),
+      });
+    }
+    target.buffs = target.buffs || [];
+    target.buffs.push(buff);
+    if (buff.eff && buff.eff.maxHp) {
+      const statCtx = state._statCtx || helpers.statCtx;
+      const maxHp =
+        helpers.getUnitMaxHp?.(target) ??
+        (statCtx && ReplyAllEngine.stats?.computeUnitStats
+          ? ReplyAllEngine.stats.computeUnitStats(statCtx, target).maxHp
+          : target.maxHp ?? target.hp);
+      target.hp = Math.min(maxHp, target.hp + buff.eff.maxHp);
+    }
+    if (helpers.onBuffAdded) helpers.onBuffAdded(buff, target, usedBy);
+
+    if (
+      contact.id === "cc_andrew_legal" ||
+      contact.id === "cc_megan_legal"
+    ) {
+      const hasAndrew = target.buffs.some(
+        (b) => b.id === "cc_andrew_legal" && b.usedBy === usedBy,
+      );
+      const hasMegan = target.buffs.some(
+        (b) => b.id === "cc_megan_legal" && b.usedBy === usedBy,
+      );
+      const hasElsie = target.buffs.some(
+        (b) => b.id === "cc_elsie" && b.usedBy === usedBy,
+      );
+      if (hasAndrew && hasMegan && !hasElsie) {
+        const elsie = CONTACTS.find((c) => c.id === "cc_elsie");
+        if (elsie) {
+          addContactBuff(state, target, elsie, usedBy, helpers);
+          if (helpers.onAutoAdd) {
+            helpers.onAutoAdd(elsie, "elsie", usedBy);
+          }
+        }
+      }
+    }
+
+    if (
+      contact.id === "cc_anneke_executive_council_office" ||
+      contact.id === "cc_willy_boy_information_technology"
+    ) {
+      const hasAnneke = target.buffs.some(
+        (b) => b.id === "cc_anneke_executive_council_office" && b.usedBy === usedBy,
+      );
+      const hasWill = target.buffs.some(
+        (b) => b.id === "cc_willy_boy_information_technology" && b.usedBy === usedBy,
+      );
+      const hasTater = target.buffs.some(
+        (b) => b.id === "cc_tater_the_dog" && b.usedBy === usedBy,
+      );
+      if (hasAnneke && hasWill && !hasTater) {
+        const tater = CONTACTS.find((c) => c.id === "cc_tater_the_dog");
+        if (tater) {
+          addContactBuff(state, target, tater, usedBy, helpers);
+          if (helpers.onAutoAdd) {
+            helpers.onAutoAdd(tater, "tater", usedBy);
+          }
+        }
+      }
+    }
+
+    return buff;
+  }
+
+  function clearDeflectCharges(unit) {
+    if (!unit) return;
+    unit.deflectChargeReduce = 0;
+    unit.deflectChargeReflect = 0;
+  }
+
+  function clearOpponentDeflects(state) {
+    (state.opponents || []).forEach((o) => clearDeflectCharges(o));
+  }
+
   function applyPlayerAction(state, action, targetId) {
     return state;
   }
@@ -760,6 +875,8 @@
     if (!target) return { dmg: 0, blocked: 0, reflected: 0 };
     const statCtx = state._statCtx;
     let dmg = Math.max(0, Math.floor(amount || 0));
+    const attackerHpBefore =
+      attacker && attacker.hp != null ? attacker.hp : null;
     if (!options.ignoreDefense && ReplyAllEngine.stats?.getUnitFlatDef && statCtx) {
       const flatDef = ReplyAllEngine.stats.getUnitFlatDef(statCtx, target);
       dmg = Math.max(0, dmg - flatDef);
@@ -782,12 +899,16 @@
         attacker.hp -= reflected;
       }
     }
+    const attackerHpAfter =
+      attacker && attacker.hp != null ? attacker.hp : null;
     return {
       dmg,
       blocked,
       reflected,
       targetHpBefore,
       targetHpAfter: target.hp,
+      attackerHpBefore,
+      attackerHpAfter,
     };
   }
 
@@ -803,8 +924,130 @@
     return state;
   }
 
-  function resolveFollowUps(state, attacker, target, baseDamage) {
-    return [];
+  function applyDamage(state, attacker, target, rawDamage, options = {}, helpers = {}) {
+    if (!target) return { dmg: 0, blocked: 0, reflected: 0 };
+    const result = resolveDamage(state, attacker, target, rawDamage, options);
+    if (result.blocked > 0 && target?.salutation) {
+      if (helpers.runUnitEffects) {
+        helpers.runUnitEffects(state, target, "deflect_proc", {
+          attacker,
+          target,
+          blocked: result.blocked,
+        });
+      } else {
+        runUnitEffects(state, target, "deflect_proc", {
+          attacker,
+          target,
+          blocked: result.blocked,
+        });
+      }
+    }
+    return result;
+  }
+
+  function applyDepartmentCleave(state, attacker, target, damage, helpers = {}) {
+    if (!damage || !target || !target.departmentId) return { total: 0, hits: 0 };
+    const units = [...(state.opponents || []), state.player].filter(Boolean);
+    let total = 0;
+    let hits = 0;
+    units.forEach((u) => {
+      if (!u || u.hp <= 0) return;
+      if (u === target) return;
+      if (attacker && u === attacker) return;
+      if (u.departmentId !== target.departmentId) return;
+      const result = applyDamage(state, attacker, u, damage, {}, helpers);
+      total += result.dmg;
+      hits += 1;
+      if (u !== state.player && u.hp <= 0) {
+        handleOpponentDefeat(state, u, attacker?.id === "player", attacker, helpers);
+      }
+    });
+    return { total, hits };
+  }
+
+  function handleOpponentDefeat(state, o, byPlayer = false, attacker = null, helpers = {}) {
+    if (!o || o.isDefeated) return;
+    o.hp = 0;
+    o.isDefeated = true;
+    o.buffs = [];
+    if (ReplyAllEngine.log?.logEvent) {
+      ReplyAllEngine.log.logEvent(state, "stakeholder_opt_out", {
+        actorId: o.employeeId || o.id,
+        actorName: o.name,
+        byPlayer,
+      });
+    }
+    const runEffects = helpers.runUnitEffects || runUnitEffects;
+    runEffects(state, state.player, "stakeholder_opt_out", {
+      target: o,
+      byPlayer,
+      attacker,
+    });
+    if (!byPlayer && attacker && attacker.id !== "player") {
+      runEffects(state, state.player, "stakeholder_opt_out_other", {
+        target: o,
+        attacker,
+      });
+    }
+    if (o.employeeId === "colin_information_technology") {
+      if (helpers.onDepartmentUnlock) helpers.onDepartmentUnlock("it", o);
+    }
+    if (byPlayer) {
+      state.removedByPlayer = (state.removedByPlayer || 0) + 1;
+      o.removedByPlayer = true;
+      runEffects(state, state.player, "remove_stakeholder", { target: o });
+    }
+    if (helpers.onDefeat) helpers.onDefeat(o, byPlayer, attacker);
+    if (state.targetId === o.id) {
+      const next = (state.opponents || []).find((opp) => opp.hp > 0);
+      if (next) state.targetId = next.id;
+    }
+    if ((state.opponents || []).every((opp) => opp.hp <= 0)) {
+      if (!state.gameOver) {
+        runEffects(state, state.player, "thread_end", {});
+        const statCtx = state._statCtx || helpers.statCtx;
+        const maxHp =
+          helpers.getUnitMaxHp?.(state.player) ??
+          (statCtx && ReplyAllEngine.stats?.computeUnitStats
+            ? ReplyAllEngine.stats.computeUnitStats(statCtx, state.player).maxHp
+            : state.player.maxHp ?? state.player.hp);
+        state.player.hp = maxHp;
+        state.gameOver = true;
+        if (helpers.onThreadEnd) helpers.onThreadEnd(state);
+      }
+    }
+  }
+
+  function resolveFollowUps(state, payload = {}, helpers = {}) {
+    const {
+      attacker,
+      target,
+      baseDamage,
+      combatKey,
+      onHit,
+      onExtras,
+    } = payload;
+    const results = [];
+    if (!attacker || !target || target.hp <= 0) return results;
+    const statCtx = state._statCtx || helpers.statCtx;
+    let chance =
+      helpers.getUnitFollowUpChance?.(attacker) ??
+      (ReplyAllEngine.stats?.getUnitFollowUpChance
+        ? ReplyAllEngine.stats.getUnitFollowUpChance(statCtx, attacker)
+        : 0);
+    const rngStore = getRngStore(state);
+    const rngKey = combatKey || rngStore.missionKey(state, MISSIONS, "combat");
+    while (chance > 0 && target && target.hp > 0) {
+      const hit = rngStore.next(state, rngKey) < chance;
+      if (!hit) break;
+      const result = applyDamage(state, attacker, target, baseDamage, {}, helpers);
+      results.push(result);
+      if (typeof onHit === "function") onHit(result, results.length);
+      if (typeof onExtras === "function") onExtras(result, results.length);
+      chance = Math.max(chance - 1, 0);
+      if (attacker.hp != null && attacker.hp <= 0) break;
+    }
+    return results;
   }
 
   // 3.4 Effect Engine Hooks
@@ -2313,6 +2556,9 @@
     resolveDamage,
     resolveDeflect,
     resolveFollowUps,
+    applyDamage,
+    applyDepartmentCleave,
+    handleOpponentDefeat,
     decideAiAction,
     isContactInLoop,
     isContactImplicated,
@@ -2327,6 +2573,9 @@
     getUnitSelfPromoteLines,
     getDepartmentName,
     formatLoopInText,
+    addContactBuff,
+    clearDeflectCharges,
+    clearOpponentDeflects,
     runUnitEffectsPure,
     runUnitEffects,
     applyEffect,
