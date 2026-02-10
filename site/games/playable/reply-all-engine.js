@@ -549,7 +549,14 @@
         if (unit.id !== "player") return;
         const count = effect.count || 1;
         for (let i = 0; i < count; i++) {
-          helpers.applyRandomCcBoost?.(state.player, effect.stats || {}, true);
+          const picked = helpers.applyRandomCcBoost?.(
+            state.player,
+            effect.stats || {},
+            true,
+          );
+          if (picked && helpers.recordEndRoundUpgrade) {
+            helpers.recordEndRoundUpgrade(picked.id);
+          }
         }
       },
       add_cc_bonus: (state, unit, effect, ctx) => {
@@ -560,6 +567,9 @@
           ctx.contact.id,
           effect.stats || {},
         );
+        if (helpers.recordEndRoundUpgrade) {
+          helpers.recordEndRoundUpgrade(ctx.contact.id);
+        }
       },
       add_signoff_bonus: (state, unit, effect, owner) => {
         helpers.applyUnitPermanentBoost?.(unit, owner.id, effect.stats || {});
@@ -664,7 +674,14 @@
         const limit =
           effect.threadLimit != null ? Math.max(0, effect.threadLimit) : null;
         const countToApply = limit != null ? Math.min(count, limit) : count;
-        helpers.applyRandomCcBoostMultiple?.(state.player, scaled, countToApply);
+        const picked = helpers.applyRandomCcBoostMultiple?.(
+          state.player,
+          scaled,
+          countToApply,
+        );
+        if (helpers.recordEndRoundUpgrade && Array.isArray(picked)) {
+          picked.forEach((p) => p?.id && helpers.recordEndRoundUpgrade(p.id));
+        }
       },
       add_all_cc_bonus: (state, unit, effect) => {
         if (unit.id !== "player") return;
@@ -681,6 +698,9 @@
             cid,
             effect.stats || {},
           );
+          if (helpers.recordEndRoundUpgrade) {
+            helpers.recordEndRoundUpgrade(cid);
+          }
           const buff = state.player.buffs.find(
             (b) => b.id === cid && b.usedBy === state.player.name,
           );
@@ -729,6 +749,9 @@
         });
         playerCcs.forEach((b) => {
           helpers.applyContactPermanentBoost?.(state.player, b.id, scaled);
+          if (helpers.recordEndRoundUpgrade) {
+            helpers.recordEndRoundUpgrade(b.id);
+          }
           helpers.applyBuffStats?.(b, scaled);
           const originalContact = CONTACTS.find((c) => c.id === b.id);
           if (originalContact && originalContact.eff) {
@@ -864,6 +887,40 @@
           if (used >= effect.threadLimit) return;
           state.threadEffectFlags[key] = used + 1;
         }
+        if (helpers.logEffectTrigger) {
+          let effectSnapshot = null;
+          try {
+            effectSnapshot = JSON.parse(JSON.stringify(effect));
+          } catch (err) {
+            effectSnapshot = { type: effect.type, event: effect.event };
+          }
+          const effectContext = {};
+          if (context.contact) effectContext.contactId = context.contact.id || null;
+          if (context.pack) {
+            effectContext.packId = context.pack.id || null;
+            effectContext.packType = context.pack.type || null;
+          }
+          if (context.summary)
+            effectContext.summary = {
+              totalRep: context.summary.totalRep,
+              baseRep: context.summary.baseRep,
+              bonusRep: context.summary.bonusRep,
+              interestRep: context.summary.interestRep,
+              winsRep: context.summary.winsRep,
+            };
+          helpers.logEffectTrigger({
+            event,
+            effectType: effect.type,
+            effect: effectSnapshot,
+            ownerId: owner.id || null,
+            ownerName: owner.name || null,
+            ownerItemType: owner.itemType || null,
+            unitId: unit.id || null,
+            unitName: unit.name || null,
+            context: effectContext,
+            handled: !!handlers?.[effect.type],
+          });
+        }
         applyEffect(state, unit, effect, owner, context, contactEffectBoosts, results, handlers);
       });
     });
@@ -876,6 +933,38 @@
       ...auto,
       ...helpers,
     };
+    if (!mergedHelpers.addRandomBccs)
+      mergedHelpers.addRandomBccs = (player, count) =>
+        addRandomBccs(state, player, count);
+    if (!mergedHelpers.duplicateRandomOwnedBccs)
+      mergedHelpers.duplicateRandomOwnedBccs = (player, count) =>
+        duplicateRandomOwnedBccs(state, player, count);
+    if (!mergedHelpers.applyContactPermanentBoost)
+      mergedHelpers.applyContactPermanentBoost = (player, contactId, stats) =>
+        applyContactPermanentBoost(state, player, contactId, stats);
+    if (!mergedHelpers.applyBuffStats)
+      mergedHelpers.applyBuffStats = (buff, stats) => applyBuffStats(buff, stats);
+    if (!mergedHelpers.applyRandomCcBoost)
+      mergedHelpers.applyRandomCcBoost = (player, stats, applyImmediate) =>
+        applyRandomCcBoost(state, player, stats, applyImmediate);
+    if (!mergedHelpers.applyRandomCcBoostMultiple)
+      mergedHelpers.applyRandomCcBoostMultiple = (player, stats, count) =>
+        applyRandomCcBoostMultiple(state, player, stats, count);
+    if (!mergedHelpers.getDeptScalerBonusForContact)
+      mergedHelpers.getDeptScalerBonusForContact = (player, contactId) =>
+        getDeptScalerBonusForContact(state, player, contactId);
+    if (!mergedHelpers.applyUnitPermanentBoost)
+      mergedHelpers.applyUnitPermanentBoost = (unit, sourceId, stats) =>
+        applyUnitPermanentBoost(unit, sourceId, stats);
+    if (!mergedHelpers.applyUnitThreadBonus)
+      mergedHelpers.applyUnitThreadBonus = (unit, stats) =>
+        applyUnitThreadBonus(unit, stats);
+    if (!mergedHelpers.applySalutationPermanentBoost)
+      mergedHelpers.applySalutationPermanentBoost = (unit, sourceId, stats) =>
+        applySalutationPermanentBoost(unit, sourceId, stats);
+    if (!mergedHelpers.setSalutationBonus)
+      mergedHelpers.setSalutationBonus = (unit, sourceId, stats) =>
+        setSalutationBonus(unit, sourceId, stats);
     if (!mergedHelpers.getUnitMaxHp && state?._statCtx) {
       mergedHelpers.getUnitMaxHp = (u) =>
         ReplyAllEngine.stats.computeUnitStats(state._statCtx, u).maxHp;
@@ -980,6 +1069,283 @@
       const stats = item.stats || item;
       applyCoachingBoosts(p, stats);
     }
+  }
+
+  function addRandomBccs(state, player, count) {
+    if (!player || !count) return [];
+    const statCtx = state._statCtx;
+    let limit = player.bccLimit ?? 0;
+    if (statCtx && ReplyAllEngine.stats?.computeUnitStats) {
+      const stats = ReplyAllEngine.stats.computeUnitStats(statCtx, player);
+      if (stats && typeof stats.bccLimit === "number") limit = stats.bccLimit;
+    }
+    const list = player.bccContacts || player.bccs || [];
+    const slots = Math.max(0, limit - list.length);
+    if (slots <= 0) return [];
+    const owned = new Set(list.map((b) => b.id));
+    const pool = BCC_CONTACTS.filter((b) => !owned.has(b.id));
+    const picks = Math.min(count, slots, pool.length);
+    if (picks <= 0) return [];
+    const picked = pickWeighted(pool, picks, "bcc_create", state);
+    picked.forEach((b) => list.push({ ...b }));
+    return picked;
+  }
+
+  function duplicateRandomOwnedBccs(state, player, count) {
+    if (!player || !count) return [];
+    const statCtx = state._statCtx;
+    let limit = player.bccLimit ?? 0;
+    if (statCtx && ReplyAllEngine.stats?.computeUnitStats) {
+      const stats = ReplyAllEngine.stats.computeUnitStats(statCtx, player);
+      if (stats && typeof stats.bccLimit === "number") limit = stats.bccLimit;
+    }
+    const list = player.bccContacts || player.bccs || [];
+    const slots = Math.max(0, limit - list.length);
+    if (slots <= 0) return [];
+    if (!list.length) return [];
+    const picks = Math.min(count, slots);
+    const added = [];
+    const rngStore = getRngStore(state);
+    for (let i = 0; i < picks; i++) {
+      const picked = list[rngStore.int(state, "bcc_create", list.length)];
+      if (picked) {
+        const clone = { ...picked };
+        list.push(clone);
+        added.push(clone);
+      }
+    }
+    return added;
+  }
+
+  function applyContactPermanentBoost(state, player, contactId, stats) {
+    if (!player || !contactId || !stats) return;
+    if (!player.contactPermanentBoosts) player.contactPermanentBoosts = {};
+    if (!player.contactEffectBoosts) player.contactEffectBoosts = {};
+    if (!player.contactTrainingCount) player.contactTrainingCount = {};
+
+    const currentCount = player.contactTrainingCount[contactId] || 0;
+    const statCtx = state._statCtx;
+    let trainingLimit = 3;
+    if (statCtx && ReplyAllEngine.stats?.computeUnitStats) {
+      const s = ReplyAllEngine.stats.computeUnitStats(statCtx, player);
+      if (s && s.contactTrainingLimit != null) trainingLimit = s.contactTrainingLimit;
+    }
+    if (currentCount >= trainingLimit) return;
+    player.contactTrainingCount[contactId] = currentCount + 1;
+
+    const current = player.contactPermanentBoosts[contactId] || {};
+    const next = { ...current };
+    Object.keys(stats).forEach((key) => {
+      const value = stats[key];
+      if (typeof value !== "number") return;
+      next[key] = (next[key] || 0) + value;
+    });
+
+    const contact = CONTACTS.find((c) => c.id === contactId);
+    if (contact && contact.eff) {
+      Object.keys(contact.eff).forEach((key) => {
+        const value = contact.eff[key];
+        if (typeof value !== "number") return;
+        next[key] = (next[key] || 0) + value;
+      });
+    }
+    if (contact && Array.isArray(contact.effects)) {
+      contact.effects.forEach((effect) => {
+        if (
+          !effect ||
+          (effect.type !== "add_thread_bonus" &&
+            effect.type !== "add_thread_bonus_scaled")
+        )
+          return;
+        if (!effect.stats) return;
+        const currentEffect = player.contactEffectBoosts[contactId] || {};
+        const nextEffect = { ...currentEffect };
+        Object.keys(effect.stats).forEach((key) => {
+          const value = effect.stats[key];
+          if (typeof value !== "number") return;
+          nextEffect[key] = (nextEffect[key] || 0) + value;
+        });
+        player.contactEffectBoosts[contactId] = nextEffect;
+      });
+    }
+    const upgrade = player.contactUpgrades && player.contactUpgrades[contactId];
+    if (upgrade && upgrade.eff) {
+      Object.keys(upgrade.eff).forEach((key) => {
+        const value = upgrade.eff[key];
+        if (typeof value !== "number") return;
+        next[key] = (next[key] || 0) + value;
+      });
+    }
+    const deptScalerBonus = getDeptScalerBonusForContact(state, player, contactId);
+    if (deptScalerBonus) {
+      Object.keys(deptScalerBonus).forEach((key) => {
+        const value = deptScalerBonus[key];
+        if (typeof value !== "number") return;
+        next[key] = (next[key] || 0) + value;
+      });
+    }
+
+    player.contactPermanentBoosts[contactId] = next;
+  }
+
+  function applyBuffStats(buff, stats) {
+    if (!buff || !stats) return;
+    buff.eff = { ...(buff.eff || {}) };
+    Object.keys(stats).forEach((key) => {
+      const value = stats[key];
+      if (typeof value !== "number") return;
+      buff.eff[key] = (buff.eff[key] || 0) + value;
+    });
+  }
+
+  function applyRandomCcBoost(state, player, stats, applyImmediate = true) {
+    if (!player) return null;
+    const statCtx = state._statCtx;
+    let trainingLimit = 3;
+    if (statCtx && ReplyAllEngine.stats?.computeUnitStats) {
+      const s = ReplyAllEngine.stats.computeUnitStats(statCtx, player);
+      if (s && s.contactTrainingLimit != null) trainingLimit = s.contactTrainingLimit;
+    }
+    const pool = (player.buffs || [])
+      .filter(
+        (b) =>
+          b.usedBy === player.name &&
+          !b.noTraining &&
+          (player.contactTrainingCount?.[b.id] || 0) < trainingLimit,
+      )
+      .sort((a, b) => (a.id || "").localeCompare(b.id || ""));
+    if (pool.length === 0) return null;
+    const rngStore = getRngStore(state);
+    const key = rngStore.missionKey(state, MISSIONS, "cc_upgrades");
+    const picked = pool[rngStore.int(state, key, pool.length)];
+    applyContactPermanentBoost(state, player, picked.id, stats);
+    if (applyImmediate) {
+      applyBuffStats(picked, stats);
+      const originalContact = CONTACTS.find((c) => c.id === picked.id);
+      if (originalContact && originalContact.eff) {
+        applyBuffStats(picked, originalContact.eff);
+      }
+      const upgrade = player.contactUpgrades && player.contactUpgrades[picked.id];
+      if (upgrade && upgrade.eff) {
+        applyBuffStats(picked, upgrade.eff);
+      }
+      const deptScalerBonus = getDeptScalerBonusForContact(state, player, picked.id);
+      if (deptScalerBonus) {
+        applyBuffStats(picked, deptScalerBonus);
+      }
+    }
+    return picked;
+  }
+
+  function applyRandomCcBoostMultiple(state, player, stats, count) {
+    if (!player || !stats || !count) return [];
+    const pool = (player.buffs || [])
+      .filter((b) => b.usedBy === player.name && !b.noTraining)
+      .sort((a, b) => (a.id || "").localeCompare(b.id || ""));
+    if (pool.length === 0) return [];
+    const picked = [];
+    const rngStore = getRngStore(state);
+    const key = rngStore.missionKey(state, MISSIONS, "cc_upgrades");
+    for (let i = 0; i < count; i++) {
+      const target = pool[rngStore.int(state, key, pool.length)];
+      applyContactPermanentBoost(state, player, target.id, stats);
+      applyBuffStats(target, stats);
+      const originalContact = CONTACTS.find((c) => c.id === target.id);
+      if (originalContact && originalContact.eff) {
+        applyBuffStats(target, originalContact.eff);
+      }
+      const upgrade = player.contactUpgrades && player.contactUpgrades[target.id];
+      if (upgrade && upgrade.eff) {
+        applyBuffStats(target, upgrade.eff);
+      }
+      const deptScalerBonus = getDeptScalerBonusForContact(state, player, target.id);
+      if (deptScalerBonus) {
+        applyBuffStats(target, deptScalerBonus);
+      }
+      picked.push(target);
+    }
+    return picked;
+  }
+
+  function getDeptScalerBonusForContact(state, player, contactId) {
+    if (!player || !contactId || !Array.isArray(player.signatures)) return null;
+    const contact = CONTACTS.find((c) => c.id === contactId);
+    if (!contact || !contact.departmentId) return null;
+    const deptCounts = {};
+    if (Array.isArray(player.addressBook)) {
+      player.addressBook.forEach((id) => {
+        const entry = CONTACTS.find((c) => c.id === id);
+        if (!entry || !entry.departmentId) return;
+        deptCounts[entry.departmentId] =
+          (deptCounts[entry.departmentId] || 0) + 1;
+      });
+    }
+    const count = deptCounts[contact.departmentId] || 0;
+    if (!count) return null;
+    const bonus = {};
+    player.signatures.forEach((s) => {
+      if (!Array.isArray(s.deptScalers)) return;
+      s.deptScalers.forEach((scaler) => {
+        if (!scaler || !scaler.departmentId || !scaler.stat) return;
+        if (scaler.departmentId !== contact.departmentId) return;
+        const per = typeof scaler.per === "number" ? scaler.per : 0;
+        if (!per) return;
+        const step =
+          typeof scaler.step === "number" && scaler.step > 0 ? scaler.step : 1;
+        const times = Math.floor(count / step);
+        if (!times) return;
+        bonus[scaler.stat] = (bonus[scaler.stat] || 0) + per * times;
+      });
+    });
+    return Object.keys(bonus).length ? bonus : null;
+  }
+
+  function applyUnitPermanentBoost(unit, sourceId, stats) {
+    if (!unit || !sourceId || !stats) return;
+    if (!unit.signoffBonuses) unit.signoffBonuses = {};
+    const current = unit.signoffBonuses[sourceId] || {};
+    const next = { ...current };
+    Object.keys(stats).forEach((key) => {
+      const value = stats[key];
+      if (typeof value !== "number") return;
+      next[key] = (next[key] || 0) + value;
+    });
+    unit.signoffBonuses[sourceId] = next;
+  }
+
+  function applyUnitThreadBonus(unit, stats) {
+    if (!unit || !stats) return;
+    if (!unit.threadBonuses) unit.threadBonuses = {};
+    Object.keys(stats).forEach((key) => {
+      const value = stats[key];
+      if (typeof value !== "number") return;
+      unit.threadBonuses[key] = (unit.threadBonuses[key] || 0) + value;
+    });
+  }
+
+  function applySalutationPermanentBoost(unit, sourceId, stats) {
+    if (!unit || !sourceId || !stats) return;
+    if (!unit.salutationBonuses) unit.salutationBonuses = {};
+    const current = unit.salutationBonuses[sourceId] || {};
+    const next = { ...current };
+    Object.keys(stats).forEach((key) => {
+      const value = stats[key];
+      if (typeof value !== "number") return;
+      next[key] = (next[key] || 0) + value;
+    });
+    unit.salutationBonuses[sourceId] = next;
+  }
+
+  function setSalutationBonus(unit, sourceId, stats) {
+    if (!unit || !sourceId || !stats) return;
+    if (!unit.salutationBonuses) unit.salutationBonuses = {};
+    const next = { ...(unit.salutationBonuses[sourceId] || {}) };
+    Object.keys(stats).forEach((key) => {
+      const value = stats[key];
+      if (typeof value !== "number") return;
+      if (next[key] == null || value > next[key]) next[key] = value;
+    });
+    unit.salutationBonuses[sourceId] = next;
   }
 
   function pickWeighted(items, count, rngKey, state) {
@@ -1419,6 +1785,17 @@
     runUnitEffects,
     applyEffect,
     getEffectHandlers,
+    addRandomBccs,
+    duplicateRandomOwnedBccs,
+    applyContactPermanentBoost,
+    applyBuffStats,
+    applyRandomCcBoost,
+    applyRandomCcBoostMultiple,
+    getDeptScalerBonusForContact,
+    applyUnitPermanentBoost,
+    applyUnitThreadBonus,
+    applySalutationPermanentBoost,
+    setSalutationBonus,
     enterShop,
     rerollShop,
     buyItem,
