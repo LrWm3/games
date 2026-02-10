@@ -252,13 +252,7 @@
     getUnitAddressLimit,
   };
 
-  global.ReplyAllEngine = ReplyAllEngine;
-})(typeof window !== "undefined" ? window : globalThis);
-
-// ----------- Phase 3 stubs -----------
-(function initReplyAllEnginePhase3(global) {
-  const ReplyAllEngine = global.ReplyAllEngine;
-  if (!ReplyAllEngine) return;
+  // ----------- Phase 3 core -----------
 
   // 3.1 Engine State Shape & Init
   function createInitialRunState(config) {
@@ -952,4 +946,5 @@
     serializeMeta,
     deserializeMeta,
   };
+  global.ReplyAllEngine = ReplyAllEngine;
 })(typeof window !== "undefined" ? window : globalThis);
