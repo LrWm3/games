@@ -4047,6 +4047,41 @@ const DEFAULT_PLAYER_LINES = {
   replyAllLinesByTitle: {},
 };
 
+const SHOP_TRAINING_LABELS = [
+  {
+    id: "bcc_stat_boost",
+    name: "Executive Stat Review",
+    picksText: "Pick 2 of 3 upgrades",
+    cost: 0,
+    optionsCount: 3,
+    picks: 2,
+  },
+  {
+    id: "training_lnl",
+    name: "Attend Lunch & Learn",
+    picksText: "Pick 1 of 2 upgrades",
+    cost: 6,
+    optionsCount: 2,
+    picks: 1,
+  },
+  {
+    id: "training_course",
+    name: "Take Daily Course",
+    picksText: "Pick 1 of 3 upgrades",
+    cost: 8,
+    optionsCount: 3,
+    picks: 1,
+  },
+  {
+    id: "training_conference",
+    name: "Attend Conference",
+    picksText: "Pick 2 of 3 upgrades",
+    cost: 10,
+    optionsCount: 3,
+    picks: 2,
+  },
+];
+
 const SHOP_DIRECT_TYPE_WEIGHTS = {
   contact: 80,
   signature: 60,

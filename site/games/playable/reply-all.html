@@ -4229,7 +4229,7 @@
           pack = state.shop.packs.find((p) => p.id === pending.packId);
         } else {
           // Fallback for old style training
-          const offer = getTrainingOffers().find(
+          const offer = SHOP_TRAINING_LABELS.find(
             (o) => o.id === pending.offerId,
           );
           if (offer) {
@@ -5283,43 +5283,6 @@
             apply: () => {
               applyCoachingBoosts(state.player, { selfPromoteHeal: 5 });
             },
-          },
-        ];
-      }
-
-      function getTrainingOffers() {
-        return [
-          {
-            id: "bcc_stat_boost",
-            name: "Executive Stat Review",
-            picksText: "Pick 2 of 3 upgrades",
-            cost: 0,
-            optionsCount: 3,
-            picks: 2,
-          },
-          {
-            id: "training_lnl",
-            name: "Attend Lunch & Learn",
-            picksText: "Pick 1 of 2 upgrades",
-            cost: 6,
-            optionsCount: 2,
-            picks: 1,
-          },
-          {
-            id: "training_course",
-            name: "Take Daily Course",
-            picksText: "Pick 1 of 3 upgrades",
-            cost: 8,
-            optionsCount: 3,
-            picks: 1,
-          },
-          {
-            id: "training_conference",
-            name: "Attend Conference",
-            picksText: "Pick 2 of 3 upgrades",
-            cost: 10,
-            optionsCount: 3,
-            picks: 2,
           },
         ];
       }
