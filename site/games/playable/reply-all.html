@@ -9443,7 +9443,7 @@
         return [
           {
             id: "upgrade_single",
-            name: "Reply to Focus",
+            name: "Writing Effective Emails",
             singleDmg: 5,
             apply: () => {
               applyCoachingBoosts(state.player, { singleDmg: 5 });
@@ -9451,7 +9451,7 @@
           },
           {
             id: "upgrade_escalate",
-            name: "Escalation Focus",
+            name: "Collaborative Learning",
             escalateDmg: 4,
             apply: () => {
               applyCoachingBoosts(state.player, { escalateDmg: 4 });
@@ -9459,7 +9459,7 @@
           },
           {
             id: "upgrade_global",
-            name: "Agency-Wide Influence",
+            name: "Org-Wide Change Roll-out",
             globalDmg: 3,
             apply: () => {
               applyCoachingBoosts(state.player, { globalDmg: 3 });
@@ -9467,7 +9467,7 @@
           },
           {
             id: "upgrade_hp",
-            name: "Resilience Training",
+            name: "Assessing Credibility",
             maxHp: 10,
             apply: () => {
               applyCoachingBoosts(state.player, { maxHp: 10 });
@@ -9475,7 +9475,7 @@
           },
           {
             id: "upgrade_deflect",
-            name: "Deflection Coaching",
+            name: "Authority Delegation Program",
             deflect: 2,
             retaliation: 3,
             apply: () => {
@@ -9487,7 +9487,7 @@
           },
           {
             id: "upgrade_self_promote",
-            name: "Visibility Coaching",
+            name: "Projecting Leadership Course",
             selfPromoteHeal: 5,
             apply: () => {
               applyCoachingBoosts(state.player, { selfPromoteHeal: 5 });
@@ -11499,8 +11499,6 @@
           item.itemType === "signature"
         ) {
           showAssetsWindow("email", { forceOpen: true });
-        } else if (item.itemType === "dev") {
-          showAssetsWindow("profile", { forceOpen: true });
         }
       }
 
@@ -11588,7 +11586,6 @@
                   }
                 }
               } else if (item.itemType === "dev") {
-                showAssetsWindow("profile", { forceOpen: true });
                 renderProfileWindow();
                 highlightProfileStat(
                   getPrimaryStatKey(item),
@@ -11661,8 +11658,6 @@
               ) {
                 showAssetsWindow("email", { forceOpen: true });
                 highlightEmailSlot(type);
-              } else if (type === "dev") {
-                showAssetsWindow("profile", { forceOpen: true });
               }
             },
             onEnd: () => {
@@ -11731,7 +11726,6 @@
               showAssetsWindow("email", { forceOpen: true });
               highlightEmailSlot(item.itemType);
             } else if (item.itemType === "dev") {
-              showAssetsWindow("profile", { forceOpen: true });
               renderProfileWindow();
               highlightProfileStat(
                 getPrimaryStatKey(item),
@@ -12439,7 +12433,6 @@
         });
         shopOverlayState.itemId = item.id || null;
         if (item.itemType === "dev") {
-          showAssetsWindow("profile", { forceOpen: true });
           renderProfileWindow();
           highlightProfileStat(getPrimaryStatKey(item), getPrimaryStatDelta(item));
         }
@@ -12553,6 +12546,21 @@
       function renderItemOverlay(item, opts = {}) {
         const overlay = document.getElementById("shop-item-overlay");
         if (!overlay || !item || !opts.anchorEl) return;
+        const buildCoachingImpactText = (coachingItem) => {
+          if (!coachingItem) return "";
+          const totals = computeUnitStats(state.player || {});
+          const lines = [];
+          STAT_FIELDS.forEach((key) => {
+            if (typeof coachingItem[key] !== "number" || coachingItem[key] === 0)
+              return;
+            const before = totals[key] || 0;
+            const after = before + coachingItem[key];
+            const meta = STAT_METADATA[key] || { label: key };
+            lines.push(`${meta.label}: ${before} → ${after}`);
+          });
+          if (!lines.length) return "";
+          return `<div class="text-[10px] text-gray-700 mt-1"><strong>Impact:</strong> ${lines.join(", ")}</div>`;
+        };
         const buildNonContactOverlay = ({
           title,
           typeLabel,
@@ -12700,10 +12708,14 @@
               onAction: () => buyPack(item),
             });
           } else if (opts.mode === "pack-option") {
-            const bonusDesc =
+            let bonusDesc =
               getItemBonusText(item) ||
               item.picksText ||
               describeEffect(item.eff || item);
+            if (item.itemType === "dev") {
+              const impact = buildCoachingImpactText(item);
+              bonusDesc = `${bonusDesc || ""}${impact || ""}`;
+            }
             content = buildNonContactOverlay({
               title: item.name,
               typeLabel: getItemTypeLabel(item.itemType),
@@ -12740,10 +12752,16 @@
                 },
               });
             } else {
+              let description =
+                getItemBonusText(item) || item.description || "";
+              if (item.itemType === "dev") {
+                const impact = buildCoachingImpactText(item);
+                description = `${description || ""}${impact || ""}`;
+              }
               content = buildNonContactOverlay({
                 title: item.name,
                 typeLabel: getItemTypeLabel(item.itemType),
-                description: getItemBonusText(item) || item.description || "",
+                description,
                 rarity: item.rarity,
                 actionLabel: getItemActionLabel(item, "shop", eligibility),
                 actionDisabled: !eligibility.ok || owned,
