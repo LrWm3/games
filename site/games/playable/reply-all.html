@@ -8475,14 +8475,12 @@
           btn.className = "shop-card-item";
           btn.dataset.itemId = opt.id;
           const typeMeta = getItemTypeMeta(opt.itemType);
-          const rarityBadge = formatRarityBadge(opt.rarity || "common");
           btn.innerHTML = `
             <div class="w-full h-full flex flex-col">
               <div class="shop-card-header" style="background:${typeMeta.headerBg}; color:${typeMeta.headerText};">
                 ${typeMeta.label}
               </div>
               <div class="shop-card-frame" style="background:${typeMeta.paneBg}; color:${typeMeta.paneText};">
-                <div class="shop-card-badge">${rarityBadge}</div>
                 <div class="shop-card-name">${opt.name}</div>
               </div>
             </div>
