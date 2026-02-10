@@ -7329,7 +7329,7 @@
         endRep: { label: "End Reputation", shortName: "End Rep" },
         addressLimit: { label: "Address Limit", shortName: "Address" },
         numCCperCCaction: { label: "CCs per Action", shortName: "CC / Action" },
-        bccLimit: { label: "BCC Limit", shortName: "BCC Limit" },
+        bccLimit: { label: "Internal Services Limit", shortName: "Internal Services" },
         contactTrainingLimit: { label: "Training Limit", shortName: "Training Limit" },
       };
 
@@ -8348,7 +8348,7 @@
           return;
         }
         if (item.itemType === "bcc") {
-          alert("BCC capacity reached. Discard a BCC to make space.");
+          alert("Help Desk capacity reached. Discard a Help Desk contact to make space.");
         }
       }
 
@@ -10825,7 +10825,7 @@
             const uText = formatStatsText(upgrades.eff);
             if (uText)
               parts.push(
-                `<span class="text-emerald-700 font-bold">(${uText} ${upgrades.subtitle || "BCC"})</span>`,
+                `<span class="text-emerald-700 font-bold">(${uText} ${upgrades.subtitle || "Help Desk"})</span>`,
               );
           }
         }
@@ -10928,7 +10928,7 @@
           parts.push(`+${stats.addressLimit} address limit`);
         if (stats.escalateRecoverPerHit)
           parts.push(`Escalate recover +${stats.escalateRecoverPerHit}`);
-        if (stats.bccLimit) parts.push(`+${stats.bccLimit} BCC limit`);
+        if (stats.bccLimit) parts.push(`+${stats.bccLimit} Help Desk limit`);
         if (stats.numCCperCCaction)
           parts.push(`+${stats.numCCperCCaction} CC per action`);
         if (stats.contactTrainingLimit)
@@ -11034,10 +11034,10 @@
           result = `${eventLabel}, every ${step} ${scaleLabel} grants ${statsText} until the end of this thread`;
         } else if (effect.type === "add_bcc") {
           const count = effect.count || 1;
-          result = `${eventText}: gain ${count} BCC`;
+          result = `${eventText}: gain ${count} Help Desk contact${count === 1 ? "" : "s"}`;
         } else if (effect.type === "duplicate_bcc") {
           const count = effect.count || 1;
-          result = `${eventText}: duplicate ${count} BCC`;
+          result = `${eventText}: duplicate ${count} Help Desk contact${count === 1 ? "" : "s"}`;
         } else if (effect.type === "add_signoff_bonus_scaled") {
           const step = effect.step || 1;
           const scaleLabel =
@@ -12684,7 +12684,7 @@
             typeLabel: getItemTypeLabel(item.itemType),
             description: getItemBonusText(item) || item.description || "",
             rarity: item.rarity,
-            actionLabel: `DISCARD BCC +${refund} REP`,
+            actionLabel: `DISCARD HELP DESK +${refund} REP`,
             actionDisabled: false,
             cost: 0,
             onAction: () => {
@@ -12984,7 +12984,7 @@
         const headerBcc = document.createElement("div");
         headerBcc.className =
           "address-book-header text-[10px] font-bold bg-gray-200 p-1 mt-3 uppercase sticky top-0";
-        headerBcc.innerText = `Help Desk (BCC) (${state.player.bccContacts.length}/${bccLimit})`;
+        headerBcc.innerText = `Internal Services (${state.player.bccContacts.length}/${bccLimit})`;
         list.appendChild(headerBcc);
         const bccList = document.createElement("div");
         bccList.id = "shop-address-book-list-bcc";
@@ -13017,7 +13017,7 @@
           const empty = document.createElement("div");
           empty.className = "px-2 py-2 text-[10px] italic text-gray-400";
           empty.id = "empty-bcc-list";
-          empty.innerText = "No BCCs available.";
+          empty.innerText = "No Help Desk contacts available.";
           bccList.appendChild(empty);
         }
       }
@@ -13059,7 +13059,7 @@
           btn.className = className;
           const deptLabel =
             itemType === "bcc"
-              ? "BCC"
+              ? "Help Desk"
               : c.departmentId
                 ? showDeptShort
                   ? getDepartmentShortName(c.departmentId) ||
@@ -15336,7 +15336,7 @@
           headerBCC.className =
             "text-[10px] font-bold bg-gray-200 p-1 mt-4 uppercase sticky top-0";
           const bccLimit = computeUnitStats(state.player).bccLimit || 0;
-          headerBCC.innerText = `Help Desk (BCC) (${state.player.bccContacts.length}/${bccLimit})`;
+          headerBCC.innerText = `Internal Services (${state.player.bccContacts.length}/${bccLimit})`;
           list.appendChild(headerBCC);
 
         renderAddressBookList({
@@ -15764,7 +15764,7 @@
             <div class="flex justify-between items-start">
               <div>
                 <div class="font-bold text-yellow-800 text-sm">${bcc.name}</div>
-                <div class="text-[10px] uppercase text-gray-500">BCC</div>
+                <div class="text-[10px] uppercase text-gray-500">Help Desk</div>
               </div>
             </div>
             <div class="text-[10px] italic text-gray-700">${getItemBonusText(bcc)}</div>
@@ -15802,7 +15802,7 @@
         addEmailToLog(
           state.player.name,
           "everyone@gov.org",
-          `BCC: ${bcc.name}`,
+          `Help Desk: ${bcc.name}`,
           `[PRIVATE MESSAGE] Sent: ${logContent}`,
           "bg-yellow-100 border-l-4 border-yellow-600",
         );
@@ -15993,8 +15993,8 @@
             addEmailToLog(
               "SYSTEM",
               state.player.name,
-              "BCC Capacity Reached",
-              "No additional BCC capacity is available.",
+              "Help Desk Capacity Reached",
+              "No additional Help Desk capacity is available.",
               "italic text-gray-500 text-[10px]",
             );
           } else {
@@ -16013,12 +16013,12 @@
             addEmailToLog(
               "SYSTEM",
               state.player.name,
-              "BCC Rollout Complete",
+              "Help Desk Rollout Complete",
               picked.length
-                ? `Added ${picked.length} new BCC${picked.length > 1 ? "s" : ""}: ${picked
+                ? `Added ${picked.length} new Help Desk contact${picked.length > 1 ? "s" : ""}: ${picked
                     .map((b) => b.name)
                     .join(", ")}.`
-                : "No eligible BCCs were available to add.",
+                : "No eligible Help Desk contacts were available to add.",
               "italic text-gray-500 text-[10px]",
             );
           }
