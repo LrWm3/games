@@ -4102,19 +4102,7 @@
         STAT_FIELDS.forEach((field) => {
           if (typeof item[field] === "number") stats[field] = item[field];
         });
-        const otherFields = [
-          "replyDeptCleave",
-          "replySecondaryHalf",
-          "deflectBoostSingle",
-          "deflectBoostEscalate",
-          "disableReplyTo",
-          "addSingleToEscalate",
-          "replyAllPerActive",
-          "escalatePerActive",
-          "winScaleSingleDmg",
-          "winScaleSingleDmgMult",
-        ];
-        otherFields.forEach((field) => {
+        SNAPSHOT_ITEM_OTHER_FIELDS.forEach((field) => {
           if (item[field] !== undefined) snapshot[field] = item[field];
         });
         if (Object.keys(stats).length) snapshot.stats = stats;
@@ -5231,60 +5219,14 @@
       }
 
       function getTrainingUpgrades() {
-        return [
-          {
-            id: "upgrade_single",
-            name: "Writing Effective Emails",
-            singleDmg: 5,
-            apply: () => {
-              applyCoachingBoosts(state.player, { singleDmg: 5 });
-            },
+        return TRAINING_UPGRADE_STATS.map((entry) => ({
+          id: entry.id,
+          name: entry.name,
+          ...entry.stats,
+          apply: () => {
+            applyCoachingBoosts(state.player, entry.stats);
           },
-          {
-            id: "upgrade_escalate",
-            name: "Collaborative Learning",
-            escalateDmg: 4,
-            apply: () => {
-              applyCoachingBoosts(state.player, { escalateDmg: 4 });
-            },
-          },
-          {
-            id: "upgrade_global",
-            name: "Org-Wide Change Roll-out",
-            globalDmg: 3,
-            apply: () => {
-              applyCoachingBoosts(state.player, { globalDmg: 3 });
-            },
-          },
-          {
-            id: "upgrade_hp",
-            name: "Assessing Credibility",
-            maxHp: 10,
-            apply: () => {
-              applyCoachingBoosts(state.player, { maxHp: 10 });
-            },
-          },
-          {
-            id: "upgrade_deflect",
-            name: "Authority Delegation Program",
-            deflect: 2,
-            retaliation: 3,
-            apply: () => {
-              applyCoachingBoosts(state.player, {
-                deflect: 2,
-                retaliation: 3,
-              });
-            },
-          },
-          {
-            id: "upgrade_self_promote",
-            name: "Projecting Leadership Course",
-            selfPromoteHeal: 5,
-            apply: () => {
-              applyCoachingBoosts(state.player, { selfPromoteHeal: 5 });
-            },
-          },
-        ];
+        }));
       }
 
       function getRarityWeight(rarity) {

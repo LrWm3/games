@@ -4243,3 +4243,29 @@ const SPAM_SUBJECTS = [
 const PACK_TIERS = ["small", "medium", "large"];
 const QUARTERS = ["Q3", "Q4", "Q1", "Q2"];
 const NUM_WORDS = ["zero", "one", "two", "three", "four"];
+
+const TRAINING_UPGRADE_STATS = [
+  { id: "upgrade_single", name: "Writing Effective Emails", stats: { singleDmg: 5 } },
+  { id: "upgrade_escalate", name: "Collaborative Learning", stats: { escalateDmg: 4 } },
+  { id: "upgrade_global", name: "Org-Wide Change Roll-out", stats: { globalDmg: 3 } },
+  { id: "upgrade_hp", name: "Assessing Credibility", stats: { maxHp: 10 } },
+  {
+    id: "upgrade_deflect",
+    name: "Authority Delegation Program",
+    stats: { deflect: 2, retaliation: 3 },
+  },
+  { id: "upgrade_self_promote", name: "Projecting Leadership Course", stats: { selfPromoteHeal: 5 } },
+];
+
+const SNAPSHOT_ITEM_OTHER_FIELDS = [
+  "replyDeptCleave",
+  "replySecondaryHalf",
+  "deflectBoostSingle",
+  "deflectBoostEscalate",
+  "disableReplyTo",
+  "addSingleToEscalate",
+  "replyAllPerActive",
+  "escalatePerActive",
+  "winScaleSingleDmg",
+  "winScaleSingleDmgMult",
+];
