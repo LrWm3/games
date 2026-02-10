@@ -1003,15 +1003,49 @@
   }
 
   function checkPromotion(state) {
-    return null;
+    const year = state.player?.year ?? 0;
+    if (year >= TITLES.length) return null;
+    const idx = Math.min(year, TITLES.length - 1);
+    return TITLES[idx] || null;
   }
 
   function applyPromotion(state, promotionId) {
-    return state;
+    let nextTitle = null;
+    if (promotionId) {
+      nextTitle = TITLES.find((t) => t.id === promotionId) || null;
+    }
+    if (!nextTitle) {
+      nextTitle = checkPromotion(state);
+    }
+    if (nextTitle) {
+      state.player.title = nextTitle;
+    }
+    return nextTitle;
   }
 
-  function checkWinLoss(state) {
-    return { gameOver: state.gameOver, gameWon: state.gameWon };
+  function checkWinLoss(state, data) {
+    if (state.gameOver) {
+      return { gameOver: true, gameWon: !!state.gameWon, reason: state.lossReason || null };
+    }
+    if (state.gameWon || state.winGame) {
+      state.gameOver = true;
+      state.gameWon = true;
+      return { gameOver: true, gameWon: true, reason: "win" };
+    }
+    if (state.lossReason) {
+      state.gameOver = true;
+      return { gameOver: true, gameWon: false, reason: state.lossReason };
+    }
+    const opponentsAlive = (state.opponents || []).some((o) => o.hp > 0);
+    const missions = data?.missions || [];
+    if (!opponentsAlive && state.missionActive) {
+      if (state.currentMissionIndex >= missions.length - 1) {
+        state.gameOver = true;
+        state.gameWon = true;
+        return { gameOver: true, gameWon: true, reason: "win" };
+      }
+    }
+    return { gameOver: false, gameWon: false, reason: null };
   }
 
   // 3.7 Serialization
