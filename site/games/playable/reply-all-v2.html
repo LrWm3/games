@@ -164,22 +164,58 @@
         background: #b91c1c;
       }
       .shop-card-item {
-        border: 1px solid #808080;
-        background: #fff;
+        width: 100%;
+        max-width: 84px;
+        height: 120px;
+        display: flex;
+        flex-direction: column;
+        text-align: center;
+        padding: 0;
+        background: #c0c0c0;
         cursor: grab;
-        min-height: 68px;
+        user-select: none;
+        border-top: 2px solid #ffffff;
+        border-left: 2px solid #ffffff;
+        border-right: 2px solid #404040;
+        border-bottom: 2px solid #404040;
+        box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
       }
       .shop-card-item:active {
         cursor: grabbing;
       }
       .shop-card-header {
-        font-size: 9px;
+        width: 100%;
+        font-size: 7px;
         font-weight: 700;
         text-transform: uppercase;
-        padding: 3px 6px;
-        border-bottom: 1px solid #808080;
-        background: #000080;
-        color: #fff;
+        padding: 2px 6px;
+        text-align: left;
+      }
+      .shop-card-frame {
+        flex: 1;
+        margin: 5px;
+        background: #808080;
+        border-top: 2px solid #404040;
+        border-left: 2px solid #404040;
+        border-right: 2px solid #ffffff;
+        border-bottom: 2px solid #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 5px;
+      }
+      .shop-card-name {
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1.2;
+        color: #111827;
+      }
+      .shop-card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, 84px);
+        gap: 8px;
+        justify-content: center;
       }
       .shop-card-body {
         padding: 6px;
@@ -191,6 +227,45 @@
         padding: 6px;
         text-align: center;
         font-size: 10px;
+      }
+      .address-book-header {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        background: #d1d5db;
+        padding: 4px 6px;
+        border-bottom: 1px solid #9ca3af;
+      }
+      .address-book-item {
+        font-size: 11px;
+        padding: 4px 6px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #fff;
+      }
+      .email-template-shell {
+        background: #fff;
+        border: 1px solid #808080;
+        padding: 8px;
+      }
+      .email-template-row {
+        display: grid;
+        grid-template-columns: 84px minmax(140px, 1fr) 84px;
+        gap: 8px;
+        align-items: start;
+      }
+      .template-content-card {
+        cursor: default;
+      }
+      .email-template-slot {
+        border: 1px solid #bdbdbd;
+        background: #f9fafb;
+        min-height: 28px;
+        padding: 4px 6px;
+      }
+      .sig-list-row {
+        border-bottom: 1px solid #e5e7eb;
+        padding: 4px 2px;
+        font-size: 11px;
       }
       @media (max-width: 640px) {
         #induction-icon-frame {
@@ -1127,9 +1202,7 @@
         const openPackZoneRef = React.useRef(null);
         const archiveZoneRef = React.useRef(null);
         const ownedContactRef = React.useRef(null);
-        const ownedSignatureRef = React.useRef(null);
-        const ownedSalutationRef = React.useRef(null);
-        const ownedSignoffRef = React.useRef(null);
+        const ownedEmailRef = React.useRef(null);
         const ownedBccRef = React.useRef(null);
         function getDisplayCost(item) {
           if (!item) return 0;
@@ -1142,6 +1215,17 @@
         function rowLabel(item, itemType) {
           const refund = ReplyAllEngine.core.getSellRefundForItem(itemType, item);
           return `${item?.name || item?.id || "Item"} (+${refund} REP)`;
+        }
+        function typeMeta(itemType) {
+          const map = {
+            contact: { label: "contact", headerBg: "#1d4ed8", headerText: "#ffffff", paneBg: "#dbeafe", paneText: "#1e3a8a" },
+            signature: { label: "signature", headerBg: "#7c3aed", headerText: "#ffffff", paneBg: "#ede9fe", paneText: "#4c1d95" },
+            salutation: { label: "greeting", headerBg: "#0f766e", headerText: "#ffffff", paneBg: "#ccfbf1", paneText: "#134e4a" },
+            signoff: { label: "sign-off", headerBg: "#065f46", headerText: "#ffffff", paneBg: "#d1fae5", paneText: "#064e3b" },
+            bcc: { label: "help desk", headerBg: "#92400e", headerText: "#ffffff", paneBg: "#fef3c7", paneText: "#78350f" },
+            dev: { label: "training", headerBg: "#374151", headerText: "#ffffff", paneBg: "#e5e7eb", paneText: "#111827" },
+          };
+          return map[itemType] || map.contact;
         }
 
         React.useEffect(() => {
@@ -1171,11 +1255,7 @@
             sort: false,
             group: { name: "buy-any", pull: false, put: ["shop-offers"] },
             onAdd: (evt) => {
-              const dropped = evt.item;
               const itemId = evt.item?.dataset?.itemId;
-              if (dropped && dropped.parentNode) {
-                dropped.parentNode.removeChild(dropped);
-              }
               if (itemId) {
                 setTimeout(() => props.onDropBuyItem(itemId), 0);
               }
@@ -1193,11 +1273,7 @@
             sort: false,
             group: { name: "shop-pack-open", pull: false, put: true },
             onAdd: (evt) => {
-              const dropped = evt.item;
               const packId = evt.item?.dataset?.packId;
-              if (dropped && dropped.parentNode) {
-                dropped.parentNode.removeChild(dropped);
-              }
               if (packId) {
                 setTimeout(() => props.onDropOpenPack(packId), 0);
               }
@@ -1222,97 +1298,49 @@
             },
             draggable: ".shop-card-item",
             onAdd: (evt) => {
-              const dropped = evt.item;
               if (evt.from?.options?.group?.name === "shop-offers") {
                 const itemId = evt.item?.dataset?.itemId;
-                if (dropped && dropped.parentNode) {
-                  dropped.parentNode.removeChild(dropped);
-                }
                 if (itemId) {
                   setTimeout(() => props.onDropEquipFromShop(itemId, "contact"), 0);
                 }
                 return;
               }
-              if (dropped && dropped.parentNode) {
-                dropped.parentNode.removeChild(dropped);
-              }
             },
           });
-          addSortable(ownedSignatureRef, {
+          addSortable(ownedEmailRef, {
             animation: 120,
             sort: true,
             group: {
-              name: "owned-signature",
+              name: "owned-email",
               pull: true,
-              put: (to, from, dragEl) => fromOffers(to, from, dragEl, "signature"),
+              put: (to, from, dragEl) => {
+                if (!from) return false;
+                if (from.options?.group?.name === "shop-offers") {
+                  const t = dragEl?.dataset?.itemType;
+                  return t === "salutation" || t === "signoff" || t === "signature";
+                }
+                return from.options?.group?.name === "owned-email";
+              },
             },
             draggable: ".shop-card-item",
             onAdd: (evt) => {
-              const dropped = evt.item;
               if (evt.from?.options?.group?.name === "shop-offers") {
                 const itemId = evt.item?.dataset?.itemId;
-                if (dropped && dropped.parentNode) {
-                  dropped.parentNode.removeChild(dropped);
+                const itemType = evt.item?.dataset?.itemType;
+                if (itemId && itemType) {
+                  setTimeout(() => props.onDropEquipFromShop(itemId, itemType), 0);
                 }
-                if (itemId) {
-                  setTimeout(() => props.onDropEquipFromShop(itemId, "signature"), 0);
-                }
-                return;
-              }
-              if (dropped && dropped.parentNode) {
-                dropped.parentNode.removeChild(dropped);
               }
             },
-          });
-          addSortable(ownedSalutationRef, {
-            animation: 120,
-            sort: false,
-            group: {
-              name: "owned-salutation",
-              pull: true,
-              put: (to, from, dragEl) => fromOffers(to, from, dragEl, "salutation"),
-            },
-            draggable: ".shop-card-item",
-            onAdd: (evt) => {
-              const dropped = evt.item;
-              if (evt.from?.options?.group?.name === "shop-offers") {
-                const itemId = evt.item?.dataset?.itemId;
-                if (dropped && dropped.parentNode) {
-                  dropped.parentNode.removeChild(dropped);
-                }
-                if (itemId) {
-                  setTimeout(() => props.onDropEquipFromShop(itemId, "salutation"), 0);
-                }
-                return;
-              }
-              if (dropped && dropped.parentNode) {
-                dropped.parentNode.removeChild(dropped);
-              }
-            },
-          });
-          addSortable(ownedSignoffRef, {
-            animation: 120,
-            sort: false,
-            group: {
-              name: "owned-signoff",
-              pull: true,
-              put: (to, from, dragEl) => fromOffers(to, from, dragEl, "signoff"),
-            },
-            draggable: ".shop-card-item",
-            onAdd: (evt) => {
-              const dropped = evt.item;
-              if (evt.from?.options?.group?.name === "shop-offers") {
-                const itemId = evt.item?.dataset?.itemId;
-                if (dropped && dropped.parentNode) {
-                  dropped.parentNode.removeChild(dropped);
-                }
-                if (itemId) {
-                  setTimeout(() => props.onDropEquipFromShop(itemId, "signoff"), 0);
-                }
-                return;
-              }
-              if (dropped && dropped.parentNode) {
-                dropped.parentNode.removeChild(dropped);
+            onEnd: () => {
+              if (!ownedEmailRef.current) return;
+              const sigIds = Array.from(
+                ownedEmailRef.current.querySelectorAll('[data-item-type="signature"][data-item-id]'),
+              )
+                .map((el) => el.dataset.itemId)
+                .filter(Boolean);
+              if (sigIds.length) {
+                setTimeout(() => props.onReorderSignatures(sigIds), 0);
               }
             },
           });
@@ -1326,19 +1354,12 @@
             },
             draggable: ".shop-card-item",
             onAdd: (evt) => {
-              const dropped = evt.item;
               if (evt.from?.options?.group?.name === "shop-offers") {
                 const itemId = evt.item?.dataset?.itemId;
-                if (dropped && dropped.parentNode) {
-                  dropped.parentNode.removeChild(dropped);
-                }
                 if (itemId) {
                   setTimeout(() => props.onDropEquipFromShop(itemId, "bcc"), 0);
                 }
                 return;
-              }
-              if (dropped && dropped.parentNode) {
-                dropped.parentNode.removeChild(dropped);
               }
             },
           });
@@ -1348,23 +1369,21 @@
             group: {
               name: "archive-drop",
               pull: false,
-              put: [
-                "owned-contact",
-                "owned-signature",
-                "owned-salutation",
-                "owned-signoff",
-                "owned-bcc",
-              ],
+              put: (to, from, dragEl) => {
+                const type = dragEl?.dataset?.itemType;
+                if (!type || type === "content") return false;
+                return [
+                  "owned-contact",
+                  "owned-email",
+                  "owned-bcc",
+                ].includes(from?.options?.group?.name);
+              },
             },
             onAdd: (evt) => {
-              const dropped = evt.item;
               const itemType = evt.item?.dataset?.itemType;
               const itemId = evt.item?.dataset?.itemId;
               const itemIndexRaw = evt.item?.dataset?.itemIndex;
               const itemIndex = itemIndexRaw == null ? null : Number(itemIndexRaw);
-              if (dropped && dropped.parentNode) {
-                dropped.parentNode.removeChild(dropped);
-              }
               if (itemType && itemId) {
                 setTimeout(
                   () =>
@@ -1382,7 +1401,7 @@
           return () => {
             sortables.forEach((s) => s.destroy());
           };
-        }, [activePack, props.state.shop, props.state.player, props.onDropBuyItem, props.onDropOpenPack, props.onDropArchiveOwned, props.onDropEquipFromShop]);
+        }, [activePack, props.state.shop, props.state.player, props.onDropBuyItem, props.onDropOpenPack, props.onDropArchiveOwned, props.onDropEquipFromShop, props.onReorderSignatures]);
 
         return e(
           "div",
@@ -1445,7 +1464,7 @@
                       e("div", { ref: buyZoneRef, className: "shop-drop-zone" }, "Drop Offer Here To Acquire"),
                       e(
                         "div",
-                        { ref: directListRef, className: "border border-gray-200 bg-white p-2 grid grid-cols-1 sm:grid-cols-2 gap-2" },
+                        { ref: directListRef, className: "border border-gray-200 bg-white p-2 shop-card-grid" },
                         (shop.directItems || [])
                           .filter((item) => !item.purchased)
                           .map((item) =>
@@ -1458,8 +1477,15 @@
                                 onClick: () => props.onBuyItem(item),
                                 className: "shop-card-item",
                               },
-                              e("div", { className: "shop-card-header" }, `${item.itemType} • ${getDisplayCost(item)} REP`),
-                              e("div", { className: "shop-card-body" }, e("div", { className: "font-bold" }, item.name), e("div", { className: "text-gray-600" }, item.rarity || "common")),
+                              (() => {
+                                const meta = typeMeta(item.itemType);
+                                return e(
+                                  React.Fragment,
+                                  null,
+                                  e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, `${meta.label} • ${getDisplayCost(item)} REP`),
+                                  e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, item.name)),
+                                );
+                              })(),
                             ),
                           ),
                       ),
@@ -1471,7 +1497,7 @@
                       e("div", { ref: openPackZoneRef, className: "shop-drop-zone" }, "Drop Pack Here To Open"),
                       e(
                         "div",
-                        { ref: packListRef, className: "border border-gray-200 bg-white p-2 grid grid-cols-1 gap-2" },
+                        { ref: packListRef, className: "border border-gray-200 bg-white p-2 shop-card-grid" },
                         (shop.packs || [])
                           .filter((pack) => !pack.purchased)
                           .map((pack) =>
@@ -1483,8 +1509,15 @@
                                 onClick: () => props.onOpenPack(pack),
                                 className: "shop-card-item",
                               },
-                              e("div", { className: "shop-card-header" }, `pack • ${pack.cost || 0} REP`),
-                              e("div", { className: "shop-card-body" }, e("div", { className: "font-bold" }, pack.name), e("div", { className: "text-gray-600" }, `${pack.picks || 0} pick(s)`)),
+                              (() => {
+                                const meta = typeMeta(pack.type || "dev");
+                                return e(
+                                  React.Fragment,
+                                  null,
+                                  e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, `pack • ${pack.cost || 0} REP`),
+                                  e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, pack.name)),
+                                );
+                              })(),
                             ),
                           ),
                       ),
@@ -1496,94 +1529,154 @@
                       e("div", { ref: archiveZoneRef, className: "shop-drop-zone" }, "Drop Owned Asset Here To Archive"),
                       e(
                         "div",
-                        { className: "border border-gray-200 bg-white p-2 space-y-2 text-[11px]" },
-                        e("div", { className: "font-bold text-[10px] uppercase text-gray-500" }, "Address Book"),
+                        { className: "grid grid-cols-1 lg:grid-cols-2 gap-4 text-[11px]" },
                         e(
                           "div",
-                          { ref: ownedContactRef, className: "grid grid-cols-1 sm:grid-cols-2 gap-2" },
-                          owned.addressBook.length
-                          ? owned.addressBook.map((item) =>
-                              e(
-                                "div",
-                                { key: `owned-contact-${item.id}`, className: "shop-card-item", "data-item-type": "contact", "data-item-id": item.id },
-                                e("div", { className: "shop-card-header" }, "contact"),
-                                e("div", { className: "shop-card-body truncate" }, rowLabel(item, "contact")),
-                                e("button", { className: "retro-button text-[10px] px-2 py-1 shrink-0", onClick: () => props.onArchiveOwned("contact", item.id) }, "Archive"),
-                              ),
-                            )
-                          : e("div", { className: "text-[10px] text-gray-500 italic" }, "None"),
-                        ),
-                        e("div", { className: "font-bold text-[10px] uppercase text-gray-500 mt-1" }, "Signatures"),
-                        e(
-                          "div",
-                          { ref: ownedSignatureRef, className: "grid grid-cols-1 sm:grid-cols-2 gap-2" },
-                          owned.signatures.length
-                          ? owned.signatures.map((item) =>
-                              e(
-                                "div",
-                                { key: `owned-signature-${item.id}`, className: "shop-card-item", "data-item-type": "signature", "data-item-id": item.id },
-                                e("div", { className: "shop-card-header" }, "signature"),
-                                e("div", { className: "shop-card-body truncate" }, rowLabel(item, "signature")),
-                                e("button", { className: "retro-button text-[10px] px-2 py-1 shrink-0", onClick: () => props.onArchiveOwned("signature", item.id) }, "Archive"),
-                              ),
-                            )
-                          : e("div", { className: "text-[10px] text-gray-500 italic" }, "None"),
-                        ),
-                        e("div", { className: "font-bold text-[10px] uppercase text-gray-500 mt-1" }, "Greeting"),
-                        e(
-                          "div",
-                          { ref: ownedSalutationRef, className: "grid grid-cols-1 gap-2" },
-                          owned.salutation
-                            ? e(
-                                "div",
-                                { className: "shop-card-item", "data-item-type": "salutation", "data-item-id": owned.salutation.id },
-                                e("div", { className: "shop-card-header" }, "salutation"),
-                                e("div", { className: "shop-card-body truncate" }, rowLabel(owned.salutation, "salutation")),
-                              )
-                            : e("div", { className: "shop-drop-zone" }, "Drop Salutation Here"),
-                        ),
-                        owned.salutation
-                          ? e(
+                          { className: "border border-gray-300 bg-white" },
+                          e(
+                            "div",
+                            { className: "grid grid-cols-1 md:grid-cols-2 gap-2 p-2" },
+                            e(
                               "div",
-                              { className: "flex justify-end" },
-                              e("button", { className: "retro-button text-[10px] px-2 py-1 shrink-0", onClick: () => props.onArchiveOwned("salutation", owned.salutation.id) }, "Archive"),
-                            )
-                          : null,
-                        e("div", { className: "font-bold text-[10px] uppercase text-gray-500 mt-1" }, "Sign-off"),
-                        e(
-                          "div",
-                          { ref: ownedSignoffRef, className: "grid grid-cols-1 gap-2" },
-                          owned.signoff
-                            ? e(
-                                "div",
-                                { className: "shop-card-item", "data-item-type": "signoff", "data-item-id": owned.signoff.id },
-                                e("div", { className: "shop-card-header" }, "signoff"),
-                                e("div", { className: "shop-card-body truncate" }, rowLabel(owned.signoff, "signoff")),
-                              )
-                            : e("div", { className: "shop-drop-zone" }, "Drop Sign-off Here"),
-                        ),
-                        owned.signoff
-                          ? e(
-                              "div",
-                              { className: "flex justify-end" },
-                              e("button", { className: "retro-button text-[10px] px-2 py-1 shrink-0", onClick: () => props.onArchiveOwned("signoff", owned.signoff.id) }, "Archive"),
-                            )
-                          : null,
-                        e("div", { className: "font-bold text-[10px] uppercase text-gray-500 mt-1" }, "Internal Services"),
-                        e(
-                          "div",
-                          { ref: ownedBccRef, className: "grid grid-cols-1 sm:grid-cols-2 gap-2" },
-                          owned.bcc.length
-                          ? owned.bcc.map((item, idx) =>
+                              null,
+                              e("div", { className: "address-book-header mb-2" }, "Address Book"),
                               e(
                                 "div",
-                                { key: `owned-bcc-${idx}-${item.id}`, className: "shop-card-item", "data-item-type": "bcc", "data-item-id": item.id, "data-item-index": String(idx) },
-                                e("div", { className: "shop-card-header" }, "bcc"),
-                                e("div", { className: "shop-card-body truncate" }, rowLabel(item, "bcc")),
-                                e("button", { className: "retro-button text-[10px] px-2 py-1 shrink-0", onClick: () => props.onArchiveOwned("bcc", item.id, idx) }, "Archive"),
+                                { ref: ownedContactRef, className: "shop-card-grid max-h-44 overflow-y-auto", style: { justifyContent: "start" } },
+                                owned.addressBook.length
+                                  ? owned.addressBook.map((item) => {
+                                      const meta = typeMeta("contact");
+                                      return e(
+                                        "div",
+                                        {
+                                          key: `owned-contact-${item.id}`,
+                                          className: "shop-card-item",
+                                          "data-item-type": "contact",
+                                          "data-item-id": item.id,
+                                        },
+                                        e(
+                                          "div",
+                                          { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } },
+                                          meta.label,
+                                        ),
+                                        e(
+                                          "div",
+                                          { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } },
+                                          e(
+                                            "div",
+                                            null,
+                                            e("div", { className: "shop-card-name" }, item.name),
+                                            e(
+                                              "div",
+                                              { className: "text-[8px] uppercase opacity-80 mt-1" },
+                                              item.departmentId ? ReplyAllEngine.core.getDepartmentName(item.departmentId) : "",
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    })
+                                  : e("div", { className: "text-[10px] text-gray-500 italic p-2" }, "No contacts on file."),
                               ),
-                            )
-                          : e("div", { className: "text-[10px] text-gray-500 italic" }, "None"),
+                            ),
+                            e(
+                              "div",
+                              null,
+                              e("div", { className: "address-book-header mb-2" }, "Internal Services"),
+                              e(
+                                "div",
+                                { ref: ownedBccRef, className: "shop-card-grid max-h-44 overflow-y-auto", style: { justifyContent: "start" } },
+                                owned.bcc.length
+                                  ? owned.bcc.map((item, idx) => {
+                                      const meta = typeMeta("bcc");
+                                      return e(
+                                        "div",
+                                        {
+                                          key: `owned-bcc-${idx}-${item.id}`,
+                                          className: "shop-card-item",
+                                          "data-item-type": "bcc",
+                                          "data-item-id": item.id,
+                                          "data-item-index": String(idx),
+                                        },
+                                        e(
+                                          "div",
+                                          { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } },
+                                          meta.label,
+                                        ),
+                                        e(
+                                          "div",
+                                          { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } },
+                                          e("div", { className: "shop-card-name" }, item.name),
+                                        ),
+                                      );
+                                    })
+                                  : e("div", { className: "text-[10px] text-gray-500 italic p-2" }, "No internal services."),
+                              ),
+                            ),
+                          ),
+                        ),
+                        e(
+                          "div",
+                          { className: "email-template-shell space-y-2" },
+                          e("div", { className: "text-[10px] text-gray-700" }, e("strong", null, "To:"), " everyone@gov.org"),
+                          e(
+                            "div",
+                            { ref: ownedEmailRef, className: "shop-card-grid max-h-56 overflow-y-auto border border-gray-200 p-2", style: { justifyContent: "start" } },
+                            owned.salutation
+                              ? (() => {
+                                  const meta = typeMeta("salutation");
+                                  return e(
+                                    "div",
+                                    { className: "shop-card-item", "data-item-type": "salutation", "data-item-id": owned.salutation.id },
+                                    e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
+                                    e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, owned.salutation.name)),
+                                  );
+                                })()
+                              : (() => {
+                                  const meta = typeMeta("salutation");
+                                  return e(
+                                    "div",
+                                    { className: "shop-card-item" },
+                                    e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
+                                    e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name italic opacity-70" }, "(empty)")),
+                                  );
+                                })(),
+                            e(
+                              "div",
+                              { className: "shop-card-item template-content-card", "data-item-type": "content" },
+                              e("div", { className: "shop-card-header", style: { background: "#4b5563", color: "#fff" } }, "content"),
+                              e("div", { className: "shop-card-frame", style: { background: "#f3f4f6", color: "#6b7280" } }, e("div", { className: "shop-card-name italic" }, "<CONTENT>")),
+                            ),
+                            owned.signoff
+                              ? (() => {
+                                  const meta = typeMeta("signoff");
+                                  return e(
+                                    "div",
+                                    { className: "shop-card-item", "data-item-type": "signoff", "data-item-id": owned.signoff.id },
+                                    e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
+                                    e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, owned.signoff.name)),
+                                  );
+                                })()
+                              : (() => {
+                                  const meta = typeMeta("signoff");
+                                  return e(
+                                    "div",
+                                    { className: "shop-card-item" },
+                                    e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
+                                    e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name italic opacity-70" }, "(empty)")),
+                                  );
+                                })(),
+                            owned.signatures.length
+                              ? owned.signatures.map((item) => {
+                                  const meta = typeMeta("signature");
+                                  return e(
+                                    "div",
+                                    { key: `owned-signature-${item.id}`, className: "shop-card-item", "data-item-type": "signature", "data-item-id": item.id },
+                                    e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
+                                    e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, item.name)),
+                                  );
+                                })
+                              : null,
+                          ),
                         ),
                       ),
                     ),
@@ -2447,6 +2540,34 @@
           persistSave(nextState, "shop-screen");
         }
 
+        function onReorderSignatures(signatureIds) {
+          if (!Array.isArray(signatureIds) || !signatureIds.length) return;
+          const current = state.player?.signatures || [];
+          if (!current.length) return;
+          const byId = new Map(current.map((sig) => [sig.id, sig]));
+          const seen = new Set();
+          const reordered = [];
+          signatureIds.forEach((id) => {
+            if (!id || seen.has(id)) return;
+            const sig = byId.get(id);
+            if (!sig) return;
+            reordered.push(sig);
+            seen.add(id);
+          });
+          current.forEach((sig) => {
+            if (!sig || seen.has(sig.id)) return;
+            reordered.push(sig);
+          });
+          const changed =
+            reordered.length === current.length &&
+            reordered.some((sig, idx) => sig?.id !== current[idx]?.id);
+          if (!changed) return;
+          const nextState = cloneState(state);
+          nextState.player.signatures = reordered;
+          setState(nextState);
+          persistSave(nextState, "shop-screen");
+        }
+
         function onNextQuarterFromShop() {
           const nextState = cloneState(state);
           const quarterStep = ReplyAllEngine.play.advanceQuarterWithPromotion(nextState);
@@ -2641,6 +2762,7 @@
             onDropOpenPack,
             onDropArchiveOwned,
             onDropEquipFromShop,
+            onReorderSignatures,
             onNextQuarter: onNextQuarterFromShop,
           });
         }
