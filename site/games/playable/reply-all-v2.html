@@ -18,7 +18,7 @@
 
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="./reply-all-consts.js"></script>
     <script src="./reply-all-engine.js"></script>
 
@@ -162,6 +162,35 @@
       }
       .momentum-segment.charged {
         background: #b91c1c;
+      }
+      .shop-card-item {
+        border: 1px solid #808080;
+        background: #fff;
+        cursor: grab;
+        min-height: 68px;
+      }
+      .shop-card-item:active {
+        cursor: grabbing;
+      }
+      .shop-card-header {
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 3px 6px;
+        border-bottom: 1px solid #808080;
+        background: #000080;
+        color: #fff;
+      }
+      .shop-card-body {
+        padding: 6px;
+        font-size: 10px;
+      }
+      .shop-drop-zone {
+        border: 2px dashed #808080;
+        background: #efefef;
+        padding: 6px;
+        text-align: center;
+        font-size: 10px;
       }
       @media (max-width: 640px) {
         #induction-icon-frame {
@@ -1092,6 +1121,16 @@
         const activePackId = props.state.activePackId || null;
         const activePack = (shop.packs || []).find((p) => p.id === activePackId) || null;
         const owned = ReplyAllEngine.core.getOwnedAssets(props.state);
+        const directListRef = React.useRef(null);
+        const packListRef = React.useRef(null);
+        const buyZoneRef = React.useRef(null);
+        const openPackZoneRef = React.useRef(null);
+        const archiveZoneRef = React.useRef(null);
+        const ownedContactRef = React.useRef(null);
+        const ownedSignatureRef = React.useRef(null);
+        const ownedSalutationRef = React.useRef(null);
+        const ownedSignoffRef = React.useRef(null);
+        const ownedBccRef = React.useRef(null);
         function getDisplayCost(item) {
           if (!item) return 0;
           if (typeof item.cost === "number") return item.cost;
@@ -1104,6 +1143,247 @@
           const refund = ReplyAllEngine.core.getSellRefundForItem(itemType, item);
           return `${item?.name || item?.id || "Item"} (+${refund} REP)`;
         }
+
+        React.useEffect(() => {
+          if (activePack) return undefined;
+          if (typeof Sortable === "undefined") return undefined;
+          const sortables = [];
+
+          function addSortable(ref, options) {
+            if (!ref.current) return;
+            sortables.push(
+              Sortable.create(ref.current, {
+                forceFallback: true,
+                fallbackOnBody: true,
+                ...options,
+              }),
+            );
+          }
+
+          addSortable(directListRef, {
+            animation: 120,
+            sort: false,
+            group: { name: "shop-offers", pull: "clone", put: false },
+            draggable: ".shop-card-item",
+          });
+          addSortable(buyZoneRef, {
+            animation: 120,
+            sort: false,
+            group: { name: "buy-any", pull: false, put: ["shop-offers"] },
+            onAdd: (evt) => {
+              const dropped = evt.item;
+              const itemId = evt.item?.dataset?.itemId;
+              if (dropped && dropped.parentNode) {
+                dropped.parentNode.removeChild(dropped);
+              }
+              if (itemId) {
+                setTimeout(() => props.onDropBuyItem(itemId), 0);
+              }
+            },
+          });
+
+          addSortable(packListRef, {
+            animation: 120,
+            sort: false,
+            group: { name: "shop-pack-open", pull: "clone", put: false },
+            draggable: ".shop-card-item",
+          });
+          addSortable(openPackZoneRef, {
+            animation: 120,
+            sort: false,
+            group: { name: "shop-pack-open", pull: false, put: true },
+            onAdd: (evt) => {
+              const dropped = evt.item;
+              const packId = evt.item?.dataset?.packId;
+              if (dropped && dropped.parentNode) {
+                dropped.parentNode.removeChild(dropped);
+              }
+              if (packId) {
+                setTimeout(() => props.onDropOpenPack(packId), 0);
+              }
+            },
+          });
+
+          const fromOffers = (to, from, dragEl, acceptedType) => {
+            if (!from) return false;
+            if (from.options?.group?.name === "shop-offers") {
+              return dragEl?.dataset?.itemType === acceptedType;
+            }
+            return from.options?.group?.name === to.options?.group?.name;
+          };
+
+          addSortable(ownedContactRef, {
+            animation: 120,
+            sort: true,
+            group: {
+              name: "owned-contact",
+              pull: true,
+              put: (to, from, dragEl) => fromOffers(to, from, dragEl, "contact"),
+            },
+            draggable: ".shop-card-item",
+            onAdd: (evt) => {
+              const dropped = evt.item;
+              if (evt.from?.options?.group?.name === "shop-offers") {
+                const itemId = evt.item?.dataset?.itemId;
+                if (dropped && dropped.parentNode) {
+                  dropped.parentNode.removeChild(dropped);
+                }
+                if (itemId) {
+                  setTimeout(() => props.onDropEquipFromShop(itemId, "contact"), 0);
+                }
+                return;
+              }
+              if (dropped && dropped.parentNode) {
+                dropped.parentNode.removeChild(dropped);
+              }
+            },
+          });
+          addSortable(ownedSignatureRef, {
+            animation: 120,
+            sort: true,
+            group: {
+              name: "owned-signature",
+              pull: true,
+              put: (to, from, dragEl) => fromOffers(to, from, dragEl, "signature"),
+            },
+            draggable: ".shop-card-item",
+            onAdd: (evt) => {
+              const dropped = evt.item;
+              if (evt.from?.options?.group?.name === "shop-offers") {
+                const itemId = evt.item?.dataset?.itemId;
+                if (dropped && dropped.parentNode) {
+                  dropped.parentNode.removeChild(dropped);
+                }
+                if (itemId) {
+                  setTimeout(() => props.onDropEquipFromShop(itemId, "signature"), 0);
+                }
+                return;
+              }
+              if (dropped && dropped.parentNode) {
+                dropped.parentNode.removeChild(dropped);
+              }
+            },
+          });
+          addSortable(ownedSalutationRef, {
+            animation: 120,
+            sort: false,
+            group: {
+              name: "owned-salutation",
+              pull: true,
+              put: (to, from, dragEl) => fromOffers(to, from, dragEl, "salutation"),
+            },
+            draggable: ".shop-card-item",
+            onAdd: (evt) => {
+              const dropped = evt.item;
+              if (evt.from?.options?.group?.name === "shop-offers") {
+                const itemId = evt.item?.dataset?.itemId;
+                if (dropped && dropped.parentNode) {
+                  dropped.parentNode.removeChild(dropped);
+                }
+                if (itemId) {
+                  setTimeout(() => props.onDropEquipFromShop(itemId, "salutation"), 0);
+                }
+                return;
+              }
+              if (dropped && dropped.parentNode) {
+                dropped.parentNode.removeChild(dropped);
+              }
+            },
+          });
+          addSortable(ownedSignoffRef, {
+            animation: 120,
+            sort: false,
+            group: {
+              name: "owned-signoff",
+              pull: true,
+              put: (to, from, dragEl) => fromOffers(to, from, dragEl, "signoff"),
+            },
+            draggable: ".shop-card-item",
+            onAdd: (evt) => {
+              const dropped = evt.item;
+              if (evt.from?.options?.group?.name === "shop-offers") {
+                const itemId = evt.item?.dataset?.itemId;
+                if (dropped && dropped.parentNode) {
+                  dropped.parentNode.removeChild(dropped);
+                }
+                if (itemId) {
+                  setTimeout(() => props.onDropEquipFromShop(itemId, "signoff"), 0);
+                }
+                return;
+              }
+              if (dropped && dropped.parentNode) {
+                dropped.parentNode.removeChild(dropped);
+              }
+            },
+          });
+          addSortable(ownedBccRef, {
+            animation: 120,
+            sort: true,
+            group: {
+              name: "owned-bcc",
+              pull: true,
+              put: (to, from, dragEl) => fromOffers(to, from, dragEl, "bcc"),
+            },
+            draggable: ".shop-card-item",
+            onAdd: (evt) => {
+              const dropped = evt.item;
+              if (evt.from?.options?.group?.name === "shop-offers") {
+                const itemId = evt.item?.dataset?.itemId;
+                if (dropped && dropped.parentNode) {
+                  dropped.parentNode.removeChild(dropped);
+                }
+                if (itemId) {
+                  setTimeout(() => props.onDropEquipFromShop(itemId, "bcc"), 0);
+                }
+                return;
+              }
+              if (dropped && dropped.parentNode) {
+                dropped.parentNode.removeChild(dropped);
+              }
+            },
+          });
+          addSortable(archiveZoneRef, {
+            animation: 120,
+            sort: false,
+            group: {
+              name: "archive-drop",
+              pull: false,
+              put: [
+                "owned-contact",
+                "owned-signature",
+                "owned-salutation",
+                "owned-signoff",
+                "owned-bcc",
+              ],
+            },
+            onAdd: (evt) => {
+              const dropped = evt.item;
+              const itemType = evt.item?.dataset?.itemType;
+              const itemId = evt.item?.dataset?.itemId;
+              const itemIndexRaw = evt.item?.dataset?.itemIndex;
+              const itemIndex = itemIndexRaw == null ? null : Number(itemIndexRaw);
+              if (dropped && dropped.parentNode) {
+                dropped.parentNode.removeChild(dropped);
+              }
+              if (itemType && itemId) {
+                setTimeout(
+                  () =>
+                    props.onDropArchiveOwned(
+                      itemType,
+                      itemId,
+                      Number.isFinite(itemIndex) ? itemIndex : null,
+                    ),
+                  0,
+                );
+              }
+            },
+          });
+
+          return () => {
+            sortables.forEach((s) => s.destroy());
+          };
+        }, [activePack, props.state.shop, props.state.player, props.onDropBuyItem, props.onDropOpenPack, props.onDropArchiveOwned, props.onDropEquipFromShop]);
+
         return e(
           "div",
           { className: "fixed inset-0 z-[130] win-bg flex flex-col items-stretch p-4" },
@@ -1162,20 +1442,24 @@
                       "div",
                       { className: "space-y-2" },
                       e("h3", { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" }, "Individual Opportunities"),
+                      e("div", { ref: buyZoneRef, className: "shop-drop-zone" }, "Drop Offer Here To Acquire"),
                       e(
                         "div",
-                        { className: "border border-gray-200 bg-white p-2 space-y-2" },
+                        { ref: directListRef, className: "border border-gray-200 bg-white p-2 grid grid-cols-1 sm:grid-cols-2 gap-2" },
                         (shop.directItems || [])
                           .filter((item) => !item.purchased)
                           .map((item) =>
                             e(
-                              "button",
+                              "div",
                               {
                                 key: item.id,
+                                "data-item-id": item.id,
+                                "data-item-type": item.itemType,
                                 onClick: () => props.onBuyItem(item),
-                                className: "w-full text-left retro-button p-2",
+                                className: "shop-card-item",
                               },
-                              `${item.name} (${item.itemType}) - ${getDisplayCost(item)} REP`,
+                              e("div", { className: "shop-card-header" }, `${item.itemType} • ${getDisplayCost(item)} REP`),
+                              e("div", { className: "shop-card-body" }, e("div", { className: "font-bold" }, item.name), e("div", { className: "text-gray-600" }, item.rarity || "common")),
                             ),
                           ),
                       ),
@@ -1184,20 +1468,23 @@
                       "div",
                       { className: "space-y-2" },
                       e("h3", { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" }, "Group Trainings"),
+                      e("div", { ref: openPackZoneRef, className: "shop-drop-zone" }, "Drop Pack Here To Open"),
                       e(
                         "div",
-                        { className: "border border-gray-200 bg-white p-2 space-y-2" },
+                        { ref: packListRef, className: "border border-gray-200 bg-white p-2 grid grid-cols-1 gap-2" },
                         (shop.packs || [])
                           .filter((pack) => !pack.purchased)
                           .map((pack) =>
                             e(
-                              "button",
+                              "div",
                               {
                                 key: pack.id,
+                                "data-pack-id": pack.id,
                                 onClick: () => props.onOpenPack(pack),
-                                className: "w-full text-left retro-button p-2",
+                                className: "shop-card-item",
                               },
-                              `${pack.name} - ${pack.cost || 0} REP`,
+                              e("div", { className: "shop-card-header" }, `pack • ${pack.cost || 0} REP`),
+                              e("div", { className: "shop-card-body" }, e("div", { className: "font-bold" }, pack.name), e("div", { className: "text-gray-600" }, `${pack.picks || 0} pick(s)`)),
                             ),
                           ),
                       ),
@@ -1206,60 +1493,98 @@
                       "div",
                       { className: "space-y-2 md:col-span-2" },
                       e("h3", { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" }, "Manage Current Assets"),
+                      e("div", { ref: archiveZoneRef, className: "shop-drop-zone" }, "Drop Owned Asset Here To Archive"),
                       e(
                         "div",
                         { className: "border border-gray-200 bg-white p-2 space-y-2 text-[11px]" },
                         e("div", { className: "font-bold text-[10px] uppercase text-gray-500" }, "Address Book"),
-                        owned.addressBook.length
+                        e(
+                          "div",
+                          { ref: ownedContactRef, className: "grid grid-cols-1 sm:grid-cols-2 gap-2" },
+                          owned.addressBook.length
                           ? owned.addressBook.map((item) =>
                               e(
                                 "div",
-                                { key: `owned-contact-${item.id}`, className: "flex items-center justify-between gap-2 retro-border-inset p-1" },
-                                e("span", { className: "truncate" }, rowLabel(item, "contact")),
+                                { key: `owned-contact-${item.id}`, className: "shop-card-item", "data-item-type": "contact", "data-item-id": item.id },
+                                e("div", { className: "shop-card-header" }, "contact"),
+                                e("div", { className: "shop-card-body truncate" }, rowLabel(item, "contact")),
                                 e("button", { className: "retro-button text-[10px] px-2 py-1 shrink-0", onClick: () => props.onArchiveOwned("contact", item.id) }, "Archive"),
                               ),
                             )
                           : e("div", { className: "text-[10px] text-gray-500 italic" }, "None"),
+                        ),
                         e("div", { className: "font-bold text-[10px] uppercase text-gray-500 mt-1" }, "Signatures"),
-                        owned.signatures.length
+                        e(
+                          "div",
+                          { ref: ownedSignatureRef, className: "grid grid-cols-1 sm:grid-cols-2 gap-2" },
+                          owned.signatures.length
                           ? owned.signatures.map((item) =>
                               e(
                                 "div",
-                                { key: `owned-signature-${item.id}`, className: "flex items-center justify-between gap-2 retro-border-inset p-1" },
-                                e("span", { className: "truncate" }, rowLabel(item, "signature")),
+                                { key: `owned-signature-${item.id}`, className: "shop-card-item", "data-item-type": "signature", "data-item-id": item.id },
+                                e("div", { className: "shop-card-header" }, "signature"),
+                                e("div", { className: "shop-card-body truncate" }, rowLabel(item, "signature")),
                                 e("button", { className: "retro-button text-[10px] px-2 py-1 shrink-0", onClick: () => props.onArchiveOwned("signature", item.id) }, "Archive"),
                               ),
                             )
                           : e("div", { className: "text-[10px] text-gray-500 italic" }, "None"),
+                        ),
                         e("div", { className: "font-bold text-[10px] uppercase text-gray-500 mt-1" }, "Greeting"),
+                        e(
+                          "div",
+                          { ref: ownedSalutationRef, className: "grid grid-cols-1 gap-2" },
+                          owned.salutation
+                            ? e(
+                                "div",
+                                { className: "shop-card-item", "data-item-type": "salutation", "data-item-id": owned.salutation.id },
+                                e("div", { className: "shop-card-header" }, "salutation"),
+                                e("div", { className: "shop-card-body truncate" }, rowLabel(owned.salutation, "salutation")),
+                              )
+                            : e("div", { className: "shop-drop-zone" }, "Drop Salutation Here"),
+                        ),
                         owned.salutation
                           ? e(
                               "div",
-                              { className: "flex items-center justify-between gap-2 retro-border-inset p-1" },
-                              e("span", { className: "truncate" }, rowLabel(owned.salutation, "salutation")),
+                              { className: "flex justify-end" },
                               e("button", { className: "retro-button text-[10px] px-2 py-1 shrink-0", onClick: () => props.onArchiveOwned("salutation", owned.salutation.id) }, "Archive"),
                             )
-                          : e("div", { className: "text-[10px] text-gray-500 italic" }, "None"),
+                          : null,
                         e("div", { className: "font-bold text-[10px] uppercase text-gray-500 mt-1" }, "Sign-off"),
+                        e(
+                          "div",
+                          { ref: ownedSignoffRef, className: "grid grid-cols-1 gap-2" },
+                          owned.signoff
+                            ? e(
+                                "div",
+                                { className: "shop-card-item", "data-item-type": "signoff", "data-item-id": owned.signoff.id },
+                                e("div", { className: "shop-card-header" }, "signoff"),
+                                e("div", { className: "shop-card-body truncate" }, rowLabel(owned.signoff, "signoff")),
+                              )
+                            : e("div", { className: "shop-drop-zone" }, "Drop Sign-off Here"),
+                        ),
                         owned.signoff
                           ? e(
                               "div",
-                              { className: "flex items-center justify-between gap-2 retro-border-inset p-1" },
-                              e("span", { className: "truncate" }, rowLabel(owned.signoff, "signoff")),
+                              { className: "flex justify-end" },
                               e("button", { className: "retro-button text-[10px] px-2 py-1 shrink-0", onClick: () => props.onArchiveOwned("signoff", owned.signoff.id) }, "Archive"),
                             )
-                          : e("div", { className: "text-[10px] text-gray-500 italic" }, "None"),
+                          : null,
                         e("div", { className: "font-bold text-[10px] uppercase text-gray-500 mt-1" }, "Internal Services"),
-                        owned.bcc.length
+                        e(
+                          "div",
+                          { ref: ownedBccRef, className: "grid grid-cols-1 sm:grid-cols-2 gap-2" },
+                          owned.bcc.length
                           ? owned.bcc.map((item, idx) =>
                               e(
                                 "div",
-                                { key: `owned-bcc-${idx}-${item.id}`, className: "flex items-center justify-between gap-2 retro-border-inset p-1" },
-                                e("span", { className: "truncate" }, rowLabel(item, "bcc")),
+                                { key: `owned-bcc-${idx}-${item.id}`, className: "shop-card-item", "data-item-type": "bcc", "data-item-id": item.id, "data-item-index": String(idx) },
+                                e("div", { className: "shop-card-header" }, "bcc"),
+                                e("div", { className: "shop-card-body truncate" }, rowLabel(item, "bcc")),
                                 e("button", { className: "retro-button text-[10px] px-2 py-1 shrink-0", onClick: () => props.onArchiveOwned("bcc", item.id, idx) }, "Archive"),
                               ),
                             )
                           : e("div", { className: "text-[10px] text-gray-500 italic" }, "None"),
+                        ),
                       ),
                     ),
                   ),
@@ -1915,7 +2240,12 @@
           const result = ReplyAllEngine.play.runPlayerTurn(
             nextState,
             actionType,
-            { targetId: nextState.targetId, contactId: extra.contactId || null },
+            {
+              targetId: nextState.targetId,
+              contactId: extra.contactId || null,
+              bccId: extra.bccId || null,
+              bccIndex: typeof extra.bccIndex === "number" ? extra.bccIndex : null,
+            },
             { missions: MISSIONS, employees: EMPLOYEES },
             {
               onDepartmentUnlock: (deptId) => {
@@ -2003,7 +2333,7 @@
         function onBuyItem(item) {
           const nextState = cloneState(state);
           ReplyAllEngine.play.attachRuntimeState(nextState);
-          const result = ReplyAllEngine.core.buyItem(nextState, item, {});
+          const result = ReplyAllEngine.core.buyDirectItemById(nextState, item?.id, {});
           setShopNotice(getShopNotice(result));
           if (!result?.ok) return;
           setState(nextState);
@@ -2023,7 +2353,7 @@
         function onOpenPack(pack) {
           const nextState = cloneState(state);
           ReplyAllEngine.play.attachRuntimeState(nextState);
-          const result = ReplyAllEngine.core.openPack(nextState, pack);
+          const result = ReplyAllEngine.core.openPackById(nextState, pack?.id);
           setShopNotice(getShopNotice(result));
           if (!result?.ok) return;
           setState(nextState);
@@ -2065,6 +2395,53 @@
               ? `Archived ${result.item?.name || itemType}. +${result.refund || 0} REP`
               : "Unable to archive that asset.",
           );
+          if (!result?.ok) return;
+          setState(nextState);
+          persistSave(nextState, "shop-screen");
+        }
+
+        function onDropBuyItem(itemId) {
+          const nextState = cloneState(state);
+          ReplyAllEngine.play.attachRuntimeState(nextState);
+          const result = ReplyAllEngine.core.buyDirectItemById(nextState, itemId, {});
+          setShopNotice(getShopNotice(result));
+          if (!result?.ok) return;
+          setState(nextState);
+          persistSave(nextState, "shop-screen");
+        }
+
+        function onDropOpenPack(packId) {
+          const nextState = cloneState(state);
+          ReplyAllEngine.play.attachRuntimeState(nextState);
+          const result = ReplyAllEngine.core.openPackById(nextState, packId);
+          setShopNotice(getShopNotice(result));
+          if (!result?.ok) return;
+          setState(nextState);
+          persistSave(nextState, "shop-screen");
+        }
+
+        function onDropArchiveOwned(itemType, itemId, itemIndex = null) {
+          onArchiveOwned(itemType, itemId, itemIndex);
+        }
+
+        function onDropEquipFromShop(itemId, slotType) {
+          const nextState = cloneState(state);
+          ReplyAllEngine.play.attachRuntimeState(nextState);
+          const item = ReplyAllEngine.core.getDirectShopItemById(nextState, itemId);
+          if (!item) {
+            setShopNotice("Offer not found.");
+            return;
+          }
+          if (item.itemType !== slotType) {
+            setShopNotice("That item cannot be equipped in this slot.");
+            return;
+          }
+          const result = ReplyAllEngine.core.buyDirectItemById(
+            nextState,
+            itemId,
+            {},
+          );
+          setShopNotice(getShopNotice(result));
           if (!result?.ok) return;
           setState(nextState);
           persistSave(nextState, "shop-screen");
@@ -2260,6 +2637,10 @@
             onSelectPackItem,
             onClosePack,
             onArchiveOwned,
+            onDropBuyItem,
+            onDropOpenPack,
+            onDropArchiveOwned,
+            onDropEquipFromShop,
             onNextQuarter: onNextQuarterFromShop,
           });
         }

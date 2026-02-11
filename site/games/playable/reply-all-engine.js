@@ -2205,6 +2205,28 @@
     return Math.max(0, Math.floor(cost / 2));
   }
 
+  function getDirectShopItemById(state, itemId) {
+    if (!itemId) return null;
+    return (state?.shop?.directItems || []).find((it) => it.id === itemId) || null;
+  }
+
+  function buyDirectItemById(state, itemId, helpers = {}) {
+    const item = getDirectShopItemById(state, itemId);
+    if (!item) return { ok: false, reason: "missing_item" };
+    return buyItem(state, item, helpers);
+  }
+
+  function getShopPackById(state, packId) {
+    if (!packId) return null;
+    return (state?.shop?.packs || []).find((p) => p.id === packId) || null;
+  }
+
+  function openPackById(state, packId) {
+    const pack = getShopPackById(state, packId);
+    if (!pack) return { ok: false, reason: "missing_pack" };
+    return openPack(state, pack);
+  }
+
   function getOwnedAssets(state) {
     const p = state?.player || {};
     const addressBook = (p.addressBook || [])
@@ -4171,6 +4193,10 @@
     applySalutationPermanentBoost,
     setSalutationBonus,
     enterShop,
+    getDirectShopItemById,
+    buyDirectItemById,
+    getShopPackById,
+    openPackById,
     getItemCostByType,
     getOwnedAssets,
     archiveOwnedItem,
