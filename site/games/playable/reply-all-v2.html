@@ -180,6 +180,12 @@
         border-bottom: 2px solid #404040;
         box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
       }
+      .sortable-ghost {
+        opacity: 0.4;
+      }
+      .sortable-drag {
+        opacity: 1 !important;
+      }
       .shop-card-item:active {
         cursor: grabbing;
       }
@@ -220,6 +226,20 @@
       .shop-card-body {
         padding: 6px;
         font-size: 10px;
+      }
+      .shop-item-overlay-frame {
+        background: #ffffff;
+        border: 1px solid #d1d5db;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      }
+      .shop-rarity-badge {
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 2px 6px;
+        border: 1px solid #808080;
+        background: #f3f4f6;
+        color: #111827;
       }
       .shop-drop-zone {
         border: 2px dashed #808080;
@@ -1196,6 +1216,9 @@
         const activePackId = props.state.activePackId || null;
         const activePack = (shop.packs || []).find((p) => p.id === activePackId) || null;
         const owned = ReplyAllEngine.core.getOwnedAssets(props.state);
+        const [detailPopup, setDetailPopup] = React.useState(null);
+        const [detailPopupPos, setDetailPopupPos] = React.useState({ left: 8, top: 8 });
+        const detailPopupRef = React.useRef(null);
         const directListRef = React.useRef(null);
         const packListRef = React.useRef(null);
         const buyZoneRef = React.useRef(null);
@@ -1212,10 +1235,6 @@
             item.itemType || "contact",
           );
         }
-        function rowLabel(item, itemType) {
-          const refund = ReplyAllEngine.core.getSellRefundForItem(itemType, item);
-          return `${item?.name || item?.id || "Item"} (+${refund} REP)`;
-        }
         function typeMeta(itemType) {
           const map = {
             contact: { label: "contact", headerBg: "#1d4ed8", headerText: "#ffffff", paneBg: "#dbeafe", paneText: "#1e3a8a" },
@@ -1226,6 +1245,211 @@
             dev: { label: "training", headerBg: "#374151", headerText: "#ffffff", paneBg: "#e5e7eb", paneText: "#111827" },
           };
           return map[itemType] || map.contact;
+        }
+        function itemTypeLabel(itemType) {
+          const labels = {
+            contact: "Contact",
+            signature: "Signature",
+            salutation: "Greeting",
+            signoff: "Sign-Off",
+            bcc: "Help Desk",
+            dev: "Training",
+          };
+          return labels[itemType] || "Item";
+        }
+        function getItemDetailText(item, itemType) {
+          if (!item) return "";
+          if (item.description) return item.description;
+          if (item.picksText) return item.picksText;
+          if (itemType === "contact") {
+            const dept = item.departmentId
+              ? ReplyAllEngine.core.getDepartmentName(item.departmentId)
+              : "";
+            return dept ? `Department: ${dept}` : "Potential contact.";
+          }
+          return "No additional details.";
+        }
+        function getDetailPopupKey(nextPopup) {
+          if (!nextPopup) return "";
+          const obj = nextPopup.item || nextPopup.pack || {};
+          return [
+            nextPopup.mode || "",
+            nextPopup.itemType || "",
+            obj.id || "",
+            nextPopup.itemIndex == null ? "" : String(nextPopup.itemIndex),
+          ].join("|");
+        }
+        function openDirectDetail(item, anchorEl) {
+          if (!item) return;
+          const nextPopup = {
+            mode: "direct",
+            item,
+            itemType: item.itemType,
+            cost: getDisplayCost(item),
+            anchorRect: anchorEl?.getBoundingClientRect?.() || null,
+          };
+          if (getDetailPopupKey(detailPopup) === getDetailPopupKey(nextPopup)) {
+            setDetailPopup(null);
+            return;
+          }
+          setDetailPopup(nextPopup);
+        }
+        function openPackDetail(pack, anchorEl) {
+          if (!pack) return;
+          const nextPopup = {
+            mode: "pack",
+            pack,
+            itemType: pack.type || "dev",
+            cost: typeof pack.cost === "number" ? pack.cost : 0,
+            anchorRect: anchorEl?.getBoundingClientRect?.() || null,
+          };
+          if (getDetailPopupKey(detailPopup) === getDetailPopupKey(nextPopup)) {
+            setDetailPopup(null);
+            return;
+          }
+          setDetailPopup(nextPopup);
+        }
+        function openOwnedDetail(itemType, item, itemIndex = null, anchorEl) {
+          if (!item || !itemType) return;
+          const nextPopup = {
+            mode: "owned",
+            item,
+            itemType,
+            itemIndex: Number.isFinite(itemIndex) ? itemIndex : null,
+            refund: ReplyAllEngine.core.getSellRefundForItem(itemType, item),
+            anchorRect: anchorEl?.getBoundingClientRect?.() || null,
+          };
+          if (getDetailPopupKey(detailPopup) === getDetailPopupKey(nextPopup)) {
+            setDetailPopup(null);
+            return;
+          }
+          setDetailPopup(nextPopup);
+        }
+        function closeDetailPopup() {
+          setDetailPopup(null);
+        }
+        function computeDetailPopupPosition(anchorRect, popupWidth, popupHeight) {
+          const padding = 8;
+          if (!anchorRect) return { left: padding, top: padding };
+          const roomRight = window.innerWidth - anchorRect.right - padding;
+          const roomLeft = anchorRect.left - padding;
+          let left = anchorRect.right + padding;
+          if (roomRight < popupWidth && roomLeft > roomRight) {
+            left = anchorRect.left - popupWidth - padding;
+          }
+          if (left + popupWidth > window.innerWidth - padding) {
+            left = Math.max(padding, window.innerWidth - popupWidth - padding);
+          }
+          if (left < padding) left = padding;
+          let top = anchorRect.top;
+          if (top + popupHeight > window.innerHeight - padding) {
+            top = Math.max(padding, window.innerHeight - popupHeight - padding);
+          }
+          return { left, top };
+        }
+
+        React.useLayoutEffect(() => {
+          if (!detailPopup || !detailPopupRef.current) return;
+          const el = detailPopupRef.current;
+          const width = el.offsetWidth || 260;
+          const height = el.offsetHeight || 200;
+          setDetailPopupPos(
+            computeDetailPopupPosition(detailPopup.anchorRect, width, height),
+          );
+        }, [detailPopup]);
+
+        React.useEffect(() => {
+          if (!detailPopup) return undefined;
+          const onResize = () => {
+            if (!detailPopupRef.current) return;
+            const width = detailPopupRef.current.offsetWidth || 260;
+            const height = detailPopupRef.current.offsetHeight || 200;
+            setDetailPopupPos(
+              computeDetailPopupPosition(detailPopup.anchorRect, width, height),
+            );
+          };
+          window.addEventListener("resize", onResize);
+          return () => window.removeEventListener("resize", onResize);
+        }, [detailPopup]);
+
+        function onDetailAction() {
+          if (!detailPopup) return;
+          if (detailPopup.mode === "direct") {
+            props.onBuyItem(detailPopup.item);
+          } else if (detailPopup.mode === "pack") {
+            props.onOpenPack(detailPopup.pack);
+          } else if (detailPopup.mode === "owned") {
+            props.onArchiveOwned(
+              detailPopup.itemType,
+              detailPopup.item.id,
+              detailPopup.itemIndex ?? null,
+            );
+          }
+          closeDetailPopup();
+        }
+        function renderDetailPopup() {
+          if (!detailPopup) return null;
+          const item = detailPopup.item || detailPopup.pack;
+          if (!item) return null;
+          const itemType = detailPopup.itemType || item.itemType || "contact";
+          const isOwned = detailPopup.mode === "owned";
+          const actionCost = isOwned ? 0 : detailPopup.cost || 0;
+          const actionDisabled = isOwned ? false : rep < actionCost;
+          const actionLabel = isOwned
+            ? `ARCHIVE +${detailPopup.refund || 0} REP`
+            : detailPopup.mode === "pack"
+              ? `ATTEND EVENT${actionCost > 0 ? ` (${actionCost} REP)` : ""}`
+              : `REQUEST${actionCost > 0 ? ` (${actionCost} REP)` : ""}`;
+          return e(
+            "div",
+            {
+              ref: detailPopupRef,
+              className: "fixed z-[160] w-[260px] shop-item-overlay-frame p-3 retro-border",
+              style: {
+                left: `${detailPopupPos.left}px`,
+                top: `${detailPopupPos.top}px`,
+              },
+            },
+            e(
+              "div",
+              { className: "flex justify-between items-start font-bold text-[11px] gap-2 border-b border-[#808080] pb-2 mb-2" },
+              e(
+                "div",
+                { className: "truncate flex flex-col min-w-0" },
+                e("span", { className: "truncate text-[#000080] text-sm leading-none mb-1" }, item.name || "Item"),
+                e("span", { className: "text-[9px] text-[#404040] opacity-70 uppercase" }, itemTypeLabel(itemType)),
+              ),
+              e("div", { className: "shop-rarity-badge" }, (item.rarity || "common").toUpperCase()),
+            ),
+            e(
+              "div",
+              {
+                className: "text-[10px] leading-snug text-gray-800 bg-white/50 p-2 border border-[#808080] italic mb-3",
+              },
+              getItemDetailText(item, itemType),
+            ),
+            e(
+              "div",
+              { className: "flex gap-2" },
+              e(
+                "button",
+                {
+                  className: "flex-1 retro-button text-[10px] font-bold py-2 uppercase",
+                  disabled: actionDisabled,
+                  onClick: onDetailAction,
+                },
+                actionLabel,
+              ),
+              e(
+                "button",
+                {
+                  className: "px-3 retro-button text-[10px] font-bold py-2 text-red-700",
+                  onClick: closeDetailPopup,
+                },
+                "X",
+              ),
+            ),
+          );
         }
 
         React.useEffect(() => {
@@ -1238,7 +1462,6 @@
             sortables.push(
               Sortable.create(ref.current, {
                 forceFallback: true,
-                fallbackOnBody: true,
                 ...options,
               }),
             );
@@ -1474,7 +1697,7 @@
                                 key: item.id,
                                 "data-item-id": item.id,
                                 "data-item-type": item.itemType,
-                                onClick: () => props.onBuyItem(item),
+                                onClick: (evt) => openDirectDetail(item, evt.currentTarget),
                                 className: "shop-card-item",
                               },
                               (() => {
@@ -1506,7 +1729,7 @@
                               {
                                 key: pack.id,
                                 "data-pack-id": pack.id,
-                                onClick: () => props.onOpenPack(pack),
+                                onClick: (evt) => openPackDetail(pack, evt.currentTarget),
                                 className: "shop-card-item",
                               },
                               (() => {
@@ -1553,6 +1776,7 @@
                                           className: "shop-card-item",
                                           "data-item-type": "contact",
                                           "data-item-id": item.id,
+                                          onClick: (evt) => openOwnedDetail("contact", item, null, evt.currentTarget),
                                         },
                                         e(
                                           "div",
@@ -1596,6 +1820,7 @@
                                           "data-item-type": "bcc",
                                           "data-item-id": item.id,
                                           "data-item-index": String(idx),
+                                          onClick: (evt) => openOwnedDetail("bcc", item, idx, evt.currentTarget),
                                         },
                                         e(
                                           "div",
@@ -1626,7 +1851,13 @@
                                   const meta = typeMeta("salutation");
                                   return e(
                                     "div",
-                                    { className: "shop-card-item", "data-item-type": "salutation", "data-item-id": owned.salutation.id },
+                                    {
+                                      className: "shop-card-item",
+                                      "data-item-type": "salutation",
+                                      "data-item-id": owned.salutation.id,
+                                      onClick: (evt) =>
+                                        openOwnedDetail("salutation", owned.salutation, null, evt.currentTarget),
+                                    },
                                     e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
                                     e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, owned.salutation.name)),
                                   );
@@ -1651,7 +1882,13 @@
                                   const meta = typeMeta("signoff");
                                   return e(
                                     "div",
-                                    { className: "shop-card-item", "data-item-type": "signoff", "data-item-id": owned.signoff.id },
+                                    {
+                                      className: "shop-card-item",
+                                      "data-item-type": "signoff",
+                                      "data-item-id": owned.signoff.id,
+                                      onClick: (evt) =>
+                                        openOwnedDetail("signoff", owned.signoff, null, evt.currentTarget),
+                                    },
                                     e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
                                     e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, owned.signoff.name)),
                                   );
@@ -1670,7 +1907,13 @@
                                   const meta = typeMeta("signature");
                                   return e(
                                     "div",
-                                    { key: `owned-signature-${item.id}`, className: "shop-card-item", "data-item-type": "signature", "data-item-id": item.id },
+                                    {
+                                      key: `owned-signature-${item.id}`,
+                                      className: "shop-card-item",
+                                      "data-item-type": "signature",
+                                      "data-item-id": item.id,
+                                      onClick: (evt) => openOwnedDetail("signature", item, null, evt.currentTarget),
+                                    },
                                     e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
                                     e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, item.name)),
                                   );
@@ -1683,6 +1926,7 @@
                   ),
             ),
           ),
+          renderDetailPopup(),
         );
       }
 
