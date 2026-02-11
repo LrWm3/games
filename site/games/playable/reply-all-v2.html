@@ -10,449 +10,948 @@
     <meta name="game-tags" content="roguelike, bizarre" />
     <title>REPLY ALL</title>
 
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Font Awesome -->
     <link
+      href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;600;700&display=swap"
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-      crossorigin="anonymous"
     />
 
-    <!-- SortableJS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-
-    <!-- React (no JSX) -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 
-    <!-- Game Data -->
     <script src="./reply-all-consts.js"></script>
     <script src="./reply-all-engine.js"></script>
 
-    <style></style>
+    <style>
+      :root {
+        --win-grey: #c0c0c0;
+        --win-blue: #000080;
+        --win-blue-light: #1084d0;
+        --win-border-light: #ffffff;
+        --win-border-dark: #404040;
+        --win-wizard-text: #7b7b7b;
+        --win-bg: #568fb5;
+      }
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: var(--win-bg);
+        min-height: 100dvh;
+        margin: 0;
+        color: black;
+      }
+      .win-bg {
+        background-color: var(--win-bg);
+      }
+      .terminal-font {
+        font-family: "VT323", monospace;
+      }
+      .retro-border {
+        border-top: 2px solid var(--win-border-light);
+        border-left: 2px solid var(--win-border-light);
+        border-bottom: 2px solid var(--win-border-dark);
+        border-right: 2px solid var(--win-border-dark);
+      }
+      .retro-border-inset {
+        border-top: 2px solid var(--win-border-dark);
+        border-left: 2px solid var(--win-border-dark);
+        border-bottom: 2px solid var(--win-border-light);
+        border-right: 2px solid var(--win-border-light);
+      }
+      .retro-button {
+        background: var(--win-grey);
+        border-top: 2px solid var(--win-border-light);
+        border-left: 2px solid var(--win-border-light);
+        border-bottom: 2px solid var(--win-border-dark);
+        border-right: 2px solid var(--win-border-dark);
+        padding: 4px 8px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .window-titlebar {
+        background: linear-gradient(90deg, var(--win-blue), var(--win-blue-light));
+      }
+      .wizard-sidebar {
+        background: linear-gradient(180deg, #000040 0%, #000080 100%);
+        width: 120px;
+      }
+      .wizard-text {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        font-size: 2rem;
+        font-weight: 900;
+        color: var(--win-wizard-text);
+        pointer-events: none;
+        user-select: none;
+      }
+      .dither-lock {
+        background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVQImWNkYGBoYGBgYGBgYAAAAwAHAAFc878AAAAASUVORK5CYII=");
+        background-repeat: repeat;
+        background-color: rgba(192, 192, 192, 0.4);
+        backdrop-filter: grayscale(1);
+      }
+      .prestige-btn {
+        aspect-ratio: 1 / 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-family: monospace;
+        font-size: 14px;
+        cursor: pointer;
+        background: var(--win-grey);
+        width: 24px;
+      }
+      .prestige-btn.locked {
+        color: #808080;
+        cursor: not-allowed;
+        text-shadow: 1px 1px white;
+      }
+      .prestige-btn.selected {
+        background: #ffffff;
+        outline: 1.5px dotted black;
+        outline-offset: -4px;
+        box-shadow: inset 1px 1px 0 black;
+      }
+      .nav-btn {
+        width: 32px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--win-grey);
+      }
+      .manifest-table td {
+        padding: 6px 10px;
+        border-bottom: 1px solid #e5e7eb;
+        font-size: 10px;
+      }
+      .manifest-table tr:last-child td {
+        border-bottom: none;
+      }
+      .induction-prestige-grid {
+        display: none !important;
+      }
+      .induction-prestige-compact {
+        display: block !important;
+      }
+      @media (max-width: 640px) {
+        #induction-icon-frame {
+          display: none;
+        }
+      }
+    </style>
   </head>
-  <body class="bg-gray-100 min-h-screen flex items-center justify-center">
-    <div id="app"></div>
-    <script>
-      // game state
-      let state = {
-        analytics: {
-          events: [],
-          rounds: [],
-        },
-        seed: null,
-        rngStates: {},
-        shopVisitIndex: 0,
-        missionCycle: 0,
-        aiPlannedActions: {},
-        startConfig: {
-          departmentId: "executive",
-          prestige: 0,
-          seedInput: "",
-        },
-        startUnlocks: {
-          executive: 0,
-          it: 0,
-          finance: 0,
-        },
-        player: {
-          id: "player",
-          name: "eke vdh",
-          email: "eke.vdh@gov.org",
-          hp: 50,
-          maxHp: 50,
-          ult: 0,
-          wins: 3,
-          currentWins: 3,
-          buffs: [],
-          reputation: 4,
-          year: 1,
-          quarter: "Q3",
-          title: TITLES[0],
-          addressBook: ["cc_telly_operations"],
-          signatures: [],
-          salutation: SALUTATIONS.find((s) => s.id === "hi") || null,
-          signOff: SIGNOFFS.find((s) => s.id === "thanks") || null,
-          bccContacts: [],
-          departmentId: "executive_council_office",
-          singleDmg: 10,
-          escalateDmg: 5,
-          globalDmg: 0,
-          singleDmgMult: 0,
-          escalateDmgMult: 0,
-          globalDmgMult: 0,
-          retaliation: 5,
-          deflect: 0,
-          selfPromoteHeal: 5,
-          deflectCharge: 0,
-          deflectChargeReflect: 0,
-          deflectChargeReduce: 0,
-          followUpChance: 0,
-          escalateRecoverPerHit: 0,
-          bccLimit: 2,
-          contactTrainingLimit: 3,
-          contactUpgrades: {},
-          contactPermanentBoosts: {},
-          contactTrainingCount: {},
-          coachingBoosts: {},
-          salutationBonuses: {},
-          signoffBonuses: {},
-          ...DEFAULT_PLAYER_LINES,
-          discoveredSets: [],
-        },
-        currentMissionIndex: 0,
-        targetId: 1,
-        turn: 0,
-        lossReason: null,
-        isProcessing: false,
-        gameOver: false,
-        missionActive: false,
-        removedByPlayer: 0,
-        removedTotal: 0,
-        postPromotionScreen: null,
-        ccPicksTaken: 0,
-        ccPicksLeft: 0,
-        shop: {
-          directItems: [],
-          packs: [],
-          rerollCount: 0,
-        },
-        pendingTraining: null,
-        roundEndUpgrades: {},
-        expenseReportActive: false,
-        messageLogEntries: [],
-      };
+  <body class="min-h-screen flex items-center justify-center">
+    <div id="app" class="w-full"></div>
 
-      let rngStreams = {};
-      const LEVERAGE_MAX = 8;
-
-      function hashSeed(base, label) {
-        let h = 2166136261;
-        const s = `${base}:${label}`;
-        for (let i = 0; i < s.length; i++) {
-          h ^= s.charCodeAt(i);
-          h = Math.imul(h, 16777619);
-        }
-        return h >>> 0;
-      }
-
-      function createRng(seed) {
-        let t = seed >>> 0;
-        return {
-          next() {
-            t += 0x6d2b79f5;
-            let r = Math.imul(t ^ (t >>> 15), t | 1);
-            r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
-            return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
-          },
-          get state() {
-            return t >>> 0;
-          },
-          set state(value) {
-            t = value >>> 0 || 0;
-          },
-        };
-      }
-
-      function resetRngStreams() {
-        rngStreams = {};
-      }
-
-      function ensureSeed() {
-        if (!state.seed) state.seed = Date.now() >>> 0;
-        if (!state.rngStates) state.rngStates = {};
-      }
-
-      function getRngStream(key) {
-        ensureSeed();
-        if (!rngStreams[key]) {
-          const seed = hashSeed(state.seed, key);
-          const rng = createRng(seed);
-          if (state.rngStates[key] != null) {
-            rng.state = state.rngStates[key];
-          }
-          rngStreams[key] = rng;
-        }
-        return rngStreams[key];
-      }
-
-      function rngNext(key) {
-        const rng = getRngStream(key);
-        const value = rng.next();
-        state.rngStates[key] = rng.state;
-        return value;
-      }
-
-      function rngInt(key, max) {
-        return Math.floor(rngNext(key) * max);
-      }
-
-      function getMissionStreamKey(kind) {
-        const mission = MISSIONS[state.currentMissionIndex] || {};
-        const cycle = state.missionCycle || 0;
-        return `mission:${mission.id || state.currentMissionIndex}:${cycle}:${kind}`;
-      }
-
-      function getShopStreamKey() {
-        const idx = state.shopVisitIndex || 0;
-        return `shop:${idx}`;
-      }
-
-      function randomStringFromRng(key, length = 5) {
-        let out = "";
-        for (let i = 0; i < length; i++) {
-          const val = rngInt(key, 36);
-          out += val.toString(36);
-        }
-        return out;
-      }
-
-      function parseSeedInput(input) {
-        if (!input) return null;
-        const trimmed = String(input).trim();
-        if (!trimmed) return null;
-        if (/^\d+$/.test(trimmed)) return Number(trimmed) >>> 0;
-        return hashSeed(trimmed, "user");
-      }
-
-      function ensureStartDefaults() {
-        if (!metaState) {
-          metaState = {
-            discoveredSets: [],
-            startUnlocks: { executive: 0, it: 0, finance: 0 },
-            departmentUnlocks: { executive: true, it: false, finance: false },
-          };
-        }
-        if (!state.startConfig) {
-          state.startConfig = {
-            departmentId: "executive",
-            prestige: 0,
-            seedInput: "",
-          };
-        }
-        if (!state.startUnlocks) {
-          state.startUnlocks = { executive: 0, it: 0, finance: 0 };
-        }
-        if (!state.messageLogEntries) {
-          state.messageLogEntries = [];
-        }
-        if (state.player && !state.player.coachingBoosts) {
-          state.player.coachingBoosts = {};
-        }
-        if (!state.startConfig.departmentId)
-          state.startConfig.departmentId = "executive";
-        if (state.startConfig.prestige == null) state.startConfig.prestige = 0;
-        if (state.startConfig.seedInput == null)
-          state.startConfig.seedInput = "";
-        if (!metaState.startUnlocks)
-          metaState.startUnlocks = { executive: 0, it: 0, finance: 0 };
-        if (!metaState.departmentUnlocks) {
-          metaState.departmentUnlocks = {
-            executive: true,
-            it: false,
-            finance: false,
-          };
-        }
-        if (!Array.isArray(metaState.discoveredSets))
-          metaState.discoveredSets = [];
-        state.startUnlocks = { ...metaState.startUnlocks };
-      }
-
-      function checkDepartmentUnlocks() {
-        if (!metaState || !metaState.departmentUnlocks) return;
-        let changed = false;
-        if (
-          !metaState.departmentUnlocks.finance &&
-          (state.player?.reputation || 0) >= 30
-        ) {
-          metaState.departmentUnlocks.finance = true;
-          changed = true;
-        }
-        if (changed) saveMetaState();
-      }
-
-      function getBasePlayerState(name, email) {
-        return {
-          id: "player",
-          name,
-          email,
-          hp: 50,
-          maxHp: 50,
-          ult: 0,
-          wins: 3,
-          currentWins: 3,
-          buffs: [],
-          reputation: 4,
-          year: 1,
-          quarter: "Q3",
-          title: TITLES[0],
-          addressBook: [],
-          signatures: [],
-          salutation: null,
-          signOff: null,
-          bccContacts: [],
-          departmentId: "executive_council_office",
-          singleDmg: 10,
-          escalateDmg: 5,
-          globalDmg: 0,
-          singleDmgMult: 0,
-          escalateDmgMult: 0,
-          globalDmgMult: 0,
-          retaliation: 5,
-          deflect: 0,
-          selfPromoteHeal: 5,
-          deflectCharge: 0,
-          deflectChargeReflect: 0,
-          deflectChargeReduce: 0,
-          followUpChance: 0,
-          escalateRecoverPerHit: 0,
-          bccLimit: 2,
-          contactTrainingLimit: 3,
-          contactUpgrades: {},
-          contactPermanentBoosts: {},
-          contactTrainingCount: {},
-          coachingBoosts: {},
-          salutationBonuses: {},
-          signoffBonuses: {},
-          ...DEFAULT_PLAYER_LINES,
-          _lineBags: {},
-        };
-      }
-
-      function applyStartConfigToPlayer(config) {
-        if (!config) return;
-        const dept = START_DEPARTMENTS.find(
-          (d) => d.id === config.departmentId,
-        );
-        if (!dept) return;
-        const start = dept.start || {};
-        const baseWins = state.player.wins || 0;
-        const winsDelta =
-          typeof start.winsDelta === "number" ? start.winsDelta : 0;
-        const nextWins = Math.max(0, baseWins + winsDelta);
-        state.player.wins = nextWins;
-        state.player.currentWins = nextWins;
-        if (typeof start.reputation === "number") {
-          state.player.reputation = start.reputation;
-        }
-        state.player.departmentId =
-          start.departmentId || state.player.departmentId;
-        state.player.addressBook = Array.isArray(start.addressBook)
-          ? [...start.addressBook]
-          : [];
-        state.player.signatures = Array.isArray(start.signatureIds)
-          ? start.signatureIds
-              .map((id) => SIGNATURES.find((s) => s.id === id))
-              .filter(Boolean)
-          : [];
-        state.player.salutation = start.salutationId
-          ? SALUTATIONS.find((s) => s.id === start.salutationId) || null
-          : null;
-        state.player.signOff = start.signOffId
-          ? SIGNOFFS.find((s) => s.id === start.signOffId) || null
-          : null;
-        state.player.discoveredSets = [...(metaState.discoveredSets || [])];
-      }
-    </script>
-
-    <!-- UI scripts -->
     <script>
       const e = React.createElement;
 
-    // //   We don't need any of these component, only an example of how to do it.
-    //   /*
-    //    1. Simple Presentational Component
-    //    */
-    //   function IconButton(props) {
-    //     return e(
-    //       "button",
-    //       {
-    //         className: "px-4 py-2 border rounded",
-    //         onClick: props.onClick,
-    //       },
-    //       e("i", { className: props.icon }),
-    //       " ",
-    //       props.label,
-    //     );
-    //   }
+      function createInitialState() {
+        return {
+          analytics: { events: [], rounds: [] },
+          seed: null,
+          rngStates: {},
+          shopVisitIndex: 0,
+          missionCycle: 0,
+          aiPlannedActions: {},
+          startConfig: { departmentId: "executive", prestige: 0, seedInput: "" },
+          startUnlocks: { executive: 0, it: 0, finance: 0 },
+          player: ReplyAllEngine.start.getBasePlayerState(
+            "eke vdh",
+            ReplyAllEngine.start.getEmailFromName("eke vdh"),
+          ),
+          currentMissionIndex: 0,
+          targetId: 1,
+          turn: 0,
+          lossReason: null,
+          isProcessing: false,
+          gameOver: false,
+          missionActive: false,
+          removedByPlayer: 0,
+          removedTotal: 0,
+          postPromotionScreen: null,
+          ccPicksTaken: 0,
+          ccPicksLeft: 0,
+          shop: { directItems: [], packs: [], rerollCount: 0 },
+          pendingTraining: null,
+          roundEndUpgrades: {},
+          expenseReportActive: false,
+          messageLogEntries: [],
+        };
+      }
 
-    //   /*
-    //    2. Component with Children
-    //    */
-    //   function Card(props) {
-    //     return e(
-    //       "div",
-    //       { className: "border rounded p-4" },
-    //       e("h2", s, { className: "font-bold mb-2" }, props.title),
-    //       props.children,
-    //     );
-    //   }
+      function loadMetaStateFromStorage() {
+        try {
+          const raw = localStorage.getItem(META_KEY);
+          return raw ? JSON.parse(raw) : null;
+        } catch (err) {
+          return null;
+        }
+      }
 
-    //   /*
-    //    3. Stateful Component
-    //    */
-    //   function Counter() {
-    //     const [count, setCount] = React.useState(0);
+      function saveMetaStateToStorage(metaState) {
+        try {
+          localStorage.setItem(META_KEY, JSON.stringify(metaState));
+        } catch (err) {}
+      }
 
-    //     return e(
-    //       "div",
-    //       null,
-    //       e("p", null, "Count: ", count),
-    //       e(IconButton, {
-    //         icon: "fa fa-plus",
-    //         label: "Increment",
-    //         onClick: () => setCount(count + 1),
-    //       }),
-    //     );
-    //   }
+      function loadSaveFromStorage() {
+        return ReplyAllEngine.core.getSavedGame({
+          onLoadGamePayload: () => {
+            try {
+              const raw = localStorage.getItem(SAVE_KEY);
+              return raw ? JSON.parse(raw) : null;
+            } catch (err) {
+              return null;
+            }
+          },
+        });
+      }
 
-      function App() {
-        const [items, setItems] = React.useState([
-          "Example Draggable",
-          "Using Sort",
-          "React-based, kinda",
-          "With useFallback: true",
-        ]);
+      function clearSaveFromStorage() {
+        ReplyAllEngine.core.clearSavedGame({
+          onClearSavedGame: () => {
+            try {
+              localStorage.removeItem(SAVE_KEY);
+            } catch (err) {}
+          },
+        });
+      }
 
-        const listRef = React.useRef(null);
+      function StartScreen(props) {
+        return e(
+          "div",
+          {
+            className:
+              "fixed inset-0 z-[100] flex items-center justify-center win-bg p-4",
+          },
+          e(
+            "div",
+            { className: "bg-[#c0c0c0] p-4 retro-border max-w-sm w-full shadow-2xl" },
+            e(
+              "div",
+              {
+                className:
+                  "window-titlebar text-white px-2 py-1 mb-4 flex justify-between items-center text-xs",
+              },
+              e("span", null, "NEW USER SETUP"),
+              e("span", null, "✕"),
+            ),
+            e(
+              "h1",
+              {
+                className:
+                  "text-4xl font-bold mb-2 text-center terminal-font tracking-widest text-[#000080]",
+              },
+              "REPLY ALL",
+            ),
+            e(
+              "p",
+              { className: "mb-4 text-[11px] text-center leading-tight italic" },
+              '"The path to being at peace is long and full of micro-agressions."',
+            ),
+            e(
+              "div",
+              { className: "space-y-3 mb-6" },
+              e(
+                "div",
+                null,
+                e(
+                  "label",
+                  { className: "block text-[10px] font-bold uppercase mb-1" },
+                  "Full Name:",
+                ),
+                e("input", {
+                  type: "text",
+                  value: props.playerName,
+                  onChange: (evt) => props.onNameChange(evt.target.value),
+                  placeholder: "eke",
+                  className:
+                    "w-full p-2 bg-white retro-border-inset outline-none text-sm",
+                }),
+              ),
+              e(
+                "div",
+                null,
+                e(
+                  "label",
+                  { className: "block text-[10px] font-bold uppercase mb-1" },
+                  "Email:",
+                ),
+                e(
+                  "div",
+                  {
+                    className:
+                      "text-[11px] font-mono text-gray-800 bg-white/50 p-2 border border-dotted border-gray-400",
+                  },
+                  props.emailPreview,
+                ),
+              ),
+            ),
+            e(
+              "button",
+              {
+                onClick: props.onSignUp,
+                className: "w-full py-3 font-bold retro-button text-[#000080]",
+              },
+              "SIGN UP",
+            ),
+            props.resumeName
+              ? e(
+                  "div",
+                  { className: "mt-3" },
+                  e(
+                    "div",
+                    { className: "text-[10px] uppercase font-bold text-gray-500 mb-1" },
+                    "Existing User",
+                  ),
+                  e(
+                    "button",
+                    {
+                      onClick: props.onResume,
+                      className: "w-full py-2 font-bold retro-button text-[#000080]",
+                    },
+                    `Login as ${props.resumeName}`,
+                  ),
+                )
+              : null,
+          ),
+        );
+      }
 
-        React.useEffect(() => {
-          if (!listRef.current) return;
-
-          const sortable = new Sortable(listRef.current, {
-            animation: 150,
-            forceFallback: true,
-            fallbackClass: "sortable-drag",
-            fallbackOnBody: true,
-            onEnd: (evt) => {
-              const newItems = [...items];
-              const [moved] = newItems.splice(evt.oldIndex, 1);
-              newItems.splice(evt.newIndex, 0, moved);
-              setItems(newItems);
-            },
-          });
-
-          return () => sortable.destroy();
-        }, []);
+      function InductionScreen(props) {
+        const dept = props.department;
+        const prestigeTitle =
+          START_PRESTIGE_TITLES[props.startConfig.prestige] ||
+          START_PRESTIGE_TITLES[0];
 
         return e(
-          "ul",
-          { ref: listRef, className: "space-y-2" },
-          items.map((item) =>
+          "div",
+          {
+            className:
+              "fixed inset-0 z-[110] flex items-start sm:items-center justify-center win-bg p-2",
+          },
+          e(
+            "div",
+            {
+              className:
+                "w-full max-w-2xl bg-[#c0c0c0] retro-border flex flex-col max-h-[95vh]",
+            },
             e(
-              "li",
+              "div",
               {
-                key: item,
                 className:
-                  "flex items-center gap-3 p-3 bg-gray-50 border rounded cursor-move",
+                  "window-titlebar text-white px-1 py-0.5 flex justify-between items-center select-none",
               },
-              e("i", { className: "fa-solid fa-grip-vertical text-gray-400" }),
-              e("span", { className: "flex-1" }, item),
+              e(
+                "div",
+                { className: "flex items-center gap-1.5 px-1" },
+                e(
+                  "span",
+                  { className: "text-[10px] sm:text-[11px] font-bold tracking-tight" },
+                  "Personnel Induction Wizard",
+                ),
+              ),
+              e(
+                "div",
+                { className: "flex gap-0.5" },
+                e(
+                  "button",
+                  {
+                    className:
+                      "w-4 h-4 bg-[#c0c0c0] border border-white shadow-[1px_1px_0px_black] text-black text-[10px] flex items-center justify-center font-bold",
+                  },
+                  "✕",
+                ),
+              ),
+            ),
+            e(
+              "div",
+              { className: "flex flex-1 overflow-hidden" },
+              e(
+                "div",
+                {
+                  className:
+                    "wizard-sidebar hidden sm:flex flex-col items-center justify-end pb-8 border-r border-[#808080] shrink-0",
+                },
+                e(
+                  "div",
+                  { className: "wizard-text uppercase" },
+                  dept.short || "EXECUTIVE",
+                ),
+              ),
+              e(
+                "div",
+                { className: "flex-1 flex flex-col bg-white sm:bg-[#c0c0c0] overflow-hidden" },
+                e(
+                  "div",
+                  { className: "p-3 sm:p-6 flex-1 flex flex-col overflow-y-auto" },
+                  e(
+                    "div",
+                    { className: "mb-4" },
+                    e(
+                      "h2",
+                      {
+                        className:
+                          "text-lg sm:text-xl font-bold leading-none mb-1 text-black",
+                      },
+                      dept.name,
+                    ),
+                    e("div", { className: "h-[1px] w-full bg-black mb-1" }),
+                    e(
+                      "p",
+                      {
+                        className:
+                          "text-[9px] text-gray-500 font-bold uppercase tracking-wider",
+                      },
+                      "Induction Assignment Protocol",
+                    ),
+                  ),
+                  e(
+                    "div",
+                    {
+                      className:
+                        "relative flex-1 bg-[#dfdfdf] retro-border-inset flex flex-col overflow-hidden",
+                    },
+                    e(
+                      "div",
+                      {
+                        className:
+                          "absolute inset-y-0 left-0 w-12 flex items-center justify-center z-40 pointer-events-none",
+                      },
+                      e(
+                        "button",
+                        {
+                          onClick: () => props.onRotate(-1),
+                          className:
+                            "nav-btn retro-border pointer-events-auto hover:bg-[#d4d4d4]",
+                        },
+                        e(
+                          "svg",
+                          {
+                            width: "12",
+                            height: "12",
+                            viewBox: "0 0 24 24",
+                            fill: "none",
+                            stroke: "black",
+                            strokeWidth: "4",
+                          },
+                          e("polyline", { points: "15 18 9 12 15 6" }),
+                        ),
+                      ),
+                    ),
+                    e(
+                      "div",
+                      {
+                        className:
+                          "absolute inset-y-0 right-0 w-12 flex items-center justify-center z-40 pointer-events-none",
+                      },
+                      e(
+                        "button",
+                        {
+                          onClick: () => props.onRotate(1),
+                          className:
+                            "nav-btn retro-border pointer-events-auto hover:bg-[#d4d4d4]",
+                        },
+                        e(
+                          "svg",
+                          {
+                            width: "12",
+                            height: "12",
+                            viewBox: "0 0 24 24",
+                            fill: "none",
+                            stroke: "black",
+                            strokeWidth: "4",
+                          },
+                          e("polyline", { points: "9 18 15 12 9 6" }),
+                        ),
+                      ),
+                    ),
+                    props.isLocked
+                      ? e(
+                          "div",
+                          {
+                            className:
+                              "absolute inset-0 z-30 dither-lock flex flex-col items-center justify-center p-4",
+                          },
+                          e(
+                            "div",
+                            {
+                              className:
+                                "bg-[#c0c0c0] retro-border p-4 max-w-[240px] text-center shadow-xl",
+                            },
+                            e(
+                              "div",
+                              {
+                                className:
+                                  "bg-[#000080] text-white text-[9px] font-bold px-2 py-0.5 mb-3 uppercase flex items-center justify-between",
+                              },
+                              e("span", null, "System Message"),
+                              e("span", null, "✕"),
+                            ),
+                            e("div", { className: "text-[10px] font-bold mb-2" }, "ACCESS RESTRICTED"),
+                            e(
+                              "div",
+                              {
+                                className:
+                                  "text-[9px] font-mono leading-tight text-red-900 p-2 bg-white/50 border border-red-200",
+                              },
+                              `REQ: ${dept.lockCondition || "Unavailable"}`,
+                            ),
+                          ),
+                        )
+                      : null,
+                    e(
+                      "div",
+                      { className: "flex-1 p-4 sm:p-6 overflow-y-auto" },
+                      e(
+                        "div",
+                        { className: "flex flex-col sm:flex-row gap-6" },
+                        e(
+                          "div",
+                          { className: "flex flex-col items-center shrink-0" },
+                          e("div", {
+                            id: "induction-icon-frame",
+                            className:
+                              "w-24 h-24 bg-white retro-border-inset flex items-center justify-center mb-3",
+                            dangerouslySetInnerHTML: { __html: dept.icon || "" },
+                          }),
+                          e(
+                            "div",
+                            {
+                              className:
+                                "text-[10px] font-mono font-bold bg-white px-3 py-0.5 border border-gray-400 retro-border-inset",
+                            },
+                            dept.code || "",
+                          ),
+                        ),
+                        e(
+                          "div",
+                          { className: "flex-1 bg-white retro-border-inset shadow-inner" },
+                          e(
+                            "table",
+                            { className: "w-full manifest-table border-collapse" },
+                            e(
+                              "thead",
+                              null,
+                              e(
+                                "tr",
+                                { className: "bg-gray-100" },
+                                e(
+                                  "th",
+                                  {
+                                    className:
+                                      "text-left text-[8px] uppercase p-2 border-b border-gray-300 text-gray-500 font-bold",
+                                  },
+                                  "Attribute",
+                                ),
+                                e(
+                                  "th",
+                                  {
+                                    className:
+                                      "text-left text-[8px] uppercase p-2 border-b border-gray-300 text-gray-500 font-bold",
+                                  },
+                                  "Data Point",
+                                ),
+                              ),
+                            ),
+                            e(
+                              "tbody",
+                              null,
+                              Object.entries(dept.manifest || {}).map(([key, value]) =>
+                                e(
+                                  "tr",
+                                  { key },
+                                  e(
+                                    "td",
+                                    {
+                                      className:
+                                        "font-bold text-gray-500 uppercase text-[8px] whitespace-nowrap",
+                                    },
+                                    key,
+                                  ),
+                                  e("td", { className: "font-mono text-blue-900" }, String(value)),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  e(
+                    "div",
+                    { className: "mt-3 shrink-0" },
+                    e(
+                      "div",
+                      { className: "flex justify-between items-end mb-1 px-1" },
+                      e(
+                        "span",
+                        { className: "text-[9px] font-bold uppercase text-gray-500" },
+                        "Prestige Clearance",
+                      ),
+                      e(
+                        "span",
+                        { className: "text-[10px] font-bold italic text-blue-900" },
+                        prestigeTitle,
+                      ),
+                    ),
+                    e(
+                      "div",
+                      {
+                        className:
+                          "induction-prestige-compact text-[10px] font-bold uppercase text-gray-600 px-2 py-1 bg-white retro-border-inset",
+                      },
+                      e("div", null, "Prestige: ", e("span", { className: "text-blue-900" }, prestigeTitle)),
+                      e(
+                        "div",
+                        { className: "flex gap-1 mt-1" },
+                        START_PRESTIGE_TITLES.map((_, idx) => {
+                          const locked =
+                            !props.departmentUnlocked || idx > props.maxUnlockedPrestige;
+                          const selected = idx === props.startConfig.prestige && !locked;
+                          return e(
+                            "button",
+                            {
+                              key: `prestige-${idx}`,
+                              className: `prestige-btn retro-border ${locked ? "locked" : ""} ${selected ? "selected" : ""}`,
+                              disabled: locked,
+                              onClick: () => props.onSelectPrestige(idx),
+                            },
+                            String(idx + 1),
+                          );
+                        }),
+                      ),
+                    ),
+                  ),
+                ),
+                e(
+                  "div",
+                  {
+                    className:
+                      "p-3 border-t border-[#808080] flex justify-between items-center bg-[#c0c0c0] shrink-0",
+                  },
+                  e(
+                    "div",
+                    { className: "text-[9px] uppercase text-gray-500 font-bold" },
+                    "Dept + Prestige Selection",
+                  ),
+                  e(
+                    "div",
+                    { className: "flex gap-2" },
+                    e(
+                      "button",
+                      {
+                        onClick: props.onOpenAdvanced,
+                        className:
+                          "bg-[#c0c0c0] retro-border px-3 py-1 text-[11px] min-w-[70px]",
+                      },
+                      "Advanced",
+                    ),
+                    e(
+                      "button",
+                      {
+                        onClick: props.onClockIn,
+                        disabled: props.isLocked,
+                        className:
+                          "bg-[#c0c0c0] retro-border px-4 py-1 text-[11px] min-w-[70px] font-bold disabled:opacity-50",
+                      },
+                      "Clock In",
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         );
+      }
+
+      function AdvancedModal(props) {
+        return e(
+          "div",
+          {
+            className: "fixed inset-0 bg-black/40 z-[120] flex items-center justify-center p-4",
+            onClick: props.onClose,
+          },
+          e(
+            "div",
+            {
+              className: "bg-[#c0c0c0] retro-border p-1 w-full max-w-[300px] shadow-2xl",
+              onClick: (evt) => evt.stopPropagation(),
+            },
+            e(
+              "div",
+              {
+                className:
+                  "window-titlebar text-white px-2 py-0.5 text-[10px] font-bold mb-2 flex justify-between items-center",
+              },
+              e("span", null, "Advanced Parameters"),
+              e(
+                "button",
+                {
+                  onClick: props.onClose,
+                  className:
+                    "w-3.5 h-3.5 bg-[#c0c0c0] border border-white shadow-[1px_1px_0px_black] text-black text-[9px] flex items-center justify-center font-bold",
+                },
+                "✕",
+              ),
+            ),
+            e(
+              "div",
+              { className: "p-3" },
+              e(
+                "div",
+                { className: "text-[10px] font-bold mb-1 uppercase text-gray-700" },
+                "Sequence Seed:",
+              ),
+              e(
+                "div",
+                { className: "bg-white retro-border-inset p-1 mb-4" },
+                e("input", {
+                  type: "text",
+                  value: props.seedValue,
+                  onChange: (evt) => props.onSeedChange(evt.target.value),
+                  className: "w-full bg-transparent outline-none font-mono text-xs px-1",
+                  placeholder: "Leave blank for random...",
+                  autoFocus: true,
+                }),
+              ),
+              e(
+                "div",
+                {
+                  className:
+                    "text-[9px] text-gray-500 italic leading-tight mb-4 border-l-2 border-gray-400 pl-2",
+                },
+                "Enter a seed to force deterministic generation for this run.",
+              ),
+              e(
+                "div",
+                { className: "flex justify-end gap-2" },
+                e(
+                  "button",
+                  {
+                    onClick: props.onSave,
+                    className:
+                      "bg-[#c0c0c0] retro-border px-6 py-1 text-[11px] font-bold",
+                  },
+                  "OK",
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      function RunReadyScreen(props) {
+        return e(
+          "div",
+          { className: "fixed inset-0 z-[90] flex items-center justify-center win-bg p-4" },
+          e(
+            "div",
+            { className: "bg-[#c0c0c0] p-4 retro-border max-w-md w-full" },
+            e("h2", { className: "text-lg font-bold mb-2" }, "Run Initialized"),
+            e(
+              "div",
+              { className: "text-xs font-mono bg-white retro-border-inset p-3 mb-3" },
+              e("div", null, `Name: ${props.state.player?.name || "-"}`),
+              e("div", null, `Email: ${props.state.player?.email || "-"}`),
+              e("div", null, `Department: ${props.state.startConfig?.departmentId || "-"}`),
+              e("div", null, `Prestige: ${(props.state.startConfig?.prestige ?? 0) + 1}`),
+              e("div", null, `Seed: ${props.state.seed ?? "-"}`),
+            ),
+            e(
+              "button",
+              {
+                onClick: props.onBackToMenu,
+                className: "w-full py-2 font-bold retro-button text-[#000080]",
+              },
+              "Back to Menu",
+            ),
+          ),
+        );
+      }
+
+      function App() {
+        const [metaState, setMetaState] = React.useState(() => {
+          const loaded = loadMetaStateFromStorage();
+          return ReplyAllEngine.start.sanitizeMetaState(loaded);
+        });
+
+        const [state, setState] = React.useState(() => {
+          const ensured = ReplyAllEngine.start.ensureStartState(
+            createInitialState(),
+            loadMetaStateFromStorage(),
+          );
+          return ensured.state;
+        });
+
+        const [activeScreen, setActiveScreen] = React.useState("start");
+        const [playerName, setPlayerName] = React.useState("eke vdh");
+        const [showAdvanced, setShowAdvanced] = React.useState(false);
+        const [seedDraft, setSeedDraft] = React.useState("");
+        const [resumeSave, setResumeSave] = React.useState(null);
+
+        React.useEffect(() => {
+          setSeedDraft(state.startConfig?.seedInput || "");
+        }, [state.startConfig?.seedInput]);
+
+        React.useEffect(() => {
+          const save = loadSaveFromStorage();
+          if (save && save.state && save.state.player && save.state.player.name) {
+            setResumeSave(save);
+            setPlayerName(save.state.player.name);
+          }
+        }, []);
+
+        const emailPreview = ReplyAllEngine.start.getEmailFromName(playerName);
+        const currentDeptId = state.startConfig?.departmentId || "executive";
+        const department =
+          START_DEPARTMENTS.find((dept) => dept.id === currentDeptId) ||
+          START_DEPARTMENTS[0];
+        const departmentUnlocked = ReplyAllEngine.start.isDepartmentUnlocked(
+          metaState,
+          department.id,
+        );
+        const maxUnlockedPrestige = ReplyAllEngine.start.getMaxPrestigeForDepartment(
+          state,
+          department.id,
+        );
+
+        function onSignUp() {
+          clearSaveFromStorage();
+          const ensured = ReplyAllEngine.start.ensureStartState(
+            {
+              ...state,
+              startConfig: { ...ReplyAllEngine.start.DEFAULT_START_CONFIG },
+            },
+            metaState,
+          );
+          setState(ensured.state);
+          setActiveScreen("induction");
+        }
+
+        function onResume() {
+          const save = resumeSave || loadSaveFromStorage();
+          if (!save || !save.state) return;
+          const restored = ReplyAllEngine.core.applySavedGame(save) || {};
+          const restoredState = restored.state || save.state;
+          const mergedMeta = ReplyAllEngine.start.mergeMetaProgress(
+            metaState,
+            restoredState,
+          );
+          const ensured = ReplyAllEngine.start.ensureStartState(restoredState, mergedMeta);
+          setMetaState(mergedMeta);
+          saveMetaStateToStorage(mergedMeta);
+          setState(ensured.state);
+          setPlayerName(ensured.state.player?.name || "eke vdh");
+          setActiveScreen(
+            save.activeScreen === "induction-screen" ? "induction" : "run-ready",
+          );
+        }
+
+        function onRotate(dir) {
+          const nextDepartmentId = ReplyAllEngine.start.rotateDepartment(
+            currentDeptId,
+            dir,
+          );
+          setState((prev) => ({
+            ...prev,
+            startConfig: {
+              ...prev.startConfig,
+              departmentId: nextDepartmentId,
+              prestige: 0,
+            },
+          }));
+        }
+
+        function onSelectPrestige(index) {
+          if (
+            !ReplyAllEngine.start.canSelectPrestige(
+              state,
+              metaState,
+              department.id,
+              index,
+            )
+          ) {
+            return;
+          }
+          setState((prev) => ({
+            ...prev,
+            startConfig: {
+              ...prev.startConfig,
+              prestige: index,
+            },
+          }));
+        }
+
+        function onOpenAdvanced() {
+          setSeedDraft(state.startConfig?.seedInput || "");
+          setShowAdvanced(true);
+        }
+
+        function onSaveAdvanced() {
+          setState((prev) => ({
+            ...prev,
+            startConfig: {
+              ...prev.startConfig,
+              seedInput: seedDraft,
+            },
+          }));
+          setShowAdvanced(false);
+        }
+
+        function onClockIn() {
+          const prepared = ReplyAllEngine.start.prepareRunFromInduction(
+            state,
+            metaState,
+            playerName,
+          );
+          setState(prepared.state);
+          setActiveScreen("run-ready");
+        }
+
+        if (activeScreen === "start") {
+          return e(StartScreen, {
+            playerName,
+            emailPreview,
+            resumeName: resumeSave?.state?.player?.name || "",
+            onNameChange: setPlayerName,
+            onSignUp,
+            onResume,
+          });
+        }
+
+        if (activeScreen === "induction") {
+          return e(
+            React.Fragment,
+            null,
+            e(InductionScreen, {
+              department,
+              departmentUnlocked,
+              isLocked: !departmentUnlocked,
+              maxUnlockedPrestige,
+              startConfig: state.startConfig,
+              onRotate,
+              onSelectPrestige,
+              onOpenAdvanced,
+              onClockIn,
+            }),
+            showAdvanced
+              ? e(AdvancedModal, {
+                  seedValue: seedDraft,
+                  onSeedChange: setSeedDraft,
+                  onClose: () => setShowAdvanced(false),
+                  onSave: onSaveAdvanced,
+                })
+              : null,
+          );
+        }
+
+        return e(RunReadyScreen, {
+          state,
+          onBackToMenu: () => setActiveScreen("start"),
+        });
       }
 
       const root = ReactDOM.createRoot(document.getElementById("app"));

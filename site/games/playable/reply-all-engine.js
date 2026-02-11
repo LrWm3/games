@@ -90,6 +90,314 @@
     createRngStore,
   };
 
+  // ---------- Start / Induction Helpers ----------
+  const DEFAULT_START_CONFIG = {
+    departmentId: "executive",
+    prestige: 0,
+    seedInput: "",
+  };
+
+  const DEFAULT_START_UNLOCKS = {
+    executive: 0,
+    it: 0,
+    finance: 0,
+  };
+
+  const DEFAULT_DEPARTMENT_UNLOCKS = {
+    executive: true,
+    it: false,
+    finance: false,
+  };
+
+  function sanitizeMetaState(metaState) {
+    const next = metaState && typeof metaState === "object" ? { ...metaState } : {};
+    if (!Array.isArray(next.discoveredSets)) next.discoveredSets = [];
+    next.startUnlocks = {
+      ...DEFAULT_START_UNLOCKS,
+      ...(next.startUnlocks || {}),
+    };
+    next.departmentUnlocks = {
+      ...DEFAULT_DEPARTMENT_UNLOCKS,
+      ...(next.departmentUnlocks || {}),
+    };
+    return next;
+  }
+
+  function ensureStartState(state, metaState) {
+    const safeMeta = sanitizeMetaState(metaState);
+    const baseState = state && typeof state === "object" ? { ...state } : {};
+    const nextStartConfig = {
+      ...DEFAULT_START_CONFIG,
+      ...(baseState.startConfig || {}),
+    };
+    const nextState = {
+      ...baseState,
+      startConfig: nextStartConfig,
+      startUnlocks: { ...safeMeta.startUnlocks },
+      messageLogEntries: Array.isArray(baseState.messageLogEntries)
+        ? [...baseState.messageLogEntries]
+        : [],
+    };
+    if (nextState.player && !nextState.player.coachingBoosts) {
+      nextState.player = { ...nextState.player, coachingBoosts: {} };
+    }
+    return { state: nextState, metaState: safeMeta };
+  }
+
+  function getDisplayName(name) {
+    const trimmed = typeof name === "string" ? name.trim() : "";
+    return trimmed || "eke vdh";
+  }
+
+  function getEmailFromName(name) {
+    return `${getDisplayName(name).toLowerCase().replace(/\s+/g, ".")}@gov.org`;
+  }
+
+  function parseSeedInput(input) {
+    if (!input) return null;
+    const trimmed = String(input).trim();
+    if (!trimmed) return null;
+    if (/^\d+$/.test(trimmed)) return Number(trimmed) >>> 0;
+    return hashSeed(trimmed, "user");
+  }
+
+  function getBasePlayerState(name, email) {
+    return {
+      id: "player",
+      name,
+      email,
+      hp: 50,
+      maxHp: 50,
+      ult: 0,
+      wins: 3,
+      currentWins: 3,
+      buffs: [],
+      reputation: 4,
+      year: 1,
+      quarter: "Q3",
+      title: TITLES[0],
+      addressBook: [],
+      signatures: [],
+      salutation: null,
+      signOff: null,
+      bccContacts: [],
+      departmentId: "executive_council_office",
+      singleDmg: 10,
+      escalateDmg: 5,
+      globalDmg: 0,
+      singleDmgMult: 0,
+      escalateDmgMult: 0,
+      globalDmgMult: 0,
+      retaliation: 5,
+      deflect: 0,
+      selfPromoteHeal: 5,
+      deflectCharge: 0,
+      deflectChargeReflect: 0,
+      deflectChargeReduce: 0,
+      followUpChance: 0,
+      escalateRecoverPerHit: 0,
+      bccLimit: 2,
+      contactTrainingLimit: 3,
+      contactUpgrades: {},
+      contactPermanentBoosts: {},
+      contactTrainingCount: {},
+      coachingBoosts: {},
+      salutationBonuses: {},
+      signoffBonuses: {},
+      ...DEFAULT_PLAYER_LINES,
+      discoveredSets: [],
+      _lineBags: {},
+    };
+  }
+
+  function applyStartConfigToPlayer(state, metaState, config) {
+    const safeMeta = sanitizeMetaState(metaState);
+    const nextState = state && typeof state === "object" ? { ...state } : {};
+    if (!nextState.player) return nextState;
+    const nextPlayer = { ...nextState.player };
+    const nextConfig = {
+      ...DEFAULT_START_CONFIG,
+      ...(config || nextState.startConfig || {}),
+    };
+    const dept = START_DEPARTMENTS.find((d) => d.id === nextConfig.departmentId);
+    if (!dept) {
+      return {
+        ...nextState,
+        startConfig: nextConfig,
+        player: nextPlayer,
+      };
+    }
+    const start = dept.start || {};
+    const baseWins = nextPlayer.wins || 0;
+    const winsDelta = typeof start.winsDelta === "number" ? start.winsDelta : 0;
+    const nextWins = Math.max(0, baseWins + winsDelta);
+
+    nextPlayer.wins = nextWins;
+    nextPlayer.currentWins = nextWins;
+    if (typeof start.reputation === "number") nextPlayer.reputation = start.reputation;
+    nextPlayer.departmentId = start.departmentId || nextPlayer.departmentId;
+    nextPlayer.addressBook = Array.isArray(start.addressBook)
+      ? [...start.addressBook]
+      : [];
+    nextPlayer.signatures = Array.isArray(start.signatureIds)
+      ? start.signatureIds
+          .map((id) => SIGNATURES.find((s) => s.id === id))
+          .filter(Boolean)
+      : [];
+    nextPlayer.salutation = start.salutationId
+      ? SALUTATIONS.find((s) => s.id === start.salutationId) || null
+      : null;
+    nextPlayer.signOff = start.signOffId
+      ? SIGNOFFS.find((s) => s.id === start.signOffId) || null
+      : null;
+    nextPlayer.discoveredSets = [...safeMeta.discoveredSets];
+
+    return {
+      ...nextState,
+      startConfig: nextConfig,
+      player: nextPlayer,
+    };
+  }
+
+  function getDepartmentIndex(departmentId) {
+    const idx = START_DEPARTMENTS.findIndex((d) => d.id === departmentId);
+    return idx >= 0 ? idx : 0;
+  }
+
+  function rotateDepartment(departmentId, dir) {
+    const idx = getDepartmentIndex(departmentId);
+    const step = Number.isFinite(dir) ? dir : 1;
+    const nextIdx =
+      (idx + step + START_DEPARTMENTS.length) % START_DEPARTMENTS.length;
+    return START_DEPARTMENTS[nextIdx]?.id || START_DEPARTMENTS[0]?.id || "executive";
+  }
+
+  function isDepartmentUnlocked(metaState, departmentId) {
+    if (departmentId === "executive") return true;
+    const safeMeta = sanitizeMetaState(metaState);
+    return !!safeMeta.departmentUnlocks[departmentId];
+  }
+
+  function getMaxPrestigeForDepartment(state, departmentId) {
+    const unlocks = state?.startUnlocks || DEFAULT_START_UNLOCKS;
+    const value = unlocks[departmentId];
+    return typeof value === "number" && value >= 0 ? value : 0;
+  }
+
+  function canSelectPrestige(state, metaState, departmentId, prestige) {
+    if (!isDepartmentUnlocked(metaState, departmentId)) return false;
+    const p = Number.isFinite(prestige) ? prestige : -1;
+    if (p < 0) return false;
+    return p <= getMaxPrestigeForDepartment(state, departmentId);
+  }
+
+  function applyDepartmentUnlocks(state, metaState) {
+    const safeMeta = sanitizeMetaState(metaState);
+    const reputation = state?.player?.reputation || 0;
+    if (!safeMeta.departmentUnlocks.finance && reputation >= 30) {
+      return {
+        metaState: {
+          ...safeMeta,
+          departmentUnlocks: {
+            ...safeMeta.departmentUnlocks,
+            finance: true,
+          },
+        },
+        changed: true,
+      };
+    }
+    return { metaState: safeMeta, changed: false };
+  }
+
+  function mergeMetaProgress(metaState, state) {
+    const safeMeta = sanitizeMetaState(metaState);
+    const nextMeta = {
+      ...safeMeta,
+      startUnlocks: { ...safeMeta.startUnlocks },
+      discoveredSets: [...safeMeta.discoveredSets],
+    };
+    if (state?.startUnlocks && typeof state.startUnlocks === "object") {
+      Object.keys(state.startUnlocks).forEach((key) => {
+        const current = nextMeta.startUnlocks[key] ?? 0;
+        const incoming = state.startUnlocks[key] ?? 0;
+        if (incoming > current) nextMeta.startUnlocks[key] = incoming;
+      });
+    }
+    if (Array.isArray(state?.player?.discoveredSets)) {
+      state.player.discoveredSets.forEach((setId) => {
+        if (!nextMeta.discoveredSets.includes(setId)) {
+          nextMeta.discoveredSets.push(setId);
+        }
+      });
+    }
+    return nextMeta;
+  }
+
+  function prepareRunFromInduction(baseState, metaState, nameInput) {
+    const { state: normalizedState, metaState: safeMeta } = ensureStartState(
+      baseState,
+      metaState,
+    );
+    const name = getDisplayName(nameInput);
+    const email = getEmailFromName(name);
+    let nextState = {
+      ...normalizedState,
+      _rngStore: null,
+      aiPlannedActions: {},
+      seed: null,
+      rngStates: {},
+      opponents: [],
+      shopVisitIndex: 0,
+      missionCycle: 0,
+      currentMissionIndex: 0,
+      turn: 0,
+      lossReason: null,
+      isProcessing: false,
+      gameOver: false,
+      missionActive: false,
+      removedByPlayer: 0,
+      removedTotal: 0,
+      postPromotionScreen: null,
+      ccPicksTaken: 0,
+      ccPicksLeft: 0,
+      shop: { directItems: [], packs: [], rerollCount: 0 },
+      pendingTraining: null,
+      roundEndUpgrades: {},
+      expenseReportActive: false,
+      messageLogEntries: [],
+      player: getBasePlayerState(name, email),
+    };
+    const parsedSeed = parseSeedInput(nextState.startConfig?.seedInput);
+    nextState.seed = parsedSeed != null ? parsedSeed : Date.now() >>> 0;
+    nextState = applyStartConfigToPlayer(
+      nextState,
+      safeMeta,
+      nextState.startConfig,
+    );
+    return { state: nextState, metaState: safeMeta };
+  }
+
+  ReplyAllEngine.start = {
+    DEFAULT_START_CONFIG,
+    DEFAULT_START_UNLOCKS,
+    DEFAULT_DEPARTMENT_UNLOCKS,
+    sanitizeMetaState,
+    ensureStartState,
+    getDisplayName,
+    getEmailFromName,
+    parseSeedInput,
+    getBasePlayerState,
+    applyStartConfigToPlayer,
+    getDepartmentIndex,
+    rotateDepartment,
+    isDepartmentUnlocked,
+    getMaxPrestigeForDepartment,
+    canSelectPrestige,
+    applyDepartmentUnlocks,
+    mergeMetaProgress,
+    prepareRunFromInduction,
+  };
+
   // ---------- Stat Math Helpers ----------
   function computeUnitStats(ctx, unit, turnOverride = null) {
     const { getUnitStatBlocks, getSalutationWindowStats, getSalutationPersistentStats,
