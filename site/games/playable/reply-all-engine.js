@@ -377,6 +377,56 @@
     return { state: nextState, metaState: safeMeta };
   }
 
+  function loadMeta(helpers = {}) {
+    if (helpers.onLoadMeta) return helpers.onLoadMeta();
+    if (helpers.onLoadMetaState) return helpers.onLoadMetaState();
+    return null;
+  }
+
+  function saveMeta(metaState, helpers = {}) {
+    if (helpers.onSaveMeta) return helpers.onSaveMeta(metaState);
+    if (helpers.onSaveMetaState) return helpers.onSaveMetaState(metaState);
+    return undefined;
+  }
+
+  function loadSave(helpers = {}) {
+    if (helpers.onLoadSave) return helpers.onLoadSave();
+    if (helpers.onLoadGamePayload) return helpers.onLoadGamePayload();
+    return null;
+  }
+
+  function clearSave(helpers = {}) {
+    if (helpers.onClearSave) return helpers.onClearSave();
+    if (helpers.onClearSavedGame) return helpers.onClearSavedGame();
+    return undefined;
+  }
+
+  function getUiScreenFromSave(activeScreen) {
+    const map = {
+      "induction-screen": "induction",
+      "inbox-screen": "inbox",
+      "game-ui": "game",
+      "summary-screen": "summary",
+      "shop-screen": "shop",
+      "promotion-screen": "promotion",
+      "campaign-complete-screen": "campaign-complete",
+    };
+    return map[activeScreen] || "inbox";
+  }
+
+  function getSaveScreenFromUi(uiScreen) {
+    const map = {
+      induction: "induction-screen",
+      inbox: "inbox-screen",
+      game: "game-ui",
+      summary: "summary-screen",
+      shop: "shop-screen",
+      promotion: "promotion-screen",
+      "campaign-complete": "campaign-complete-screen",
+    };
+    return map[uiScreen] || "inbox-screen";
+  }
+
   ReplyAllEngine.start = {
     DEFAULT_START_CONFIG,
     DEFAULT_START_UNLOCKS,
@@ -396,6 +446,12 @@
     applyDepartmentUnlocks,
     mergeMetaProgress,
     prepareRunFromInduction,
+    loadMeta,
+    saveMeta,
+    loadSave,
+    clearSave,
+    getUiScreenFromSave,
+    getSaveScreenFromUi,
   };
 
   // ---------- Stat Math Helpers ----------
@@ -1272,7 +1328,7 @@
       else if (s.itemType === "salutation") source = SALUTATIONS;
       else if (s.itemType === "signoff") source = SIGNOFFS;
       else if (s.itemType === "bcc") source = BCC_CONTACTS;
-      else if (s.itemType === "dev") source = getTrainingUpgrades();
+      else if (s.itemType === "dev") source = buildTrainingUpgrades();
       const found = source.find((item) => item.id === s.id);
       if (!found) return null;
       return { ...found, purchased: !!s.purchased, itemType: s.itemType };
@@ -1287,12 +1343,16 @@
   }
 
   function buildSavePayload(state, opponents, activeScreen) {
+    const savedState = {
+      ...state,
+      player: serializePlayer(state.player),
+      shop: serializeShop(state.shop || {}),
+    };
+    // Runtime-only caches should never be persisted.
+    delete savedState._statCtx;
+    delete savedState._rngStore;
     return {
-      state: {
-        ...state,
-        player: serializePlayer(state.player),
-        shop: serializeShop(state.shop || {}),
-      },
+      state: savedState,
       opponents: Array.isArray(opponents) ? opponents : [],
       activeScreen,
     };
@@ -2035,7 +2095,18 @@
   }
 
   function getRngStore(state) {
-    if (!state._rngStore) state._rngStore = ReplyAllEngine.rng.createRngStore();
+    const store = state && state._rngStore;
+    const isValidStore =
+      !!store &&
+      typeof store.reset === "function" &&
+      typeof store.getStream === "function" &&
+      typeof store.next === "function" &&
+      typeof store.int === "function" &&
+      typeof store.missionKey === "function" &&
+      typeof store.shopKey === "function";
+    if (!isValidStore) {
+      state._rngStore = ReplyAllEngine.rng.createRngStore();
+    }
     return state._rngStore;
   }
 
@@ -2125,6 +2196,77 @@
       const stats = item.stats || item;
       applyCoachingBoosts(p, stats);
     }
+  }
+
+  function getSellRefundForItem(itemType, item) {
+    if (!item) return 0;
+    const cost =
+      item.cost || getItemCostByType(item.rarity || "common", itemType);
+    return Math.max(0, Math.floor(cost / 2));
+  }
+
+  function getOwnedAssets(state) {
+    const p = state?.player || {};
+    const addressBook = (p.addressBook || [])
+      .map((id) => CONTACTS.find((c) => c.id === id))
+      .filter(Boolean);
+    return {
+      addressBook,
+      signatures: [...(p.signatures || [])],
+      salutation: p.salutation || null,
+      signoff: p.signOff || null,
+      bcc: [...(p.bccContacts || p.bccs || [])],
+    };
+  }
+
+  function archiveOwnedItem(state, itemType, itemId, options = {}) {
+    const p = state?.player || {};
+    const withRefund = options.withRefund !== false;
+    let removed = null;
+    let removedIndex = -1;
+
+    if (itemType === "contact") {
+      const list = p.addressBook || [];
+      removedIndex = list.indexOf(itemId);
+      if (removedIndex >= 0) {
+        list.splice(removedIndex, 1);
+        removed = CONTACTS.find((c) => c.id === itemId) || { id: itemId };
+      }
+      if (removed && p.contactPermanentBoosts) delete p.contactPermanentBoosts[itemId];
+      if (removed && p.contactTrainingCount) delete p.contactTrainingCount[itemId];
+      if (removed && p.contactEffectBoosts) delete p.contactEffectBoosts[itemId];
+    } else if (itemType === "signature") {
+      const list = p.signatures || [];
+      removedIndex = list.findIndex((s) => s.id === itemId);
+      if (removedIndex >= 0) removed = list.splice(removedIndex, 1)[0];
+    } else if (itemType === "salutation") {
+      if (p.salutation && (!itemId || p.salutation.id === itemId)) {
+        removed = p.salutation;
+        p.salutation = null;
+      }
+    } else if (itemType === "signoff") {
+      if (p.signOff && (!itemId || p.signOff.id === itemId)) {
+        removed = p.signOff;
+        p.signOff = null;
+      }
+    } else if (itemType === "bcc") {
+      const list = p.bccContacts || p.bccs || [];
+      if (typeof options.itemIndex === "number" && options.itemIndex >= 0) {
+        removedIndex = options.itemIndex < list.length ? options.itemIndex : -1;
+      } else {
+        removedIndex = list.findIndex((b) => b.id === itemId);
+      }
+      if (removedIndex >= 0) removed = list.splice(removedIndex, 1)[0];
+    } else {
+      return { ok: false, reason: "unsupported_type" };
+    }
+
+    if (!removed) return { ok: false, reason: "missing_item" };
+    const refund = withRefund ? getSellRefundForItem(itemType, removed) : 0;
+    if (refund > 0) {
+      p.reputation = (p.reputation || 0) + refund;
+    }
+    return { ok: true, item: removed, itemType, refund };
   }
 
   function addRandomBccs(state, player, count) {
@@ -2686,13 +2828,25 @@
   function buyItem(state, item, helpers = {}) {
     if (!item) return { ok: false, reason: "missing" };
     const cost = item.cost || getItemCostByType(item.rarity || "common", item.itemType);
-    if ((state.player?.reputation || 0) < cost) {
+    const p = state.player || {};
+    let replaceRefund = 0;
+    if (item.itemType === "salutation" && p.salutation && p.salutation.id !== item.id) {
+      replaceRefund = getSellRefundForItem("salutation", p.salutation);
+    } else if (item.itemType === "signoff" && p.signOff && p.signOff.id !== item.id) {
+      replaceRefund = getSellRefundForItem("signoff", p.signOff);
+    }
+    if ((state.player?.reputation || 0) + replaceRefund < cost) {
       return { ok: false, reason: "rep", cost };
     }
     if (item.purchased) return { ok: false, reason: "purchased" };
     const eligibility = canAcquireItem(state, item, helpers);
     if (!eligibility.ok) {
       return { ok: false, reason: eligibility.reason || "ineligible", cost };
+    }
+    if (item.itemType === "salutation" && p.salutation && p.salutation.id !== item.id) {
+      archiveOwnedItem(state, "salutation", p.salutation.id, { withRefund: true });
+    } else if (item.itemType === "signoff" && p.signOff && p.signOff.id !== item.id) {
+      archiveOwnedItem(state, "signoff", p.signOff.id, { withRefund: true });
     }
     state.player.reputation -= cost;
     item.purchased = true;
@@ -2751,11 +2905,22 @@
 
   // 3.6 Progression + Promotions
   function advanceQuarter(state) {
-    return state;
+    let idx = QUARTERS.indexOf(state?.player?.quarter);
+    if (idx < 0) idx = 0;
+    idx = (idx + 1) % QUARTERS.length;
+    state.player.quarter = QUARTERS[idx];
+    if (state.player.quarter === "Q3") {
+      state.player.year = (state.player.year || 1) + 1;
+    }
+    return state.player.quarter;
   }
 
   function advanceMission(state) {
-    return state;
+    state.currentMissionIndex = Math.min(
+      (state.currentMissionIndex || 0) + 1,
+      Math.max(0, MISSIONS.length - 1),
+    );
+    return state.currentMissionIndex;
   }
 
   function checkPromotion(state) {
@@ -2777,6 +2942,133 @@
       state.player.title = nextTitle;
     }
     return nextTitle;
+  }
+
+  function computeSummary(state) {
+    const baseRepByQuarter = {
+      Q3: 4,
+      Q4: 5,
+      Q2: 6,
+      Q1: 8,
+    };
+    const baseRep =
+      baseRepByQuarter[state?.player?.quarter] ?? baseRepByQuarter.Q3;
+    let bonusRep = 0;
+
+    if (state.expenseReportActive) bonusRep += Math.min(10, baseRep);
+
+    const statCtx = getStatCtx(state);
+    const repStats =
+      statCtx && state.player
+        ? ReplyAllEngine.stats.computeUnitStats(statCtx, state.player)
+        : state.player || {};
+    if (repStats.repBonus) bonusRep += repStats.repBonus;
+    if (repStats.endRep) bonusRep += repStats.endRep;
+
+    const ccRepBonus = (state.player?.buffs || [])
+      .filter((b) => b.usedBy === state.player.name && b.repBonus)
+      .reduce((sum, b) => sum + b.repBonus, 0);
+    bonusRep += ccRepBonus;
+
+    const ccEndRepBonus = (state.player?.buffs || [])
+      .filter((b) => b.usedBy === state.player.name && b.endRep)
+      .reduce((sum, b) => sum + b.endRep, 0);
+    bonusRep += ccEndRepBonus;
+
+    const hasMeetingMaestro = (state.player?.signatures || []).some(
+      (s) => s && s.id === "meeting_maestro",
+    );
+    if (hasMeetingMaestro) {
+      const ownedBuffs = (state.player?.buffs || []).filter(
+        (b) => b.usedBy === state.player.name,
+      ).length;
+      bonusRep += ownedBuffs * 2;
+    }
+
+    const interestRep = Math.min(5, Math.floor((state.player?.reputation || 0) / 5));
+    const winsRep = Math.max(0, state.player?.currentWins || 0) * 2;
+    const flooredBonus = Math.floor(bonusRep);
+    const totalRep = baseRep + flooredBonus + interestRep + winsRep;
+    return {
+      baseRep,
+      bonusRep: flooredBonus,
+      interestRep,
+      winsRep,
+      totalRep,
+      upgrades: { ...(state.roundEndUpgrades || {}) },
+    };
+  }
+
+  function applySummaryRewards(state, summary, helpers = {}) {
+    if (!summary) return state;
+    const effectsResult = runUnitEffects(
+      state,
+      state.player,
+      "rep_adjust",
+      { summary },
+      helpers,
+    );
+    const repAward =
+      effectsResult && typeof effectsResult.repAward === "number"
+        ? effectsResult.repAward
+        : summary.totalRep || 0;
+    summary.totalRep = repAward;
+    state.player.reputation = (state.player.reputation || 0) + repAward;
+    state.missionActive = false;
+    state.gameOver = false;
+    state.lossReason = null;
+    state.isProcessing = false;
+    state.turn = 0;
+    return state;
+  }
+
+  function prepareShopState(state, helpers = {}) {
+    if (state.player && Array.isArray(state.player.buffs)) state.player.buffs = [];
+    (state.opponents || []).forEach((o) => {
+      if (Array.isArray(o.buffs)) o.buffs = [];
+    });
+    state.shop = state.shop || { directItems: [], packs: [], rerollCount: 0 };
+    state.shop.rerollCount = 0;
+    runUnitEffects(state, state.player, "shop_enter", {}, helpers);
+    enterShop(state);
+    return state;
+  }
+
+  function advanceAfterSummary(state, data = {}) {
+    const missions = data?.missions || MISSIONS;
+    const isFinal = (state.currentMissionIndex || 0) >= missions.length - 1;
+    if (isFinal) {
+      state.gameWon = true;
+      state.gameOver = true;
+      state.lossReason = null;
+      return { isFinal: true, nextMissionIndex: state.currentMissionIndex || 0 };
+    }
+    const next = Math.min((state.currentMissionIndex || 0) + 1, missions.length - 1);
+    state.currentMissionIndex = next;
+    return { isFinal: false, nextMissionIndex: next };
+  }
+
+  function advanceQuarterWithPromotion(state) {
+    const quarter = advanceQuarter(state);
+    const needsPromotion = quarter === "Q2";
+    let nextTitle = null;
+    if (needsPromotion) {
+      nextTitle = checkPromotion(state);
+      if (nextTitle) applyPromotion(state, nextTitle.id);
+    }
+    return { quarter, needsPromotion, nextTitle };
+  }
+
+  function getPromotionStats(state) {
+    const t = state?.player?.title || null;
+    if (!t) return null;
+    return {
+      titleId: t.id || null,
+      titleName: t.name || "",
+      sigLimit: t.sigLimit ?? 0,
+      addressLimit: t.addressLimit ?? 0,
+      numCCperCCaction: t.numCCperCCaction ?? 1,
+    };
   }
 
   function checkWinLoss(state, data) {
@@ -3088,6 +3380,734 @@
     logBccGains,
   };
 
+  // ---------- Playflow Helpers ----------
+  function formatTurnTime(turn) {
+    const baseMinutes = 9 * 60;
+    const totalMinutes = baseMinutes + Math.max(0, turn || 0) * 15;
+    const breakStart = 12 * 60;
+    const breakEnd = 13 * 60 + 15;
+    const adjustedMinutes =
+      totalMinutes > breakStart
+        ? totalMinutes + (breakEnd - breakStart)
+        : totalMinutes;
+    let h = Math.floor(adjustedMinutes / 60);
+    const m = adjustedMinutes % 60;
+    const suffix = h >= 12 ? "PM" : "AM";
+    if (h > 12) h -= 12;
+    if (h === 0) h = 12;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} ${suffix}`;
+  }
+
+  function getMissionHeaderSubject(mission) {
+    const subject = mission && mission.subject ? mission.subject : "Thread";
+    const turns = mission && typeof mission.turns === "number" ? mission.turns : 0;
+    return `Outlook Express - ${subject} (${formatTurnTime(turns)})`;
+  }
+
+  function getMissionSubSubject(mission) {
+    const subject = mission && mission.subject ? mission.subject : "Thread";
+    const turns = mission && typeof mission.turns === "number" ? mission.turns : 0;
+    return `${subject} (due by ${formatTurnTime(turns)})`;
+  }
+
+  function formatMissionIntro(mission, player, opponents) {
+    let intro = mission?.intro || "";
+    intro = intro.replace(/{playerName}/g, player?.name || "Employee");
+    (opponents || []).forEach((opp, idx) => {
+      intro = intro.replace(new RegExp(`{opp${idx}}`, "g"), opp?.name || "Stakeholder");
+    });
+    return intro;
+  }
+
+  function buildMessageEntry(state, from, to, subject, body, classes = "") {
+    return {
+      from,
+      to,
+      subject,
+      body,
+      classes,
+      time: formatTurnTime(state?.turn || 0),
+      isIntro: classes.includes("intro-message"),
+    };
+  }
+
+  function addMessageEntry(state, entry) {
+    if (!Array.isArray(state.messageLogEntries)) state.messageLogEntries = [];
+    state.messageLogEntries.unshift(entry);
+    return entry;
+  }
+
+  function buildInboxRows(state, mission, spamCount = 16) {
+    const rows = [];
+    for (let i = 0; i < spamCount; i++) {
+      const botNum = hashSeed(state?.seed || 0, `inbox:${i}`)
+        .toString(36)
+        .slice(0, 5);
+      rows.push({
+        id: `spam-${i}`,
+        from: `bot-${botNum}@junk.co`,
+        subject: SPAM_SUBJECTS[i % SPAM_SUBJECTS.length],
+      });
+    }
+    return {
+      mission: {
+        from: mission?.from || "announcements@gov.org",
+        subject: mission?.subject || "Thread",
+      },
+      spam: rows,
+      statusText: `${324 + ((state?.player?.year || 1) * 4)} Messages, 1 Unread`,
+    };
+  }
+
+  function getAvailablePlayerCcContacts(state) {
+    return (state?.player?.addressBook || [])
+      .map((id) => CONTACTS.find((c) => c.id === id))
+      .filter((c) => c && !isContactInLoop(state, c.id) && !isContactImplicated(state, c));
+  }
+
+  function collectDefeats(state, byPlayer, attacker, helpers = {}) {
+    (state.opponents || []).forEach((o) => {
+      if (o.hp > 0) return;
+      if (o.isDefeated) return;
+      handleOpponentDefeat(state, o, byPlayer, attacker, helpers);
+    });
+  }
+
+  function markDefeatIfPlayerDown(state) {
+    if ((state?.player?.hp || 0) <= 0) {
+      state.gameOver = true;
+      state.missionActive = false;
+      state.lossReason = "defeat";
+    }
+  }
+
+  function applyLeverage(state, actionType, baseGain) {
+    const cap = typeof LEVERAGE_MAX === "number" ? LEVERAGE_MAX : 8;
+    const gain = getPlayerLeverageGain(state, actionType, baseGain);
+    state.player.ult = Math.min(cap, (state.player.ult || 0) + gain);
+    return gain;
+  }
+
+  function resolvePlayerCcAction(state, targetId, contactId, helpers = {}) {
+    const target =
+      (state.opponents || []).find((o) => o.id === targetId && o.hp > 0) ||
+      (state.opponents || []).find((o) => o.hp > 0) ||
+      null;
+    if (!target) return { ok: false, reason: "missing_target" };
+    const available = getAvailablePlayerCcContacts(state);
+    if (!available.length) return { ok: false, reason: "no_contacts" };
+    const chosen =
+      available.find((c) => c.id === contactId) || available[0];
+    const buff = addContactBuff(state, target, chosen, state.player.name, helpers);
+    if (!buff) return { ok: false, reason: "buff_failed" };
+    applyLeverage(state, "reply_to", 0);
+    addMessageEntry(
+      state,
+      buildMessageEntry(
+        state,
+        state.player.name,
+        target.name,
+        "Looping In Contact",
+        `I am looping in <strong>${chosen.name}</strong> for this thread.`,
+        "border-l-4 border-violet-500 bg-violet-50",
+      ),
+    );
+    return { ok: true, contact: chosen, target };
+  }
+
+  function getAvailablePlayerBccContacts(state) {
+    return (state?.player?.bccContacts || state?.player?.bccs || []).filter(Boolean);
+  }
+
+  function resolvePlayerBccAction(state, bccId, bccIndex, helpers = {}) {
+    const list = state?.player?.bccContacts || state?.player?.bccs || [];
+    if (!Array.isArray(list) || !list.length) return { ok: false, reason: "no_bcc" };
+    let idx = -1;
+    if (typeof bccIndex === "number" && bccIndex >= 0 && bccIndex < list.length) {
+      idx = bccIndex;
+    } else if (bccId) {
+      idx = list.findIndex((b) => b.id === bccId);
+    } else {
+      idx = 0;
+    }
+    if (idx < 0 || idx >= list.length) return { ok: false, reason: "missing_bcc" };
+
+    const bcc = list[idx];
+    list.splice(idx, 1);
+    const player = state.player || {};
+    const addSystemMessage = (subject, body) => {
+      addMessageEntry(
+        state,
+        buildMessageEntry(
+          state,
+          "SYSTEM",
+          player.name || "player",
+          subject,
+          body,
+          "italic text-gray-500 text-[10px]",
+        ),
+      );
+    };
+
+    addMessageEntry(
+      state,
+      buildMessageEntry(
+        state,
+        player.name || "player",
+        "everyone@gov.org",
+        `Help Desk: ${bcc.name || "Internal Service"}`,
+        `[PRIVATE MESSAGE] Sent: ${bcc.logText || bcc.bonus || "Internal service requested."}`,
+        "bg-yellow-100 border-l-4 border-yellow-600",
+      ),
+    );
+
+    runUnitEffects(state, state.player, "bcc_use", { bcc }, helpers);
+    const effect = bcc.effect || null;
+    const details = {};
+
+    if (effect === "doubleRep") {
+      state.expenseReportActive = true;
+      details.doubleRep = true;
+      addSystemMessage("Expense Report Logged", "Mission base reputation will be doubled (max +10 bonus).");
+    } else if (effect === "contactRep") {
+      const rep = Math.min(
+        30,
+        (player.buffs || [])
+          .filter((b) => b.usedBy === player.name)
+          .reduce((sum, b) => sum + Math.floor((getItemCostByType(b.rarity || "common", "contact") || 0) / 2), 0),
+      );
+      state.player.reputation = (state.player.reputation || 0) + rep;
+      details.repGained = rep;
+      addSystemMessage("Networking Success", `Gained +${rep} reputation from current CC sell value.`);
+    } else if (
+      effect === "contactUpgradeHp" ||
+      effect === "contactUpgradeSingle" ||
+      effect === "contactUpgradeEscalate" ||
+      effect === "contactUpgradeRep"
+    ) {
+      const pool = (player.buffs || [])
+        .filter((b) => b.usedBy === player.name)
+        .sort((a, b) => (a.id || "").localeCompare(b.id || ""));
+      if (!pool.length) {
+        addSystemMessage("Upgrade Failed", "No CC'd contacts available to upgrade.");
+      } else {
+        const rngStore = getRngStore(state);
+        const key = rngStore.missionKey(state, MISSIONS, "cc_upgrades");
+        const target = pool[rngStore.int(state, key, pool.length)];
+        const map = {
+          contactUpgradeHp: { subtitle: "Credibility Trained", eff: { maxHp: 10 } },
+          contactUpgradeSingle: { subtitle: "Reply Precision", eff: { singleDmg: 5 } },
+          contactUpgradeEscalate: { subtitle: "Escalation Trained", eff: { escalateDmg: 4 } },
+          contactUpgradeRep: { subtitle: "Recognition Awarded", eff: { repBonus: 3 } },
+        };
+        const upgrade = map[effect];
+        player.contactUpgrades = player.contactUpgrades || {};
+        player.contactUpgrades[target.id] = upgrade;
+        applyContactPermanentBoost(state, player, target.id, upgrade.eff || {});
+        applyBuffStats(target, upgrade.eff || {});
+        target.subtitle = upgrade.subtitle;
+        details.upgrade = { targetId: target.id, subtitle: upgrade.subtitle };
+        addSystemMessage("Contact Upgraded", `[PRIVATE MESSAGE] ${target.name || target.id} has received ${upgrade.subtitle}.`);
+      }
+    } else if (effect === "randomContact") {
+      const pool = CONTACTS.filter((c) => !(player.addressBook || []).includes(c.id) && !c.noShop);
+      const picked = pickWeighted(pool, 1, "contact_create", state)[0] || null;
+      if (!picked) {
+        addSystemMessage("No Referrals Available", "No eligible contacts available for referral.");
+      } else {
+        const target =
+          (state.opponents || []).find((o) => o.id === state.targetId && o.hp > 0) ||
+          (state.opponents || []).find((o) => o.hp > 0) ||
+          null;
+        if (target) addContactBuff(state, target, picked, player.name, helpers);
+        const statCtx = getStatCtx(state);
+        const addrLimit = statCtx
+          ? ReplyAllEngine.stats.getUnitAddressLimit(statCtx, player)
+          : player.addressLimit ?? player.title?.addressLimit ?? 0;
+        const canAdd = (player.addressBook || []).length < addrLimit;
+        if (canAdd) {
+          player.addressBook = player.addressBook || [];
+          player.addressBook.push(picked.id);
+        }
+        details.randomContact = { id: picked.id, addedToAddressBook: canAdd };
+        addSystemMessage(canAdd ? "New Referral" : "Temporary Referral", `${picked.name} was looped in${canAdd ? " and added to your address book." : " for this thread only."}`);
+      }
+    } else if (effect === "randomBccs") {
+      const statCtx = getStatCtx(state);
+      const limit = statCtx
+        ? (ReplyAllEngine.stats.computeUnitStats(statCtx, player).bccLimit || 0)
+        : player.bccLimit ?? 0;
+      const slots = Math.max(0, limit - list.length);
+      if (slots <= 0) {
+        addSystemMessage("Help Desk Capacity Reached", "No additional Help Desk capacity is available.");
+      } else {
+        const owned = new Set(list.map((b) => b.id));
+        const pool = BCC_CONTACTS.filter((b) => b.id !== bcc.id && !owned.has(b.id));
+        const count = Math.min(2, slots, pool.length);
+        const picked = pickWeighted(pool, count, "bcc_create", state).map((b) => ({ ...b }));
+        picked.forEach((b) => list.push(b));
+        if (picked.length) logBccGains(state, picked, "bcc:randomBccs", { sourceBcc: bcc.id });
+        details.addedBcc = picked.map((b) => b.id);
+        addSystemMessage("Help Desk Rollout Complete", picked.length ? `Added ${picked.length} Help Desk contact(s).` : "No eligible Help Desk contacts were available.");
+      }
+    } else if (effect === "statPack") {
+      const upgrades = buildTrainingUpgrades();
+      const picks = pickWeighted(upgrades, 3, "bcc_create", state);
+      const chosen = pickWeighted(picks, Math.min(2, picks.length), "bcc_create", state);
+      chosen.forEach((u) => applyCoachingBoosts(player, u.stats || u));
+      details.statPack = chosen.map((u) => u.id);
+      addSystemMessage("Executive Review", `Applied ${chosen.length} training adjustment(s).`);
+    } else if (effect === "randomSignature") {
+      const sigLimit = player?.title?.sigLimit ?? player.sigLimit ?? 0;
+      if ((player.signatures || []).length >= sigLimit) {
+        addSystemMessage("Signature Provisioning Failed", "Signature capacity reached.");
+      } else {
+        const owned = new Set((player.signatures || []).map((s) => s.id));
+        const pool = SIGNATURES.filter((s) => !owned.has(s.id));
+        const picked = pickWeighted(pool, 1, "signature_create", state)[0] || null;
+        if (!picked) {
+          addSystemMessage("Signature Provisioning Failed", "No eligible signatures available.");
+        } else {
+          player.signatures = player.signatures || [];
+          player.signatures.push(picked);
+          details.randomSignature = picked.id;
+          addSystemMessage("Signature Provisioned", `Added signature: ${picked.name}.`);
+        }
+      }
+    }
+
+    return { ok: true, bcc, effect, details };
+  }
+
+  function executeAiPlan(state, ai, plan, mission, helpers = {}) {
+    if (!plan) return { ok: false, reason: "missing_plan" };
+    const targetId =
+      plan.target?.id === "player"
+        ? "player"
+        : plan.target?.id;
+    if (plan.type === "cc") {
+      const target =
+        targetId === "player"
+          ? state.player
+          : (state.opponents || []).find((o) => o.id === targetId);
+      if (!target) return { ok: false, reason: "missing_target" };
+      const ccTargets = Array.isArray(plan.ccTargets) ? plan.ccTargets : [];
+      ccTargets.forEach((c) => {
+        if (!c) return;
+        addContactBuff(state, target, c, ai.name, helpers);
+      });
+      const aiLine = drawFromLineBag(
+        state,
+        ai,
+        "attack",
+        ai.attacks,
+        "Looping in additional context for this thread.",
+      );
+      addMessageEntry(
+        state,
+        buildMessageEntry(
+          state,
+          ai.name,
+          target.id === "player" ? state.player.name : target.name,
+          "Looping In Contact",
+          aiLine,
+          "bg-violet-50 border-l-4 border-violet-400",
+        ),
+      );
+      return { ok: true, type: "cc" };
+    }
+    const upperType =
+      plan.type === "attack" ? "ATTACK" :
+      plan.type === "escalate" ? "ESCALATE" :
+      plan.type === "deflect" ? "DEFLECT" :
+      plan.type === "promote" ? "PROMOTE" : null;
+    if (!upperType) return { ok: false, reason: "unsupported_plan" };
+    const action = {
+      actorId: ai.id,
+      type: upperType,
+      targetId: targetId || "player",
+    };
+    const result = resolveAction(state, action, helpers);
+    const toText =
+      upperType === "ESCALATE"
+        ? "everyone@gov.org"
+        : targetId === "player"
+          ? state.player.name
+          : ((state.opponents || []).find((o) => o.id === targetId)?.name || "thread");
+    const subject =
+      upperType === "ATTACK" ? "Internal Memo" :
+      upperType === "ESCALATE" ? "Escalation Notice" :
+      upperType === "DEFLECT" ? "Holding Response" : "Self-Promotion";
+    const aiLine =
+      upperType === "DEFLECT"
+        ? drawFromLineBag(
+            state,
+            ai,
+            "deflect",
+            ai.deflectLines,
+            "I am pausing to document this before replying.",
+          )
+        : drawFromLineBag(
+            state,
+            ai,
+            "attack",
+            ai.attacks,
+            "Following up to keep this thread moving.",
+          );
+    let body = aiLine;
+    if (upperType === "ATTACK" && result?.result) {
+      body += `<br><br><strong>Damage to Credibility: -${result.result.dmg}</strong>`;
+    }
+    if (upperType === "ESCALATE" && Array.isArray(result?.results)) {
+      const total = result.results.reduce((acc, r) => acc + (r?.dmg || 0), 0);
+      body += `<br><br><strong>Escalation Impact: -${total}</strong>`;
+    }
+    if (upperType === "PROMOTE") {
+      body += `<br><br><strong>Recovered:</strong> +${result?.heal || 0} Credibility.`;
+    }
+    addMessageEntry(
+      state,
+      buildMessageEntry(
+        state,
+        ai.name,
+        toText,
+        subject,
+        body,
+        upperType === "ESCALATE" ? "bg-yellow-50 border-l-4 border-yellow-400" : "",
+      ),
+    );
+    return result;
+  }
+
+  function runPlayerTurn(state, actionType, options = {}, data = {}, helpers = {}) {
+    attachRuntimeState(state);
+    if (!state || state.gameOver || !state.missionActive) {
+      return { ok: false, reason: "inactive" };
+    }
+
+    const mission = (data?.missions || MISSIONS)[state.currentMissionIndex] || MISSIONS[0];
+    const player = state.player;
+    if (!player) return { ok: false, reason: "missing_player" };
+
+    state.isProcessing = true;
+    state.turn = (state.turn || 0) + 1;
+
+    const statCtx = getStatCtx(state);
+    const maxHp = statCtx
+      ? ReplyAllEngine.stats.getUnitMaxHp(statCtx, player)
+      : player.maxHp ?? player.hp;
+    const passiveHeal = statCtx
+      ? ReplyAllEngine.stats.getUnitTotalHeal(statCtx, player)
+      : 0;
+    player.hp = Math.min(maxHp, (player.hp || 0) + passiveHeal);
+
+    const planned = state.aiPlannedActions || planAiActions(state, helpers);
+    (state.opponents || [])
+      .filter((o) => o.hp > 0)
+      .forEach((ai) => {
+        const plan = planned[ai.id];
+        if (!plan || plan.type !== "deflect") return;
+        if ((ai.deflectChargeReduce || 0) > 0 || (ai.deflectChargeReflect || 0) > 0)
+          return;
+        resolveDeflect(state, ai);
+      });
+
+    const upperType = String(actionType || "").toUpperCase();
+    let playerResult = null;
+    if (upperType === "CC") {
+      playerResult = resolvePlayerCcAction(
+        state,
+        options.targetId || state.targetId,
+        options.contactId,
+        helpers,
+      );
+    } else if (upperType === "BCC") {
+      playerResult = resolvePlayerBccAction(
+        state,
+        options.bccId,
+        options.bccIndex,
+        helpers,
+      );
+    } else {
+      const action = {
+        actorId: "player",
+        type: upperType,
+        targetId: options.targetId || state.targetId,
+      };
+      playerResult = resolveAction(state, action, helpers);
+      if (playerResult && playerResult.ok) {
+        if (upperType === "ATTACK") applyLeverage(state, "reply_to", 2);
+        if (upperType === "ESCALATE") applyLeverage(state, "escalate", 1);
+        if (upperType === "DEFLECT") applyLeverage(state, "deflect", 0);
+        if (upperType === "PROMOTE") applyLeverage(state, "promote", 0);
+      }
+      if (upperType !== "CC") {
+        const missionId = mission?.id || "default";
+        const titleId = player.title?.id || "base";
+        const playerLineKey =
+          upperType === "ATTACK" ? "attack" :
+          upperType === "ESCALATE" ? "escalate" :
+          upperType === "DEFLECT" ? "deflect" :
+          upperType === "PROMOTE" ? "selfPromote" :
+          upperType === "ULT" ? "replyAll" : "attack";
+        const playerLines = getPlayerActionLines(state, playerLineKey, missionId);
+        const playerLine = drawFromLineBag(
+          state,
+          player,
+          getPlayerLineBagKey(playerLineKey, missionId, titleId),
+          playerLines,
+          `${player.name} executed ${upperType}.`,
+        );
+        const subject =
+          upperType === "ATTACK" ? "Reply To" :
+          upperType === "ESCALATE" ? "Escalation Notice" :
+          upperType === "DEFLECT" ? "Holding Response" :
+          upperType === "PROMOTE" ? "FYI: Milestone" :
+          upperType === "ULT" ? "Reply All" : "Action";
+        const toText =
+          upperType === "ESCALATE" || upperType === "ULT"
+            ? "everyone@gov.org"
+            : ((state.opponents || []).find((o) => o.id === (options.targetId || state.targetId))?.name || "thread");
+        let body = playerLine;
+        if (upperType === "ATTACK" && playerResult?.result) {
+          body += `<br><br><strong>Damage to Credibility: -${playerResult.result.dmg}</strong>`;
+        }
+        if (
+          (upperType === "ESCALATE" || upperType === "ULT") &&
+          Array.isArray(playerResult?.results)
+        ) {
+          const total = playerResult.results.reduce((acc, r) => acc + (r?.dmg || 0), 0);
+          body += `<br><br><strong>Total Impact: -${total}</strong>`;
+        }
+        if (upperType === "PROMOTE") {
+          body += `<br><br><strong>Recovered:</strong> +${playerResult?.heal || 0} Credibility.`;
+        }
+        if (upperType === "DEFLECT") {
+          body += `<br><br><strong>Deflection Ready:</strong> Reduce ${player.deflectChargeReduce || 0}, Retaliate ${player.deflectChargeReflect || 0}.`;
+        }
+        addMessageEntry(
+          state,
+          buildMessageEntry(
+            state,
+            player.name,
+            toText,
+            subject,
+            body,
+            upperType === "ESCALATE" ? "bg-orange-50 border-l-4 border-orange-500" : "",
+          ),
+        );
+      }
+    }
+
+    collectDefeats(state, true, player, helpers);
+    markDefeatIfPlayerDown(state);
+
+    if (!state.gameOver) {
+      const alive = (state.opponents || []).filter((o) => o.hp > 0);
+      alive.forEach((ai) => {
+        if (state.gameOver) return;
+        let plan = state.aiPlannedActions?.[ai.id] || null;
+        if (!isPlannedActionValid(state, ai, plan, helpers)) {
+          plan = decideAiAction(state, ai, alive, state.player, helpers);
+        }
+        executeAiPlan(state, ai, plan, mission, helpers);
+        collectDefeats(state, false, ai, helpers);
+        markDefeatIfPlayerDown(state);
+      });
+    }
+
+    clearDeflectCharges(state.player);
+    if (isMissionOverdue(state, mission)) {
+      triggerTimeoutLoss(state);
+    }
+    if (!state.gameOver) {
+      planAiActions(state, helpers);
+    } else {
+      state.aiPlannedActions = {};
+    }
+    state.isProcessing = false;
+    return {
+      ok: true,
+      action: upperType,
+      playerResult,
+      gameOver: !!state.gameOver,
+      lossReason: state.lossReason || null,
+    };
+  }
+
+  function startMissionWithIntro(state, missionId, data = {}, helpers = {}) {
+    attachRuntimeState(state);
+    startMission(state, missionId, data, helpers);
+    const missions = data?.missions || MISSIONS;
+    const mission = missions[state.currentMissionIndex] || missions[0] || null;
+    if (!mission) return { state, mission: null, entry: null };
+    state.messageLogEntries = [];
+    const intro = formatMissionIntro(mission, state.player, state.opponents || []);
+    const entry = buildMessageEntry(
+      state,
+      mission.from,
+      "everyone@gov.org",
+      mission.subject,
+      intro,
+      "border-l-4 border-blue-500 bg-blue-50 intro-message",
+    );
+    addMessageEntry(state, entry);
+    planAiActions(state, helpers);
+    return { state, mission, entry };
+  }
+
+  function getAdjustedTurnMinutes(turn) {
+    const baseMinutes = 9 * 60;
+    const totalMinutes = baseMinutes + Math.max(0, turn || 0) * 15;
+    const breakStart = 12 * 60;
+    const breakEnd = 13 * 60 + 15;
+    return totalMinutes > breakStart
+      ? totalMinutes + (breakEnd - breakStart)
+      : totalMinutes;
+  }
+
+  function createStatCtx(state) {
+    const getUnitStatBlocks = (u) => {
+      const blocks = [];
+      if (!u) return blocks;
+      blocks.push(u);
+      if (u.title) blocks.push(u.title);
+      if (u.salutation) blocks.push(u.salutation);
+      if (u.signOff) blocks.push(u.signOff);
+      if (Array.isArray(u.signatures)) blocks.push(...u.signatures);
+      if (u.coachingBoosts && Object.keys(u.coachingBoosts).length)
+        blocks.push(u.coachingBoosts);
+      if (Array.isArray(u.buffs))
+        blocks.push(...u.buffs.map((b) => (b.eff ? b.eff : b)));
+      return blocks;
+    };
+
+    const getSalutationWindowStats = (u, turnOverride = null) => {
+      if (!u || !u.salutation || !Array.isArray(u.salutation.statWindows))
+        return null;
+      const timeMinutes = getAdjustedTurnMinutes(
+        typeof turnOverride === "number" ? turnOverride : state.turn,
+      );
+      const matches = u.salutation.statWindows.filter((win) => {
+        if (!win || !win.stats) return false;
+        const start =
+          typeof win.start === "number" ? win.start : Number.NEGATIVE_INFINITY;
+        const end =
+          typeof win.end === "number" ? win.end : Number.POSITIVE_INFINITY;
+        return timeMinutes >= start && timeMinutes <= end;
+      });
+      if (!matches.length) return null;
+      const stats = {};
+      matches.forEach((win) => {
+        STAT_FIELDS.forEach((field) => {
+          const value = win.stats[field];
+          if (typeof value === "number") {
+            stats[field] = (stats[field] || 0) + value;
+          }
+        });
+      });
+      return Object.keys(stats).length ? stats : null;
+    };
+
+    const getSalutationPersistentStats = (u) => {
+      if (!u || !u.salutation || !u.salutationBonuses) return null;
+      const stats = u.salutationBonuses[u.salutation.id];
+      if (!stats) return null;
+      const filtered = {};
+      let hasAny = false;
+      STAT_FIELDS.forEach((field) => {
+        const value = stats[field];
+        if (typeof value === "number" && value !== 0) {
+          filtered[field] = value;
+          hasAny = true;
+        }
+      });
+      return hasAny ? filtered : null;
+    };
+
+    const getSignoffPersistentStats = (u) => {
+      if (!u || !u.signOff || !u.signoffBonuses) return null;
+      const stats = u.signoffBonuses[u.signOff.id];
+      if (!stats) return null;
+      const filtered = {};
+      let hasAny = false;
+      STAT_FIELDS.forEach((field) => {
+        const value = stats[field];
+        if (typeof value === "number" && value !== 0) {
+          filtered[field] = value;
+          hasAny = true;
+        }
+      });
+      return hasAny ? filtered : null;
+    };
+
+    const getUnitWinScaleStats = (u) => {
+      if (!u) return null;
+      const wins =
+        typeof u.currentWins === "number"
+          ? u.currentWins
+          : typeof u.wins === "number"
+            ? u.wins
+            : 0;
+      if (!wins) return null;
+      const stats = {};
+      getUnitStatBlocks(u).forEach((block) => {
+        if (!block) return;
+        if (typeof block.winScaleSingleDmg === "number") {
+          stats.singleDmg =
+            (stats.singleDmg || 0) + block.winScaleSingleDmg * wins;
+        }
+        if (typeof block.winScaleSingleDmgMult === "number") {
+          stats.singleDmgMult =
+            (stats.singleDmgMult || 0) + block.winScaleSingleDmgMult * wins;
+        }
+      });
+      return Object.keys(stats).length ? stats : null;
+    };
+
+    return {
+      getUnitStatBlocks,
+      getSalutationWindowStats,
+      getSalutationPersistentStats,
+      getSignoffPersistentStats,
+      getUnitWinScaleStats,
+    };
+  }
+
+  function attachRuntimeState(state) {
+    if (!state || typeof state !== "object") return state;
+    if (
+      !state._statCtx ||
+      typeof state._statCtx.getUnitStatBlocks !== "function" ||
+      typeof state._statCtx.getUnitWinScaleStats !== "function"
+    ) {
+      state._statCtx = createStatCtx(state);
+    }
+    return state;
+  }
+
+  ReplyAllEngine.play = {
+    formatTurnTime,
+    getMissionHeaderSubject,
+    getMissionSubSubject,
+    formatMissionIntro,
+    buildMessageEntry,
+    addMessageEntry,
+    buildInboxRows,
+    getAvailablePlayerCcContacts,
+    getAvailablePlayerBccContacts,
+    createStatCtx,
+    attachRuntimeState,
+    computeSummary,
+    applySummaryRewards,
+    prepareShopState,
+    advanceAfterSummary,
+    advanceQuarterWithPromotion,
+    getPromotionStats,
+    runPlayerTurn,
+    startMissionWithIntro,
+  };
+
   ReplyAllEngine.core = {
     createInitialRunState,
     initRun,
@@ -3151,6 +4171,10 @@
     applySalutationPermanentBoost,
     setSalutationBonus,
     enterShop,
+    getItemCostByType,
+    getOwnedAssets,
+    archiveOwnedItem,
+    getSellRefundForItem,
     rerollShop,
     buyItem,
     openPack,

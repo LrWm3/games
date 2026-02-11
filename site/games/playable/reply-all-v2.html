@@ -18,7 +18,7 @@
 
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
     <script src="./reply-all-consts.js"></script>
     <script src="./reply-all-engine.js"></script>
 
@@ -134,6 +134,35 @@
       .induction-prestige-compact {
         display: block !important;
       }
+      .email-header {
+        background: #e8e8e8;
+        border-bottom: 1px solid #ccc;
+        font-family: sans-serif;
+        font-size: 11px;
+        color: #444;
+      }
+      .email-body {
+        padding: 12px 0;
+        line-height: 1.5;
+        color: #111;
+      }
+      .action-btn.is-disabled {
+        opacity: 0.6;
+      }
+      .momentum-meter {
+        display: grid;
+        grid-template-columns: repeat(8, minmax(0, 1fr));
+        gap: 2px;
+        width: 100%;
+        margin-top: 2px;
+      }
+      .momentum-segment {
+        height: 4px;
+        background: #9ca3af;
+      }
+      .momentum-segment.charged {
+        background: #b91c1c;
+      }
       @media (max-width: 640px) {
         #induction-icon-frame {
           display: none;
@@ -162,6 +191,7 @@
             ReplyAllEngine.start.getEmailFromName("eke vdh"),
           ),
           currentMissionIndex: 0,
+          opponents: [],
           targetId: 1,
           turn: 0,
           lossReason: null,
@@ -182,23 +212,31 @@
       }
 
       function loadMetaStateFromStorage() {
-        try {
-          const raw = localStorage.getItem(META_KEY);
-          return raw ? JSON.parse(raw) : null;
-        } catch (err) {
-          return null;
-        }
+        return ReplyAllEngine.start.loadMeta({
+          onLoadMeta: () => {
+            try {
+              const raw = localStorage.getItem(META_KEY);
+              return raw ? JSON.parse(raw) : null;
+            } catch (err) {
+              return null;
+            }
+          },
+        });
       }
 
       function saveMetaStateToStorage(metaState) {
-        try {
-          localStorage.setItem(META_KEY, JSON.stringify(metaState));
-        } catch (err) {}
+        ReplyAllEngine.start.saveMeta(metaState, {
+          onSaveMeta: (nextMeta) => {
+            try {
+              localStorage.setItem(META_KEY, JSON.stringify(nextMeta));
+            } catch (err) {}
+          },
+        });
       }
 
       function loadSaveFromStorage() {
-        return ReplyAllEngine.core.getSavedGame({
-          onLoadGamePayload: () => {
+        return ReplyAllEngine.start.loadSave({
+          onLoadSave: () => {
             try {
               const raw = localStorage.getItem(SAVE_KEY);
               return raw ? JSON.parse(raw) : null;
@@ -210,8 +248,8 @@
       }
 
       function clearSaveFromStorage() {
-        ReplyAllEngine.core.clearSavedGame({
-          onClearSavedGame: () => {
+        ReplyAllEngine.start.clearSave({
+          onClearSave: () => {
             try {
               localStorage.removeItem(SAVE_KEY);
             } catch (err) {}
@@ -317,6 +355,43 @@
                 )
               : null,
           ),
+        );
+      }
+
+      function DepartmentIcon(props) {
+        const iconId = props.iconId || "executive";
+        const svgProps = {
+          width: "48",
+          height: "48",
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: "#000080",
+          strokeWidth: "1.5",
+        };
+        if (iconId === "it") {
+          return e(
+            "svg",
+            svgProps,
+            e("rect", { x: "2", y: "3", width: "20", height: "14", rx: "2", ry: "2" }),
+            e("line", { x1: "12", y1: "17", x2: "12", y2: "21" }),
+            e("line", { x1: "8", y1: "21", x2: "16", y2: "21" }),
+          );
+        }
+        if (iconId === "finance") {
+          return e(
+            "svg",
+            svgProps,
+            e("circle", { cx: "12", cy: "12", r: "10" }),
+            e("line", { x1: "12", y1: "8", x2: "12", y2: "16" }),
+            e("line", { x1: "8", y1: "12", x2: "16", y2: "12" }),
+          );
+        }
+        return e(
+          "svg",
+          svgProps,
+          e("path", { d: "M3 21h18" }),
+          e("path", { d: "M19 21V10a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v11" }),
+          e("path", { d: "M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4" }),
         );
       }
 
@@ -511,12 +586,15 @@
                         e(
                           "div",
                           { className: "flex flex-col items-center shrink-0" },
-                          e("div", {
-                            id: "induction-icon-frame",
-                            className:
-                              "w-24 h-24 bg-white retro-border-inset flex items-center justify-center mb-3",
-                            dangerouslySetInnerHTML: { __html: dept.icon || "" },
-                          }),
+                          e(
+                            "div",
+                            {
+                              id: "induction-icon-frame",
+                              className:
+                                "w-24 h-24 bg-white retro-border-inset flex items-center justify-center mb-3",
+                            },
+                            e(DepartmentIcon, { iconId: dept.iconId || dept.id }),
+                          ),
                           e(
                             "div",
                             {
@@ -743,32 +821,863 @@
         );
       }
 
-      function RunReadyScreen(props) {
+      function formatTurnTime(turn) {
+        const baseMinutes = 9 * 60;
+        const totalMinutes = baseMinutes + Math.max(0, turn) * 15;
+        const breakStart = 12 * 60;
+        const breakEnd = 13 * 60 + 15;
+        const adjustedMinutes =
+          totalMinutes > breakStart
+            ? totalMinutes + (breakEnd - breakStart)
+            : totalMinutes;
+        let h = Math.floor(adjustedMinutes / 60);
+        const m = adjustedMinutes % 60;
+        const suffix = h >= 12 ? "PM" : "AM";
+        if (h > 12) h -= 12;
+        if (h === 0) h = 12;
+        return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} ${suffix}`;
+      }
+
+      function getMissionHeaderSubject(mission) {
+        const subject = mission && mission.subject ? mission.subject : "Thread";
+        const turns = mission && typeof mission.turns === "number" ? mission.turns : 0;
+        return `Outlook Express - ${subject} (${formatTurnTime(turns)})`;
+      }
+
+      function getMissionSubSubject(mission) {
+        const subject = mission && mission.subject ? mission.subject : "Thread";
+        const turns = mission && typeof mission.turns === "number" ? mission.turns : 0;
+        return `${subject} (due by ${formatTurnTime(turns)})`;
+      }
+
+      function formatMissionIntro(mission, player, opponents) {
+        let intro = mission?.intro || "";
+        intro = intro.replace(/{playerName}/g, player?.name || "Employee");
+        (opponents || []).forEach((opp, idx) => {
+          intro = intro.replace(new RegExp(`{opp${idx}}`, "g"), opp?.name || "Stakeholder");
+        });
+        return intro;
+      }
+
+      function createEmailEntry(from, to, subject, body, turn, classes = "") {
+        return {
+          from,
+          to,
+          subject,
+          body,
+          classes,
+          time: formatTurnTime(turn || 0),
+          isIntro: classes.includes("intro-message"),
+        };
+      }
+
+      function InboxScreen(props) {
+        const mission = props.mission || MISSIONS[0];
+        const inboxRows = ReplyAllEngine.play.buildInboxRows(
+          props.state,
+          mission,
+          16,
+        );
+        const spamRows = inboxRows.spam || [];
         return e(
           "div",
-          { className: "fixed inset-0 z-[90] flex items-center justify-center win-bg p-4" },
+          {
+            className:
+              "fixed inset-0 z-[90] flex items-center justify-center win-bg p-4",
+          },
           e(
             "div",
-            { className: "bg-[#c0c0c0] p-4 retro-border max-w-md w-full" },
-            e("h2", { className: "text-lg font-bold mb-2" }, "Run Initialized"),
+            {
+              className:
+                "bg-[#c0c0c0] retro-border max-w-2xl w-full h-[80dvh] flex flex-col shadow-2xl",
+            },
             e(
               "div",
-              { className: "text-xs font-mono bg-white retro-border-inset p-3 mb-3" },
-              e("div", null, `Name: ${props.state.player?.name || "-"}`),
-              e("div", null, `Email: ${props.state.player?.email || "-"}`),
-              e("div", null, `Department: ${props.state.startConfig?.departmentId || "-"}`),
-              e("div", null, `Prestige: ${(props.state.startConfig?.prestige ?? 0) + 1}`),
-              e("div", null, `Seed: ${props.state.seed ?? "-"}`),
+              {
+                className:
+                  "window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs",
+              },
+              e("span", null, "Outlook Express - Inbox"),
+              e(
+                "div",
+                { className: "flex gap-1" },
+                e(
+                  "button",
+                  {
+                    className:
+                      "w-4 h-4 bg-[#c0c0c0] text-black text-[10px] flex items-center justify-center",
+                  },
+                  "_",
+                ),
+                e(
+                  "button",
+                  {
+                    className:
+                      "w-4 h-4 bg-[#c0c0c0] text-black text-[10px] flex items-center justify-center",
+                  },
+                  "X",
+                ),
+              ),
             ),
+            e(
+              "div",
+              { className: "flex gap-4 px-2 py-0.5 border-b border-gray-500 text-[11px] shrink-0" },
+              e("span", { className: "cursor-default hover:bg-[#000080] hover:text-white px-1" }, "File"),
+              e("span", { className: "cursor-default hover:bg-[#000080] hover:text-white px-1" }, "Edit"),
+              e("span", { className: "cursor-default hover:bg-[#000080] hover:text-white px-1" }, "View"),
+              e("span", { className: "cursor-default hover:bg-[#000080] hover:text-white px-1" }, "Tools"),
+              e("span", { className: "cursor-default hover:bg-[#000080] hover:text-white px-1" }, "Message"),
+              e("span", { className: "cursor-default hover:bg-[#000080] hover:text-white px-1" }, "Help"),
+            ),
+            e(
+              "div",
+              { className: "flex-grow flex overflow-hidden" },
+              e(
+                "div",
+                {
+                  className:
+                    "w-32 bg-[#dfdfdf] border-r border-[#808080] p-2 text-[10px] hidden sm:block",
+                },
+                e("div", { className: "font-bold mb-2" }, "Folders"),
+                e(
+                  "div",
+                  { className: "pl-2 space-y-1" },
+                  e("div", { className: "bg-blue-800 text-white px-1" }, "Inbox"),
+                  e("div", null, "Outbox"),
+                  e("div", null, "Sent Items"),
+                  e("div", null, "Deleted Items"),
+                  e("div", null, "Spam"),
+                ),
+              ),
+              e(
+                "div",
+                { className: "flex-grow flex flex-col bg-white overflow-hidden" },
+                e(
+                  "div",
+                  {
+                    className:
+                      "bg-[#f0f0f0] border-b border-[#808080] grid grid-cols-12 text-[9px] font-bold p-1",
+                  },
+                  e("div", { className: "col-span-1" }, "!"),
+                  e("div", { className: "col-span-5" }, "From"),
+                  e("div", { className: "col-span-6" }, "Subject"),
+                ),
+                e(
+                  "div",
+                  {
+                    className:
+                      "flex-grow overflow-y-auto overflow-x-hidden text-[11px] divide-y divide-gray-100",
+                  },
+                  e(
+                    "button",
+                    {
+                      className:
+                        "w-full text-left grid grid-cols-12 p-2 border-b border-gray-100 bg-blue-50 cursor-pointer hover:bg-blue-200 font-bold border-l-4 border-l-blue-600",
+                      onClick: props.onOpenPrimaryEmail,
+                    },
+                    e("div", { className: "col-span-1 text-red-600" }, "!"),
+                    e("div", { className: "col-span-4 text-blue-800 truncate" }, mission.from),
+                    e("div", { className: "col-span-7 truncate" }, mission.subject),
+                  ),
+                  spamRows.map((row) =>
+                    e(
+                      "div",
+                      {
+                        key: row.id,
+                        className:
+                          "grid grid-cols-12 p-2 border-b border-gray-100 bg-gray-50 text-gray-400 opacity-60",
+                      },
+                      e("div", { className: "col-span-1" }, ""),
+                      e("div", { className: "col-span-4 truncate" }, row.from),
+                      e("div", { className: "col-span-7 truncate" }, row.subject),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            e(
+              "div",
+              {
+                className:
+                  "bg-[#dfdfdf] border-t border-[#808080] p-1 text-[10px] flex justify-between",
+              },
+              e("div", null, inboxRows.statusText || "324 Messages, 1 Unread"),
+              e("div", { className: "flex gap-4" }, e("span", null, "Working Online")),
+            ),
+          ),
+        );
+      }
+
+      function SummaryScreen(props) {
+        const summary = props.summary || {
+          baseRep: 0,
+          bonusRep: 0,
+          interestRep: 0,
+          winsRep: 0,
+          totalRep: 0,
+          upgrades: {},
+        };
+        const upgrades = Object.entries(summary.upgrades || {});
+        return e(
+          "div",
+          {
+            className:
+              "fixed inset-0 z-[120] bg-black/60 flex items-center justify-center p-4",
+          },
+          e(
+            "div",
+            {
+              className:
+                "bg-[#c0c0c0] retro-border max-w-xs w-full shadow-2xl overflow-hidden",
+            },
+            e(
+              "div",
+              {
+                className:
+                  "window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold",
+              },
+              e("span", null, "ARCHIVED THREAD"),
+              e("span", null, "✕"),
+            ),
+            e(
+              "div",
+              { className: "p-4 flex flex-col items-center" },
+              e("h2", { className: "text-xl font-bold terminal-font mb-2" }, "PERFORMANCE METRICS"),
+              e(
+                "div",
+                { className: "w-full bg-white retro-border-inset p-3 space-y-2 text-xs mb-4" },
+                e("div", { className: "flex justify-between" }, e("span", null, "Base Mission Reward:"), e("span", { className: "font-mono" }, `+${summary.baseRep}`)),
+                e("div", { className: "flex justify-between" }, e("span", null, "Additional Bonuses:"), e("span", { className: "font-mono" }, `+${summary.bonusRep}`)),
+                summary.interestRep > 0
+                  ? e("div", { className: "flex justify-between" }, e("span", null, "Reputational Interest:"), e("span", { className: "font-mono" }, `+${summary.interestRep}`))
+                  : null,
+                summary.winsRep > 0
+                  ? e("div", { className: "flex justify-between" }, e("span", null, "Wins Remaining Bonus:"), e("span", { className: "font-mono" }, `+${summary.winsRep}`))
+                  : null,
+                e(
+                  "div",
+                  { className: "border-t border-gray-300 pt-2 flex justify-between font-bold text-[#000080]" },
+                  e("span", null, "TOTAL REP EARNED:"),
+                  e("span", { className: "font-mono text-lg" }, `+${summary.totalRep}`),
+                ),
+                e(
+                  "div",
+                  { className: "border-t border-gray-200 pt-2 space-y-1" },
+                  e("div", { className: "text-[10px] uppercase text-gray-500" }, "Trained Employees"),
+                  upgrades.length
+                    ? upgrades.map(([id, count]) =>
+                        e(
+                          "div",
+                          { key: id, className: "flex justify-between text-[10px] text-gray-700" },
+                          e("span", null, CONTACTS.find((c) => c.id === id)?.name || id),
+                          e("span", null, `x${count}`),
+                        ),
+                      )
+                    : e("div", { className: "text-[10px] text-gray-500 italic" }, "None"),
+                ),
+              ),
+              e(
+                "button",
+                { onClick: props.onGoToPortal, className: "w-full py-2 retro-button font-bold text-sm" },
+                "GO TO PORTAL",
+              ),
+            ),
+          ),
+        );
+      }
+
+      function ShopScreen(props) {
+        const rep = props.state.player?.reputation || 0;
+        const shop = props.state.shop || { directItems: [], packs: [], rerollCount: 0 };
+        const activePackId = props.state.activePackId || null;
+        const activePack = (shop.packs || []).find((p) => p.id === activePackId) || null;
+        const owned = ReplyAllEngine.core.getOwnedAssets(props.state);
+        function getDisplayCost(item) {
+          if (!item) return 0;
+          if (typeof item.cost === "number") return item.cost;
+          return ReplyAllEngine.core.getItemCostByType(
+            item.rarity || "common",
+            item.itemType || "contact",
+          );
+        }
+        function rowLabel(item, itemType) {
+          const refund = ReplyAllEngine.core.getSellRefundForItem(itemType, item);
+          return `${item?.name || item?.id || "Item"} (+${refund} REP)`;
+        }
+        return e(
+          "div",
+          { className: "fixed inset-0 z-[130] win-bg flex flex-col items-stretch p-4" },
+          e(
+            "div",
+            { className: "bg-[#c0c0c0] retro-border shadow-2xl flex flex-col min-h-0 h-full" },
+            e(
+              "div",
+              { className: "window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold shrink-0" },
+              e("span", null, "INTRA-NET: HR PORTAL & EMPLOYEE SERVICES"),
+              e("span", { className: "bg-yellow-400 text-black px-2 rounded-sm ml-auto mr-4" }, `REP:${rep}`),
+              e("button", { onClick: props.onNextQuarter, className: "retro-button text-black text-[10px] py-0 px-2 h-5" }, "NEXT QUARTER >"),
+            ),
+            e(
+              "div",
+              { className: "bg-[#f0f0f0] p-4 flex-grow overflow-y-auto space-y-4" },
+              props.notice
+                ? e(
+                    "div",
+                    { className: "text-[11px] bg-amber-100 border border-amber-300 text-amber-800 px-2 py-1" },
+                    props.notice,
+                  )
+                : null,
+              e(
+                "button",
+                { onClick: props.onReroll, className: "retro-button text-black text-[10px] py-1 px-2 w-full" },
+                "Request Alternates",
+              ),
+              activePack
+                ? e(
+                    "div",
+                    { className: "space-y-2" },
+                    e("div", { className: "text-sm font-bold" }, activePack.name || "Training Pack"),
+                    e("div", { className: "text-[10px] text-gray-600" }, `Choose ${props.state.packsOpen?.[activePack.id]?.picksLeft || 0} more`),
+                    e(
+                      "div",
+                      { className: "space-y-2" },
+                      (activePack.options || []).map((item) =>
+                        e(
+                          "button",
+                          {
+                            key: `${activePack.id}-${item.id}`,
+                            onClick: () => props.onSelectPackItem(activePack.id, item.id),
+                            className: "w-full text-left retro-button p-2",
+                          },
+                          `${item.name} (${item.itemType})`,
+                        ),
+                      ),
+                    ),
+                    e("button", { onClick: props.onClosePack, className: "retro-button text-[10px] px-2 py-1" }, "Take Nothing"),
+                  )
+                : e(
+                    "div",
+                    { className: "grid grid-cols-1 md:grid-cols-2 gap-6" },
+                    e(
+                      "div",
+                      { className: "space-y-2" },
+                      e("h3", { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" }, "Individual Opportunities"),
+                      e(
+                        "div",
+                        { className: "border border-gray-200 bg-white p-2 space-y-2" },
+                        (shop.directItems || [])
+                          .filter((item) => !item.purchased)
+                          .map((item) =>
+                            e(
+                              "button",
+                              {
+                                key: item.id,
+                                onClick: () => props.onBuyItem(item),
+                                className: "w-full text-left retro-button p-2",
+                              },
+                              `${item.name} (${item.itemType}) - ${getDisplayCost(item)} REP`,
+                            ),
+                          ),
+                      ),
+                    ),
+                    e(
+                      "div",
+                      { className: "space-y-2" },
+                      e("h3", { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" }, "Group Trainings"),
+                      e(
+                        "div",
+                        { className: "border border-gray-200 bg-white p-2 space-y-2" },
+                        (shop.packs || [])
+                          .filter((pack) => !pack.purchased)
+                          .map((pack) =>
+                            e(
+                              "button",
+                              {
+                                key: pack.id,
+                                onClick: () => props.onOpenPack(pack),
+                                className: "w-full text-left retro-button p-2",
+                              },
+                              `${pack.name} - ${pack.cost || 0} REP`,
+                            ),
+                          ),
+                      ),
+                    ),
+                    e(
+                      "div",
+                      { className: "space-y-2 md:col-span-2" },
+                      e("h3", { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" }, "Manage Current Assets"),
+                      e(
+                        "div",
+                        { className: "border border-gray-200 bg-white p-2 space-y-2 text-[11px]" },
+                        e("div", { className: "font-bold text-[10px] uppercase text-gray-500" }, "Address Book"),
+                        owned.addressBook.length
+                          ? owned.addressBook.map((item) =>
+                              e(
+                                "div",
+                                { key: `owned-contact-${item.id}`, className: "flex items-center justify-between gap-2 retro-border-inset p-1" },
+                                e("span", { className: "truncate" }, rowLabel(item, "contact")),
+                                e("button", { className: "retro-button text-[10px] px-2 py-1 shrink-0", onClick: () => props.onArchiveOwned("contact", item.id) }, "Archive"),
+                              ),
+                            )
+                          : e("div", { className: "text-[10px] text-gray-500 italic" }, "None"),
+                        e("div", { className: "font-bold text-[10px] uppercase text-gray-500 mt-1" }, "Signatures"),
+                        owned.signatures.length
+                          ? owned.signatures.map((item) =>
+                              e(
+                                "div",
+                                { key: `owned-signature-${item.id}`, className: "flex items-center justify-between gap-2 retro-border-inset p-1" },
+                                e("span", { className: "truncate" }, rowLabel(item, "signature")),
+                                e("button", { className: "retro-button text-[10px] px-2 py-1 shrink-0", onClick: () => props.onArchiveOwned("signature", item.id) }, "Archive"),
+                              ),
+                            )
+                          : e("div", { className: "text-[10px] text-gray-500 italic" }, "None"),
+                        e("div", { className: "font-bold text-[10px] uppercase text-gray-500 mt-1" }, "Greeting"),
+                        owned.salutation
+                          ? e(
+                              "div",
+                              { className: "flex items-center justify-between gap-2 retro-border-inset p-1" },
+                              e("span", { className: "truncate" }, rowLabel(owned.salutation, "salutation")),
+                              e("button", { className: "retro-button text-[10px] px-2 py-1 shrink-0", onClick: () => props.onArchiveOwned("salutation", owned.salutation.id) }, "Archive"),
+                            )
+                          : e("div", { className: "text-[10px] text-gray-500 italic" }, "None"),
+                        e("div", { className: "font-bold text-[10px] uppercase text-gray-500 mt-1" }, "Sign-off"),
+                        owned.signoff
+                          ? e(
+                              "div",
+                              { className: "flex items-center justify-between gap-2 retro-border-inset p-1" },
+                              e("span", { className: "truncate" }, rowLabel(owned.signoff, "signoff")),
+                              e("button", { className: "retro-button text-[10px] px-2 py-1 shrink-0", onClick: () => props.onArchiveOwned("signoff", owned.signoff.id) }, "Archive"),
+                            )
+                          : e("div", { className: "text-[10px] text-gray-500 italic" }, "None"),
+                        e("div", { className: "font-bold text-[10px] uppercase text-gray-500 mt-1" }, "Internal Services"),
+                        owned.bcc.length
+                          ? owned.bcc.map((item, idx) =>
+                              e(
+                                "div",
+                                { key: `owned-bcc-${idx}-${item.id}`, className: "flex items-center justify-between gap-2 retro-border-inset p-1" },
+                                e("span", { className: "truncate" }, rowLabel(item, "bcc")),
+                                e("button", { className: "retro-button text-[10px] px-2 py-1 shrink-0", onClick: () => props.onArchiveOwned("bcc", item.id, idx) }, "Archive"),
+                              ),
+                            )
+                          : e("div", { className: "text-[10px] text-gray-500 italic" }, "None"),
+                      ),
+                    ),
+                  ),
+            ),
+          ),
+        );
+      }
+
+      function PromotionScreen(props) {
+        const promotion = props.promotion || {};
+        return e(
+          "div",
+          { className: "fixed inset-0 z-[125] bg-black/50 flex items-center justify-center p-4" },
+          e(
+            "div",
+            { className: "bg-[#c0c0c0] retro-border max-w-sm w-full p-4" },
+            e("div", { className: "text-xl font-bold terminal-font mb-2 text-[#000080]" }, "PROMOTION"),
+            e("div", { className: "text-sm mb-3" }, `New Title: ${promotion.titleName || "Updated Role"}`),
+            e(
+              "div",
+              { className: "grid grid-cols-3 gap-2 text-center mb-4 text-[10px]" },
+              e("div", { className: "bg-gray-100 retro-border-inset px-2 py-1" }, e("div", { className: "uppercase text-gray-500" }, "Signatures"), e("div", { className: "text-[12px] font-bold" }, String(promotion.sigLimit || 0))),
+              e("div", { className: "bg-gray-100 retro-border-inset px-2 py-1" }, e("div", { className: "uppercase text-gray-500" }, "Address Book"), e("div", { className: "text-[12px] font-bold" }, String(promotion.addressLimit || 0))),
+              e("div", { className: "bg-gray-100 retro-border-inset px-2 py-1" }, e("div", { className: "uppercase text-gray-500" }, "CC per Action"), e("div", { className: "text-[12px] font-bold" }, String(promotion.numCCperCCaction || 1))),
+            ),
+            e("button", { onClick: props.onContinue, className: "w-full retro-button py-2 font-bold" }, "CONTINUE"),
+          ),
+        );
+      }
+
+      function CampaignCompleteScreen(props) {
+        const player = props.player || {};
+        const titleName = player.title?.name || "Executive";
+        return e(
+          "div",
+          { className: "fixed inset-0 z-[140] bg-black/60 flex items-center justify-center p-4" },
+          e(
+            "div",
+            { className: "bg-[#c0c0c0] retro-border max-w-sm w-full p-4" },
+            e("div", { className: "text-xl font-bold terminal-font mb-2 text-[#0f5132]" }, "CAMPAIGN COMPLETE"),
+            e("div", { className: "text-[12px] text-gray-700 mb-3" }, `${player.name || "Employee"} closed every required thread.`),
+            e("div", { className: "text-[11px] mb-1" }, `Role: ${titleName}`),
+            e("div", { className: "text-[11px] mb-1" }, `Reputation: ${player.reputation || 0}`),
+            e("div", { className: "text-[11px] mb-4" }, `Period: ${(player.quarter || "Q3")} - YR ${player.year || 1}`),
+            e("button", { onClick: props.onBackToMenu, className: "w-full retro-button py-2 font-bold" }, "BACK TO MENU"),
+          ),
+        );
+      }
+
+      function GameUIScreen(props) {
+        const mission = props.mission || MISSIONS[0];
+        const player = props.state.player || {};
+        const opponents = props.state.opponents || [];
+        const selectedTarget =
+          opponents.find((o) => o.id === props.state.targetId) || opponents[0] || null;
+        const maxHp = Math.max(1, player.maxHp || player.hp || 1);
+        const hpPct = Math.max(0, Math.min(100, ((player.hp || 0) / maxHp) * 100));
+        return e(
+          "div",
+          {
+            className:
+              "fixed inset-0 z-[95] flex flex-col w-[calc(100%-1rem)] h-[calc(100%-1rem)] max-w-5xl bg-[#c0c0c0] retro-border overflow-hidden m-2",
+          },
+          e(
+            "div",
+            { className: "window-titlebar text-white p-1 flex justify-between items-center shrink-0" },
+            e(
+              "div",
+              { className: "flex items-center gap-2 px-1 min-w-0" },
+              e(
+                "span",
+                { className: "text-xs font-bold truncate min-w-0" },
+                ReplyAllEngine.play.getMissionHeaderSubject(mission),
+              ),
+            ),
+            e(
+              "div",
+              { className: "flex gap-1 pr-1 flex-shrink-0" },
+              e("button", { className: "w-4 h-4 bg-[#c0c0c0] border border-white text-black text-[10px] flex items-center justify-center" }, "_"),
+              e("button", { className: "w-4 h-4 bg-[#c0c0c0] border border-white text-black text-[10px] flex items-center justify-center" }, "X"),
+            ),
+          ),
+          e(
+            "div",
+            { className: "flex gap-4 px-2 py-0.5 border-b border-gray-500 text-[11px] shrink-0" },
             e(
               "button",
               {
-                onClick: props.onBackToMenu,
-                className: "w-full py-2 font-bold retro-button text-[#000080]",
+                className: "cursor-default hover:bg-[#000080] hover:text-white px-1 text-left",
+                onClick: props.onBackToInbox,
               },
-              "Back to Menu",
+              "Inbox",
+            ),
+            e("span", { className: "cursor-default hover:bg-[#000080] hover:text-white px-1" }, "Settings"),
+          ),
+          e(
+            "div",
+            { className: "flex flex-grow overflow-hidden relative" },
+            e(
+              "div",
+              { className: "hidden md:flex w-48 bg-[#dfdfdf] border-r border-[#808080] flex-col shrink-0" },
+              e("div", { className: "p-2 text-[10px] font-bold border-b border-[#808080]" }, "Folders"),
+              e(
+                "div",
+                { className: "p-2 space-y-1 text-[11px]" },
+                e("div", { className: "bg-blue-800 text-white px-1" }, "Inbox (1)"),
+                e("div", { className: "px-1 text-gray-500" }, "Promotions (3)"),
+                e("div", { className: "px-1" }, "Sent Items"),
+                e("div", { className: "px-1" }, "Deleted"),
+              ),
+            ),
+            e(
+              "div",
+              { className: "flex-grow flex flex-col bg-white overflow-hidden" },
+              e(
+                "div",
+                { className: "p-2 bg-[#f0f0f0] border-b border-[#808080] text-[10px] shrink-0 space-y-1" },
+                e(
+                  "div",
+                  { className: "flex items-center gap-2" },
+                  e("span", { className: "font-bold w-4 text-right" }, "To:"),
+                  e(
+                    "div",
+                    { className: "flex gap-1 overflow-x-auto py-0.5" },
+                    opponents.map((opp) => {
+                      const oppMaxHp = Math.max(1, opp.maxHp || opp.hp || 1);
+                      const pct = Math.max(0, Math.min(100, ((opp.hp || 0) / oppMaxHp) * 100));
+                      const isSelected = selectedTarget && selectedTarget.id === opp.id;
+                      return e(
+                        "button",
+                        {
+                          key: `target-${opp.id}`,
+                          onClick: () => props.onSelectTarget(opp.id),
+                          className: `px-2 py-0.5 border text-[9px] font-bold ${isSelected ? "bg-blue-800 text-white" : "bg-white text-gray-900"}`,
+                          title: `${Math.ceil(opp.hp || 0)}/${oppMaxHp}`,
+                        },
+                        `${opp.name} (${Math.round(pct)}%)`,
+                      );
+                    }),
+                  ),
+                ),
+                e(
+                  "div",
+                  { className: "flex gap-2 items-center" },
+                  e("span", { className: "font-bold w-4 text-right" }, "CC:"),
+                  e(
+                    "div",
+                    { className: "flex gap-1 text-gray-400 italic" },
+                    Array.isArray(player.buffs) && player.buffs.length
+                      ? player.buffs.map((b, idx) =>
+                          e("span", { key: `buff-${idx}`, className: "text-gray-700 not-italic" }, b.name || b.id || "CC"),
+                        )
+                      : "No one in loop.",
+                  ),
+                ),
+                e(
+                  "div",
+                  { className: "flex items-center gap-2" },
+                  e("span", { className: "font-bold w-4 text-right" }, "Sub:"),
+                  e(
+                    "div",
+                    { className: "truncate text-gray-700" },
+                    ReplyAllEngine.play.getMissionSubSubject(mission),
+                  ),
+                ),
+              ),
+              e(
+                "div",
+                { className: "flex-grow overflow-y-auto p-3 space-y-6 bg-white font-sans text-sm" },
+                (props.state.messageLogEntries || []).map((entry, idx) =>
+                  e(
+                    "div",
+                    {
+                      key: `log-${idx}-${entry.time || ""}`,
+                      className: `message-entry p-0 border-2 border-gray-100 bg-white shadow-sm ${entry.classes || ""}`,
+                    },
+                    e(
+                      "div",
+                      { className: "email-header p-2" },
+                      e(
+                        "div",
+                        { className: "flex flex-wrap gap-x-3 gap-y-1" },
+                        e("div", null, e("strong", null, "From:"), ` ${entry.from}`),
+                        e("div", null, e("strong", null, "To:"), ` ${entry.to}`),
+                        e("div", null, e("strong", null, "Sent:"), ` Today, ${entry.time || formatTurnTime(props.state.turn || 0)}`),
+                      ),
+                    ),
+                    e("div", {
+                      className: "email-body px-3 py-2 font-serif",
+                      dangerouslySetInnerHTML: { __html: entry.body || "" },
+                    }),
+                  ),
+                ),
+              ),
+              e(
+                "div",
+                { className: "bg-[#dfdfdf] border-t border-[#808080] flex flex-col gap-1 shrink-0" },
+                e(
+                  "div",
+                  {
+                    className: "h-5 w-full border border-[#808080] relative bg-[#e5e7eb] px-2",
+                    style: {
+                      background: `linear-gradient(90deg, hsl(${(hpPct / 100) * 120} 70% 75%) 0%, hsl(${(hpPct / 100) * 120} 70% 75%) ${hpPct}%, #f3f4f6 ${hpPct}%, #f3f4f6 100%)`,
+                    },
+                  },
+                  e(
+                    "div",
+                    { className: "flex items-center justify-between text-[9px] font-bold uppercase text-[#000080] h-full" },
+                    e("span", null, "Credibility"),
+                    e("span", { className: "font-mono" }, `${Math.ceil(player.hp || 0)}/${maxHp}`),
+                  ),
+                ),
+              ),
+              e(
+                "div",
+                { className: "p-2 bg-[#c0c0c0] border-t-1 border-white shrink-0" },
+                e(
+                  "div",
+                  { className: "bg-[#c0c0c0] border border-[#808080] px-1.5 flex gap-px text-[10px] h-7 items-center mb-2" },
+                  e(
+                    "div",
+                    { className: "retro-border-inset px-2.5 flex items-center flex-grow h-5 bg-gray-100 truncate overflow-hidden" },
+                    props.statusText || "Ready.",
+                  ),
+                  e(
+                    "div",
+                    { className: "retro-border-inset px-2.5 flex items-center w-[90px] h-5 bg-gray-100 justify-center flex-shrink-0" },
+                    ReplyAllEngine.play.formatTurnTime(props.state.turn || 0),
+                  ),
+                ),
+                e(
+                  "div",
+                  { className: "grid grid-cols-4 gap-1.5 max-w-lg mx-auto" },
+                  [
+                    { id: "ATTACK", label: "Reply to" },
+                    { id: "ESCALATE", label: "Escalate" },
+                    { id: "CC", label: "Contact CC" },
+                    { id: "BCC", label: "Use BCC" },
+                    { id: "PROMOTE", label: "Self-Promote" },
+                    { id: "DEFLECT", label: "Deflect" },
+                  ].map((action) =>
+                    e(
+                      "button",
+                      {
+                        key: action.id,
+                        disabled: !!props.disabledActions[action.id],
+                        onClick: () => props.onAction(action.id),
+                        onMouseEnter: () => props.onActionHover(action.id),
+                        onMouseLeave: () => props.onActionHover(null),
+                        className: `retro-button py-2 flex flex-col items-center action-btn ${props.disabledActions[action.id] ? "is-disabled" : ""}`,
+                      },
+                      e("span", { className: "text-[11px] font-bold" }, action.label),
+                    ),
+                  ),
+                  e(
+                    "button",
+                    {
+                      disabled: !!props.disabledActions.ULT,
+                      onClick: () => props.onAction("ULT"),
+                      onMouseEnter: () => props.onActionHover("ULT"),
+                      onMouseLeave: () => props.onActionHover(null),
+                      className: `retro-button py-2 flex flex-col items-center action-btn ${props.disabledActions.ULT ? "is-disabled" : ""}`,
+                    },
+                    e("span", { className: "text-[11px] font-bold text-red-800" }, "REPLY ALL"),
+                    e(
+                      "div",
+                      { className: "momentum-meter" },
+                      Array.from({ length: 8 }).map((_, i) =>
+                        e("div", {
+                          key: `ult-${i}`,
+                          className: `momentum-segment ${i < Math.floor(player.ult || 0) ? "charged" : ""}`,
+                        }),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
+          props.ccPickerOpen
+            ? e(
+                "div",
+                {
+                  className: "fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-4",
+                  onClick: props.onCloseCcPicker,
+                },
+                e(
+                  "div",
+                  {
+                    className: "bg-[#c0c0c0] retro-border max-w-sm w-full p-3",
+                    onClick: (evt) => evt.stopPropagation(),
+                  },
+                  e("div", { className: "text-xs font-bold mb-2 uppercase" }, "Select Contact"),
+                  e(
+                    "div",
+                    { className: "max-h-56 overflow-y-auto space-y-1 mb-3" },
+                    props.availableCcContacts.length
+                      ? props.availableCcContacts.map((contact) =>
+                          e(
+                            "button",
+                            {
+                              key: contact.id,
+                              className:
+                                "w-full text-left retro-button text-[11px] px-2 py-1",
+                              onClick: () => props.onPickCc(contact.id),
+                            },
+                            `${contact.name} (${contact.departmentId || "dept"})`,
+                          ),
+                        )
+                      : e(
+                          "div",
+                          { className: "text-[11px] text-gray-600 italic" },
+                          "No available contacts.",
+                        ),
+                  ),
+                  e(
+                    "div",
+                    { className: "flex justify-end" },
+                    e(
+                      "button",
+                      { className: "retro-button text-[11px] px-4 py-1", onClick: props.onCloseCcPicker },
+                      "Close",
+                    ),
+                  ),
+                ),
+              )
+            : null,
+          props.bccPickerOpen
+            ? e(
+                "div",
+                {
+                  className: "fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-4",
+                  onClick: props.onCloseBccPicker,
+                },
+                e(
+                  "div",
+                  {
+                    className: "bg-[#c0c0c0] retro-border max-w-sm w-full p-3",
+                    onClick: (evt) => evt.stopPropagation(),
+                  },
+                  e("div", { className: "text-xs font-bold mb-2 uppercase" }, "Use Internal Service"),
+                  e(
+                    "div",
+                    { className: "max-h-56 overflow-y-auto space-y-1 mb-3" },
+                    props.availableBccContacts.length
+                      ? props.availableBccContacts.map((bcc, idx) =>
+                          e(
+                            "button",
+                            {
+                              key: `${bcc.id}-${idx}`,
+                              className:
+                                "w-full text-left retro-button text-[11px] px-2 py-1",
+                              onClick: () => props.onPickBcc(idx),
+                            },
+                            `${bcc.name}`,
+                          ),
+                        )
+                      : e(
+                          "div",
+                          { className: "text-[11px] text-gray-600 italic" },
+                          "No internal services available.",
+                        ),
+                  ),
+                  e(
+                    "div",
+                    { className: "flex justify-end" },
+                    e(
+                      "button",
+                      { className: "retro-button text-[11px] px-4 py-1", onClick: props.onCloseBccPicker },
+                      "Close",
+                    ),
+                  ),
+                ),
+              )
+            : null,
+          props.outcomeOverlay
+            ? e(
+                "div",
+                {
+                  className:
+                    "fixed inset-0 z-[130] bg-black/50 flex items-center justify-center p-4",
+                },
+                e(
+                  "div",
+                  { className: "bg-[#c0c0c0] retro-border max-w-sm w-full p-4" },
+                  e(
+                    "div",
+                    { className: "text-base font-bold mb-2" },
+                    props.outcomeOverlay.title,
+                  ),
+                  e(
+                    "div",
+                    { className: "text-[12px] text-gray-700 mb-4" },
+                    props.outcomeOverlay.body,
+                  ),
+                  e(
+                    "div",
+                    { className: "flex gap-2 justify-end" },
+                    e(
+                      "button",
+                      {
+                        className: "retro-button text-[11px] px-4 py-1",
+                        onClick: props.onBackToInbox,
+                      },
+                      "Inbox",
+                    ),
+                    e(
+                      "button",
+                      {
+                        className: "retro-button text-[11px] px-4 py-1",
+                        onClick: props.onBackToMenu,
+                      },
+                      "Menu",
+                    ),
+                  ),
+                ),
+              )
+            : null,
         );
       }
 
@@ -783,7 +1692,7 @@
             createInitialState(),
             loadMetaStateFromStorage(),
           );
-          return ensured.state;
+          return ReplyAllEngine.play.attachRuntimeState(ensured.state);
         });
 
         const [activeScreen, setActiveScreen] = React.useState("start");
@@ -791,6 +1700,13 @@
         const [showAdvanced, setShowAdvanced] = React.useState(false);
         const [seedDraft, setSeedDraft] = React.useState("");
         const [resumeSave, setResumeSave] = React.useState(null);
+        const [ccPickerOpen, setCcPickerOpen] = React.useState(false);
+        const [bccPickerOpen, setBccPickerOpen] = React.useState(false);
+        const [hoveredAction, setHoveredAction] = React.useState(null);
+        const [statusText, setStatusText] = React.useState("Ready.");
+        const [summaryData, setSummaryData] = React.useState(null);
+        const [promotionData, setPromotionData] = React.useState(null);
+        const [shopNotice, setShopNotice] = React.useState("");
 
         React.useEffect(() => {
           setSeedDraft(state.startConfig?.seedInput || "");
@@ -817,9 +1733,55 @@
           state,
           department.id,
         );
+        const currentMission = MISSIONS[state.currentMissionIndex] || MISSIONS[0];
+
+        function cloneState(src) {
+          const next = JSON.parse(JSON.stringify(src));
+          if (next && typeof next === "object") {
+            delete next._statCtx;
+            delete next._rngStore;
+          }
+          return next;
+        }
+
+        function persistSave(nextState, screen) {
+          ReplyAllEngine.core.saveGame(nextState, nextState.opponents || [], screen, {
+            onSaveGamePayload: (payload) => {
+              try {
+                localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+              } catch (err) {}
+            },
+          });
+        }
+
+        function getShopNotice(result, fallback) {
+          if (!result || result.ok) return "";
+          const reason = result.reason || "error";
+          if (reason === "rep") return "Not enough REP.";
+          if (reason === "limit") return "Capacity reached for that item type.";
+          if (reason === "owned" || reason === "purchased") return "You already own that item.";
+          if (reason === "not_open") return "Open the pack first.";
+          if (reason === "no_picks") return "No pack picks remaining.";
+          return fallback || "Unable to complete that action.";
+        }
+
+        function startMissionFromInbox() {
+          const nextState = cloneState(state);
+          ReplyAllEngine.play.startMissionWithIntro(
+            nextState,
+            currentMission.id,
+            { missions: MISSIONS, employees: EMPLOYEES },
+            {},
+          );
+          setState(nextState);
+          setStatusText("Thread opened. Pick an action.");
+          setActiveScreen("game");
+          persistSave(nextState, "game-ui");
+        }
 
         function onSignUp() {
           clearSaveFromStorage();
+          setResumeSave(null);
           const ensured = ReplyAllEngine.start.ensureStartState(
             {
               ...state,
@@ -827,7 +1789,7 @@
             },
             metaState,
           );
-          setState(ensured.state);
+          setState(ReplyAllEngine.play.attachRuntimeState(ensured.state));
           setActiveScreen("induction");
         }
 
@@ -843,11 +1805,22 @@
           const ensured = ReplyAllEngine.start.ensureStartState(restoredState, mergedMeta);
           setMetaState(mergedMeta);
           saveMetaStateToStorage(mergedMeta);
-          setState(ensured.state);
+          const hydrated = ReplyAllEngine.play.attachRuntimeState(ensured.state);
+          setState(hydrated);
           setPlayerName(ensured.state.player?.name || "eke vdh");
-          setActiveScreen(
-            save.activeScreen === "induction-screen" ? "induction" : "run-ready",
+          const nextScreen = ReplyAllEngine.start.getUiScreenFromSave(save.activeScreen);
+          setSummaryData(
+            nextScreen === "summary"
+              ? ReplyAllEngine.play.computeSummary(hydrated)
+              : null,
           );
+          setPromotionData(
+            nextScreen === "promotion"
+              ? ReplyAllEngine.play.getPromotionStats(hydrated)
+              : null,
+          );
+          setShopNotice("");
+          setActiveScreen(nextScreen);
         }
 
         function onRotate(dir) {
@@ -907,9 +1880,323 @@
             metaState,
             playerName,
           );
-          setState(prepared.state);
-          setActiveScreen("run-ready");
+          const runState = ReplyAllEngine.play.attachRuntimeState(prepared.state);
+          setState(runState);
+          setStatusText("Ready.");
+          setActiveScreen("inbox");
+          persistSave(runState, "inbox-screen");
         }
+
+        function onOpenPrimaryEmail() {
+          if (state.missionActive) {
+            setActiveScreen("game");
+            persistSave(state, "game-ui");
+            return;
+          }
+          startMissionFromInbox();
+        }
+
+        function onSelectTarget(targetId) {
+          setState((prev) => ({ ...prev, targetId }));
+        }
+
+        function onAction(actionType, extra = {}) {
+          setShopNotice("");
+          if (actionType === "CC" && !extra.contactId) {
+            setCcPickerOpen(true);
+            return;
+          }
+          if (actionType === "BCC" && typeof extra.bccIndex !== "number") {
+            setBccPickerOpen(true);
+            return;
+          }
+          const nextState = cloneState(state);
+          ReplyAllEngine.play.attachRuntimeState(nextState);
+          const result = ReplyAllEngine.play.runPlayerTurn(
+            nextState,
+            actionType,
+            { targetId: nextState.targetId, contactId: extra.contactId || null },
+            { missions: MISSIONS, employees: EMPLOYEES },
+            {
+              onDepartmentUnlock: (deptId) => {
+                if (deptId !== "it") return;
+                const nextMeta = ReplyAllEngine.start.sanitizeMetaState(metaState);
+                if (!nextMeta.departmentUnlocks.it) {
+                  nextMeta.departmentUnlocks.it = true;
+                  setMetaState(nextMeta);
+                  saveMetaStateToStorage(nextMeta);
+                }
+              },
+            },
+          );
+          const unlockResult = ReplyAllEngine.start.applyDepartmentUnlocks(
+            nextState,
+            metaState,
+          );
+          if (unlockResult?.changed) {
+            setMetaState(unlockResult.metaState);
+            saveMetaStateToStorage(unlockResult.metaState);
+          }
+          setCcPickerOpen(false);
+          setBccPickerOpen(false);
+          const winLoss = ReplyAllEngine.core.checkWinLoss(nextState, { missions: MISSIONS });
+          if (result?.gameOver && !result.lossReason && !winLoss.gameWon) {
+            const summary = ReplyAllEngine.play.computeSummary(nextState);
+            ReplyAllEngine.play.applySummaryRewards(nextState, summary);
+            const summaryUnlockResult = ReplyAllEngine.start.applyDepartmentUnlocks(
+              nextState,
+              unlockResult?.metaState || metaState,
+            );
+            if (summaryUnlockResult?.changed) {
+              setMetaState(summaryUnlockResult.metaState);
+              saveMetaStateToStorage(summaryUnlockResult.metaState);
+            }
+            setSummaryData(summary);
+            setState(nextState);
+            setActiveScreen("summary");
+            persistSave(nextState, "summary-screen");
+            setStatusText("Thread archived.");
+            return;
+          }
+          if (winLoss.gameWon) {
+            setState(nextState);
+            setActiveScreen("campaign-complete");
+            persistSave(nextState, "campaign-complete-screen");
+            setStatusText("Campaign complete.");
+            return;
+          }
+          setState(nextState);
+          persistSave(nextState, "game-ui");
+          if (result?.gameOver || winLoss.gameOver) {
+            if (result.lossReason === "timeout") {
+              setStatusText("Thread timed out.");
+            } else if (result.lossReason === "defeat") {
+              setStatusText("You were removed from the thread.");
+            } else if (winLoss.gameWon) {
+              setStatusText("Campaign complete.");
+            } else {
+              setStatusText("Thread archived.");
+            }
+          } else {
+            setStatusText(`Turn ${nextState.turn} resolved.`);
+          }
+        }
+
+        function onGoToPortal() {
+          const nextState = cloneState(state);
+          const step = ReplyAllEngine.play.advanceAfterSummary(nextState, {
+            missions: MISSIONS,
+          });
+          if (step.isFinal) {
+            setState(nextState);
+            setActiveScreen("campaign-complete");
+            setStatusText("Campaign complete.");
+            persistSave(nextState, "campaign-complete-screen");
+            return;
+          }
+          ReplyAllEngine.play.prepareShopState(nextState);
+          setState(nextState);
+          setActiveScreen("shop");
+          persistSave(nextState, "shop-screen");
+        }
+
+        function onBuyItem(item) {
+          const nextState = cloneState(state);
+          ReplyAllEngine.play.attachRuntimeState(nextState);
+          const result = ReplyAllEngine.core.buyItem(nextState, item, {});
+          setShopNotice(getShopNotice(result));
+          if (!result?.ok) return;
+          setState(nextState);
+          persistSave(nextState, "shop-screen");
+        }
+
+        function onReroll() {
+          const nextState = cloneState(state);
+          ReplyAllEngine.play.attachRuntimeState(nextState);
+          const result = ReplyAllEngine.core.rerollShop(nextState);
+          setShopNotice(getShopNotice(result));
+          if (!result?.ok) return;
+          setState(nextState);
+          persistSave(nextState, "shop-screen");
+        }
+
+        function onOpenPack(pack) {
+          const nextState = cloneState(state);
+          ReplyAllEngine.play.attachRuntimeState(nextState);
+          const result = ReplyAllEngine.core.openPack(nextState, pack);
+          setShopNotice(getShopNotice(result));
+          if (!result?.ok) return;
+          setState(nextState);
+          persistSave(nextState, "shop-screen");
+        }
+
+        function onSelectPackItem(packId, itemId) {
+          const nextState = cloneState(state);
+          ReplyAllEngine.play.attachRuntimeState(nextState);
+          const result = ReplyAllEngine.core.selectPackItem(nextState, packId, itemId, {});
+          setShopNotice(getShopNotice(result));
+          if (!result?.ok) return;
+          setState(nextState);
+          persistSave(nextState, "shop-screen");
+        }
+
+        function onClosePack() {
+          const nextState = cloneState(state);
+          ReplyAllEngine.play.attachRuntimeState(nextState);
+          if (nextState.activePackId) {
+            ReplyAllEngine.core.closePack(nextState, nextState.activePackId);
+          }
+          setShopNotice("");
+          setState(nextState);
+          persistSave(nextState, "shop-screen");
+        }
+
+        function onArchiveOwned(itemType, itemId, itemIndex = null) {
+          const nextState = cloneState(state);
+          ReplyAllEngine.play.attachRuntimeState(nextState);
+          const result = ReplyAllEngine.core.archiveOwnedItem(
+            nextState,
+            itemType,
+            itemId,
+            { itemIndex, withRefund: true },
+          );
+          setShopNotice(
+            result?.ok
+              ? `Archived ${result.item?.name || itemType}. +${result.refund || 0} REP`
+              : "Unable to archive that asset.",
+          );
+          if (!result?.ok) return;
+          setState(nextState);
+          persistSave(nextState, "shop-screen");
+        }
+
+        function onNextQuarterFromShop() {
+          const nextState = cloneState(state);
+          const quarterStep = ReplyAllEngine.play.advanceQuarterWithPromotion(nextState);
+          setShopNotice("");
+          setState(nextState);
+          if (quarterStep.needsPromotion && quarterStep.nextTitle) {
+            setPromotionData(ReplyAllEngine.play.getPromotionStats(nextState));
+            setActiveScreen("promotion");
+            persistSave(nextState, "promotion-screen");
+            return;
+          }
+          setActiveScreen("inbox");
+          persistSave(nextState, "inbox-screen");
+        }
+
+        function onContinuePromotion() {
+          setPromotionData(null);
+          setActiveScreen("inbox");
+          persistSave(state, "inbox-screen");
+        }
+
+        function onBackToMenuFromCampaign() {
+          setActiveScreen("start");
+          setSummaryData(null);
+          setPromotionData(null);
+          setShopNotice("");
+          setStatusText("Ready.");
+        }
+
+        const availableCcContacts = ReplyAllEngine.play.getAvailablePlayerCcContacts(
+          state,
+        );
+        const availableBccContacts = ReplyAllEngine.play.getAvailablePlayerBccContacts(
+          state,
+        );
+        const disabledActions = {
+          ATTACK:
+            !!state.isProcessing ||
+            !!state.gameOver ||
+            !state.targetId ||
+            !!state.player?.signOff?.disableReplyTo,
+          ESCALATE: !!state.isProcessing || !!state.gameOver,
+          CC:
+            !!state.isProcessing ||
+            !!state.gameOver ||
+            !availableCcContacts.length ||
+            !state.targetId,
+          BCC:
+            !!state.isProcessing ||
+            !!state.gameOver ||
+            !availableBccContacts.length,
+          PROMOTE:
+            !!state.isProcessing ||
+            !!state.gameOver ||
+            (state.player?.currentWins || 0) <= 0,
+          DEFLECT: !!state.isProcessing || !!state.gameOver,
+          ULT:
+            !!state.isProcessing ||
+            !!state.gameOver ||
+            (state.player?.ult || 0) < 8,
+        };
+
+        const selectedTarget =
+          (state.opponents || []).find((o) => o.id === state.targetId) || null;
+        const statCtx = state._statCtx;
+        const playerDamageSingle =
+          statCtx && state.player
+            ? ReplyAllEngine.stats.getUnitDamage(statCtx, state.player, "single")
+            : 0;
+        const playerDamageEscalate =
+          statCtx && state.player
+            ? ReplyAllEngine.stats.getUnitDamage(statCtx, state.player, "escalate")
+            : 0;
+        const playerDamageUlt =
+          statCtx && state.player
+            ? ReplyAllEngine.stats.getUnitDamage(statCtx, state.player, "replyAll")
+            : 0;
+        const targetDef =
+          statCtx && selectedTarget
+            ? ReplyAllEngine.stats.getUnitFlatDef(statCtx, selectedTarget)
+            : 0;
+
+        const actionHints = {
+          ATTACK: disabledActions.ATTACK
+            ? "Reply to unavailable."
+            : `Reply to ${selectedTarget?.name || "target"} for ~${Math.max(0, Math.floor(playerDamageSingle - targetDef))}.`,
+          ESCALATE: disabledActions.ESCALATE
+            ? "Escalate unavailable."
+            : `Escalate to all stakeholders for ~${Math.floor(playerDamageEscalate)} each.`,
+          CC: disabledActions.CC
+            ? "No valid contacts available."
+            : `Contact CC: ${availableCcContacts.length} available in address book.`,
+          BCC: disabledActions.BCC
+            ? "No internal services available."
+            : `Use internal service: ${availableBccContacts.length} available.`,
+          PROMOTE: disabledActions.PROMOTE
+            ? "Self-Promote unavailable."
+            : "Self-Promote: spend 1 win to recover credibility.",
+          DEFLECT: disabledActions.DEFLECT
+            ? "Deflect unavailable."
+            : "Deflect incoming damage and reflect pressure.",
+          ULT: disabledActions.ULT
+            ? "Reply All requires full leverage."
+            : `Reply All for ~${Math.floor(playerDamageUlt)} to all.`,
+        };
+
+        const computedStatusText =
+          hoveredAction && actionHints[hoveredAction]
+            ? actionHints[hoveredAction]
+            : statusText;
+
+        const outcomeOverlay = state.gameOver
+          ? state.lossReason === "timeout"
+            ? {
+                title: "Deadline Missed",
+                body: "The thread exceeded its due time and closed against you.",
+              }
+            : state.lossReason === "defeat"
+              ? {
+                  title: "Credibility Collapsed",
+                  body: "You were forced out of the thread.",
+                }
+              : {
+                  title: "Thread Archived",
+                  body: "All opposing stakeholders have opted out.",
+                }
+          : null;
 
         if (activeScreen === "start") {
           return e(StartScreen, {
@@ -948,9 +2235,75 @@
           );
         }
 
-        return e(RunReadyScreen, {
+        if (activeScreen === "inbox") {
+          return e(InboxScreen, {
+            state,
+            mission: currentMission,
+            onOpenPrimaryEmail,
+          });
+        }
+
+        if (activeScreen === "summary") {
+          return e(SummaryScreen, {
+            summary: summaryData,
+            onGoToPortal,
+          });
+        }
+
+        if (activeScreen === "shop") {
+          return e(ShopScreen, {
+            state,
+            notice: shopNotice,
+            onBuyItem,
+            onReroll,
+            onOpenPack,
+            onSelectPackItem,
+            onClosePack,
+            onArchiveOwned,
+            onNextQuarter: onNextQuarterFromShop,
+          });
+        }
+
+        if (activeScreen === "promotion") {
+          return e(PromotionScreen, {
+            promotion: promotionData,
+            onContinue: onContinuePromotion,
+          });
+        }
+
+        if (activeScreen === "campaign-complete") {
+          return e(CampaignCompleteScreen, {
+            player: state.player,
+            onBackToMenu: onBackToMenuFromCampaign,
+          });
+        }
+
+        return e(GameUIScreen, {
           state,
-          onBackToMenu: () => setActiveScreen("start"),
+          mission: currentMission,
+          onSelectTarget,
+          onAction,
+          onActionHover: setHoveredAction,
+          disabledActions,
+          statusText: computedStatusText,
+          outcomeOverlay,
+          ccPickerOpen,
+          bccPickerOpen,
+          availableCcContacts,
+          availableBccContacts,
+          onPickCc: (contactId) => onAction("CC", { contactId }),
+          onPickBcc: (bccIndex) => onAction("BCC", { bccIndex }),
+          onCloseCcPicker: () => setCcPickerOpen(false),
+          onCloseBccPicker: () => setBccPickerOpen(false),
+          onBackToInbox: () => {
+            setActiveScreen("inbox");
+            setStatusText("Ready.");
+            persistSave(state, "inbox-screen");
+          },
+          onBackToMenu: () => {
+            setActiveScreen("start");
+            setStatusText("Ready.");
+          },
         });
       }
 

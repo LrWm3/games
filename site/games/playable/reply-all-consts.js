@@ -964,6 +964,7 @@ const START_DEPARTMENTS = [
       Signatures: "None",
       Skillset: "Standard Corporate",
     },
+    iconId: "executive",
     icon: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#000080" stroke-width="1.5"><path d="M3 21h18"></path><path d="M19 21V10a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v11"></path><path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"></path></svg>`,
     start: {
       departmentId: "executive_council_office",
@@ -990,6 +991,7 @@ const START_DEPARTMENTS = [
       Signatures: "33 Tickets Resolved",
       Liability: "-1 Win (Ops)",
     },
+    iconId: "it",
     icon: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#000080" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="12" y1="17" x2="12" y2="21"></line><line x1="8" y1="21" x2="16" y2="21"></line></svg>`,
     start: {
       departmentId: "information_technology",
@@ -1016,6 +1018,7 @@ const START_DEPARTMENTS = [
       Signatures: "None",
       Passive: "Expense Recovery",
     },
+    iconId: "finance",
     icon: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#000080" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>`,
     start: {
       departmentId: "finance",
