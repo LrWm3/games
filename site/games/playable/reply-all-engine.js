@@ -212,6 +212,12 @@
     return stats.retaliation || 0;
   }
 
+  function getUnitMaxHp(ctx, unit, turnOverride = null) {
+    if (!unit) return 0;
+    const stats = computeUnitStats(ctx, unit, turnOverride);
+    return stats.maxHp ?? unit.maxHp ?? unit.hp ?? 0;
+  }
+
   function getUnitFlatDef(ctx, unit) {
     return computeUnitStats(ctx, unit).defFlat;
   }
@@ -244,6 +250,7 @@
     getUnitDamage,
     getUnitDeflectReduce,
     getUnitDeflectReflect,
+    getUnitMaxHp,
     getUnitFlatDef,
     getUnitTotalHeal,
     getUnitSelfPromoteHeal,
@@ -251,6 +258,48 @@
     getUnitEscalateRecover,
     getUnitAddressLimit,
   };
+
+  function getStatCtx(state) {
+    return state?._statCtx || null;
+  }
+
+  function applyUnitDefaults(u) {
+    if (!u) return;
+    if (u.singleDmg == null) u.singleDmg = 10;
+    if (u.escalateDmg == null) u.escalateDmg = 5;
+    if (u.globalDmg == null) u.globalDmg = 0;
+    if (u.singleDmgMult == null) u.singleDmgMult = 0;
+    if (u.escalateDmgMult == null) u.escalateDmgMult = 0;
+    if (u.globalDmgMult == null) u.globalDmgMult = 0;
+    if (u.maxHp == null) u.maxHp = 0;
+    if (u.wins == null) u.wins = 0;
+    if (u.retaliation == null) u.retaliation = 5;
+    if (u.deflect == null || u.deflect === 0) u.deflect = 5;
+    if (u.deflectCharge == null) u.deflectCharge = 0;
+    if (u.deflectChargeReflect == null) u.deflectChargeReflect = 0;
+    if (u.deflectChargeReduce == null) u.deflectChargeReduce = 0;
+    if (u.followUpChance == null) u.followUpChance = 0;
+    if (u.escalateRecoverPerHit == null) u.escalateRecoverPerHit = 0;
+    if (u.selfPromoteHeal == null) u.selfPromoteHeal = 0;
+    if (u.defFlat == null) u.defFlat = 0;
+    if (u.heal == null) u.heal = 0;
+    if (u.levMult == null) u.levMult = 0;
+    if (u.levGainReply == null) u.levGainReply = 0;
+    if (u.levGainEscalate == null) u.levGainEscalate = 0;
+    if (u.levGainDeflect == null) u.levGainDeflect = 0;
+    if (u.levGainPromote == null) u.levGainPromote = 0;
+    if (u.repBonus == null) u.repBonus = 0;
+    if (u.endRep == null) u.endRep = 0;
+    if (u.addressLimit == null) u.addressLimit = 0;
+    if (u.numCCperCCaction == null) u.numCCperCCaction = 1;
+    if (u.bccLimit == null) u.bccLimit = 0;
+    if (u.contactTrainingLimit == null) u.contactTrainingLimit = 3;
+    if (!Array.isArray(u.deflectLines) || u.deflectLines.length === 0) {
+      u.deflectLines = [
+        "I'm pausing to document this thread before responding further.",
+      ];
+    }
+  }
 
   // ----------- Phase 3 core -----------
 
@@ -303,7 +352,7 @@
         ...JSON.parse(JSON.stringify(opponentBaseStats)),
         ...JSON.parse(JSON.stringify(missionOpponent)),
       };
-      if (helpers.applyUnitDefaults) helpers.applyUnitDefaults(clone);
+      applyUnitDefaults(clone);
       if (employee?.id) clone.employeeId = employee.id;
       clone.hp = clone.maxHp;
       clone.buffs = [];
@@ -348,7 +397,7 @@
 
     const p = state.player;
     if (p) {
-      if (helpers.applyUnitDefaults) helpers.applyUnitDefaults(p);
+      applyUnitDefaults(p);
       p._lineBags = {};
       p.ult = 0;
       p.buffs = [];
@@ -356,23 +405,16 @@
       p.deflectChargeReflect = 0;
       p.deflectChargeReduce = 0;
       p.threadBonuses = {};
-      if (helpers.computeUnitStats) {
-        const baseStats = helpers.computeUnitStats(p);
-        p.hp = baseStats?.maxHp ?? p.hp;
-        p.currentWins = Math.max(0, Math.floor(baseStats?.wins || 0));
-      } else {
-        p.hp = p.maxHp ?? p.hp;
-        p.currentWins = Math.max(0, Math.floor(p.wins || 0));
-      }
+      const statCtx = getStatCtx(state);
+      const baseStats = statCtx
+        ? ReplyAllEngine.stats.computeUnitStats(statCtx, p)
+        : p;
+      p.hp = baseStats?.maxHp ?? p.maxHp ?? p.hp;
+      p.currentWins = Math.max(0, Math.floor(baseStats?.wins || 0));
     }
 
-    if (helpers.resetContactUsage && Array.isArray(data?.contacts)) {
-      helpers.resetContactUsage(data.contacts);
-    }
-
-    if (helpers.runUnitEffects && p) {
-      helpers.runUnitEffects(p, "thread_start", {});
-    }
+    CONTACTS.forEach((c) => (c.usedBy = null));
+    if (p) runUnitEffects(state, p, "thread_start", {}, helpers);
 
     state.opponents = buildOpponentsForMission(state, mission, data, helpers);
     state.removedTotal = state.opponents.length;
@@ -397,8 +439,7 @@
   function decideAiAction(state, ai, alive, player, helpers = {}) {
     if (!ai || !player) return null;
     const rngStore = getRngStore(state);
-    const combatKey =
-      helpers.combatKey || rngStore.missionKey(state, MISSIONS, "combat");
+    const combatKey = rngStore.missionKey(state, MISSIONS, "combat");
     const playerTarget = {
       id: "player",
       name: player.name,
@@ -425,44 +466,32 @@
     }
 
     const roll = rngStore.next(state, combatKey);
-    const statCtx = state._statCtx || helpers.statCtx;
-    const maxHp =
-      helpers.getUnitMaxHp?.(ai) ??
-      (statCtx && ReplyAllEngine.stats?.computeUnitStats
-        ? ReplyAllEngine.stats.computeUnitStats(statCtx, ai).maxHp
-        : ai.maxHp ?? ai.hp);
+    const statCtx = getStatCtx(state);
+    const maxHp = statCtx
+      ? ReplyAllEngine.stats.getUnitMaxHp(statCtx, ai)
+      : ai.maxHp ?? ai.hp;
     const aiHpBeforePassive = ai.hp;
-    const totalHeal =
-      helpers.getUnitTotalHeal?.(ai) ??
-      (ReplyAllEngine.stats?.getUnitTotalHeal
-        ? ReplyAllEngine.stats.getUnitTotalHeal(statCtx, ai)
-        : 0);
+    const totalHeal = statCtx
+      ? ReplyAllEngine.stats.getUnitTotalHeal(statCtx, ai)
+      : 0;
     ai.hp = Math.min(maxHp, ai.hp + totalHeal);
     if (helpers.logPassiveHeal) {
       helpers.logPassiveHeal(state, ai, aiHpBeforePassive, ai.hp, "ai_turn_start");
     }
 
-    const promoteHeal =
-      helpers.getUnitSelfPromoteHeal?.(ai, 15) ??
-      (ReplyAllEngine.stats?.getUnitSelfPromoteHeal
-        ? ReplyAllEngine.stats.getUnitSelfPromoteHeal(statCtx, ai, 15)
-        : 15);
-    const defFlat =
-      helpers.getUnitFlatDef?.(ai) ??
-      (ReplyAllEngine.stats?.getUnitFlatDef
-        ? ReplyAllEngine.stats.getUnitFlatDef(statCtx, ai)
-        : 0);
+    const promoteHeal = statCtx
+      ? ReplyAllEngine.stats.getUnitSelfPromoteHeal(statCtx, ai, 15)
+      : 15;
+    const defFlat = statCtx
+      ? ReplyAllEngine.stats.getUnitFlatDef(statCtx, ai)
+      : 0;
     const defReduce = ai.deflectChargeReduce || 0;
-    const playerSingle =
-      helpers.getUnitDamage?.(player, "single") ??
-      (ReplyAllEngine.stats?.getUnitDamage
-        ? ReplyAllEngine.stats.getUnitDamage(statCtx, player, "single")
-        : 0);
-    const playerEscalate =
-      helpers.getUnitDamage?.(player, "escalate") ??
-      (ReplyAllEngine.stats?.getUnitDamage
-        ? ReplyAllEngine.stats.getUnitDamage(statCtx, player, "escalate")
-        : 0);
+    const playerSingle = statCtx
+      ? ReplyAllEngine.stats.getUnitDamage(statCtx, player, "single")
+      : 0;
+    const playerEscalate = statCtx
+      ? ReplyAllEngine.stats.getUnitDamage(statCtx, player, "escalate")
+      : 0;
     const dmgSingle = Math.max(0, playerSingle - defFlat - defReduce);
     const dmgEscalate = Math.max(0, playerEscalate - defFlat - defReduce);
     const inOneHitRange = dmgSingle >= ai.hp || dmgEscalate >= ai.hp;
@@ -470,22 +499,18 @@
     const selfPromoteEligible =
       ai.hp < maxHp && ai.wins > 0 && inOneHitRange && canUseFullPromote;
 
-    const isContactInLoop = helpers.isContactInLoop || (() => false);
-    const isContactImplicated = helpers.isContactImplicated || (() => false);
     const availFromBook = (ai.addressBook || [])
       .map((id) => CONTACTS.find((con) => con.id === id))
-      .filter((c) => c && !isContactInLoop(c.id) && !isContactImplicated(c));
+      .filter((c) => c && !isContactInLoop(state, c.id) && !isContactImplicated(state, c));
     if (roll < 0.15 && availFromBook.length > 0) {
-      const numPicks =
-        helpers.computeUnitStats?.(ai)?.numCCperCCaction ??
-        (statCtx && ReplyAllEngine.stats?.computeUnitStats
-          ? ReplyAllEngine.stats.computeUnitStats(statCtx, ai).numCCperCCaction
-          : 1);
+      const numPicks = statCtx
+        ? ReplyAllEngine.stats.computeUnitStats(statCtx, ai).numCCperCCaction
+        : 1;
       const picks = [];
       for (let p = 0; p < numPicks; p++) {
         const currentAvail = (ai.addressBook || [])
           .map((id) => CONTACTS.find((con) => con.id === id))
-          .filter((c) => c && !isContactInLoop(c.id) && !isContactImplicated(c));
+          .filter((c) => c && !isContactInLoop(state, c.id) && !isContactImplicated(state, c));
         if (currentAvail.length === 0) break;
         picks.push(currentAvail[rngStore.int(state, combatKey, currentAvail.length)]);
       }
@@ -544,11 +569,8 @@
       (plan.target.id === "player"
         ? { id: "player" }
         : (state.opponents || []).find((o) => o.id === plan.target.id));
-    const contactInLoop =
-      helpers.isContactInLoop || ((id) => isContactInLoop(state, id));
-    const contactImplicated =
-      helpers.isContactImplicated ||
-      ((c) => isContactImplicated(state, c));
+    const contactInLoop = (id) => isContactInLoop(state, id);
+    const contactImplicated = (c) => isContactImplicated(state, c);
     if (plan.type === "cc") {
       const available = (ai.addressBook || [])
         .map((id) => CONTACTS.find((con) => con.id === id))
@@ -578,12 +600,10 @@
 
   function getPlayerLeverageGain(state, actionType, base, helpers = {}) {
     const p = state.player;
-    const statCtx = state._statCtx || helpers.statCtx;
-    const stats =
-      helpers.computeUnitStats?.(p) ??
-      (ReplyAllEngine.stats?.computeUnitStats
-        ? ReplyAllEngine.stats.computeUnitStats(statCtx, p)
-        : p);
+    const statCtx = getStatCtx(state);
+    const stats = statCtx
+      ? ReplyAllEngine.stats.computeUnitStats(statCtx, p)
+      : p;
     const bonusMap = {
       reply_to: stats.levGainReply || 0,
       escalate: stats.levGainEscalate || 0,
@@ -668,8 +688,7 @@
     const buff = JSON.parse(JSON.stringify(contact));
     buff.usedBy = usedBy;
     if (usedBy === state.player?.name) {
-      const runEffects = helpers.runUnitEffects || runUnitEffects;
-      runEffects(state, state.player, "cc_add", { contact: buff });
+      runUnitEffects(state, state.player, "cc_add", { contact: buff }, helpers);
       const permanentBoost =
         state.player.contactPermanentBoosts &&
         state.player.contactPermanentBoosts[buff.id];
@@ -707,12 +726,10 @@
     target.buffs = target.buffs || [];
     target.buffs.push(buff);
     if (buff.eff && buff.eff.maxHp) {
-      const statCtx = state._statCtx || helpers.statCtx;
-      const maxHp =
-        helpers.getUnitMaxHp?.(target) ??
-        (statCtx && ReplyAllEngine.stats?.computeUnitStats
-          ? ReplyAllEngine.stats.computeUnitStats(statCtx, target).maxHp
-          : target.maxHp ?? target.hp);
+      const statCtx = getStatCtx(state);
+      const maxHp = statCtx
+        ? ReplyAllEngine.stats.getUnitMaxHp(statCtx, target)
+        : target.maxHp ?? target.hp;
       target.hp = Math.min(maxHp, target.hp + buff.eff.maxHp);
     }
     if (helpers.onBuffAdded) helpers.onBuffAdded(buff, target, usedBy);
@@ -778,6 +795,228 @@
     (state.opponents || []).forEach((o) => clearDeflectCharges(o));
   }
 
+  function startQuarterState(state, mission, data = {}, helpers = {}) {
+    state.gameOver = false;
+    state.missionActive = true;
+    state.turn = 0;
+    state.lossReason = null;
+    state.isProcessing = false;
+    state.roundEndUpgrades = {};
+    state.expenseReportActive = false;
+    state.threadEffectFlags = {};
+
+    const p = state.player;
+    if (p) {
+      applyUnitDefaults(p);
+      p._lineBags = {};
+      p.ult = 0;
+      p.buffs = [];
+      p.deflectCharge = 0;
+      p.deflectChargeReflect = 0;
+      p.deflectChargeReduce = 0;
+      p.threadBonuses = {};
+      const statCtx = getStatCtx(state);
+      const baseStats = statCtx
+        ? ReplyAllEngine.stats.computeUnitStats(statCtx, p)
+        : p;
+      const maxHp = baseStats?.maxHp ?? p.maxHp ?? p.hp;
+      p.hp = maxHp;
+      p.currentWins = Math.max(0, Math.floor(baseStats?.wins || 0));
+    }
+
+    if (state.analytics) {
+      state.analytics.lastRoundRep = state.player?.reputation;
+    }
+
+    CONTACTS.forEach((c) => (c.usedBy = null));
+
+    if (p) {
+      runUnitEffects(state, p, "thread_start", {}, helpers);
+    }
+
+    const opponents = buildOpponentsForMission(state, mission, data, helpers);
+    state.opponents = opponents;
+    state.removedTotal = opponents.length;
+    state.removedByPlayer = 0;
+    state.targetId = opponents[0]?.id || null;
+
+    return state;
+  }
+
+  function endQuarterState(state) {
+    state.isProcessing = true;
+    state.missionActive = false;
+    state.shopVisitIndex = (state.shopVisitIndex || 0) + 1;
+    return state;
+  }
+
+  function applyRoundEndState(state) {
+    clearDeflectCharges(state.player);
+    state.isProcessing = false;
+    const repAfter = state.player?.reputation ?? 0;
+    const repBefore =
+      state.analytics && typeof state.analytics.lastRoundRep === "number"
+        ? state.analytics.lastRoundRep
+        : repAfter;
+    if (state.analytics) state.analytics.lastRoundRep = repAfter;
+    return {
+      repBefore,
+      repAfter,
+      repDelta: repAfter - repBefore,
+      opponentsRemaining: (state.opponents || []).filter((o) => o.hp > 0).length,
+    };
+  }
+
+  function triggerTimeoutLoss(state) {
+    if (state.gameOver) return state;
+    state.gameOver = true;
+    state.missionActive = false;
+    state.lossReason = "timeout";
+    return state;
+  }
+
+  function isMissionOverdue(state, mission) {
+    const turns = mission && typeof mission.turns === "number" ? mission.turns : 0;
+    return state.turn > turns;
+  }
+
+  function saveGameState(state, helpers = {}) {
+    if (helpers.onSaveGame) helpers.onSaveGame(state);
+  }
+
+  function saveMetaState(metaState, helpers = {}) {
+    if (helpers.onSaveMetaState) helpers.onSaveMetaState(metaState);
+  }
+
+  function getMetaState(helpers = {}) {
+    if (helpers.onLoadMetaState) return helpers.onLoadMetaState();
+    return null;
+  }
+
+  function serializePlayer(player) {
+    if (!player) return player;
+    return {
+      ...player,
+      titleId: player.title ? player.title.id : null,
+      salutationId: player.salutation ? player.salutation.id : null,
+      signOffId: player.signOff ? player.signOff.id : null,
+      signatureIds: player.signatures ? player.signatures.map((s) => s.id) : [],
+      bccIds: player.bccContacts ? player.bccContacts.map((b) => b.id) : [],
+      discoveredSets: player.discoveredSets || [],
+    };
+  }
+
+  function hydratePlayer(saved) {
+    if (!saved) return saved;
+    const title = TITLES.find((t) => t.id === saved.titleId) || TITLES[0];
+    const salutation = saved.salutationId
+      ? SALUTATIONS.find((s) => s.id === saved.salutationId) || null
+      : null;
+    const signOff = saved.signOffId
+      ? SIGNOFFS.find((s) => s.id === saved.signOffId) || null
+      : null;
+    const signatures = Array.isArray(saved.signatureIds)
+      ? saved.signatureIds
+          .map((id) => SIGNATURES.find((s) => s.id === id))
+          .filter(Boolean)
+      : [];
+    const bccContacts = Array.isArray(saved.bccIds)
+      ? saved.bccIds
+          .map((id) => BCC_CONTACTS.find((b) => b.id === id))
+          .filter(Boolean)
+      : [];
+    const player = {
+      ...saved,
+      title,
+      salutation,
+      signOff,
+      signatures,
+      bccContacts,
+      discoveredSets: saved.discoveredSets || [],
+      contactTrainingCount: saved.contactTrainingCount || {},
+      coachingBoosts: saved.coachingBoosts || {},
+    };
+    applyUnitDefaults(player);
+    return player;
+  }
+
+  function serializeShop(shop) {
+    const mapItem = (item) => ({
+      id: item.id,
+      purchased: !!item.purchased,
+      itemType: item.itemType,
+    });
+    return {
+      directItems: (shop.directItems || []).map(mapItem),
+      packs: (shop.packs || []).map((p) => ({
+        ...p,
+        options: (p.options || []).map(mapItem),
+      })),
+    };
+  }
+
+  function hydrateShop(savedShop) {
+    if (!savedShop) return { directItems: [], packs: [] };
+    const getItem = (s) => {
+      let source = [];
+      if (s.itemType === "contact") source = CONTACTS;
+      else if (s.itemType === "signature") source = SIGNATURES;
+      else if (s.itemType === "salutation") source = SALUTATIONS;
+      else if (s.itemType === "signoff") source = SIGNOFFS;
+      else if (s.itemType === "bcc") source = BCC_CONTACTS;
+      else if (s.itemType === "dev") source = getTrainingUpgrades();
+      const found = source.find((item) => item.id === s.id);
+      if (!found) return null;
+      return { ...found, purchased: !!s.purchased, itemType: s.itemType };
+    };
+    return {
+      directItems: (savedShop.directItems || []).map(getItem).filter(Boolean),
+      packs: (savedShop.packs || []).map((p) => ({
+        ...p,
+        options: (p.options || []).map(getItem).filter(Boolean),
+      })),
+    };
+  }
+
+  function buildSavePayload(state, opponents, activeScreen) {
+    return {
+      state: {
+        ...state,
+        player: serializePlayer(state.player),
+        shop: serializeShop(state.shop || {}),
+      },
+      opponents: Array.isArray(opponents) ? opponents : [],
+      activeScreen,
+    };
+  }
+
+  function saveGame(state, opponents, activeScreen, helpers = {}) {
+    const payload = buildSavePayload(state, opponents, activeScreen);
+    if (helpers.onSaveGamePayload) helpers.onSaveGamePayload(payload);
+    else if (helpers.onSaveGame) helpers.onSaveGame(payload);
+    return payload;
+  }
+
+  function getSavedGame(helpers = {}) {
+    if (helpers.onLoadGamePayload) return helpers.onLoadGamePayload();
+    return null;
+  }
+
+  function clearSavedGame(helpers = {}) {
+    if (helpers.onClearSavedGame) helpers.onClearSavedGame();
+  }
+
+  function applySavedGame(save, helpers = {}) {
+    if (!save || !save.state) return null;
+    const nextState = {
+      ...save.state,
+      player: hydratePlayer(save.state.player),
+      shop: hydrateShop(save.state.shop),
+    };
+    if (helpers.onApplySavedGame) helpers.onApplySavedGame(nextState, save);
+    return { state: nextState, opponents: save.opponents || [] };
+  }
+
   function applyPlayerAction(state, action, targetId) {
     return state;
   }
@@ -813,7 +1052,7 @@
         : (state.opponents || []).find((o) => o.id === action.actorId);
     if (!actor) return { ok: false, reason: "missing_actor" };
 
-    const statCtx = state._statCtx || helpers.statCtx;
+    const statCtx = getStatCtx(state);
     const damageType =
       action.type === "ATTACK" ? "single" :
       action.type === "ESCALATE" ? "escalate" :
@@ -825,11 +1064,11 @@
     }
 
     if (action.type === "PROMOTE") {
-      const stats = statCtx && ReplyAllEngine.stats?.computeUnitStats
+      const stats = statCtx
         ? ReplyAllEngine.stats.computeUnitStats(statCtx, actor)
         : actor;
       const maxHp = stats?.maxHp ?? actor.maxHp ?? actor.hp;
-      const heal = ReplyAllEngine.stats?.getUnitSelfPromoteHeal
+      const heal = statCtx
         ? ReplyAllEngine.stats.getUnitSelfPromoteHeal(statCtx, actor, 20)
         : 20;
       actor.currentWins = Math.max(0, (actor.currentWins || 0) - 1);
@@ -846,7 +1085,9 @@
             state,
             actor,
             t,
-            ReplyAllEngine.stats.getUnitDamage(statCtx, actor, damageType),
+            statCtx
+              ? ReplyAllEngine.stats.getUnitDamage(statCtx, actor, damageType)
+              : 0,
             { ignoreDefense: action.type === "ESCALATE" || action.type === "ULT" },
           ),
         );
@@ -862,7 +1103,9 @@
         state,
         actor,
         target,
-        ReplyAllEngine.stats.getUnitDamage(statCtx, actor, damageType),
+        statCtx
+          ? ReplyAllEngine.stats.getUnitDamage(statCtx, actor, damageType)
+          : 0,
         { ignoreDefense: false },
       );
       return { ok: true, action, result };
@@ -928,19 +1171,11 @@
     if (!target) return { dmg: 0, blocked: 0, reflected: 0 };
     const result = resolveDamage(state, attacker, target, rawDamage, options);
     if (result.blocked > 0 && target?.salutation) {
-      if (helpers.runUnitEffects) {
-        helpers.runUnitEffects(state, target, "deflect_proc", {
-          attacker,
-          target,
-          blocked: result.blocked,
-        });
-      } else {
-        runUnitEffects(state, target, "deflect_proc", {
-          attacker,
-          target,
-          blocked: result.blocked,
-        });
-      }
+      runUnitEffects(state, target, "deflect_proc", {
+        attacker,
+        target,
+        blocked: result.blocked,
+      }, helpers);
     }
     return result;
   }
@@ -977,17 +1212,16 @@
         byPlayer,
       });
     }
-    const runEffects = helpers.runUnitEffects || runUnitEffects;
-    runEffects(state, state.player, "stakeholder_opt_out", {
+    runUnitEffects(state, state.player, "stakeholder_opt_out", {
       target: o,
       byPlayer,
       attacker,
-    });
+    }, helpers);
     if (!byPlayer && attacker && attacker.id !== "player") {
-      runEffects(state, state.player, "stakeholder_opt_out_other", {
+      runUnitEffects(state, state.player, "stakeholder_opt_out_other", {
         target: o,
         attacker,
-      });
+      }, helpers);
     }
     if (o.employeeId === "colin_information_technology") {
       if (helpers.onDepartmentUnlock) helpers.onDepartmentUnlock("it", o);
@@ -995,7 +1229,7 @@
     if (byPlayer) {
       state.removedByPlayer = (state.removedByPlayer || 0) + 1;
       o.removedByPlayer = true;
-      runEffects(state, state.player, "remove_stakeholder", { target: o });
+      runUnitEffects(state, state.player, "remove_stakeholder", { target: o }, helpers);
     }
     if (helpers.onDefeat) helpers.onDefeat(o, byPlayer, attacker);
     if (state.targetId === o.id) {
@@ -1004,13 +1238,11 @@
     }
     if ((state.opponents || []).every((opp) => opp.hp <= 0)) {
       if (!state.gameOver) {
-        runEffects(state, state.player, "thread_end", {});
-        const statCtx = state._statCtx || helpers.statCtx;
-        const maxHp =
-          helpers.getUnitMaxHp?.(state.player) ??
-          (statCtx && ReplyAllEngine.stats?.computeUnitStats
-            ? ReplyAllEngine.stats.computeUnitStats(statCtx, state.player).maxHp
-            : state.player.maxHp ?? state.player.hp);
+        runUnitEffects(state, state.player, "thread_end", {}, helpers);
+        const statCtx = getStatCtx(state);
+        const maxHp = statCtx
+          ? ReplyAllEngine.stats.getUnitMaxHp(statCtx, state.player)
+          : state.player.maxHp ?? state.player.hp;
         state.player.hp = maxHp;
         state.gameOver = true;
         if (helpers.onThreadEnd) helpers.onThreadEnd(state);
@@ -1029,12 +1261,10 @@
     } = payload;
     const results = [];
     if (!attacker || !target || target.hp <= 0) return results;
-    const statCtx = state._statCtx || helpers.statCtx;
-    let chance =
-      helpers.getUnitFollowUpChance?.(attacker) ??
-      (ReplyAllEngine.stats?.getUnitFollowUpChance
-        ? ReplyAllEngine.stats.getUnitFollowUpChance(statCtx, attacker)
-        : 0);
+    const statCtx = getStatCtx(state);
+    let chance = statCtx
+      ? ReplyAllEngine.stats.getUnitFollowUpChance(statCtx, attacker)
+      : 0;
     const rngStore = getRngStore(state);
     const rngKey = combatKey || rngStore.missionKey(state, MISSIONS, "combat");
     while (chance > 0 && target && target.hp > 0) {
@@ -1381,7 +1611,13 @@
           if (context.pack.type !== effect.requiresPackType) return;
         }
         if (effect.requiresFullLeverage && unit.ult < LEVERAGE_MAX) return;
-        if (effect.requiresHpFull && unit.hp < (helpers.getUnitMaxHp?.(unit) ?? unit.maxHp ?? unit.hp))
+        if (effect.requiresHpFull) {
+          const statCtx = getStatCtx(state);
+          const maxHp = statCtx
+            ? ReplyAllEngine.stats.getUnitMaxHp(statCtx, unit)
+            : unit.maxHp ?? unit.hp;
+          if (unit.hp < maxHp) return;
+        }
           return;
         if (effect.chance != null) {
           const key = helpers.rngKeyForContext?.(state, context) || "misc";
@@ -1473,9 +1709,13 @@
     if (!mergedHelpers.setSalutationBonus)
       mergedHelpers.setSalutationBonus = (unit, sourceId, stats) =>
         setSalutationBonus(unit, sourceId, stats);
-    if (!mergedHelpers.getUnitMaxHp && state?._statCtx) {
-      mergedHelpers.getUnitMaxHp = (u) =>
-        ReplyAllEngine.stats.computeUnitStats(state._statCtx, u).maxHp;
+    if (!mergedHelpers.getUnitMaxHp) {
+      mergedHelpers.getUnitMaxHp = (u) => {
+        const statCtx = getStatCtx(state);
+        return statCtx
+          ? ReplyAllEngine.stats.getUnitMaxHp(statCtx, u)
+          : u?.maxHp ?? u?.hp ?? 0;
+      };
     }
     if (!mergedHelpers.rngKeyForContext) {
       mergedHelpers.rngKeyForContext = (s, ctx) => {
@@ -1521,8 +1761,8 @@
     if (item.itemType === "contact") {
       if ((p.addressBook || []).includes(item.id)) return { ok: false, reason: "owned" };
       let limit = p.addressLimit ?? 0;
-      const statCtx = helpers.statCtx || state._statCtx;
-      if (statCtx && ReplyAllEngine.stats?.computeUnitStats) {
+      const statCtx = getStatCtx(state);
+      if (statCtx) {
         const stats = ReplyAllEngine.stats.computeUnitStats(statCtx, p);
         if (stats && typeof stats.addressLimit === "number") limit = stats.addressLimit;
       }
@@ -1537,8 +1777,8 @@
       // always allowed (replace)
     } else if (item.itemType === "bcc") {
       let limit = p.bccLimit ?? 0;
-      const statCtx = helpers.statCtx || state._statCtx;
-      if (statCtx && ReplyAllEngine.stats?.computeUnitStats) {
+      const statCtx = getStatCtx(state);
+      if (statCtx) {
         const stats = ReplyAllEngine.stats.computeUnitStats(statCtx, p);
         if (stats && typeof stats.bccLimit === "number") limit = stats.bccLimit;
       }
@@ -2573,6 +2813,17 @@
     getUnitSelfPromoteLines,
     getDepartmentName,
     formatLoopInText,
+    applyUnitDefaults,
+    serializePlayer,
+    hydratePlayer,
+    serializeShop,
+    hydrateShop,
+    buildSavePayload,
+    saveGame,
+    getSavedGame,
+    clearSavedGame,
+    applySavedGame,
+    getMetaState,
     addContactBuff,
     clearDeflectCharges,
     clearOpponentDeflects,
