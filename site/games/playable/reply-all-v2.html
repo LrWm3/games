@@ -2889,6 +2889,39 @@
         const mission = props.mission || MISSIONS[0];
         const player = props.state.player || {};
         const opponents = props.state.opponents || [];
+        const normalizeStakeholderKey = (value) => String(value || "").trim().toLowerCase();
+        const getIdentityTokens = (raw) => {
+          return String(raw || "")
+            .split(/[;,]/)
+            .map((part) => part.trim())
+            .filter(Boolean)
+            .flatMap((part) => {
+              const match = part.match(/<([^>]+)>/);
+              const email = match ? match[1].trim() : "";
+              const nameOnly = part.replace(/<[^>]+>/g, "").trim();
+              return [part, nameOnly, email].filter(Boolean);
+            });
+        };
+        const resolveEntryTargetId = (entry) => {
+          if (!entry || !opponents.length) return null;
+          const pools = [getIdentityTokens(entry.from), getIdentityTokens(entry.to)];
+          for (let i = 0; i < pools.length; i += 1) {
+            const tokens = pools[i];
+            for (let j = 0; j < tokens.length; j += 1) {
+              const token = normalizeStakeholderKey(tokens[j]);
+              const matched = opponents.find((opp) => {
+                const keys = [
+                  normalizeStakeholderKey(opp.id),
+                  normalizeStakeholderKey(opp.name),
+                  normalizeStakeholderKey(opp.email),
+                ];
+                return keys.includes(token);
+              });
+              if (matched && (matched.hp || 0) > 0) return matched.id;
+            }
+          }
+          return null;
+        };
         const selectedTarget =
           opponents.find((o) => o.id === props.state.targetId) || opponents[0] || null;
         const maxHp = Math.max(1, player.maxHp || player.hp || 1);
@@ -3020,28 +3053,34 @@
                 "div",
                 { className: "flex-grow overflow-y-auto p-3 space-y-6 bg-white font-sans text-sm" },
                 (props.state.messageLogEntries || []).map((entry, idx) =>
-                  e(
-                    "div",
-                    {
-                      key: `log-${idx}-${entry.time || ""}`,
-                      className: `message-entry p-0 border-2 border-gray-100 bg-white shadow-sm ${entry.classes || ""}`,
-                    },
-                    e(
+                  (() => {
+                    const entryTargetId = resolveEntryTargetId(entry);
+                    return e(
                       "div",
-                      { className: "email-header p-2" },
+                      {
+                        key: `log-${idx}-${entry.time || ""}`,
+                        className: `message-entry p-0 border-2 border-gray-100 bg-white shadow-sm ${entry.classes || ""} ${
+                          entryTargetId ? "cursor-pointer hover:border-[#000080]" : ""
+                        }`,
+                        onClick: entryTargetId ? () => props.onSelectTarget(entryTargetId) : undefined,
+                      },
                       e(
                         "div",
-                        { className: "flex flex-wrap gap-x-3 gap-y-1" },
-                        e("div", null, e("strong", null, "From:"), ` ${entry.from}`),
-                        e("div", null, e("strong", null, "To:"), ` ${entry.to}`),
-                        e("div", null, e("strong", null, "Sent:"), ` Today, ${entry.time || formatTurnTime(props.state.turn || 0)}`),
+                        { className: "email-header p-2" },
+                        e(
+                          "div",
+                          { className: "flex flex-wrap gap-x-3 gap-y-1" },
+                          e("div", null, e("strong", null, "From:"), ` ${entry.from}`),
+                          e("div", null, e("strong", null, "To:"), ` ${entry.to}`),
+                          e("div", null, e("strong", null, "Sent:"), ` Today, ${entry.time || formatTurnTime(props.state.turn || 0)}`),
+                        ),
                       ),
-                    ),
-                    e("div", {
-                      className: "email-body px-3 py-2 font-serif",
-                      dangerouslySetInnerHTML: { __html: entry.body || "" },
-                    }),
-                  ),
+                      e("div", {
+                        className: "email-body px-3 py-2 font-serif",
+                        dangerouslySetInnerHTML: { __html: entry.body || "" },
+                      }),
+                    );
+                  })(),
                 ),
               ),
               e(
