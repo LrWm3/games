@@ -1410,6 +1410,7 @@
           onSelectPackItem: props.onSelectPackItem,
           onReorderAddressBook: props.onReorderAddressBook,
           onReorderSignatures: props.onReorderSignatures,
+          onReorderBcc: props.onReorderBcc,
         });
         const [detailPopup, setDetailPopup] = React.useState(null);
         const [detailPopupPos, setDetailPopupPos] = React.useState({ left: 8, top: 8 });
@@ -1459,6 +1460,7 @@
             onSelectPackItem: props.onSelectPackItem,
             onReorderAddressBook: props.onReorderAddressBook,
             onReorderSignatures: props.onReorderSignatures,
+            onReorderBcc: props.onReorderBcc,
           };
         }, [
           shop,
@@ -1470,6 +1472,7 @@
           props.onSelectPackItem,
           props.onReorderAddressBook,
           props.onReorderSignatures,
+          props.onReorderBcc,
         ]);
         function getDisplayCost(item) {
           if (!item) return 0;
@@ -2238,9 +2241,7 @@
             onEnd: (evt) => {
               clearDragOverlay();
               clearSlotBuyHint();
-              const toGroup = getGroupName(evt?.to);
-              const fromGroup = getGroupName(evt?.from);
-              if (fromGroup !== "owned-contact" || toGroup !== "owned-contact") return;
+              if (!evt || evt.from !== evt.to) return;
               if (!ownedContactRef.current) return;
               const contactIds = Array.from(
                 ownedContactRef.current.querySelectorAll('[data-item-type="contact"][data-item-id]'),
@@ -2293,9 +2294,7 @@
             onEnd: (evt) => {
               clearDragOverlay();
               clearSlotBuyHint();
-              const toGroup = getGroupName(evt?.to);
-              const fromGroup = getGroupName(evt?.from);
-              if (fromGroup !== "owned-email" || toGroup !== "owned-email") return;
+              if (!evt || evt.from !== evt.to) return;
               if (!ownedEmailRef.current) return;
               const sigIds = Array.from(
                 ownedEmailRef.current.querySelectorAll('[data-item-type="signature"][data-item-id]'),
@@ -2313,7 +2312,7 @@
           addSortable(ownedBccRef, {
             popupSource: "owned-bcc",
             animation: 120,
-            sort: false,
+            sort: true,
             group: {
               name: "owned-bcc",
               pull: true,
@@ -2339,9 +2338,23 @@
             onStart: (evt) => {
               setSellOverlayFromDragEl(evt?.item, "owned-bcc");
             },
-            onEnd: () => {
+            onEnd: (evt) => {
               clearDragOverlay();
               clearSlotBuyHint();
+              if (!evt || evt.from !== evt.to) return;
+              if (!ownedBccRef.current) return;
+              const bccIndices = Array.from(
+                ownedBccRef.current.querySelectorAll('[data-item-type="bcc"][data-item-index]'),
+              )
+                .map((el) => Number(el.dataset.itemIndex))
+                .filter((v) => Number.isFinite(v));
+              if (bccIndices.length) {
+                setTimeout(() => {
+                  if (typeof handlersRef.current.onReorderBcc === "function") {
+                    handlersRef.current.onReorderBcc(bccIndices);
+                  }
+                }, 0);
+              }
             },
           });
           addSortable(sellOverlayRef, {
@@ -3698,6 +3711,40 @@
           nextState.player.addressBook = reordered;
           commitShopMutation(nextState, "");
         }
+        function onReorderBcc(bccIndices) {
+          if (!Array.isArray(bccIndices) || !bccIndices.length) return;
+          const current =
+            state.player?.bccContacts ||
+            state.player?.bccs ||
+            [];
+          if (!current.length) return;
+          const seen = new Set();
+          const reordered = [];
+          bccIndices.forEach((idx) => {
+            if (!Number.isFinite(idx) || idx < 0 || idx >= current.length) return;
+            if (seen.has(idx)) return;
+            const entry = current[idx];
+            if (!entry) return;
+            reordered.push(entry);
+            seen.add(idx);
+          });
+          current.forEach((entry, idx) => {
+            if (!entry || seen.has(idx)) return;
+            reordered.push(entry);
+          });
+          const changed =
+            reordered.length === current.length &&
+            reordered.some((entry, idx) => entry !== current[idx]);
+          if (!changed) return;
+          const nextState = cloneState(state);
+          if (Array.isArray(nextState.player?.bccContacts)) {
+            nextState.player.bccContacts = reordered;
+          }
+          if (Array.isArray(nextState.player?.bccs)) {
+            nextState.player.bccs = reordered;
+          }
+          commitShopMutation(nextState, "");
+        }
 
         function onNextQuarterFromShop() {
           const nextState = cloneState(state);
@@ -3932,6 +3979,7 @@
             onDropEquipFromShop,
             onReorderAddressBook,
             onReorderSignatures,
+            onReorderBcc,
             onNextQuarter: onNextQuarterFromShop,
           });
         }
