@@ -169,6 +169,23 @@
         z-index: 140;
         transform: translate(-50%, -50%);
       }
+      .game-action-drag-proxy .shop-card-item {
+        width: var(--shop-card-width);
+        max-width: var(--shop-card-width);
+        min-width: var(--shop-card-width);
+        height: var(--shop-card-height);
+      }
+      .game-action-drag-popup {
+        position: fixed;
+        z-index: 141;
+        width: 260px;
+        pointer-events: none;
+      }
+      .game-action-detail-popup {
+        position: fixed;
+        z-index: 130;
+        width: 260px;
+      }
       .game-action-dock {
         position: fixed;
         left: 50%;
@@ -3001,10 +3018,48 @@
         const [dragActionId, setDragActionId] = React.useState(null);
         const [isOverEmailDrop, setIsOverEmailDrop] = React.useState(false);
         const [dragPointer, setDragPointer] = React.useState({ x: 0, y: 0 });
+        const [actionDetailPopup, setActionDetailPopup] = React.useState(null);
         const dragAction = dragActionId
           ? actionCards.find((action) => action.id === dragActionId) || null
           : null;
+        const dragDetailText = dragActionId
+          ? (props.actionHints?.[dragActionId] || "No action details.")
+          : "";
+        const dragDetailPos = React.useMemo(() => {
+          if (!dragAction) return null;
+          const padding = 8;
+          const cardWidth = 84;
+          const popupWidth = 260;
+          const popupHeight = 124;
+          const gap = 12;
+          const roomRight = window.innerWidth - dragPointer.x - cardWidth / 2 - padding;
+          const placeRight = roomRight >= popupWidth + gap;
+          let left = placeRight
+            ? dragPointer.x + cardWidth / 2 + gap
+            : dragPointer.x - cardWidth / 2 - gap - popupWidth;
+          let top = dragPointer.y - popupHeight / 2;
+          left = Math.max(padding, Math.min(left, window.innerWidth - popupWidth - padding));
+          top = Math.max(padding, Math.min(top, window.innerHeight - popupHeight - padding));
+          return { left, top };
+        }, [dragAction, dragPointer.x, dragPointer.y]);
         const actionDockTrack = useAdaptiveCardTrack(actionDockRef, actionCards.length);
+
+        const computeActionPopupPos = (anchorRect, popupWidth = 260, popupHeight = 124) => {
+          const padding = 8;
+          const gap = 12;
+          const roomRight = window.innerWidth - anchorRect.right - padding;
+          const roomLeft = anchorRect.left - padding;
+          let left = roomRight >= popupWidth
+            ? anchorRect.right + gap
+            : anchorRect.left - popupWidth - gap;
+          if (roomRight < popupWidth && roomLeft < popupWidth) {
+            left = Math.max(padding, Math.min(anchorRect.left, window.innerWidth - popupWidth - padding));
+          }
+          let top = anchorRect.top + Math.max(0, (anchorRect.height - popupHeight) / 2);
+          top = Math.max(padding, Math.min(top, window.innerHeight - popupHeight - padding));
+          left = Math.max(padding, Math.min(left, window.innerWidth - popupWidth - padding));
+          return { left, top };
+        };
 
         const isPointOverEmailDrop = (clientX, clientY) => {
           const el = emailDropRef.current;
@@ -3028,6 +3083,7 @@
             if (!drag.active && dist > 6) {
               drag.active = true;
               setDragActionId(drag.actionId);
+              setActionDetailPopup(null);
             }
             if (drag.active) {
               setDragPointer({ x: evt.clientX || 0, y: evt.clientY || 0 });
@@ -3071,6 +3127,22 @@
             active: false,
           };
           setDragPointer({ x: evt.clientX || 0, y: evt.clientY || 0 });
+          setActionDetailPopup(null);
+          props.onActionHover(actionId);
+        };
+
+        const onActionCardClick = (actionId, evt) => {
+          if (props.disabledActions?.[actionId]) return;
+          const rect = evt?.currentTarget?.getBoundingClientRect?.();
+          if (!rect) return;
+          if (actionDetailPopup?.id === actionId) {
+            setActionDetailPopup(null);
+            return;
+          }
+          setActionDetailPopup({
+            id: actionId,
+            ...computeActionPopupPos(rect),
+          });
           props.onActionHover(actionId);
         };
         return e(
@@ -3345,10 +3417,7 @@
                       frameStyle: isDisabled
                         ? { background: "#d1d5db", color: "#4b5563" }
                         : { background: "#e5e7eb", color: "#111827" },
-                      onClick: () => {
-                        if (isDisabled) return;
-                        props.onActionHover(action.id);
-                      },
+                      onClick: (evt) => onActionCardClick(action.id, evt),
                       onPointerDown: (evt) => onActionCardPointerDown(action.id, evt),
                     },
                     e("div", { className: "shop-card-name" }, action.label),
@@ -3372,6 +3441,47 @@
                     frameStyle: { background: "#e5e7eb", color: "#111827" },
                   },
                   e("div", { className: "shop-card-name" }, dragAction.label),
+                ),
+              )
+            : null,
+          dragAction && dragDetailPos
+            ? e(
+                "div",
+                {
+                  className: "game-action-drag-popup shop-item-overlay-frame retro-border p-3",
+                  style: { left: `${dragDetailPos.left}px`, top: `${dragDetailPos.top}px` },
+                },
+                e(
+                  "div",
+                  { className: "text-[10px] font-bold uppercase text-[#000080] mb-1" },
+                  actionLabelById[dragAction.id] || dragAction.id,
+                ),
+                e(
+                  "div",
+                  { className: "text-[11px] leading-snug text-gray-800 whitespace-pre-wrap" },
+                  dragDetailText,
+                ),
+              )
+            : null,
+          actionDetailPopup && !dragAction
+            ? e(
+                "div",
+                {
+                  className: "game-action-detail-popup shop-item-overlay-frame retro-border p-3",
+                  style: {
+                    left: `${actionDetailPopup.left}px`,
+                    top: `${actionDetailPopup.top}px`,
+                  },
+                },
+                e(
+                  "div",
+                  { className: "text-[10px] font-bold uppercase text-[#000080] mb-1" },
+                  actionLabelById[actionDetailPopup.id] || actionDetailPopup.id,
+                ),
+                e(
+                  "div",
+                  { className: "text-[11px] leading-snug text-gray-800 whitespace-pre-wrap" },
+                  props.actionHints?.[actionDetailPopup.id] || "No action details.",
                 ),
               )
             : null,
