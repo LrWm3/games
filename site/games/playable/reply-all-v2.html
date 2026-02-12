@@ -2731,11 +2731,6 @@
                                           "div",
                                           null,
                                           e("div", { className: "shop-card-name" }, item.name),
-                                          e(
-                                            "div",
-                                            { className: "text-[8px] uppercase opacity-80 mt-1" },
-                                            item.departmentId ? ReplyAllEngine.core.getDepartmentName(item.departmentId) : "",
-                                          ),
                                         ),
                                       );
                                     })
@@ -3107,12 +3102,12 @@
           }
           return props.actionHints?.[actionId] || "No action details.";
         };
-        const getAddressCardSecondaryText = (card) => {
-          if (!card || card.kind !== "drawer") return "";
-          const item = card.item || {};
+        const getDrawerDetailText = (drawerPayload) => {
+          if (!drawerPayload) return "No additional details.";
+          const item = drawerPayload.item || {};
           const lines = [];
           if (item.description) lines.push(item.description);
-          if (card.itemType === "contact" && item.departmentId) {
+          if (drawerPayload.itemType === "contact" && item.departmentId) {
             const dept = ReplyAllEngine.core.getDepartmentName(item.departmentId);
             if (dept) lines.push(`Department: ${dept}`);
           }
@@ -3122,11 +3117,20 @@
           if (effectText && effectText !== "No listed effect.") {
             lines.push(`Effects: ${effectText}`);
           }
-          return lines.join(" • ");
+          return lines.length ? lines.join("\n\n") : "No additional details.";
         };
-        const dragDetailText = dragActionId ? getActionDetailText(dragActionId) : "";
+        const dragDetailTitle = dragAction
+          ? (actionLabelById[dragAction.id] || dragAction.id)
+          : dragDrawerPayload
+            ? (dragDrawerPayload.itemType === "bcc" ? bccMeta.label : contactMeta.label)
+            : "";
+        const dragDetailText = dragAction
+          ? getActionDetailText(dragAction.id)
+          : dragDrawerPayload
+            ? getDrawerDetailText(dragDrawerPayload)
+            : "";
         const dragDetailPos = React.useMemo(() => {
-          if (!dragAction) return null;
+          if (!activeDrag) return null;
           const padding = 8;
           const cardWidth = 84;
           const popupWidth = 260;
@@ -3141,7 +3145,7 @@
           left = Math.max(padding, Math.min(left, window.innerWidth - popupWidth - padding));
           top = Math.max(padding, Math.min(top, window.innerHeight - popupHeight - padding));
           return { left, top };
-        }, [dragAction, dragPointer.x, dragPointer.y]);
+        }, [activeDrag, dragPointer.x, dragPointer.y]);
         const actionDockTrack = useAdaptiveCardTrack(actionDockRef, displayedActionCards.length);
         const maxAddressAdds = Math.max(
           1,
@@ -3377,6 +3381,21 @@
           setActionDetailPopup(null);
           setStakeholderPopup(null);
         };
+        const onDrawerCardClick = (card, evt) => {
+          const rect = evt?.currentTarget?.getBoundingClientRect?.();
+          if (!rect || !card) return;
+          if (actionDetailPopup?.kind === "drawer" && actionDetailPopup?.id === card.id) {
+            setActionDetailPopup(null);
+            return;
+          }
+          setActionDetailPopup({
+            kind: "drawer",
+            id: card.id,
+            itemType: card.itemType,
+            item: card.item,
+            ...computeActionPopupPos(rect),
+          });
+        };
 
         const onActionCardClick = (actionId, evt) => {
           if (props.disabledActions?.[actionId]) return;
@@ -3391,11 +3410,12 @@
           }
           const rect = evt?.currentTarget?.getBoundingClientRect?.();
           if (!rect) return;
-          if (actionDetailPopup?.id === actionId) {
+          if (actionDetailPopup?.kind === "action" && actionDetailPopup?.id === actionId) {
             setActionDetailPopup(null);
             return;
           }
           setActionDetailPopup({
+            kind: "action",
             id: actionId,
             ...computeActionPopupPos(rect),
           });
@@ -3715,7 +3735,6 @@
                   const isUlt = card.id === "ULT";
                   const isContact = card.itemType === "contact";
                   const isBcc = card.itemType === "bcc";
-                  const secondaryText = !isActionCard ? getAddressCardSecondaryText(card) : "";
                   const headerStyle = isContact
                     ? { background: contactMeta.headerBg, color: contactMeta.headerText }
                     : isBcc
@@ -3737,6 +3756,7 @@
                       frameStyle,
                       onClick: (evt) => {
                         if (isActionCard) onActionCardClick(card.id, evt);
+                        else onDrawerCardClick(card, evt);
                       },
                       onPointerDown: (evt) => {
                         if (isActionCard) {
@@ -3771,38 +3791,7 @@
                             ),
                           ),
                         )
-                      : isContact
-                        ? e(
-                            "div",
-                            null,
-                            e("div", { className: "shop-card-name" }, card.label),
-                            e(
-                              "div",
-                              { className: "text-[8px] uppercase opacity-80 mt-1" },
-                              card.item?.departmentId
-                                ? ReplyAllEngine.core.getDepartmentName(card.item.departmentId)
-                                : "",
-                            ),
-                            secondaryText
-                              ? e(
-                                  "div",
-                                  { className: "text-[8px] opacity-80 mt-1 truncate", title: secondaryText },
-                                  secondaryText,
-                                )
-                              : null,
-                          )
-                        : e(
-                            "div",
-                            null,
-                            e("div", { className: "shop-card-name" }, card.label),
-                            secondaryText
-                              ? e(
-                                  "div",
-                                  { className: "text-[8px] opacity-80 mt-1 truncate", title: secondaryText },
-                                  secondaryText,
-                                )
-                              : null,
-                          ),
+                      : e("div", { className: "shop-card-name" }, card.label),
                   );
                 }),
               ),
@@ -3863,49 +3852,11 @@
                         ? { background: bccMeta.paneBg, color: bccMeta.paneText }
                         : { background: contactMeta.paneBg, color: contactMeta.paneText },
                   },
-                  (() => {
-                    const secondaryText = getAddressCardSecondaryText({
-                      kind: "drawer",
-                      itemType: dragDrawerPayload.itemType,
-                      item: dragDrawerPayload.item,
-                    });
-                    return dragDrawerPayload.itemType === "contact"
-                      ? e(
-                          "div",
-                          null,
-                          e("div", { className: "shop-card-name" }, dragDrawerPayload.item?.name || "Item"),
-                          e(
-                            "div",
-                            { className: "text-[8px] uppercase opacity-80 mt-1" },
-                            dragDrawerPayload.item?.departmentId
-                              ? ReplyAllEngine.core.getDepartmentName(dragDrawerPayload.item.departmentId)
-                              : "",
-                          ),
-                          secondaryText
-                            ? e(
-                                "div",
-                                { className: "text-[8px] opacity-80 mt-1 truncate", title: secondaryText },
-                                secondaryText,
-                              )
-                            : null,
-                        )
-                      : e(
-                          "div",
-                          null,
-                          e("div", { className: "shop-card-name" }, dragDrawerPayload.item?.name || "Item"),
-                          secondaryText
-                            ? e(
-                                "div",
-                                { className: "text-[8px] opacity-80 mt-1 truncate", title: secondaryText },
-                                secondaryText,
-                              )
-                            : null,
-                        );
-                  })(),
+                  e("div", { className: "shop-card-name" }, dragDrawerPayload.item?.name || "Item"),
                 ),
               )
             : null,
-          dragAction && dragDetailPos
+          activeDrag && dragDetailPos
             ? e(
                 "div",
                 {
@@ -3915,7 +3866,7 @@
                 e(
                   "div",
                   { className: "text-[10px] font-bold uppercase text-[#000080] mb-1" },
-                  actionLabelById[dragAction.id] || dragAction.id,
+                  dragDetailTitle,
                 ),
                 e(
                   "div",
@@ -3924,7 +3875,7 @@
                 ),
               )
             : null,
-          actionDetailPopup && !dragAction
+          actionDetailPopup && !activeDrag
             ? e(
                 "div",
                 {
@@ -3937,12 +3888,16 @@
                 e(
                   "div",
                   { className: "text-[10px] font-bold uppercase text-[#000080] mb-1" },
-                  actionLabelById[actionDetailPopup.id] || actionDetailPopup.id,
+                  actionDetailPopup.kind === "drawer"
+                    ? (actionDetailPopup.itemType === "bcc" ? bccMeta.label : contactMeta.label)
+                    : (actionLabelById[actionDetailPopup.id] || actionDetailPopup.id),
                 ),
                 e(
                   "div",
                   { className: "text-[11px] leading-snug text-gray-800 whitespace-pre-wrap" },
-                  getActionDetailText(actionDetailPopup.id),
+                  actionDetailPopup.kind === "drawer"
+                    ? getDrawerDetailText(actionDetailPopup)
+                    : getActionDetailText(actionDetailPopup.id),
                 ),
               )
             : null,
