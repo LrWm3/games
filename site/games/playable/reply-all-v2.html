@@ -1751,7 +1751,7 @@
           const itemIndex = Number.isFinite(parsedIndex) ? parsedIndex : null;
           if (popupSource === "shop-offers") {
             if (isPackOption && packId && itemId) {
-              const pack = (shopRef.current?.packs || []).find((p) => p.id === packId && !p.purchased);
+              const pack = (shopRef.current?.packs || []).find((p) => p.id === packId);
               const item = (pack?.options || []).find((i) => i.id === itemId) || null;
               if (!item) return null;
               return {
