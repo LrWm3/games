@@ -3314,25 +3314,7 @@
                   props.onAction(drag.actionId);
                 }
               } else if (drag.kind === "drawer") {
-                let ok = false;
-                if (drag.payload?.itemType === "contact") {
-                  ok = !!props.onUseAddressContact?.(drag.payload.item?.id);
-                } else if (drag.payload?.itemType === "bcc") {
-                  ok = !!props.onUseAddressBcc?.(drag.payload.bccIndex);
-                }
-                if (ok) {
-                  setAddressDrawerAddsUsed((prev) => {
-                    const next = prev + 1;
-                    if (next >= maxAddressAdds) {
-                      setAddressDrawerOpen(false);
-                      window.setTimeout(() => {
-                        props.onAddressDrawerEndTurn?.();
-                      }, 0);
-                      return 0;
-                    }
-                    return next;
-                  });
-                }
+                useDrawerPayload(drag.payload);
               }
             }
             if (!drag.active) {
@@ -3355,6 +3337,30 @@
             window.removeEventListener("pointercancel", onPointerUp);
           };
         }, [props, maxAddressAdds]);
+
+        const useDrawerPayload = (payload) => {
+          if (!payload) return false;
+          let ok = false;
+          if (payload.itemType === "contact") {
+            ok = !!props.onUseAddressContact?.(payload.item?.id);
+          } else if (payload.itemType === "bcc") {
+            ok = !!props.onUseAddressBcc?.(payload.bccIndex);
+          }
+          if (ok) {
+            setAddressDrawerAddsUsed((prev) => {
+              const next = prev + 1;
+              if (next >= maxAddressAdds) {
+                setAddressDrawerOpen(false);
+                window.setTimeout(() => {
+                  props.onAddressDrawerEndTurn?.();
+                }, 0);
+                return 0;
+              }
+              return next;
+            });
+          }
+          return ok;
+        };
 
         const onActionCardPointerDown = (actionId, evt) => {
           if (props.disabledActions?.[actionId]) return;
@@ -3393,6 +3399,7 @@
             id: card.id,
             itemType: card.itemType,
             item: card.item,
+            bccIndex: card.bccIndex,
             ...computeActionPopupPos(rect),
           });
         };
@@ -3420,6 +3427,17 @@
             ...computeActionPopupPos(rect),
           });
           props.onActionHover(actionId);
+        };
+        const onActionDetailUse = () => {
+          if (!actionDetailPopup) return;
+          if (actionDetailPopup.kind === "drawer") {
+            const ok = useDrawerPayload(actionDetailPopup);
+            if (ok) setActionDetailPopup(null);
+            return;
+          }
+          if (props.disabledActions?.[actionDetailPopup.id]) return;
+          props.onAction(actionDetailPopup.id);
+          setActionDetailPopup(null);
         };
         const openStakeholderPopup = (targetId, anchorEl) => {
           const rect = anchorEl?.getBoundingClientRect?.();
@@ -3898,6 +3916,29 @@
                   actionDetailPopup.kind === "drawer"
                     ? getDrawerDetailText(actionDetailPopup)
                     : getActionDetailText(actionDetailPopup.id),
+                ),
+                e(
+                  "div",
+                  { className: "flex gap-2 mt-3" },
+                  e(
+                    "button",
+                    {
+                      className: "flex-1 retro-button text-[10px] font-bold py-1 uppercase",
+                      disabled:
+                        actionDetailPopup.kind === "action" &&
+                        !!props.disabledActions?.[actionDetailPopup.id],
+                      onClick: onActionDetailUse,
+                    },
+                    "Use",
+                  ),
+                  e(
+                    "button",
+                    {
+                      className: "retro-button text-[10px] font-bold py-1 px-2 uppercase",
+                      onClick: () => setActionDetailPopup(null),
+                    },
+                    "X",
+                  ),
                 ),
               )
             : null,
