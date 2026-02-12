@@ -1813,6 +1813,14 @@
           if (activePack) return undefined;
           if (typeof Sortable === "undefined") return undefined;
           const sortables = [];
+          function getGroupName(source) {
+            if (!source) return "";
+            if (typeof source === "string") return source;
+            if (source.options?.group?.name) return source.options.group.name;
+            if (source.el?.dataset?.sortableGroup) return source.el.dataset.sortableGroup;
+            if (source.dataset?.sortableGroup) return source.dataset.sortableGroup;
+            return "";
+          }
 
           function addSortable(ref, options) {
             if (!ref.current) return;
@@ -1820,6 +1828,10 @@
             const onStart = options.onStart;
             const onEnd = options.onEnd;
             const sortableOptions = { ...options };
+            const sortableGroupName = getGroupName(sortableOptions.group);
+            if (sortableGroupName) {
+              ref.current.dataset.sortableGroup = sortableGroupName;
+            }
             delete sortableOptions.popupSource;
             sortables.push(
               Sortable.create(ref.current, {
@@ -1874,7 +1886,7 @@
               name: "buy-overlay",
               pull: false,
               put: (to, from, dragEl) => {
-                const groupName = from?.options?.group?.name;
+                const groupName = getGroupName(from);
                 if (groupName === "shop-pack-open") return true;
                 if (groupName !== "shop-offers") return false;
                 return dragEl?.dataset?.itemType === "dev";
@@ -1895,10 +1907,12 @@
 
           const fromOffers = (to, from, dragEl, acceptedType) => {
             if (!from) return false;
-            if (from.options?.group?.name === "shop-offers") {
+            const fromGroup = getGroupName(from);
+            const toGroup = getGroupName(to);
+            if (fromGroup === "shop-offers") {
               return dragEl?.dataset?.itemType === acceptedType;
             }
-            return from.options?.group?.name === to.options?.group?.name;
+            return fromGroup === toGroup;
           };
 
           addSortable(ownedContactRef, {
@@ -1912,12 +1926,10 @@
             },
             draggable: ".shop-card-item",
             onAdd: (evt) => {
-              if (evt.from?.options?.group?.name === "shop-offers") {
-                const itemId = evt.item?.dataset?.itemId;
-                if (itemId) {
-                  setTimeout(() => handlersRef.current.onDropEquipFromShop(itemId, "contact"), 0);
-                }
-                return;
+              const itemId = evt.item?.dataset?.itemId;
+              const itemType = evt.item?.dataset?.itemType;
+              if (itemId && itemType === "contact") {
+                setTimeout(() => handlersRef.current.onDropEquipFromShop(itemId, "contact"), 0);
               }
             },
             onStart: (evt) => {
@@ -1937,21 +1949,22 @@
                 to?.options?.group?.name === "sell-overlay" ? "clone" : true,
               put: (to, from, dragEl) => {
                 if (!from) return false;
-                if (from.options?.group?.name === "shop-offers") {
+                if (getGroupName(from) === "shop-offers") {
                   const t = dragEl?.dataset?.itemType;
                   return t === "salutation" || t === "signoff" || t === "signature";
                 }
-                return from.options?.group?.name === "owned-email";
+                return getGroupName(from) === "owned-email";
               },
             },
             draggable: ".shop-card-item",
             onAdd: (evt) => {
-              if (evt.from?.options?.group?.name === "shop-offers") {
-                const itemId = evt.item?.dataset?.itemId;
-                const itemType = evt.item?.dataset?.itemType;
-                if (itemId && itemType) {
-                  setTimeout(() => handlersRef.current.onDropEquipFromShop(itemId, itemType), 0);
-                }
+              const itemId = evt.item?.dataset?.itemId;
+              const itemType = evt.item?.dataset?.itemType;
+              if (
+                itemId &&
+                (itemType === "salutation" || itemType === "signoff" || itemType === "signature")
+              ) {
+                setTimeout(() => handlersRef.current.onDropEquipFromShop(itemId, itemType), 0);
               }
             },
             onEnd: () => {
@@ -1981,12 +1994,10 @@
             },
             draggable: ".shop-card-item",
             onAdd: (evt) => {
-              if (evt.from?.options?.group?.name === "shop-offers") {
-                const itemId = evt.item?.dataset?.itemId;
-                if (itemId) {
-                  setTimeout(() => handlersRef.current.onDropEquipFromShop(itemId, "bcc"), 0);
-                }
-                return;
+              const itemId = evt.item?.dataset?.itemId;
+              const itemType = evt.item?.dataset?.itemType;
+              if (itemId && itemType === "bcc") {
+                setTimeout(() => handlersRef.current.onDropEquipFromShop(itemId, "bcc"), 0);
               }
             },
             onStart: (evt) => {
@@ -2009,7 +2020,7 @@
                   "owned-contact",
                   "owned-email",
                   "owned-bcc",
-                ].includes(from?.options?.group?.name);
+                ].includes(getGroupName(from));
               },
             },
             onAdd: (evt) => {
@@ -2877,10 +2888,9 @@
           if (reason === "no_picks") return "No pack picks remaining.";
           return fallback || "Unable to complete that action.";
         }
-        function commitShopMutation(nextState, notice = "", screen = "shop-screen") {
+        function commitShopMutation(nextState, notice = "") {
           setShopNotice(notice || "");
           setState(nextState);
-          persistSave(nextState, screen);
           setShopDomRevision((v) => v + 1);
         }
 
@@ -3120,7 +3130,7 @@
           }
           ReplyAllEngine.play.prepareShopState(nextState);
           setActiveScreen("shop");
-          commitShopMutation(nextState, "", "shop-screen");
+          commitShopMutation(nextState, "");
         }
 
         function onBuyItem(item) {
@@ -3130,7 +3140,7 @@
           const notice = getShopNotice(result);
           setShopNotice(notice);
           if (!result?.ok) return;
-          commitShopMutation(nextState, notice, "shop-screen");
+          commitShopMutation(nextState, notice);
         }
 
         function onReroll() {
@@ -3140,7 +3150,7 @@
           const notice = getShopNotice(result);
           setShopNotice(notice);
           if (!result?.ok) return;
-          commitShopMutation(nextState, notice, "shop-screen");
+          commitShopMutation(nextState, notice);
         }
 
         function onOpenPack(pack) {
@@ -3150,7 +3160,7 @@
           const notice = getShopNotice(result);
           setShopNotice(notice);
           if (!result?.ok) return;
-          commitShopMutation(nextState, notice, "shop-screen");
+          commitShopMutation(nextState, notice);
         }
 
         function onSelectPackItem(packId, itemId) {
@@ -3160,7 +3170,7 @@
           const notice = getShopNotice(result);
           setShopNotice(notice);
           if (!result?.ok) return;
-          commitShopMutation(nextState, notice, "shop-screen");
+          commitShopMutation(nextState, notice);
         }
 
         function onClosePack() {
@@ -3169,7 +3179,7 @@
           if (nextState.activePackId) {
             ReplyAllEngine.core.closePack(nextState, nextState.activePackId);
           }
-          commitShopMutation(nextState, "", "shop-screen");
+          commitShopMutation(nextState, "");
         }
 
         function onArchiveOwned(itemType, itemId, itemIndex = null) {
@@ -3187,11 +3197,7 @@
               : "Unable to archive that asset.",
           );
           if (!result?.ok) return;
-          commitShopMutation(
-            nextState,
-            `Archived ${result.item?.name || itemType}. +${result.refund || 0} REP`,
-            "shop-screen",
-          );
+          commitShopMutation(nextState, `Archived ${result.item?.name || itemType}. +${result.refund || 0} REP`);
         }
 
         function onDropBuyItem(itemId) {
@@ -3206,7 +3212,7 @@
           const notice = getShopNotice(result);
           setShopNotice(notice);
           if (!result?.ok) return;
-          commitShopMutation(nextState, notice, "shop-screen");
+          commitShopMutation(nextState, notice);
         }
 
         function onDropOpenPack(packId) {
@@ -3221,7 +3227,7 @@
           const notice = getShopNotice(result);
           setShopNotice(notice);
           if (!result?.ok) return;
-          commitShopMutation(nextState, notice, "shop-screen");
+          commitShopMutation(nextState, notice);
         }
 
         function onDropArchiveOwned(itemType, itemId, itemIndex = null) {
@@ -3238,7 +3244,7 @@
             : "Unable to archive that asset.";
           setShopNotice(notice);
           if (!result?.ok) return;
-          commitShopMutation(nextState, notice, "shop-screen");
+          commitShopMutation(nextState, notice);
         }
 
         function onDropEquipFromShop(itemId, slotType) {
@@ -3266,7 +3272,7 @@
           const notice = getShopNotice(result);
           setShopNotice(notice);
           if (!result?.ok) return;
-          commitShopMutation(nextState, notice, "shop-screen");
+          commitShopMutation(nextState, notice);
         }
 
         function onReorderSignatures(signatureIds) {
@@ -3293,7 +3299,7 @@
           if (!changed) return;
           const nextState = cloneState(state);
           nextState.player.signatures = reordered;
-          commitShopMutation(nextState, "", "shop-screen");
+          commitShopMutation(nextState, "");
         }
 
         function onNextQuarterFromShop() {
@@ -3305,17 +3311,14 @@
           if (quarterStep.needsPromotion && quarterStep.nextTitle) {
             setPromotionData(ReplyAllEngine.play.getPromotionStats(nextState));
             setActiveScreen("promotion");
-            persistSave(nextState, "promotion-screen");
             return;
           }
           setActiveScreen("inbox");
-          persistSave(nextState, "inbox-screen");
         }
 
         function onContinuePromotion() {
           setPromotionData(null);
           setActiveScreen("inbox");
-          persistSave(state, "inbox-screen");
         }
 
         function onBackToMenuFromCampaign() {
