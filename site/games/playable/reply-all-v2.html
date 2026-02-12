@@ -2505,7 +2505,10 @@
                                     },
                                     style: getTrackCardStyle(idx, directTrack),
                                     headerStyle: { background: meta.headerBg, color: meta.headerText },
-                                    headerText: `${meta.label} • ${activePack ? 0 : getDisplayCost(item)} REP`,
+                                    headerText:
+                                      (activePack ? 0 : getDisplayCost(item)) > 0
+                                        ? `${meta.label} • ${activePack ? 0 : getDisplayCost(item)} REP`
+                                        : `${meta.label}`,
                                     frameStyle: { background: meta.paneBg, color: meta.paneText },
                                   },
                                   e("div", { className: "shop-card-name" }, item.name),
@@ -2541,7 +2544,10 @@
                                     },
                                     style: getTrackCardStyle(idx, packTrack),
                                     headerStyle: { background: meta.headerBg, color: meta.headerText },
-                                    headerText: `pack • ${pack.cost || 0} REP`,
+                                    headerText:
+                                      (pack.cost || 0) > 0
+                                        ? `pack • ${pack.cost || 0} REP`
+                                        : "pack",
                                     frameStyle: { background: meta.paneBg, color: meta.paneText },
                                   },
                                   e("div", { className: "shop-card-name" }, pack.name),
