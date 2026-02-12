@@ -185,7 +185,13 @@
       .sortable-ghost {
         opacity: 0.4;
       }
+      .shop-card-ghost {
+        opacity: 0.4;
+      }
       .sortable-drag {
+        opacity: 1 !important;
+      }
+      .shop-card-drag {
         opacity: 1 !important;
       }
       .shop-card-item:active {
@@ -283,15 +289,17 @@
       .drag-overlay-target .overlay-label-active {
         display: none;
       }
-      .drag-overlay-target:has(.shop-card-item, .sortable-ghost, .sortable-chosen, .sortable-fallback) .overlay-label-idle {
+      .drag-overlay-target:has(.shop-card-item, .sortable-ghost, .shop-card-ghost, .sortable-chosen, .shop-card-chosen, .sortable-fallback) .overlay-label-idle {
         display: none;
       }
-      .drag-overlay-target:has(.shop-card-item, .sortable-ghost, .sortable-chosen, .sortable-fallback) .overlay-label-active {
+      .drag-overlay-target:has(.shop-card-item, .sortable-ghost, .shop-card-ghost, .sortable-chosen, .shop-card-chosen, .sortable-fallback) .overlay-label-active {
         display: inline;
       }
       .drag-overlay-target .shop-card-item,
       .drag-overlay-target .sortable-ghost,
+      .drag-overlay-target .shop-card-ghost,
       .drag-overlay-target .sortable-chosen,
+      .drag-overlay-target .shop-card-chosen,
       .drag-overlay-target .sortable-fallback {
         display: none !important;
       }
@@ -1276,6 +1284,34 @@
         );
       }
 
+      function ItemCard(props) {
+        const dataAttrs = {};
+        if (props.itemType) dataAttrs["data-item-type"] = props.itemType;
+        if (props.itemId) dataAttrs["data-item-id"] = props.itemId;
+        if (props.itemIndex != null) dataAttrs["data-item-index"] = String(props.itemIndex);
+        if (props.packId) dataAttrs["data-pack-id"] = props.packId;
+        if (props.packOption) dataAttrs["data-pack-option"] = "1";
+        if (props.cardInstanceId) dataAttrs["data-card-instance-id"] = props.cardInstanceId;
+        return e(
+          "div",
+          {
+            className: `shop-card-item${props.extraClassName ? ` ${props.extraClassName}` : ""}`,
+            onClick: props.onClick,
+            ...dataAttrs,
+          },
+          e(
+            "div",
+            { className: "shop-card-header", style: props.headerStyle || undefined },
+            props.headerText || "",
+          ),
+          e(
+            "div",
+            { className: "shop-card-frame", style: props.frameStyle || undefined },
+            props.children,
+          ),
+        );
+      }
+
       function ShopScreen(props) {
         const player = props.state.player || {};
         const statCtx = props.state._statCtx || null;
@@ -1328,6 +1364,7 @@
           itemType: "",
           packId: "",
           itemIndex: null,
+          cardInstanceId: "",
           pointerX: null,
           pointerY: null,
         });
@@ -1380,6 +1417,11 @@
             dev: { label: "training", headerBg: "#374151", headerText: "#ffffff", paneBg: "#e5e7eb", paneText: "#111827" },
           };
           return map[itemType] || map.contact;
+        }
+        function getCardInstanceId(scope, itemType, itemId, extra = "") {
+          return [scope || "card", itemType || "item", itemId || "none", extra || ""]
+            .filter(Boolean)
+            .join(":");
         }
         function itemTypeLabel(itemType) {
           return ReplyAllEngine.copy?.getItemTypeLabel
@@ -1622,6 +1664,7 @@
           ctx.itemType = "";
           ctx.packId = "";
           ctx.itemIndex = null;
+          ctx.cardInstanceId = "";
           ctx.pointerX = null;
           ctx.pointerY = null;
           window.removeEventListener("pointermove", onDragPointerMove);
@@ -1634,6 +1677,7 @@
           ctx.itemType = identity.itemType || "";
           ctx.packId = identity.packId || "";
           ctx.itemIndex = identity.itemIndex ?? null;
+          ctx.cardInstanceId = identity.cardInstanceId || "";
           ctx.pointerX = null;
           ctx.pointerY = null;
           window.addEventListener("pointermove", onDragPointerMove, { passive: true });
@@ -1641,20 +1685,43 @@
         }
         function getDraggedElementRect() {
           const ctx = dragPopupRef.current;
-          const nodes = document.querySelectorAll(".sortable-fallback, .shop-card-drag, .shop-card-chosen");
-          for (const node of nodes) {
-            if (!node || !node.dataset) continue;
-            if (ctx.packId) {
-              if (node.dataset.packId === ctx.packId) return node.getBoundingClientRect();
-              continue;
-            }
-            if (!ctx.itemId || !ctx.itemType) continue;
-            if (node.dataset.itemId !== ctx.itemId) continue;
-            if (node.dataset.itemType !== ctx.itemType) continue;
+          const nodes = Array.from(
+            document.querySelectorAll(
+              ".sortable-fallback, .sortable-drag, .shop-card-drag, .sortable-chosen, .shop-card-chosen, .sortable-ghost, .shop-card-ghost",
+            ),
+          );
+          const candidates = nodes.filter((node) => {
+            if (!node || !node.dataset) return false;
+            if (ctx.cardInstanceId) return node.dataset.cardInstanceId === ctx.cardInstanceId;
+            if (ctx.packId) return node.dataset.packId === ctx.packId;
+            if (!ctx.itemId || !ctx.itemType) return false;
+            if (node.dataset.itemId !== ctx.itemId) return false;
+            if (node.dataset.itemType !== ctx.itemType) return false;
             if (ctx.itemIndex != null) {
-              if ((node.dataset.itemIndex || null) !== String(ctx.itemIndex)) continue;
+              return (node.dataset.itemIndex || null) === String(ctx.itemIndex);
             }
-            return node.getBoundingClientRect();
+            return true;
+          });
+          if (candidates.length) {
+            const dragPriority = (node) => {
+              const cls = node.classList;
+              if (
+                cls.contains("sortable-fallback") ||
+                cls.contains("sortable-drag") ||
+                cls.contains("shop-card-drag")
+              ) {
+                return 3;
+              }
+              if (cls.contains("sortable-chosen") || cls.contains("shop-card-chosen")) {
+                return 2;
+              }
+              if (cls.contains("sortable-ghost") || cls.contains("shop-card-ghost")) {
+                return 1;
+              }
+              return 0;
+            };
+            candidates.sort((a, b) => dragPriority(a) - dragPriority(b));
+            return candidates[candidates.length - 1].getBoundingClientRect();
           }
           if (
             typeof ctx.pointerX === "number" &&
@@ -1678,6 +1745,7 @@
           const itemType = dragEl?.dataset?.itemType || "";
           const packId = dragEl?.dataset?.packId || "";
           const isPackOption = dragEl?.dataset?.packOption === "1";
+          const cardInstanceId = dragEl?.dataset?.cardInstanceId || "";
           const itemIndexRaw = dragEl?.dataset?.itemIndex;
           const parsedIndex = itemIndexRaw == null ? null : Number(itemIndexRaw);
           const itemIndex = Number.isFinite(parsedIndex) ? parsedIndex : null;
@@ -1694,7 +1762,7 @@
                   itemType: item.itemType,
                   cost: 0,
                 },
-                identity: { itemId, itemType: item.itemType },
+                identity: { itemId, itemType: item.itemType, cardInstanceId },
               };
             }
             if (!itemId || !itemType) return null;
@@ -1707,7 +1775,7 @@
                 itemType: item.itemType,
                 cost: getDisplayCost(item),
               },
-              identity: { itemId, itemType },
+              identity: { itemId, itemType, cardInstanceId },
             };
           }
           if (packId && popupSource === "shop-pack-open") {
@@ -1720,7 +1788,7 @@
                 itemType: pack.type || "dev",
                 cost: typeof pack.cost === "number" ? pack.cost : 0,
               },
-              identity: { packId },
+              identity: { packId, cardInstanceId },
             };
           }
           if (!itemId || !itemType) return null;
@@ -1735,7 +1803,7 @@
                 itemIndex: null,
                 refund: ReplyAllEngine.core.getSellRefundForItem("contact", item),
               },
-              identity: { itemId, itemType: "contact" },
+              identity: { itemId, itemType: "contact", cardInstanceId },
             };
           }
           if (popupSource === "owned-bcc") {
@@ -1749,7 +1817,7 @@
                 itemIndex,
                 refund: ReplyAllEngine.core.getSellRefundForItem("bcc", item),
               },
-              identity: { itemId, itemType: "bcc", itemIndex },
+              identity: { itemId, itemType: "bcc", itemIndex, cardInstanceId },
             };
           }
           if (popupSource === "owned-email") {
@@ -1766,7 +1834,7 @@
                 itemIndex: null,
                 refund: ReplyAllEngine.core.getSellRefundForItem(itemType, item),
               },
-              identity: { itemId, itemType },
+              identity: { itemId, itemType, cardInstanceId },
             };
           }
           return null;
@@ -1968,6 +2036,9 @@
                 forceFallback: true,
                 fallbackOnBody: true,
                 removeCloneOnHide: true,
+                chosenClass: "shop-card-chosen",
+                dragClass: "shop-card-drag",
+                ghostClass: "shop-card-ghost",
                 ...sortableOptions,
                 onStart: (evt) => {
                   if (popupSource) onDragPopupStart(evt, popupSource);
@@ -2284,32 +2355,33 @@
                             "div",
                             { ref: directListRef, className: "border border-gray-200 bg-white p-2 shop-card-grid" },
                             (activePack ? (activePack.options || []) : (shop.directItems || []).filter((item) => !item.purchased))
-                              .map((item) =>
-                                e(
-                                  "div",
+                              .map((item) => {
+                                const meta = typeMeta(item.itemType);
+                                return e(
+                                  ItemCard,
                                   {
                                     key: activePack ? `${activePack.id}-${item.id}` : item.id,
-                                    "data-item-id": item.id,
-                                    "data-item-type": item.itemType,
-                                    "data-pack-option": activePack ? "1" : undefined,
-                                    "data-pack-id": activePack ? activePack.id : undefined,
+                                    itemId: item.id,
+                                    itemType: item.itemType,
+                                    packOption: !!activePack,
+                                    packId: activePack ? activePack.id : "",
+                                    cardInstanceId: getCardInstanceId(
+                                      activePack ? "shop-pack-option" : "shop-offer",
+                                      item.itemType,
+                                      item.id,
+                                      activePack ? activePack.id : "",
+                                    ),
                                     onClick: (evt) => {
                                       if (shouldSuppressCardClick()) return;
                                       openDirectDetail(item, evt.currentTarget, activePack ? { mode: "pack-option", packId: activePack.id } : {});
                                     },
-                                    className: "shop-card-item",
+                                    headerStyle: { background: meta.headerBg, color: meta.headerText },
+                                    headerText: `${meta.label} • ${activePack ? 0 : getDisplayCost(item)} REP`,
+                                    frameStyle: { background: meta.paneBg, color: meta.paneText },
                                   },
-                                  (() => {
-                                    const meta = typeMeta(item.itemType);
-                                    return e(
-                                      React.Fragment,
-                                      null,
-                                      e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, `${meta.label} • ${activePack ? 0 : getDisplayCost(item)} REP`),
-                                      e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, item.name)),
-                                    );
-                                  })(),
-                                ),
-                              ),
+                                  e("div", { className: "shop-card-name" }, item.name),
+                                );
+                              }),
                           ),
                         ),
                         activePack
@@ -2323,29 +2395,25 @@
                             { ref: packListRef, className: "border border-gray-200 bg-white p-2 shop-card-grid" },
                             (shop.packs || [])
                               .filter((pack) => !pack.purchased)
-                              .map((pack) =>
-                                e(
-                                  "div",
+                              .map((pack) => {
+                                const meta = typeMeta(pack.type || "dev");
+                                return e(
+                                  ItemCard,
                                   {
                                     key: pack.id,
-                                    "data-pack-id": pack.id,
+                                    packId: pack.id,
+                                    cardInstanceId: getCardInstanceId("shop-pack", pack.type || "dev", pack.id),
                                     onClick: (evt) => {
                                       if (shouldSuppressCardClick()) return;
                                       openPackDetail(pack, evt.currentTarget);
                                     },
-                                    className: "shop-card-item",
+                                    headerStyle: { background: meta.headerBg, color: meta.headerText },
+                                    headerText: `pack • ${pack.cost || 0} REP`,
+                                    frameStyle: { background: meta.paneBg, color: meta.paneText },
                                   },
-                                  (() => {
-                                    const meta = typeMeta(pack.type || "dev");
-                                    return e(
-                                      React.Fragment,
-                                      null,
-                                      e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, `pack • ${pack.cost || 0} REP`),
-                                      e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, pack.name)),
-                                    );
-                                  })(),
-                                ),
-                              ),
+                                  e("div", { className: "shop-card-name" }, pack.name),
+                                );
+                              }),
                           ),
                         ),
                       ),
@@ -2385,34 +2453,28 @@
                                   ? owned.addressBook.map((item) => {
                                       const meta = typeMeta("contact");
                                       return e(
-                                        "div",
+                                        ItemCard,
                                         {
                                           key: `owned-contact-${item.id}`,
-                                          className: "shop-card-item",
-                                          "data-item-type": "contact",
-                                          "data-item-id": item.id,
+                                          itemType: "contact",
+                                          itemId: item.id,
+                                          cardInstanceId: getCardInstanceId("owned-contact", "contact", item.id),
                                           onClick: (evt) => {
                                             if (shouldSuppressCardClick()) return;
                                             openOwnedDetail("contact", item, null, evt.currentTarget);
                                           },
+                                          headerStyle: { background: meta.headerBg, color: meta.headerText },
+                                          headerText: meta.label,
+                                          frameStyle: { background: meta.paneBg, color: meta.paneText },
                                         },
                                         e(
                                           "div",
-                                          { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } },
-                                          meta.label,
-                                        ),
-                                        e(
-                                          "div",
-                                          { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } },
+                                          null,
+                                          e("div", { className: "shop-card-name" }, item.name),
                                           e(
                                             "div",
-                                            null,
-                                            e("div", { className: "shop-card-name" }, item.name),
-                                            e(
-                                              "div",
-                                              { className: "text-[8px] uppercase opacity-80 mt-1" },
-                                              item.departmentId ? ReplyAllEngine.core.getDepartmentName(item.departmentId) : "",
-                                            ),
+                                            { className: "text-[8px] uppercase opacity-80 mt-1" },
+                                            item.departmentId ? ReplyAllEngine.core.getDepartmentName(item.departmentId) : "",
                                           ),
                                         ),
                                       );
@@ -2435,28 +2497,22 @@
                                   ? owned.bcc.map((item, idx) => {
                                       const meta = typeMeta("bcc");
                                       return e(
-                                        "div",
+                                        ItemCard,
                                         {
                                           key: `owned-bcc-${idx}-${item.id}`,
-                                          className: "shop-card-item",
-                                          "data-item-type": "bcc",
-                                          "data-item-id": item.id,
-                                          "data-item-index": String(idx),
+                                          itemType: "bcc",
+                                          itemId: item.id,
+                                          itemIndex: idx,
+                                          cardInstanceId: getCardInstanceId("owned-bcc", "bcc", item.id, String(idx)),
                                           onClick: (evt) => {
                                             if (shouldSuppressCardClick()) return;
                                             openOwnedDetail("bcc", item, idx, evt.currentTarget);
                                           },
+                                          headerStyle: { background: meta.headerBg, color: meta.headerText },
+                                          headerText: meta.label,
+                                          frameStyle: { background: meta.paneBg, color: meta.paneText },
                                         },
-                                        e(
-                                          "div",
-                                          { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } },
-                                          meta.label,
-                                        ),
-                                        e(
-                                          "div",
-                                          { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } },
-                                          e("div", { className: "shop-card-name" }, item.name),
-                                        ),
+                                        e("div", { className: "shop-card-name" }, item.name),
                                       );
                                     })
                                   : e("div", { className: "text-[10px] text-gray-500 italic p-2" }, "No internal services."),
@@ -2480,79 +2536,97 @@
                               ? (() => {
                                   const meta = typeMeta("salutation");
                                   return e(
-                                    "div",
+                                    ItemCard,
                                     {
-                                      className: "shop-card-item",
-                                      "data-item-type": "salutation",
-                                      "data-item-id": owned.salutation.id,
+                                      itemType: "salutation",
+                                      itemId: owned.salutation.id,
+                                      cardInstanceId: getCardInstanceId("owned-email", "salutation", owned.salutation.id),
                                       onClick: (evt) => {
                                         if (shouldSuppressCardClick()) return;
                                         openOwnedDetail("salutation", owned.salutation, null, evt.currentTarget);
                                       },
+                                      headerStyle: { background: meta.headerBg, color: meta.headerText },
+                                      headerText: meta.label,
+                                      frameStyle: { background: meta.paneBg, color: meta.paneText },
                                     },
-                                    e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
-                                    e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, owned.salutation.name)),
+                                    e("div", { className: "shop-card-name" }, owned.salutation.name),
                                   );
                                 })()
                               : (() => {
                                   const meta = typeMeta("salutation");
                                   return e(
-                                    "div",
-                                    { className: "shop-card-item" },
-                                    e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
-                                    e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name italic opacity-70" }, "(empty)")),
+                                    ItemCard,
+                                    {
+                                      headerStyle: { background: meta.headerBg, color: meta.headerText },
+                                      headerText: meta.label,
+                                      frameStyle: { background: meta.paneBg, color: meta.paneText },
+                                    },
+                                    e("div", { className: "shop-card-name italic opacity-70" }, "(empty)"),
                                   );
                                 })(),
                             e(
-                              "div",
-                              { className: "shop-card-item template-content-card", "data-item-type": "content" },
-                              e("div", { className: "shop-card-header", style: { background: "#4b5563", color: "#fff" } }, "content"),
-                              e("div", { className: "shop-card-frame", style: { background: "#f3f4f6", color: "#6b7280" } }, e("div", { className: "shop-card-name italic" }, "<CONTENT>")),
+                              ItemCard,
+                              {
+                                itemType: "content",
+                                cardInstanceId: getCardInstanceId("owned-email", "content", "placeholder"),
+                                extraClassName: "template-content-card",
+                                headerStyle: { background: "#4b5563", color: "#fff" },
+                                headerText: "content",
+                                frameStyle: { background: "#f3f4f6", color: "#6b7280" },
+                              },
+                              e("div", { className: "shop-card-name italic" }, "<CONTENT>"),
                             ),
                             owned.signoff
                               ? (() => {
                                   const meta = typeMeta("signoff");
                                   return e(
-                                    "div",
+                                    ItemCard,
                                     {
-                                      className: "shop-card-item",
-                                      "data-item-type": "signoff",
-                                      "data-item-id": owned.signoff.id,
+                                      itemType: "signoff",
+                                      itemId: owned.signoff.id,
+                                      cardInstanceId: getCardInstanceId("owned-email", "signoff", owned.signoff.id),
                                       onClick: (evt) => {
                                         if (shouldSuppressCardClick()) return;
                                         openOwnedDetail("signoff", owned.signoff, null, evt.currentTarget);
                                       },
+                                      headerStyle: { background: meta.headerBg, color: meta.headerText },
+                                      headerText: meta.label,
+                                      frameStyle: { background: meta.paneBg, color: meta.paneText },
                                     },
-                                    e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
-                                    e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, owned.signoff.name)),
+                                    e("div", { className: "shop-card-name" }, owned.signoff.name),
                                   );
                                 })()
                               : (() => {
                                   const meta = typeMeta("signoff");
                                   return e(
-                                    "div",
-                                    { className: "shop-card-item" },
-                                    e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
-                                    e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name italic opacity-70" }, "(empty)")),
+                                    ItemCard,
+                                    {
+                                      headerStyle: { background: meta.headerBg, color: meta.headerText },
+                                      headerText: meta.label,
+                                      frameStyle: { background: meta.paneBg, color: meta.paneText },
+                                    },
+                                    e("div", { className: "shop-card-name italic opacity-70" }, "(empty)"),
                                   );
                                 })(),
                             owned.signatures.length
                               ? owned.signatures.map((item) => {
                                   const meta = typeMeta("signature");
                                   return e(
-                                    "div",
+                                    ItemCard,
                                     {
                                       key: `owned-signature-${item.id}`,
-                                      className: "shop-card-item",
-                                      "data-item-type": "signature",
-                                      "data-item-id": item.id,
+                                      itemType: "signature",
+                                      itemId: item.id,
+                                      cardInstanceId: getCardInstanceId("owned-email", "signature", item.id),
                                       onClick: (evt) => {
                                         if (shouldSuppressCardClick()) return;
                                         openOwnedDetail("signature", item, null, evt.currentTarget);
                                       },
+                                      headerStyle: { background: meta.headerBg, color: meta.headerText },
+                                      headerText: meta.label,
+                                      frameStyle: { background: meta.paneBg, color: meta.paneText },
                                     },
-                                    e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
-                                    e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, item.name)),
+                                    e("div", { className: "shop-card-name" }, item.name),
                                   );
                                 })
                               : null,
