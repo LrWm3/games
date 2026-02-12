@@ -337,6 +337,12 @@
       .adaptive-card-track .shop-card-item {
         flex: 0 0 var(--shop-card-width);
       }
+      .adaptive-card-track > .shop-card-item:first-child {
+        margin-left: var(--card-inset, 0px);
+      }
+      .adaptive-card-track > .shop-card-item:last-child {
+        margin-right: var(--card-inset, 0px);
+      }
       .adaptive-card-track > .shop-card-item + .shop-card-item {
         margin-left: var(--card-overlap, 0px);
       }
@@ -1328,7 +1334,7 @@
 
       function useAdaptiveCardTrack(areaRef, cardCount) {
         const [trackWidth, setTrackWidth] = React.useState(0);
-        const [ghostCount, setGhostCount] = React.useState(0);
+        const [domCardCount, setDomCardCount] = React.useState(0);
         React.useLayoutEffect(() => {
           const el = areaRef.current;
           if (!el) return undefined;
@@ -1345,12 +1351,14 @@
         React.useLayoutEffect(() => {
           const el = areaRef.current;
           if (!el) return undefined;
-          const readGhosts = () => {
-            const count = el.querySelectorAll(".sortable-ghost, .shop-card-ghost").length;
-            setGhostCount(count);
+          const readCards = () => {
+            const count = Array.from(el.children || []).filter(
+              (node) => node?.classList?.contains("shop-card-item"),
+            ).length;
+            setDomCardCount(count);
           };
-          readGhosts();
-          const mo = new MutationObserver(() => readGhosts());
+          readCards();
+          const mo = new MutationObserver(() => readCards());
           mo.observe(el, {
             childList: true,
             subtree: true,
@@ -1360,14 +1368,20 @@
           return () => mo.disconnect();
         }, [areaRef]);
         const step = React.useMemo(() => {
-          const effectiveCount = Math.max(1, (cardCount || 0) + (ghostCount > 0 ? 1 : 0));
-          if (effectiveCount <= 1) return 0;
+          const effectiveCount = Math.max(1, domCardCount || cardCount || 0);
           const cardWidth = 84;
           const contentWidth = Math.max(cardWidth, (trackWidth || cardWidth) - 16);
-          return (contentWidth - cardWidth) / (effectiveCount - 1);
-        }, [trackWidth, cardCount, ghostCount]);
+          return contentWidth / (effectiveCount + 1);
+        }, [trackWidth, cardCount, domCardCount]);
+        const inset = React.useMemo(() => {
+          const cardWidth = 84;
+          return Math.max(0, step - cardWidth / 2);
+        }, [step]);
         return {
-          trackStyle: { "--card-overlap": `${step - 84}px` },
+          trackStyle: {
+            "--card-overlap": `${step - 84}px`,
+            "--card-inset": `${inset}px`,
+          },
           getCardStyle: (index) => ({
             position: "relative",
             zIndex: Math.max(1, (index || 0) + 1),
