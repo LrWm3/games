@@ -327,18 +327,18 @@
         border: 1px solid #808080;
         padding: 8px;
       }
-      .email-card-track {
+      .adaptive-card-track {
         display: flex;
         flex-wrap: nowrap;
         align-items: flex-start;
         overflow: hidden;
         min-height: var(--shop-card-height);
       }
-      .email-card-track .shop-card-item {
+      .adaptive-card-track .shop-card-item {
         flex: 0 0 var(--shop-card-width);
       }
-      .email-card-track > .shop-card-item + .shop-card-item {
-        margin-left: var(--email-card-overlap, 0px);
+      .adaptive-card-track > .shop-card-item + .shop-card-item {
+        margin-left: var(--card-overlap, 0px);
       }
       .email-template-row {
         display: grid;
@@ -1326,6 +1326,55 @@
         );
       }
 
+      function useAdaptiveCardTrack(areaRef, cardCount) {
+        const [trackWidth, setTrackWidth] = React.useState(0);
+        const [ghostCount, setGhostCount] = React.useState(0);
+        React.useLayoutEffect(() => {
+          const el = areaRef.current;
+          if (!el) return undefined;
+          const readWidth = () => setTrackWidth(el.clientWidth || 0);
+          readWidth();
+          if (typeof ResizeObserver !== "undefined") {
+            const ro = new ResizeObserver(() => readWidth());
+            ro.observe(el);
+            return () => ro.disconnect();
+          }
+          window.addEventListener("resize", readWidth);
+          return () => window.removeEventListener("resize", readWidth);
+        }, [areaRef]);
+        React.useLayoutEffect(() => {
+          const el = areaRef.current;
+          if (!el) return undefined;
+          const readGhosts = () => {
+            const count = el.querySelectorAll(".sortable-ghost, .shop-card-ghost").length;
+            setGhostCount(count);
+          };
+          readGhosts();
+          const mo = new MutationObserver(() => readGhosts());
+          mo.observe(el, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["class"],
+          });
+          return () => mo.disconnect();
+        }, [areaRef]);
+        const step = React.useMemo(() => {
+          const effectiveCount = Math.max(1, (cardCount || 0) + (ghostCount > 0 ? 1 : 0));
+          if (effectiveCount <= 1) return 0;
+          const cardWidth = 84;
+          const contentWidth = Math.max(cardWidth, (trackWidth || cardWidth) - 16);
+          return (contentWidth - cardWidth) / (effectiveCount - 1);
+        }, [trackWidth, cardCount, ghostCount]);
+        return {
+          trackStyle: { "--card-overlap": `${step - 84}px` },
+          getCardStyle: (index) => ({
+            position: "relative",
+            zIndex: Math.max(1, (index || 0) + 1),
+          }),
+        };
+      }
+
       function ShopScreen(props) {
         const player = props.state.player || {};
         const statCtx = props.state._statCtx || null;
@@ -1333,6 +1382,10 @@
         const shop = props.state.shop || { directItems: [], packs: [], rerollCount: 0 };
         const activePackId = props.state.activePackId || null;
         const activePack = (shop.packs || []).find((p) => p.id === activePackId) || null;
+        const directDisplayItems = activePack
+          ? (activePack.options || [])
+          : (shop.directItems || []).filter((item) => !item.purchased);
+        const packDisplayItems = (shop.packs || []).filter((pack) => !pack.purchased);
         const owned = ReplyAllEngine.core.getOwnedAssets(props.state);
         const addressCurrent = owned.addressBook.length;
         const addressMax = statCtx
@@ -1371,8 +1424,6 @@
           sellActive: false,
           sellLabel: "Sell for REP",
         });
-        const [emailTrackWidth, setEmailTrackWidth] = React.useState(0);
-        const [emailGhostCount, setEmailGhostCount] = React.useState(0);
         const detailPopupRef = React.useRef(null);
         const dragPopupRef = React.useRef({
           active: false,
@@ -1392,36 +1443,11 @@
         const ownedContactRef = React.useRef(null);
         const ownedEmailRef = React.useRef(null);
         const ownedBccRef = React.useRef(null);
-        React.useLayoutEffect(() => {
-          const el = ownedEmailRef.current;
-          if (!el) return undefined;
-          const readWidth = () => setEmailTrackWidth(el.clientWidth || 0);
-          readWidth();
-          if (typeof ResizeObserver !== "undefined") {
-            const ro = new ResizeObserver(() => readWidth());
-            ro.observe(el);
-            return () => ro.disconnect();
-          }
-          window.addEventListener("resize", readWidth);
-          return () => window.removeEventListener("resize", readWidth);
-        }, []);
-        React.useLayoutEffect(() => {
-          const el = ownedEmailRef.current;
-          if (!el) return undefined;
-          const readGhosts = () => {
-            const count = el.querySelectorAll(".sortable-ghost, .shop-card-ghost").length;
-            setEmailGhostCount(count);
-          };
-          readGhosts();
-          const mo = new MutationObserver(() => readGhosts());
-          mo.observe(el, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ["class"],
-          });
-          return () => mo.disconnect();
-        }, []);
+        const directTrack = useAdaptiveCardTrack(directListRef, directDisplayItems.length);
+        const packTrack = useAdaptiveCardTrack(packListRef, packDisplayItems.length);
+        const ownedContactTrack = useAdaptiveCardTrack(ownedContactRef, owned.addressBook.length);
+        const ownedBccTrack = useAdaptiveCardTrack(ownedBccRef, owned.bcc.length);
+        const ownedEmailTrack = useAdaptiveCardTrack(ownedEmailRef, 3 + (owned.signatures?.length || 0));
         React.useEffect(() => {
           shopRef.current = shop;
           ownedRef.current = owned;
@@ -1511,19 +1537,10 @@
           }
           return lines.length ? lines.join("\n\n") : "No additional details.";
         }
-        const emailCardCount = 3 + (owned.signatures?.length || 0) + (emailGhostCount > 0 ? 1 : 0);
-        const emailCardStep = React.useMemo(() => {
-          if (emailCardCount <= 1) return 0;
-          const cardWidth = 84;
-          const contentWidth = Math.max(cardWidth, (emailTrackWidth || cardWidth) - 16);
-          return (contentWidth - cardWidth) / (emailCardCount - 1);
-        }, [emailTrackWidth, emailCardCount]);
-        function getEmailCardStyle(index) {
+        function getTrackCardStyle(index, track) {
+          if (!track || typeof track.getCardStyle !== "function") return undefined;
           if (index <= 0) return { position: "relative", zIndex: 1 };
-          return {
-            position: "relative",
-            zIndex: index + 1,
-          };
+          return track.getCardStyle(index);
         }
         function shouldSuppressCardClick() {
           return Date.now() < suppressCardClickUntilRef.current;
@@ -2218,9 +2235,12 @@
             onStart: (evt) => {
               setSellOverlayFromDragEl(evt?.item, "owned-contact");
             },
-            onEnd: () => {
+            onEnd: (evt) => {
               clearDragOverlay();
               clearSlotBuyHint();
+              const toGroup = getGroupName(evt?.to);
+              const fromGroup = getGroupName(evt?.from);
+              if (fromGroup !== "owned-contact" || toGroup !== "owned-contact") return;
               if (!ownedContactRef.current) return;
               const contactIds = Array.from(
                 ownedContactRef.current.querySelectorAll('[data-item-type="contact"][data-item-id]'),
@@ -2270,9 +2290,12 @@
                 setTimeout(() => handlersRef.current.onDropEquipFromShop(itemId, itemType), 0);
               }
             },
-            onEnd: () => {
+            onEnd: (evt) => {
               clearDragOverlay();
               clearSlotBuyHint();
+              const toGroup = getGroupName(evt?.to);
+              const fromGroup = getGroupName(evt?.from);
+              if (fromGroup !== "owned-email" || toGroup !== "owned-email") return;
               if (!ownedEmailRef.current) return;
               const sigIds = Array.from(
                 ownedEmailRef.current.querySelectorAll('[data-item-type="signature"][data-item-id]'),
@@ -2413,9 +2436,13 @@
                           ),
                           e(
                             "div",
-                            { ref: directListRef, className: "border border-gray-200 bg-white p-2 shop-card-grid" },
-                            (activePack ? (activePack.options || []) : (shop.directItems || []).filter((item) => !item.purchased))
-                              .map((item) => {
+                            {
+                              ref: directListRef,
+                              className: "border border-gray-200 bg-white p-2 adaptive-card-track",
+                              style: directTrack.trackStyle,
+                            },
+                            directDisplayItems
+                              .map((item, idx) => {
                                 const meta = typeMeta(item.itemType);
                                 return e(
                                   ItemCard,
@@ -2435,6 +2462,7 @@
                                       if (shouldSuppressCardClick()) return;
                                       openDirectDetail(item, evt.currentTarget, activePack ? { mode: "pack-option", packId: activePack.id } : {});
                                     },
+                                    style: getTrackCardStyle(idx, directTrack),
                                     headerStyle: { background: meta.headerBg, color: meta.headerText },
                                     headerText: `${meta.label} • ${activePack ? 0 : getDisplayCost(item)} REP`,
                                     frameStyle: { background: meta.paneBg, color: meta.paneText },
@@ -2452,10 +2480,13 @@
                           e("h3", { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" }, "Group Trainings"),
                           e(
                             "div",
-                            { ref: packListRef, className: "border border-gray-200 bg-white p-2 shop-card-grid" },
-                            (shop.packs || [])
-                              .filter((pack) => !pack.purchased)
-                              .map((pack) => {
+                            {
+                              ref: packListRef,
+                              className: "border border-gray-200 bg-white p-2 adaptive-card-track",
+                              style: packTrack.trackStyle,
+                            },
+                            packDisplayItems
+                              .map((pack, idx) => {
                                 const meta = typeMeta(pack.type || "dev");
                                 return e(
                                   ItemCard,
@@ -2467,6 +2498,7 @@
                                       if (shouldSuppressCardClick()) return;
                                       openPackDetail(pack, evt.currentTarget);
                                     },
+                                    style: getTrackCardStyle(idx, packTrack),
                                     headerStyle: { background: meta.headerBg, color: meta.headerText },
                                     headerText: `pack • ${pack.cost || 0} REP`,
                                     frameStyle: { background: meta.paneBg, color: meta.paneText },
@@ -2506,11 +2538,11 @@
                                 "div",
                                 {
                                   ref: ownedContactRef,
-                                  className: `shop-card-grid max-h-44 overflow-y-auto ${slotBuyHint.contact ? "buy-slot-outline" : ""}`,
-                                  style: { justifyContent: "start" },
+                                  className: `adaptive-card-track ${slotBuyHint.contact ? "buy-slot-outline" : ""}`,
+                                  style: ownedContactTrack.trackStyle,
                                 },
                                 owned.addressBook.length
-                                  ? owned.addressBook.map((item) => {
+                                  ? owned.addressBook.map((item, idx) => {
                                       const meta = typeMeta("contact");
                                       return e(
                                         ItemCard,
@@ -2523,6 +2555,7 @@
                                             if (shouldSuppressCardClick()) return;
                                             openOwnedDetail("contact", item, null, evt.currentTarget);
                                           },
+                                          style: getTrackCardStyle(idx, ownedContactTrack),
                                           headerStyle: { background: meta.headerBg, color: meta.headerText },
                                           headerText: meta.label,
                                           frameStyle: { background: meta.paneBg, color: meta.paneText },
@@ -2550,8 +2583,8 @@
                                 "div",
                                 {
                                   ref: ownedBccRef,
-                                  className: `shop-card-grid max-h-44 overflow-y-auto ${slotBuyHint.bcc ? "buy-slot-outline" : ""}`,
-                                  style: { justifyContent: "start" },
+                                  className: `adaptive-card-track ${slotBuyHint.bcc ? "buy-slot-outline" : ""}`,
+                                  style: ownedBccTrack.trackStyle,
                                 },
                                 owned.bcc.length
                                   ? owned.bcc.map((item, idx) => {
@@ -2568,6 +2601,7 @@
                                             if (shouldSuppressCardClick()) return;
                                             openOwnedDetail("bcc", item, idx, evt.currentTarget);
                                           },
+                                          style: getTrackCardStyle(idx, ownedBccTrack),
                                           headerStyle: { background: meta.headerBg, color: meta.headerText },
                                           headerText: meta.label,
                                           frameStyle: { background: meta.paneBg, color: meta.paneText },
@@ -2589,8 +2623,8 @@
                             "div",
                             {
                               ref: ownedEmailRef,
-                              className: `email-card-track border border-gray-200 p-2 ${slotBuyHint.email ? "buy-slot-outline" : ""}`,
-                              style: { "--email-card-overlap": `${emailCardStep - 84}px` },
+                              className: `adaptive-card-track border border-gray-200 p-2 ${slotBuyHint.email ? "buy-slot-outline" : ""}`,
+                              style: ownedEmailTrack.trackStyle,
                             },
                             owned.salutation
                               ? (() => {
@@ -2605,7 +2639,7 @@
                                         if (shouldSuppressCardClick()) return;
                                         openOwnedDetail("salutation", owned.salutation, null, evt.currentTarget);
                                       },
-                                      style: getEmailCardStyle(0),
+                                      style: getTrackCardStyle(0, ownedEmailTrack),
                                       headerStyle: { background: meta.headerBg, color: meta.headerText },
                                       headerText: meta.label,
                                       frameStyle: { background: meta.paneBg, color: meta.paneText },
@@ -2618,7 +2652,7 @@
                                   return e(
                                     ItemCard,
                                     {
-                                      style: getEmailCardStyle(0),
+                                      style: getTrackCardStyle(0, ownedEmailTrack),
                                       headerStyle: { background: meta.headerBg, color: meta.headerText },
                                       headerText: meta.label,
                                       frameStyle: { background: meta.paneBg, color: meta.paneText },
@@ -2632,7 +2666,7 @@
                                 itemType: "content",
                                 cardInstanceId: getCardInstanceId("owned-email", "content", "placeholder"),
                                 extraClassName: "template-content-card",
-                                style: getEmailCardStyle(1),
+                                style: getTrackCardStyle(1, ownedEmailTrack),
                                 headerStyle: { background: "#4b5563", color: "#fff" },
                                 headerText: "content",
                                 frameStyle: { background: "#f3f4f6", color: "#6b7280" },
@@ -2652,7 +2686,7 @@
                                         if (shouldSuppressCardClick()) return;
                                         openOwnedDetail("signoff", owned.signoff, null, evt.currentTarget);
                                       },
-                                      style: getEmailCardStyle(2),
+                                      style: getTrackCardStyle(2, ownedEmailTrack),
                                       headerStyle: { background: meta.headerBg, color: meta.headerText },
                                       headerText: meta.label,
                                       frameStyle: { background: meta.paneBg, color: meta.paneText },
@@ -2665,7 +2699,7 @@
                                   return e(
                                     ItemCard,
                                     {
-                                      style: getEmailCardStyle(2),
+                                      style: getTrackCardStyle(2, ownedEmailTrack),
                                       headerStyle: { background: meta.headerBg, color: meta.headerText },
                                       headerText: meta.label,
                                       frameStyle: { background: meta.paneBg, color: meta.paneText },
@@ -2687,7 +2721,7 @@
                                         if (shouldSuppressCardClick()) return;
                                         openOwnedDetail("signature", item, null, evt.currentTarget);
                                       },
-                                      style: getEmailCardStyle(idx + 3),
+                                      style: getTrackCardStyle(idx + 3, ownedEmailTrack),
                                       headerStyle: { background: meta.headerBg, color: meta.headerText },
                                       headerText: meta.label,
                                       frameStyle: { background: meta.paneBg, color: meta.paneText },
