@@ -1361,8 +1361,12 @@
         if (ai.employeeId === "jen_lavallee" || ai.id === "jen_lavallee") {
           text = "granting aJENts SMTP access...";
         } else {
-          const reduce = Math.floor(ai.deflectChargeReduce || 0);
-          const reflect = Math.floor(ai.deflectChargeReflect || 0);
+          const reduce = statCtx
+            ? Math.floor(ReplyAllEngine.stats.getUnitDeflectReduce(statCtx, ai))
+            : Math.floor(ai.deflect || 0);
+          const reflect = statCtx
+            ? Math.floor(ReplyAllEngine.stats.getUnitDeflectReflect(statCtx, ai))
+            : Math.floor(ai.retaliation || 0);
           text = `planning retaliation... (${reduce}/${reflect})`;
         }
       } else if (type === "cc") {

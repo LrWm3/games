@@ -151,6 +151,59 @@
       .action-btn.is-disabled {
         opacity: 0.6;
       }
+      .game-action-card {
+        cursor: grab;
+      }
+      .game-action-card.is-disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .game-action-card.is-dragging {
+        outline: 2px dashed #000080;
+        outline-offset: -4px;
+        opacity: 0.45;
+      }
+      .game-action-drag-proxy {
+        position: fixed;
+        pointer-events: none;
+        z-index: 140;
+        transform: translate(-50%, -50%);
+      }
+      .game-action-dock {
+        position: fixed;
+        left: 50%;
+        bottom: 8px;
+        transform: translateX(-50%);
+        z-index: 96;
+        width: min(980px, calc(100% - 1rem));
+      }
+      .game-action-drop-overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+        z-index: 40;
+      }
+      .game-action-drop-overlay .overlay-shell {
+        width: 100%;
+        height: 100%;
+        border: 2px dashed #1d4ed8;
+        background: rgba(255, 255, 255, 0.72);
+        color: #1e3a8a;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .game-action-drop-overlay.is-over .overlay-shell {
+        border-color: #15803d;
+        color: #14532d;
+      }
       .momentum-meter {
         display: grid;
         grid-template-columns: repeat(8, minmax(0, 1fr));
@@ -1359,6 +1412,7 @@
           {
             className: `shop-card-item${props.extraClassName ? ` ${props.extraClassName}` : ""}`,
             onClick: props.onClick,
+            onPointerDown: props.onPointerDown,
             style: props.style || undefined,
             ...dataAttrs,
           },
@@ -2931,11 +2985,99 @@
         const aiPreviewRows = showDraftingIndicators
           ? ReplyAllEngine.core.getAiActionPreviewRows(props.state)
           : [];
+        const actionCards = [
+          { id: "ATTACK", label: "Reply to" },
+          { id: "ESCALATE", label: "Escalate" },
+          { id: "PROMOTE", label: "Self-Promote" },
+          { id: "DEFLECT", label: "Deflect" },
+        ];
+        const actionLabelById = actionCards.reduce((acc, item) => {
+          acc[item.id] = item.label;
+          return acc;
+        }, {});
+        const emailDropRef = React.useRef(null);
+        const actionDockRef = React.useRef(null);
+        const dragRef = React.useRef(null);
+        const [dragActionId, setDragActionId] = React.useState(null);
+        const [isOverEmailDrop, setIsOverEmailDrop] = React.useState(false);
+        const [dragPointer, setDragPointer] = React.useState({ x: 0, y: 0 });
+        const dragAction = dragActionId
+          ? actionCards.find((action) => action.id === dragActionId) || null
+          : null;
+        const actionDockTrack = useAdaptiveCardTrack(actionDockRef, actionCards.length);
+
+        const isPointOverEmailDrop = (clientX, clientY) => {
+          const el = emailDropRef.current;
+          if (!el || !Number.isFinite(clientX) || !Number.isFinite(clientY)) return false;
+          const rect = el.getBoundingClientRect();
+          return (
+            clientX >= rect.left &&
+            clientX <= rect.right &&
+            clientY >= rect.top &&
+            clientY <= rect.bottom
+          );
+        };
+
+        React.useEffect(() => {
+          const onPointerMove = (evt) => {
+            const drag = dragRef.current;
+            if (!drag) return;
+            const dx = (evt.clientX || 0) - drag.startX;
+            const dy = (evt.clientY || 0) - drag.startY;
+            const dist = Math.hypot(dx, dy);
+            if (!drag.active && dist > 6) {
+              drag.active = true;
+              setDragActionId(drag.actionId);
+            }
+            if (drag.active) {
+              setDragPointer({ x: evt.clientX || 0, y: evt.clientY || 0 });
+              setIsOverEmailDrop(isPointOverEmailDrop(evt.clientX, evt.clientY));
+            }
+          };
+          const onPointerUp = (evt) => {
+            const drag = dragRef.current;
+            if (!drag) return;
+            const shouldCast =
+              drag.active &&
+              isPointOverEmailDrop(evt.clientX, evt.clientY) &&
+              !props.disabledActions?.[drag.actionId];
+            if (shouldCast) props.onAction(drag.actionId);
+            if (!drag.active) {
+              props.onActionHover(drag.actionId);
+            } else {
+              props.onActionHover(null);
+            }
+            setDragActionId(null);
+            setIsOverEmailDrop(false);
+            setDragPointer({ x: 0, y: 0 });
+            dragRef.current = null;
+          };
+          window.addEventListener("pointermove", onPointerMove);
+          window.addEventListener("pointerup", onPointerUp);
+          window.addEventListener("pointercancel", onPointerUp);
+          return () => {
+            window.removeEventListener("pointermove", onPointerMove);
+            window.removeEventListener("pointerup", onPointerUp);
+            window.removeEventListener("pointercancel", onPointerUp);
+          };
+        }, [props]);
+
+        const onActionCardPointerDown = (actionId, evt) => {
+          if (props.disabledActions?.[actionId]) return;
+          dragRef.current = {
+            actionId,
+            startX: evt.clientX || 0,
+            startY: evt.clientY || 0,
+            active: false,
+          };
+          setDragPointer({ x: evt.clientX || 0, y: evt.clientY || 0 });
+          props.onActionHover(actionId);
+        };
         return e(
           "div",
           {
             className:
-              "fixed inset-0 z-[95] flex flex-col w-[calc(100%-1rem)] h-[calc(100%-1rem)] max-w-5xl bg-[#c0c0c0] retro-border overflow-hidden m-2",
+              "fixed inset-0 z-[95] flex flex-col w-[calc(100%-1rem)] h-[calc(100%-9rem)] max-w-5xl bg-[#c0c0c0] retro-border overflow-hidden m-2",
           },
           e(
             "div",
@@ -3063,54 +3205,76 @@
               ),
               e(
                 "div",
-                { className: "flex-grow overflow-y-auto p-3 space-y-6 bg-white font-sans text-sm" },
-                aiPreviewRows.length
+                { className: "flex-grow overflow-hidden relative" },
+                e(
+                  "div",
+                  {
+                    ref: emailDropRef,
+                    className: "h-full overflow-y-auto p-3 space-y-6 bg-white font-sans text-sm",
+                  },
+                  aiPreviewRows.length
+                    ? e(
+                        "div",
+                        {
+                          className:
+                            "message-entry p-2 border-2 border-gray-100 bg-gray-50 text-[11px] italic text-gray-600",
+                        },
+                        aiPreviewRows.map((row) =>
+                          e(
+                            "div",
+                            { key: `ai-preview-${row.id}` },
+                            e("strong", null, row.name),
+                            ` is ${row.text}`,
+                          ),
+                        ),
+                      )
+                    : null,
+                  (props.state.messageLogEntries || []).map((entry, idx) =>
+                    (() => {
+                      const entryTargetId = resolveEntryTargetId(entry);
+                      return e(
+                        "div",
+                        {
+                          key: `log-${idx}-${entry.time || ""}`,
+                          className: `message-entry p-0 border-2 border-gray-100 bg-white shadow-sm ${entry.classes || ""} ${
+                            entryTargetId ? "cursor-pointer hover:border-[#000080]" : ""
+                          }`,
+                          onClick: entryTargetId ? () => props.onSelectTarget(entryTargetId) : undefined,
+                        },
+                        e(
+                          "div",
+                          { className: "email-header p-2" },
+                          e(
+                            "div",
+                            { className: "flex flex-wrap gap-x-3 gap-y-1" },
+                            e("div", null, e("strong", null, "From:"), ` ${entry.from}`),
+                            e("div", null, e("strong", null, "To:"), ` ${entry.to}`),
+                            e("div", null, e("strong", null, "Sent:"), ` Today, ${entry.time || formatTurnTime(props.state.turn || 0)}`),
+                          ),
+                        ),
+                        e("div", {
+                          className: "email-body px-3 py-2 font-serif",
+                          dangerouslySetInnerHTML: { __html: entry.body || "" },
+                        }),
+                      );
+                    })(),
+                  ),
+                ),
+                dragActionId
                   ? e(
                       "div",
                       {
-                        className:
-                          "message-entry p-2 border-2 border-gray-100 bg-gray-50 text-[11px] italic text-gray-600",
-                      },
-                      aiPreviewRows.map((row) =>
-                        e(
-                          "div",
-                          { key: `ai-preview-${row.id}` },
-                          e("strong", null, row.name),
-                          ` is ${row.text}`,
-                        ),
-                      ),
-                    )
-                  : null,
-                (props.state.messageLogEntries || []).map((entry, idx) =>
-                  (() => {
-                    const entryTargetId = resolveEntryTargetId(entry);
-                    return e(
-                      "div",
-                      {
-                        key: `log-${idx}-${entry.time || ""}`,
-                        className: `message-entry p-0 border-2 border-gray-100 bg-white shadow-sm ${entry.classes || ""} ${
-                          entryTargetId ? "cursor-pointer hover:border-[#000080]" : ""
-                        }`,
-                        onClick: entryTargetId ? () => props.onSelectTarget(entryTargetId) : undefined,
+                        className: `game-action-drop-overlay ${isOverEmailDrop ? "is-over" : ""}`,
                       },
                       e(
                         "div",
-                        { className: "email-header p-2" },
-                        e(
-                          "div",
-                          { className: "flex flex-wrap gap-x-3 gap-y-1" },
-                          e("div", null, e("strong", null, "From:"), ` ${entry.from}`),
-                          e("div", null, e("strong", null, "To:"), ` ${entry.to}`),
-                          e("div", null, e("strong", null, "Sent:"), ` Today, ${entry.time || formatTurnTime(props.state.turn || 0)}`),
-                        ),
+                        { className: "overlay-shell" },
+                        isOverEmailDrop
+                          ? `Release to ${actionLabelById[dragActionId] || "Use Action"}`
+                          : `Drag Here to ${actionLabelById[dragActionId] || "Use Action"}`,
                       ),
-                      e("div", {
-                        className: "email-body px-3 py-2 font-serif",
-                        dangerouslySetInnerHTML: { __html: entry.body || "" },
-                      }),
-                    );
-                  })(),
-                ),
+                    )
+                  : null,
               ),
               e(
                 "div",
@@ -3148,55 +3312,69 @@
                     ReplyAllEngine.play.formatTurnTime(props.state.turn || 0),
                   ),
                 ),
-                e(
-                  "div",
-                  { className: "grid grid-cols-4 gap-1.5 max-w-lg mx-auto" },
-                  [
-                    { id: "ATTACK", label: "Reply to" },
-                    { id: "ESCALATE", label: "Escalate" },
-                    { id: "CC", label: "Contact CC" },
-                    { id: "BCC", label: "Use BCC" },
-                    { id: "PROMOTE", label: "Self-Promote" },
-                    { id: "DEFLECT", label: "Deflect" },
-                  ].map((action) =>
-                    e(
-                      "button",
-                      {
-                        key: action.id,
-                        disabled: !!props.disabledActions[action.id],
-                        onClick: () => props.onAction(action.id),
-                        onMouseEnter: () => props.onActionHover(action.id),
-                        onMouseLeave: () => props.onActionHover(null),
-                        className: `retro-button py-2 flex flex-col items-center action-btn ${props.disabledActions[action.id] ? "is-disabled" : ""}`,
-                      },
-                      e("span", { className: "text-[11px] font-bold" }, action.label),
-                    ),
-                  ),
-                  e(
-                    "button",
-                    {
-                      disabled: !!props.disabledActions.ULT,
-                      onClick: () => props.onAction("ULT"),
-                      onMouseEnter: () => props.onActionHover("ULT"),
-                      onMouseLeave: () => props.onActionHover(null),
-                      className: `retro-button py-2 flex flex-col items-center action-btn ${props.disabledActions.ULT ? "is-disabled" : ""}`,
-                    },
-                    e("span", { className: "text-[11px] font-bold text-red-800" }, "REPLY ALL"),
-                    e(
-                      "div",
-                      { className: "momentum-meter" },
-                      Array.from({ length: 8 }).map((_, i) =>
-                        e("div", {
-                          key: `ult-${i}`,
-                          className: `momentum-segment ${i < Math.floor(player.ult || 0) ? "charged" : ""}`,
-                        }),
-                      ),
-                    ),
-                  ),
-                ),
+                e("div", { className: "text-[10px] text-center text-gray-700 italic pt-1" }, "Use action cards below and drag into email view."),
               ),
             ),
           ),
+          e(
+            "div",
+            { className: "game-action-dock" },
+            e(
+              "div",
+              { className: "bg-[#c0c0c0] retro-border p-2" },
+              e(
+                "div",
+                {
+                  ref: actionDockRef,
+                  className: "adaptive-card-track bg-white retro-border-inset p-2",
+                  style: actionDockTrack.trackStyle,
+                },
+                actionCards.map((action, idx) => {
+                  const isDisabled = !!props.disabledActions[action.id];
+                  const isDragging = dragActionId === action.id;
+                  return e(
+                    ItemCard,
+                    {
+                      key: action.id,
+                      extraClassName: `game-action-card ${isDisabled ? "is-disabled" : ""} ${isDragging ? "is-dragging" : ""}`,
+                      style: actionDockTrack.getCardStyle(idx),
+                      headerText: "Action",
+                      headerStyle: isDisabled
+                        ? { background: "#9ca3af", color: "#1f2937" }
+                        : { background: "#000080", color: "#ffffff" },
+                      frameStyle: isDisabled
+                        ? { background: "#d1d5db", color: "#4b5563" }
+                        : { background: "#e5e7eb", color: "#111827" },
+                      onClick: () => {
+                        if (isDisabled) return;
+                        props.onActionHover(action.id);
+                      },
+                      onPointerDown: (evt) => onActionCardPointerDown(action.id, evt),
+                    },
+                    e("div", { className: "shop-card-name" }, action.label),
+                  );
+                }),
+              ),
+            ),
+          ),
+          dragAction
+            ? e(
+                "div",
+                {
+                  className: "game-action-drag-proxy",
+                  style: { left: `${dragPointer.x}px`, top: `${dragPointer.y}px` },
+                },
+                e(
+                  ItemCard,
+                  {
+                    headerText: "Action",
+                    headerStyle: { background: "#000080", color: "#ffffff" },
+                    frameStyle: { background: "#e5e7eb", color: "#111827" },
+                  },
+                  e("div", { className: "shop-card-name" }, dragAction.label),
+                ),
+              )
+            : null,
           props.ccPickerOpen
             ? e(
                 "div",
@@ -4270,6 +4448,7 @@
           onAction,
           onActionHover: setHoveredAction,
           disabledActions,
+          actionHints,
           statusText: computedStatusText,
           outcomeOverlay,
           ccPickerOpen,
