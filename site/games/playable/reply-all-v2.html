@@ -1333,20 +1333,26 @@
       }
 
       function useAdaptiveCardTrack(areaRef, cardCount) {
-        const [trackWidth, setTrackWidth] = React.useState(0);
+        const [trackInnerWidth, setTrackInnerWidth] = React.useState(0);
         const [domCardCount, setDomCardCount] = React.useState(0);
         React.useLayoutEffect(() => {
           const el = areaRef.current;
           if (!el) return undefined;
-          const readWidth = () => setTrackWidth(el.clientWidth || 0);
-          readWidth();
+          const readMetrics = () => {
+            const style = window.getComputedStyle(el);
+            const paddingLeft = parseFloat(style.paddingLeft || "0") || 0;
+            const paddingRight = parseFloat(style.paddingRight || "0") || 0;
+            const inner = Math.max(0, (el.clientWidth || 0) - 2*(paddingLeft + paddingRight));
+            setTrackInnerWidth(inner);
+          };
+          readMetrics();
           if (typeof ResizeObserver !== "undefined") {
-            const ro = new ResizeObserver(() => readWidth());
+            const ro = new ResizeObserver(() => readMetrics());
             ro.observe(el);
             return () => ro.disconnect();
           }
-          window.addEventListener("resize", readWidth);
-          return () => window.removeEventListener("resize", readWidth);
+          window.addEventListener("resize", readMetrics);
+          return () => window.removeEventListener("resize", readMetrics);
         }, [areaRef]);
         React.useLayoutEffect(() => {
           const el = areaRef.current;
@@ -1370,9 +1376,9 @@
         const step = React.useMemo(() => {
           const effectiveCount = Math.max(1, domCardCount || cardCount || 0);
           const cardWidth = 84;
-          const contentWidth = Math.max(cardWidth, (trackWidth || cardWidth) - 16);
+          const contentWidth = Math.max(cardWidth, trackInnerWidth || cardWidth);
           return contentWidth / (effectiveCount + 1);
-        }, [trackWidth, cardCount, domCardCount]);
+        }, [trackInnerWidth, cardCount, domCardCount]);
         const inset = React.useMemo(() => {
           const cardWidth = 84;
           return Math.max(0, step - cardWidth / 2);
