@@ -2926,6 +2926,11 @@
           opponents.find((o) => o.id === props.state.targetId) || opponents[0] || null;
         const maxHp = Math.max(1, player.maxHp || player.hp || 1);
         const hpPct = Math.max(0, Math.min(100, ((player.hp || 0) / maxHp) * 100));
+        const showDraftingIndicators =
+          !!props.state.missionActive && !props.state.isProcessing && !props.state.gameOver;
+        const aiPreviewRows = showDraftingIndicators
+          ? ReplyAllEngine.core.getAiActionPreviewRows(props.state)
+          : [];
         return e(
           "div",
           {
@@ -2962,7 +2967,14 @@
               },
               "Inbox",
             ),
-            e("span", { className: "cursor-default hover:bg-[#000080] hover:text-white px-1" }, "Settings"),
+            e(
+              "button",
+              {
+                className: "cursor-default hover:bg-[#000080] hover:text-white px-1 text-left",
+                onClick: props.onOpenSettings,
+              },
+              "Settings",
+            ),
           ),
           e(
             "div",
@@ -3052,6 +3064,23 @@
               e(
                 "div",
                 { className: "flex-grow overflow-y-auto p-3 space-y-6 bg-white font-sans text-sm" },
+                aiPreviewRows.length
+                  ? e(
+                      "div",
+                      {
+                        className:
+                          "message-entry p-2 border-2 border-gray-100 bg-gray-50 text-[11px] italic text-gray-600",
+                      },
+                      aiPreviewRows.map((row) =>
+                        e(
+                          "div",
+                          { key: `ai-preview-${row.id}` },
+                          e("strong", null, row.name),
+                          ` is ${row.text}`,
+                        ),
+                      ),
+                    )
+                  : null,
                 (props.state.messageLogEntries || []).map((entry, idx) =>
                   (() => {
                     const entryTargetId = resolveEntryTargetId(entry);
@@ -3264,6 +3293,55 @@
                 ),
               )
             : null,
+          props.settingsOpen
+            ? e(
+                "div",
+                {
+                  className: "fixed inset-0 bg-black/40 z-[125] flex items-center justify-center p-4",
+                  onClick: props.onCloseSettings,
+                },
+                e(
+                  "div",
+                  {
+                    className: "bg-[#c0c0c0] retro-border p-0.5 w-full max-w-[280px] shadow-2xl",
+                    onClick: (evt) => evt.stopPropagation(),
+                  },
+                  e(
+                    "div",
+                    { className: "window-titlebar text-white px-2 py-1 text-[10px] font-bold flex justify-between items-center" },
+                    e("span", null, "System Settings"),
+                    e(
+                      "button",
+                      {
+                        onClick: props.onCloseSettings,
+                        className:
+                          "w-3.5 h-3.5 bg-[#c0c0c0] border border-white shadow-[1px_1px_0px_black] text-black text-[9px] flex items-center justify-center font-bold",
+                      },
+                      "x",
+                    ),
+                  ),
+                  e(
+                    "div",
+                    { className: "p-3 space-y-2" },
+                    e(
+                      "button",
+                      { onClick: props.onRestartSameSeed, className: "w-full retro-button text-[11px] font-bold py-1.5" },
+                      "Restart with Same Seed",
+                    ),
+                    e(
+                      "button",
+                      { onClick: props.onDepartmentSelect, className: "w-full retro-button text-[11px] font-bold py-1.5" },
+                      "Return to Department Selection",
+                    ),
+                    e(
+                      "button",
+                      { onClick: props.onCloseSettings, className: "w-full retro-button text-[11px] font-bold py-1.5" },
+                      "Back to Work",
+                    ),
+                  ),
+                ),
+              )
+            : null,
           props.outcomeOverlay
             ? e(
                 "div",
@@ -3331,6 +3409,7 @@
         const [resumeSave, setResumeSave] = React.useState(null);
         const [ccPickerOpen, setCcPickerOpen] = React.useState(false);
         const [bccPickerOpen, setBccPickerOpen] = React.useState(false);
+        const [gameSettingsOpen, setGameSettingsOpen] = React.useState(false);
         const [hoveredAction, setHoveredAction] = React.useState(null);
         const [statusText, setStatusText] = React.useState("Ready.");
         const [summaryData, setSummaryData] = React.useState(null);
@@ -3349,6 +3428,12 @@
             setPlayerName(save.state.player.name);
           }
         }, []);
+
+        React.useEffect(() => {
+          if (activeScreen !== "game" && gameSettingsOpen) {
+            setGameSettingsOpen(false);
+          }
+        }, [activeScreen, gameSettingsOpen]);
 
         const emailPreview = ReplyAllEngine.start.getEmailFromName(playerName);
         const currentDeptId = state.startConfig?.departmentId || "executive";
@@ -3608,12 +3693,22 @@
             setStatusText("Campaign complete.");
             return;
           }
+          const lossReason =
+            result?.lossReason ||
+            nextState.lossReason ||
+            (winLoss.gameOver && !winLoss.gameWon ? winLoss.reason : null);
+          const isLoss = !!lossReason && (lossReason === "timeout" || lossReason === "defeat");
           setState(nextState);
-          persistSave(nextState, "game-ui");
+          if (isLoss) {
+            clearSaveFromStorage();
+            setResumeSave(null);
+          } else {
+            persistSave(nextState, "game-ui");
+          }
           if (result?.gameOver || winLoss.gameOver) {
-            if (result.lossReason === "timeout") {
+            if (lossReason === "timeout") {
               setStatusText("Thread timed out.");
-            } else if (result.lossReason === "defeat") {
+            } else if (lossReason === "defeat") {
               setStatusText("You were removed from the thread.");
             } else if (winLoss.gameWon) {
               setStatusText("Campaign complete.");
@@ -3901,6 +3996,39 @@
           setActiveScreen("inbox");
         }
 
+        function onRestartSameSeedFromSettings() {
+          const sourceState = cloneState(state);
+          sourceState.startConfig = {
+            ...(sourceState.startConfig || {}),
+            seedInput: String(state.seed ?? sourceState.startConfig?.seedInput ?? ""),
+          };
+          const prepared = ReplyAllEngine.start.prepareRunFromInduction(
+            sourceState,
+            metaState,
+            state.player?.name || playerName,
+          );
+          const runState = ReplyAllEngine.play.attachRuntimeState(prepared.state);
+          setGameSettingsOpen(false);
+          setCcPickerOpen(false);
+          setBccPickerOpen(false);
+          setSummaryData(null);
+          setPromotionData(null);
+          setShopNotice("");
+          setStatusText("Ready.");
+          setState(runState);
+          setPlayerName(runState.player?.name || playerName);
+          setActiveScreen("inbox");
+          persistSave(runState, "inbox-screen");
+        }
+
+        function onDepartmentSelectFromSettings() {
+          setGameSettingsOpen(false);
+          setCcPickerOpen(false);
+          setBccPickerOpen(false);
+          setActiveScreen("induction");
+          persistSave(state, "induction-screen");
+        }
+
         function onBackToMenuFromCampaign() {
           setActiveScreen("start");
           setSummaryData(null);
@@ -4152,12 +4280,19 @@
           onPickBcc: (bccIndex) => onAction("BCC", { bccIndex }),
           onCloseCcPicker: () => setCcPickerOpen(false),
           onCloseBccPicker: () => setBccPickerOpen(false),
+          settingsOpen: gameSettingsOpen,
+          onOpenSettings: () => setGameSettingsOpen(true),
+          onCloseSettings: () => setGameSettingsOpen(false),
+          onRestartSameSeed: onRestartSameSeedFromSettings,
+          onDepartmentSelect: onDepartmentSelectFromSettings,
           onBackToInbox: () => {
+            setGameSettingsOpen(false);
             setActiveScreen("inbox");
             setStatusText("Ready.");
             persistSave(state, "inbox-screen");
           },
           onBackToMenu: () => {
+            setGameSettingsOpen(false);
             setActiveScreen("start");
             setStatusText("Ready.");
           },

@@ -1322,6 +1322,73 @@
     return false;
   }
 
+  function formatPreviewList(items) {
+    if (!Array.isArray(items) || items.length === 0) return "";
+    if (items.length === 1) return items[0];
+    if (items.length === 2) return `${items[0]} and ${items[1]}`;
+    return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+  }
+
+  function getAiActionPreviewRows(state, helpers = {}) {
+    if (!state) return [];
+    const alive = (state.opponents || []).filter((o) => (o.hp || 0) > 0);
+    if (!alive.length) return [];
+    const statCtx = getStatCtx(state);
+    return alive.map((ai) => {
+      let plan = state.aiPlannedActions?.[ai.id] || null;
+      if (!isPlannedActionValid(state, ai, plan, helpers)) {
+        plan = decideAiAction(state, ai, alive, state.player, helpers);
+      }
+
+      const type = plan?.type || "attack";
+      let text = "";
+      if (type === "attack") {
+        const dmg = statCtx
+          ? ReplyAllEngine.stats.getUnitDamage(statCtx, ai, "single")
+          : 0;
+        text = `drafting a reply... (${Math.floor(dmg)})`;
+      } else if (type === "escalate") {
+        const dmg = statCtx
+          ? ReplyAllEngine.stats.getUnitDamage(statCtx, ai, "escalate")
+          : 0;
+        text = `preparing to escalate... (${Math.floor(dmg)})`;
+      } else if (type === "promote") {
+        const heal = statCtx
+          ? ReplyAllEngine.stats.getUnitSelfPromoteHeal(statCtx, ai, 15)
+          : 15;
+        text = `readies a recent win... (${Math.floor(heal)}/${Math.max(0, ai.wins || 0)})`;
+      } else if (type === "deflect") {
+        if (ai.employeeId === "jen_lavallee" || ai.id === "jen_lavallee") {
+          text = "granting aJENts SMTP access...";
+        } else {
+          const reduce = Math.floor(ai.deflectChargeReduce || 0);
+          const reflect = Math.floor(ai.deflectChargeReflect || 0);
+          text = `planning retaliation... (${reduce}/${reflect})`;
+        }
+      } else if (type === "cc") {
+        const available = (ai.addressBook || [])
+          .map((id) => CONTACTS.find((c) => c.id === id))
+          .filter((c) => c && !isContactInLoop(state, c.id) && !isContactImplicated(state, c));
+        const availableNames = available.map((c) => c.name).filter(Boolean);
+        const count = Array.isArray(plan?.ccTargets) ? plan.ccTargets.length : 0;
+        const label = count > 1 ? "looping in contacts" : "looping in a contact";
+        text = `${label}... (${count} of ${formatPreviewList(availableNames)})`;
+      } else {
+        const dmg = statCtx
+          ? ReplyAllEngine.stats.getUnitDamage(statCtx, ai, "single")
+          : 0;
+        text = `drafting a reply... (${Math.floor(dmg)})`;
+      }
+
+      return {
+        id: ai.id,
+        name: ai.name || "Stakeholder",
+        type,
+        text,
+      };
+    });
+  }
+
   function getContactUsedBy(state, contactId) {
     if (!state?.player || !contactId) return null;
     const playerBuff = state.player.buffs?.find((b) => b.id === contactId);
@@ -4621,6 +4688,7 @@
     isContactInLoop,
     isContactImplicated,
     isPlannedActionValid,
+    getAiActionPreviewRows,
     getContactUsedBy,
     getPlayerLeverageGain,
     pickRandomItem,
