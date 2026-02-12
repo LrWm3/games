@@ -4108,6 +4108,28 @@
     return state;
   }
 
+  function debugMutatePlayerStats(state, statChanges = {}, options = {}) {
+    if (!state || !state.player) return { ok: false, reason: "missing_player" };
+    if (!statChanges || typeof statChanges !== "object") {
+      return { ok: false, reason: "invalid_changes" };
+    }
+    const mode = options.mode === "set" ? "set" : "add";
+    applyUnitDefaults(state.player);
+    const applied = {};
+    Object.keys(statChanges).forEach((key) => {
+      const delta = statChanges[key];
+      if (typeof delta !== "number" || !Number.isFinite(delta)) return;
+      const current =
+        typeof state.player[key] === "number" ? state.player[key] : 0;
+      const nextValue = mode === "set" ? delta : current + delta;
+      state.player[key] = nextValue;
+      applied[key] = nextValue;
+    });
+    if (!Object.keys(applied).length) return { ok: false, reason: "no_changes" };
+    attachRuntimeState(state);
+    return { ok: true, mode, applied, state };
+  }
+
   ReplyAllEngine.play = {
     formatTurnTime,
     getMissionHeaderSubject,
@@ -4128,6 +4150,7 @@
     getPromotionStats,
     runPlayerTurn,
     startMissionWithIntro,
+    debugMutatePlayerStats,
   };
 
   ReplyAllEngine.core = {

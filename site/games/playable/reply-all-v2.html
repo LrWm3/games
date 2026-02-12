@@ -1219,6 +1219,16 @@
         const [detailPopup, setDetailPopup] = React.useState(null);
         const [detailPopupPos, setDetailPopupPos] = React.useState({ left: 8, top: 8 });
         const detailPopupRef = React.useRef(null);
+        const dragPopupRef = React.useRef({
+          active: false,
+          itemId: "",
+          itemType: "",
+          packId: "",
+          itemIndex: null,
+          pointerX: null,
+          pointerY: null,
+        });
+        const suppressCardClickUntilRef = React.useRef(0);
         const directListRef = React.useRef(null);
         const packListRef = React.useRef(null);
         const buyZoneRef = React.useRef(null);
@@ -1268,6 +1278,9 @@
             return dept ? `Department: ${dept}` : "Potential contact.";
           }
           return "No additional details.";
+        }
+        function shouldSuppressCardClick() {
+          return Date.now() < suppressCardClickUntilRef.current;
         }
         function getDetailPopupKey(nextPopup) {
           if (!nextPopup) return "";
@@ -1328,6 +1341,171 @@
         function closeDetailPopup() {
           setDetailPopup(null);
         }
+        function onDragPointerMove(evt) {
+          const ctx = dragPopupRef.current;
+          if (!ctx.active) return;
+          if (typeof evt.clientX === "number") ctx.pointerX = evt.clientX;
+          if (typeof evt.clientY === "number") ctx.pointerY = evt.clientY;
+        }
+        function onDragTouchMove(evt) {
+          const ctx = dragPopupRef.current;
+          if (!ctx.active) return;
+          const touch = evt.touches && evt.touches[0];
+          if (!touch) return;
+          ctx.pointerX = touch.clientX;
+          ctx.pointerY = touch.clientY;
+        }
+        function stopDragPopupFollow() {
+          const ctx = dragPopupRef.current;
+          ctx.active = false;
+          ctx.itemId = "";
+          ctx.itemType = "";
+          ctx.packId = "";
+          ctx.itemIndex = null;
+          ctx.pointerX = null;
+          ctx.pointerY = null;
+          window.removeEventListener("pointermove", onDragPointerMove);
+          window.removeEventListener("touchmove", onDragTouchMove);
+        }
+        function startDragPopupFollow(identity) {
+          const ctx = dragPopupRef.current;
+          ctx.active = true;
+          ctx.itemId = identity.itemId || "";
+          ctx.itemType = identity.itemType || "";
+          ctx.packId = identity.packId || "";
+          ctx.itemIndex = identity.itemIndex ?? null;
+          ctx.pointerX = null;
+          ctx.pointerY = null;
+          window.addEventListener("pointermove", onDragPointerMove, { passive: true });
+          window.addEventListener("touchmove", onDragTouchMove, { passive: true });
+        }
+        function getDraggedElementRect() {
+          const ctx = dragPopupRef.current;
+          const nodes = document.querySelectorAll(".sortable-fallback, .shop-card-drag, .shop-card-chosen");
+          for (const node of nodes) {
+            if (!node || !node.dataset) continue;
+            if (ctx.packId) {
+              if (node.dataset.packId === ctx.packId) return node.getBoundingClientRect();
+              continue;
+            }
+            if (!ctx.itemId || !ctx.itemType) continue;
+            if (node.dataset.itemId !== ctx.itemId) continue;
+            if (node.dataset.itemType !== ctx.itemType) continue;
+            if (ctx.itemIndex != null) {
+              if ((node.dataset.itemIndex || null) !== String(ctx.itemIndex)) continue;
+            }
+            return node.getBoundingClientRect();
+          }
+          if (
+            typeof ctx.pointerX === "number" &&
+            typeof ctx.pointerY === "number"
+          ) {
+            const width = 84;
+            const height = 120;
+            return {
+              left: ctx.pointerX - width / 2,
+              top: ctx.pointerY - height / 2,
+              right: ctx.pointerX + width / 2,
+              bottom: ctx.pointerY + height / 2,
+              width,
+              height,
+            };
+          }
+          return null;
+        }
+        function resolveDragPopupPayload(dragEl, popupSource) {
+          const itemId = dragEl?.dataset?.itemId || "";
+          const itemType = dragEl?.dataset?.itemType || "";
+          const packId = dragEl?.dataset?.packId || "";
+          const itemIndexRaw = dragEl?.dataset?.itemIndex;
+          const parsedIndex = itemIndexRaw == null ? null : Number(itemIndexRaw);
+          const itemIndex = Number.isFinite(parsedIndex) ? parsedIndex : null;
+          if (packId) {
+            const pack = (shop.packs || []).find((p) => p.id === packId && !p.purchased);
+            if (!pack) return null;
+            return {
+              popup: {
+                mode: "pack",
+                pack,
+                itemType: pack.type || "dev",
+                cost: typeof pack.cost === "number" ? pack.cost : 0,
+              },
+              identity: { packId },
+            };
+          }
+          if (!itemId || !itemType) return null;
+          if (popupSource === "shop-offers") {
+            const item = (shop.directItems || []).find((i) => i.id === itemId && !i.purchased);
+            if (!item) return null;
+            return {
+              popup: {
+                mode: "direct",
+                item,
+                itemType: item.itemType,
+                cost: getDisplayCost(item),
+              },
+              identity: { itemId, itemType },
+            };
+          }
+          if (popupSource === "owned-contact") {
+            const item = (owned.addressBook || []).find((i) => i.id === itemId);
+            if (!item) return null;
+            return {
+              popup: {
+                mode: "owned",
+                item,
+                itemType: "contact",
+                itemIndex: null,
+                refund: ReplyAllEngine.core.getSellRefundForItem("contact", item),
+              },
+              identity: { itemId, itemType: "contact" },
+            };
+          }
+          if (popupSource === "owned-bcc") {
+            const item = itemIndex != null ? owned.bcc[itemIndex] : (owned.bcc || []).find((i) => i.id === itemId);
+            if (!item) return null;
+            return {
+              popup: {
+                mode: "owned",
+                item,
+                itemType: "bcc",
+                itemIndex,
+                refund: ReplyAllEngine.core.getSellRefundForItem("bcc", item),
+              },
+              identity: { itemId, itemType: "bcc", itemIndex },
+            };
+          }
+          if (popupSource === "owned-email") {
+            let item = null;
+            if (itemType === "salutation") item = owned.salutation || null;
+            else if (itemType === "signoff") item = owned.signoff || null;
+            else if (itemType === "signature") item = (owned.signatures || []).find((i) => i.id === itemId) || null;
+            if (!item) return null;
+            return {
+              popup: {
+                mode: "owned",
+                item,
+                itemType,
+                itemIndex: null,
+                refund: ReplyAllEngine.core.getSellRefundForItem(itemType, item),
+              },
+              identity: { itemId, itemType },
+            };
+          }
+          return null;
+        }
+        function onDragPopupStart(evt, popupSource) {
+          const resolved = resolveDragPopupPayload(evt?.item, popupSource);
+          if (!resolved) return;
+          const anchorRect = evt?.item?.getBoundingClientRect?.() || null;
+          setDetailPopup({ ...resolved.popup, anchorRect });
+          startDragPopupFollow(resolved.identity);
+          suppressCardClickUntilRef.current = Date.now() + 300;
+        }
+        function onDragPopupEnd() {
+          stopDragPopupFollow();
+          closeDetailPopup();
+        }
         function computeDetailPopupPosition(anchorRect, popupWidth, popupHeight) {
           const padding = 8;
           if (!anchorRect) return { left: padding, top: padding };
@@ -1371,6 +1549,32 @@
           window.addEventListener("resize", onResize);
           return () => window.removeEventListener("resize", onResize);
         }, [detailPopup]);
+        React.useEffect(() => {
+          if (!detailPopup || !dragPopupRef.current.active) return undefined;
+          let rafId = 0;
+          let lastLeft = null;
+          let lastTop = null;
+          const tick = () => {
+            if (!dragPopupRef.current.active || !detailPopupRef.current) return;
+            const anchorRect = getDraggedElementRect();
+            if (anchorRect) {
+              const width = detailPopupRef.current.offsetWidth || 260;
+              const height = detailPopupRef.current.offsetHeight || 200;
+              const pos = computeDetailPopupPosition(anchorRect, width, height);
+              if (pos.left !== lastLeft || pos.top !== lastTop) {
+                lastLeft = pos.left;
+                lastTop = pos.top;
+                setDetailPopupPos(pos);
+              }
+            }
+            rafId = window.requestAnimationFrame(tick);
+          };
+          rafId = window.requestAnimationFrame(tick);
+          return () => {
+            if (rafId) window.cancelAnimationFrame(rafId);
+          };
+        }, [detailPopup]);
+        React.useEffect(() => () => stopDragPopupFollow(), []);
 
         function onDetailAction() {
           if (!detailPopup) return;
@@ -1459,15 +1663,30 @@
 
           function addSortable(ref, options) {
             if (!ref.current) return;
+            const popupSource = options.popupSource || null;
+            const onStart = options.onStart;
+            const onEnd = options.onEnd;
+            const sortableOptions = { ...options };
+            delete sortableOptions.popupSource;
             sortables.push(
               Sortable.create(ref.current, {
                 forceFallback: true,
-                ...options,
+                fallbackOnBody: true,
+                ...sortableOptions,
+                onStart: (evt) => {
+                  if (popupSource) onDragPopupStart(evt, popupSource);
+                  if (typeof onStart === "function") onStart(evt);
+                },
+                onEnd: (evt) => {
+                  if (popupSource) onDragPopupEnd();
+                  if (typeof onEnd === "function") onEnd(evt);
+                },
               }),
             );
           }
 
           addSortable(directListRef, {
+            popupSource: "shop-offers",
             animation: 120,
             sort: false,
             group: { name: "shop-offers", pull: "clone", put: false },
@@ -1486,6 +1705,7 @@
           });
 
           addSortable(packListRef, {
+            popupSource: "shop-pack-open",
             animation: 120,
             sort: false,
             group: { name: "shop-pack-open", pull: "clone", put: false },
@@ -1512,6 +1732,7 @@
           };
 
           addSortable(ownedContactRef, {
+            popupSource: "owned-contact",
             animation: 120,
             sort: true,
             group: {
@@ -1531,6 +1752,7 @@
             },
           });
           addSortable(ownedEmailRef, {
+            popupSource: "owned-email",
             animation: 120,
             sort: true,
             group: {
@@ -1568,6 +1790,7 @@
             },
           });
           addSortable(ownedBccRef, {
+            popupSource: "owned-bcc",
             animation: 120,
             sort: true,
             group: {
@@ -1697,7 +1920,10 @@
                                 key: item.id,
                                 "data-item-id": item.id,
                                 "data-item-type": item.itemType,
-                                onClick: (evt) => openDirectDetail(item, evt.currentTarget),
+                                onClick: (evt) => {
+                                  if (shouldSuppressCardClick()) return;
+                                  openDirectDetail(item, evt.currentTarget);
+                                },
                                 className: "shop-card-item",
                               },
                               (() => {
@@ -1729,7 +1955,10 @@
                               {
                                 key: pack.id,
                                 "data-pack-id": pack.id,
-                                onClick: (evt) => openPackDetail(pack, evt.currentTarget),
+                                onClick: (evt) => {
+                                  if (shouldSuppressCardClick()) return;
+                                  openPackDetail(pack, evt.currentTarget);
+                                },
                                 className: "shop-card-item",
                               },
                               (() => {
@@ -1776,7 +2005,10 @@
                                           className: "shop-card-item",
                                           "data-item-type": "contact",
                                           "data-item-id": item.id,
-                                          onClick: (evt) => openOwnedDetail("contact", item, null, evt.currentTarget),
+                                          onClick: (evt) => {
+                                            if (shouldSuppressCardClick()) return;
+                                            openOwnedDetail("contact", item, null, evt.currentTarget);
+                                          },
                                         },
                                         e(
                                           "div",
@@ -1820,7 +2052,10 @@
                                           "data-item-type": "bcc",
                                           "data-item-id": item.id,
                                           "data-item-index": String(idx),
-                                          onClick: (evt) => openOwnedDetail("bcc", item, idx, evt.currentTarget),
+                                          onClick: (evt) => {
+                                            if (shouldSuppressCardClick()) return;
+                                            openOwnedDetail("bcc", item, idx, evt.currentTarget);
+                                          },
                                         },
                                         e(
                                           "div",
@@ -1855,8 +2090,10 @@
                                       className: "shop-card-item",
                                       "data-item-type": "salutation",
                                       "data-item-id": owned.salutation.id,
-                                      onClick: (evt) =>
-                                        openOwnedDetail("salutation", owned.salutation, null, evt.currentTarget),
+                                      onClick: (evt) => {
+                                        if (shouldSuppressCardClick()) return;
+                                        openOwnedDetail("salutation", owned.salutation, null, evt.currentTarget);
+                                      },
                                     },
                                     e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
                                     e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, owned.salutation.name)),
@@ -1886,8 +2123,10 @@
                                       className: "shop-card-item",
                                       "data-item-type": "signoff",
                                       "data-item-id": owned.signoff.id,
-                                      onClick: (evt) =>
-                                        openOwnedDetail("signoff", owned.signoff, null, evt.currentTarget),
+                                      onClick: (evt) => {
+                                        if (shouldSuppressCardClick()) return;
+                                        openOwnedDetail("signoff", owned.signoff, null, evt.currentTarget);
+                                      },
                                     },
                                     e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
                                     e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, owned.signoff.name)),
@@ -1912,7 +2151,10 @@
                                       className: "shop-card-item",
                                       "data-item-type": "signature",
                                       "data-item-id": item.id,
-                                      onClick: (evt) => openOwnedDetail("signature", item, null, evt.currentTarget),
+                                      onClick: (evt) => {
+                                        if (shouldSuppressCardClick()) return;
+                                        openOwnedDetail("signature", item, null, evt.currentTarget);
+                                      },
                                     },
                                     e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, meta.label),
                                     e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, item.name)),
@@ -2840,6 +3082,43 @@
           setShopNotice("");
           setStatusText("Ready.");
         }
+
+        React.useEffect(() => {
+          const onKeyDown = (evt) => {
+            const isDebugHotkey =
+              evt.key === "-" ||
+              evt.code === "Minus" ||
+              evt.code === "NumpadSubtract";
+            if (!isDebugHotkey) return;
+            const activeEl = document.activeElement;
+            const tag = activeEl?.tagName;
+            if (
+              tag === "INPUT" ||
+              tag === "TEXTAREA" ||
+              activeEl?.isContentEditable
+            ) {
+              return;
+            }
+            evt.preventDefault();
+            const nextState = cloneState(state);
+            ReplyAllEngine.play.attachRuntimeState(nextState);
+            const result = ReplyAllEngine.play.debugMutatePlayerStats(
+              nextState,
+              { reputation: 1000, escalateDmg: 1000 },
+              { mode: "add" },
+            );
+            if (!result?.ok) return;
+            setState(nextState);
+            setShopNotice("Debug: +1000 REP, +1000 Escalate DMG.");
+            setStatusText("Debug: +1000 REP, +1000 Escalate DMG.");
+            persistSave(
+              nextState,
+              ReplyAllEngine.start.getSaveScreenFromUi(activeScreen),
+            );
+          };
+          window.addEventListener("keydown", onKeyDown);
+          return () => window.removeEventListener("keydown", onKeyDown);
+        }, [state, activeScreen]);
 
         const availableCcContacts = ReplyAllEngine.play.getAvailablePlayerCcContacts(
           state,
