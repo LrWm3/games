@@ -1411,6 +1411,7 @@
           onReorderAddressBook: props.onReorderAddressBook,
           onReorderSignatures: props.onReorderSignatures,
           onReorderBcc: props.onReorderBcc,
+          onReconcileShopDom: props.onReconcileShopDom,
         });
         const [detailPopup, setDetailPopup] = React.useState(null);
         const [detailPopupPos, setDetailPopupPos] = React.useState({ left: 8, top: 8 });
@@ -1461,6 +1462,7 @@
             onReorderAddressBook: props.onReorderAddressBook,
             onReorderSignatures: props.onReorderSignatures,
             onReorderBcc: props.onReorderBcc,
+            onReconcileShopDom: props.onReconcileShopDom,
           };
         }, [
           shop,
@@ -1473,6 +1475,7 @@
           props.onReorderAddressBook,
           props.onReorderSignatures,
           props.onReorderBcc,
+          props.onReconcileShopDom,
         ]);
         function getDisplayCost(item) {
           if (!item) return 0;
@@ -2295,6 +2298,17 @@
               clearDragOverlay();
               clearSlotBuyHint();
               if (!evt || evt.from !== evt.to) return;
+              const movedType = evt.item?.dataset?.itemType;
+              if (
+                movedType === "salutation" ||
+                movedType === "signoff" ||
+                movedType === "content"
+              ) {
+                if (typeof handlersRef.current.onReconcileShopDom === "function") {
+                  setTimeout(() => handlersRef.current.onReconcileShopDom(), 0);
+                }
+                return;
+              }
               if (!ownedEmailRef.current) return;
               const sigIds = Array.from(
                 ownedEmailRef.current.querySelectorAll('[data-item-type="signature"][data-item-id]'),
@@ -3980,6 +3994,7 @@
             onReorderAddressBook,
             onReorderSignatures,
             onReorderBcc,
+            onReconcileShopDom: reconcileShopDom,
             onNextQuarter: onNextQuarterFromShop,
           });
         }
