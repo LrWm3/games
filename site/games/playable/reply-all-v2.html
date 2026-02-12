@@ -1990,13 +1990,16 @@
             group: {
               name: "owned-bcc",
               pull: "clone",
-              put: (to, from, dragEl) => fromOffers(to, from, dragEl, "bcc"),
+              put: (to, from) => {
+                const fromGroup = getGroupName(from);
+                if (fromGroup === "shop-offers") return true;
+                return fromGroup === "owned-bcc";
+              },
             },
             draggable: ".shop-card-item",
             onAdd: (evt) => {
               const itemId = evt.item?.dataset?.itemId;
-              const itemType = evt.item?.dataset?.itemType;
-              if (itemId && itemType === "bcc") {
+              if (itemId) {
                 setTimeout(() => handlersRef.current.onDropEquipFromShop(itemId, "bcc"), 0);
               }
             },
