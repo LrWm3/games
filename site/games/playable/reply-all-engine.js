@@ -2205,14 +2205,22 @@
     return Math.max(0, Math.floor(cost / 2));
   }
 
-  function getDirectShopItemById(state, itemId) {
+  function getDirectShopItemById(state, itemId, itemType = null) {
     if (!itemId) return null;
-    return (state?.shop?.directItems || []).find((it) => it.id === itemId) || null;
+    return (
+      (state?.shop?.directItems || []).find(
+        (it) => it.id === itemId && (!itemType || it.itemType === itemType),
+      ) || null
+    );
   }
 
   function buyDirectItemById(state, itemId, helpers = {}) {
-    const item = getDirectShopItemById(state, itemId);
+    const expectedItemType = helpers?.expectedItemType || null;
+    const item = getDirectShopItemById(state, itemId, expectedItemType);
     if (!item) return { ok: false, reason: "missing_item" };
+    if (expectedItemType && item.itemType !== expectedItemType) {
+      return { ok: false, reason: "wrong_type" };
+    }
     return buyItem(state, item, helpers);
   }
 
@@ -2225,6 +2233,30 @@
     const pack = getShopPackById(state, packId);
     if (!pack) return { ok: false, reason: "missing_pack" };
     return openPack(state, pack);
+  }
+
+  function applyShopDragAction(state, action, payload = {}, helpers = {}) {
+    if (!state) return { ok: false, reason: "missing_state" };
+    if (action === "buy_direct") {
+      return buyDirectItemById(state, payload.itemId, helpers);
+    }
+    if (action === "open_pack") {
+      return openPackById(state, payload.packId);
+    }
+    if (action === "equip_from_shop") {
+      return buyDirectItemById(state, payload.itemId, {
+        ...helpers,
+        expectedItemType: payload.slotType || helpers?.expectedItemType || null,
+      });
+    }
+    if (action === "archive_owned") {
+      return archiveOwnedItem(state, payload.itemType, payload.itemId, {
+        itemIndex:
+          typeof payload.itemIndex === "number" ? payload.itemIndex : null,
+        withRefund: payload.withRefund !== false,
+      });
+    }
+    return { ok: false, reason: "unknown_action" };
   }
 
   function getOwnedAssets(state) {
@@ -4220,6 +4252,7 @@
     buyDirectItemById,
     getShopPackById,
     openPackById,
+    applyShopDragAction,
     getItemCostByType,
     getOwnedAssets,
     archiveOwnedItem,

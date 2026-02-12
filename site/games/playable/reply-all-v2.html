@@ -248,6 +248,35 @@
         text-align: center;
         font-size: 10px;
       }
+      .drag-overlay-target {
+        position: absolute;
+        inset: 0;
+        border: 2px dashed #6b7280;
+        background: rgba(255, 255, 255, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #111827;
+        z-index: 30;
+        pointer-events: none;
+        opacity: 0;
+      }
+      .drag-overlay-target.active {
+        pointer-events: auto;
+        opacity: 1;
+      }
+      .drag-overlay-target.buy {
+        border-color: #1d4ed8;
+        color: #1e3a8a;
+      }
+      .drag-overlay-target.sell {
+        border-color: #b45309;
+        color: #7c2d12;
+      }
       .address-book-header {
         font-size: 10px;
         font-weight: 700;
@@ -1216,8 +1245,23 @@
         const activePackId = props.state.activePackId || null;
         const activePack = (shop.packs || []).find((p) => p.id === activePackId) || null;
         const owned = ReplyAllEngine.core.getOwnedAssets(props.state);
+        const shopRef = React.useRef(shop);
+        const ownedRef = React.useRef(owned);
+        const handlersRef = React.useRef({
+          onDropBuyItem: props.onDropBuyItem,
+          onDropOpenPack: props.onDropOpenPack,
+          onDropArchiveOwned: props.onDropArchiveOwned,
+          onDropEquipFromShop: props.onDropEquipFromShop,
+          onReorderSignatures: props.onReorderSignatures,
+        });
         const [detailPopup, setDetailPopup] = React.useState(null);
         const [detailPopupPos, setDetailPopupPos] = React.useState({ left: 8, top: 8 });
+        const [dragOverlay, setDragOverlay] = React.useState({
+          buyActive: false,
+          buyLabel: "Buy for REP",
+          sellActive: false,
+          sellLabel: "Sell for REP",
+        });
         const detailPopupRef = React.useRef(null);
         const dragPopupRef = React.useRef({
           active: false,
@@ -1231,12 +1275,30 @@
         const suppressCardClickUntilRef = React.useRef(0);
         const directListRef = React.useRef(null);
         const packListRef = React.useRef(null);
-        const buyZoneRef = React.useRef(null);
-        const openPackZoneRef = React.useRef(null);
-        const archiveZoneRef = React.useRef(null);
+        const buyOverlayRef = React.useRef(null);
+        const sellOverlayRef = React.useRef(null);
         const ownedContactRef = React.useRef(null);
         const ownedEmailRef = React.useRef(null);
         const ownedBccRef = React.useRef(null);
+        React.useEffect(() => {
+          shopRef.current = shop;
+          ownedRef.current = owned;
+          handlersRef.current = {
+            onDropBuyItem: props.onDropBuyItem,
+            onDropOpenPack: props.onDropOpenPack,
+            onDropArchiveOwned: props.onDropArchiveOwned,
+            onDropEquipFromShop: props.onDropEquipFromShop,
+            onReorderSignatures: props.onReorderSignatures,
+          };
+        }, [
+          shop,
+          owned,
+          props.onDropBuyItem,
+          props.onDropOpenPack,
+          props.onDropArchiveOwned,
+          props.onDropEquipFromShop,
+          props.onReorderSignatures,
+        ]);
         function getDisplayCost(item) {
           if (!item) return 0;
           if (typeof item.cost === "number") return item.cost;
@@ -1341,6 +1403,97 @@
         function closeDetailPopup() {
           setDetailPopup(null);
         }
+        function clearDragOverlay() {
+          setDragOverlay((prev) =>
+            prev.buyActive || prev.sellActive
+              ? {
+                  buyActive: false,
+                  buyLabel: prev.buyLabel,
+                  sellActive: false,
+                  sellLabel: prev.sellLabel,
+                }
+              : prev,
+          );
+        }
+        function findDirectItemById(itemId) {
+          return (shopRef.current?.directItems || []).find((item) => item.id === itemId) || null;
+        }
+        function findPackById(packId) {
+          return (shopRef.current?.packs || []).find((pack) => pack.id === packId) || null;
+        }
+        function setBuyOverlayFromDragEl(dragEl, sourceGroup) {
+          if (!dragEl) return clearDragOverlay();
+          if (sourceGroup === "shop-pack-open") {
+            const packId = dragEl.dataset?.packId;
+            const pack = packId ? findPackById(packId) : null;
+            const cost = pack?.cost || 0;
+            setDragOverlay((prev) => ({
+              ...prev,
+              buyActive: true,
+              buyLabel: `Buy for ${cost} REP`,
+              sellActive: false,
+            }));
+            return;
+          }
+          if (sourceGroup === "shop-offers") {
+            const itemId = dragEl.dataset?.itemId;
+            const itemType = dragEl.dataset?.itemType;
+            const item = itemId ? findDirectItemById(itemId) : null;
+            if (!item || itemType !== "dev") {
+              clearDragOverlay();
+              return;
+            }
+            const cost = getDisplayCost(item);
+            setDragOverlay((prev) => ({
+              ...prev,
+              buyActive: true,
+              buyLabel: `Buy for ${cost} REP`,
+              sellActive: false,
+            }));
+            return;
+          }
+          clearDragOverlay();
+        }
+        function setSellOverlayFromDragEl(dragEl, sourceGroup) {
+          if (!dragEl) return clearDragOverlay();
+          const itemType = dragEl.dataset?.itemType;
+          const itemId = dragEl.dataset?.itemId;
+          if (!itemType || !itemId || itemType === "content") {
+            clearDragOverlay();
+            return;
+          }
+          if (!["owned-contact", "owned-email", "owned-bcc"].includes(sourceGroup)) {
+            clearDragOverlay();
+            return;
+          }
+          let item = null;
+          if (sourceGroup === "owned-contact") {
+            item = (ownedRef.current?.addressBook || []).find((x) => x.id === itemId) || null;
+          } else if (sourceGroup === "owned-bcc") {
+            const itemIndexRaw = dragEl.dataset?.itemIndex;
+            const itemIndex = itemIndexRaw == null ? null : Number(itemIndexRaw);
+            item = Number.isFinite(itemIndex)
+              ? ownedRef.current?.bcc?.[itemIndex]
+              : (ownedRef.current?.bcc || []).find((x) => x.id === itemId) || null;
+          } else if (sourceGroup === "owned-email") {
+            if (itemType === "salutation") item = ownedRef.current?.salutation || null;
+            else if (itemType === "signoff") item = ownedRef.current?.signoff || null;
+            else if (itemType === "signature") {
+              item = (ownedRef.current?.signatures || []).find((x) => x.id === itemId) || null;
+            }
+          }
+          if (!item) {
+            clearDragOverlay();
+            return;
+          }
+          const refund = ReplyAllEngine.core.getSellRefundForItem(itemType, item);
+          setDragOverlay((prev) => ({
+            ...prev,
+            sellActive: true,
+            sellLabel: `Sell for +${refund} REP`,
+            buyActive: false,
+          }));
+        }
         function onDragPointerMove(evt) {
           const ctx = dragPopupRef.current;
           if (!ctx.active) return;
@@ -1421,7 +1574,7 @@
           const parsedIndex = itemIndexRaw == null ? null : Number(itemIndexRaw);
           const itemIndex = Number.isFinite(parsedIndex) ? parsedIndex : null;
           if (packId) {
-            const pack = (shop.packs || []).find((p) => p.id === packId && !p.purchased);
+            const pack = (shopRef.current?.packs || []).find((p) => p.id === packId && !p.purchased);
             if (!pack) return null;
             return {
               popup: {
@@ -1435,7 +1588,7 @@
           }
           if (!itemId || !itemType) return null;
           if (popupSource === "shop-offers") {
-            const item = (shop.directItems || []).find((i) => i.id === itemId && !i.purchased);
+            const item = (shopRef.current?.directItems || []).find((i) => i.id === itemId && !i.purchased);
             if (!item) return null;
             return {
               popup: {
@@ -1448,7 +1601,7 @@
             };
           }
           if (popupSource === "owned-contact") {
-            const item = (owned.addressBook || []).find((i) => i.id === itemId);
+            const item = (ownedRef.current?.addressBook || []).find((i) => i.id === itemId);
             if (!item) return null;
             return {
               popup: {
@@ -1462,7 +1615,7 @@
             };
           }
           if (popupSource === "owned-bcc") {
-            const item = itemIndex != null ? owned.bcc[itemIndex] : (owned.bcc || []).find((i) => i.id === itemId);
+            const item = itemIndex != null ? ownedRef.current?.bcc?.[itemIndex] : (ownedRef.current?.bcc || []).find((i) => i.id === itemId);
             if (!item) return null;
             return {
               popup: {
@@ -1477,9 +1630,9 @@
           }
           if (popupSource === "owned-email") {
             let item = null;
-            if (itemType === "salutation") item = owned.salutation || null;
-            else if (itemType === "signoff") item = owned.signoff || null;
-            else if (itemType === "signature") item = (owned.signatures || []).find((i) => i.id === itemId) || null;
+            if (itemType === "salutation") item = ownedRef.current?.salutation || null;
+            else if (itemType === "signoff") item = ownedRef.current?.signoff || null;
+            else if (itemType === "signature") item = (ownedRef.current?.signatures || []).find((i) => i.id === itemId) || null;
             if (!item) return null;
             return {
               popup: {
@@ -1672,6 +1825,7 @@
               Sortable.create(ref.current, {
                 forceFallback: true,
                 fallbackOnBody: true,
+                removeCloneOnHide: true,
                 ...sortableOptions,
                 onStart: (evt) => {
                   if (popupSource) onDragPopupStart(evt, popupSource);
@@ -1691,16 +1845,11 @@
             sort: false,
             group: { name: "shop-offers", pull: "clone", put: false },
             draggable: ".shop-card-item",
-          });
-          addSortable(buyZoneRef, {
-            animation: 120,
-            sort: false,
-            group: { name: "buy-any", pull: false, put: ["shop-offers"] },
-            onAdd: (evt) => {
-              const itemId = evt.item?.dataset?.itemId;
-              if (itemId) {
-                setTimeout(() => props.onDropBuyItem(itemId), 0);
-              }
+            onStart: (evt) => {
+              setBuyOverlayFromDragEl(evt?.item, "shop-offers");
+            },
+            onEnd: () => {
+              clearDragOverlay();
             },
           });
 
@@ -1710,15 +1859,36 @@
             sort: false,
             group: { name: "shop-pack-open", pull: "clone", put: false },
             draggable: ".shop-card-item",
+            onStart: (evt) => {
+              setBuyOverlayFromDragEl(evt?.item, "shop-pack-open");
+            },
+            onEnd: () => {
+              clearDragOverlay();
+            },
           });
-          addSortable(openPackZoneRef, {
+
+          addSortable(buyOverlayRef, {
             animation: 120,
             sort: false,
-            group: { name: "shop-pack-open", pull: false, put: true },
+            group: {
+              name: "buy-overlay",
+              pull: false,
+              put: (to, from, dragEl) => {
+                const groupName = from?.options?.group?.name;
+                if (groupName === "shop-pack-open") return true;
+                if (groupName !== "shop-offers") return false;
+                return dragEl?.dataset?.itemType === "dev";
+              },
+            },
             onAdd: (evt) => {
               const packId = evt.item?.dataset?.packId;
               if (packId) {
-                setTimeout(() => props.onDropOpenPack(packId), 0);
+                setTimeout(() => handlersRef.current.onDropOpenPack(packId), 0);
+                return;
+              }
+              const itemId = evt.item?.dataset?.itemId;
+              if (itemId) {
+                setTimeout(() => handlersRef.current.onDropBuyItem(itemId), 0);
               }
             },
           });
@@ -1734,10 +1904,10 @@
           addSortable(ownedContactRef, {
             popupSource: "owned-contact",
             animation: 120,
-            sort: true,
+            sort: false,
             group: {
               name: "owned-contact",
-              pull: true,
+              pull: "clone",
               put: (to, from, dragEl) => fromOffers(to, from, dragEl, "contact"),
             },
             draggable: ".shop-card-item",
@@ -1745,10 +1915,16 @@
               if (evt.from?.options?.group?.name === "shop-offers") {
                 const itemId = evt.item?.dataset?.itemId;
                 if (itemId) {
-                  setTimeout(() => props.onDropEquipFromShop(itemId, "contact"), 0);
+                  setTimeout(() => handlersRef.current.onDropEquipFromShop(itemId, "contact"), 0);
                 }
                 return;
               }
+            },
+            onStart: (evt) => {
+              setSellOverlayFromDragEl(evt?.item, "owned-contact");
+            },
+            onEnd: () => {
+              clearDragOverlay();
             },
           });
           addSortable(ownedEmailRef, {
@@ -1757,7 +1933,8 @@
             sort: true,
             group: {
               name: "owned-email",
-              pull: true,
+              pull: (to, from) =>
+                to?.options?.group?.name === "sell-overlay" ? "clone" : true,
               put: (to, from, dragEl) => {
                 if (!from) return false;
                 if (from.options?.group?.name === "shop-offers") {
@@ -1773,11 +1950,12 @@
                 const itemId = evt.item?.dataset?.itemId;
                 const itemType = evt.item?.dataset?.itemType;
                 if (itemId && itemType) {
-                  setTimeout(() => props.onDropEquipFromShop(itemId, itemType), 0);
+                  setTimeout(() => handlersRef.current.onDropEquipFromShop(itemId, itemType), 0);
                 }
               }
             },
             onEnd: () => {
+              clearDragOverlay();
               if (!ownedEmailRef.current) return;
               const sigIds = Array.from(
                 ownedEmailRef.current.querySelectorAll('[data-item-type="signature"][data-item-id]'),
@@ -1785,17 +1963,20 @@
                 .map((el) => el.dataset.itemId)
                 .filter(Boolean);
               if (sigIds.length) {
-                setTimeout(() => props.onReorderSignatures(sigIds), 0);
+                setTimeout(() => handlersRef.current.onReorderSignatures(sigIds), 0);
               }
+            },
+            onStart: (evt) => {
+              setSellOverlayFromDragEl(evt?.item, "owned-email");
             },
           });
           addSortable(ownedBccRef, {
             popupSource: "owned-bcc",
             animation: 120,
-            sort: true,
+            sort: false,
             group: {
               name: "owned-bcc",
-              pull: true,
+              pull: "clone",
               put: (to, from, dragEl) => fromOffers(to, from, dragEl, "bcc"),
             },
             draggable: ".shop-card-item",
@@ -1803,17 +1984,23 @@
               if (evt.from?.options?.group?.name === "shop-offers") {
                 const itemId = evt.item?.dataset?.itemId;
                 if (itemId) {
-                  setTimeout(() => props.onDropEquipFromShop(itemId, "bcc"), 0);
+                  setTimeout(() => handlersRef.current.onDropEquipFromShop(itemId, "bcc"), 0);
                 }
                 return;
               }
             },
+            onStart: (evt) => {
+              setSellOverlayFromDragEl(evt?.item, "owned-bcc");
+            },
+            onEnd: () => {
+              clearDragOverlay();
+            },
           });
-          addSortable(archiveZoneRef, {
+          addSortable(sellOverlayRef, {
             animation: 120,
             sort: false,
             group: {
-              name: "archive-drop",
+              name: "sell-overlay",
               pull: false,
               put: (to, from, dragEl) => {
                 const type = dragEl?.dataset?.itemType;
@@ -1833,7 +2020,7 @@
               if (itemType && itemId) {
                 setTimeout(
                   () =>
-                    props.onDropArchiveOwned(
+                    handlersRef.current.onDropArchiveOwned(
                       itemType,
                       itemId,
                       Number.isFinite(itemIndex) ? itemIndex : null,
@@ -1847,7 +2034,7 @@
           return () => {
             sortables.forEach((s) => s.destroy());
           };
-        }, [activePack, props.state.shop, props.state.player, props.onDropBuyItem, props.onDropOpenPack, props.onDropArchiveOwned, props.onDropEquipFromShop, props.onReorderSignatures]);
+        }, [activePack]);
 
         return e(
           "div",
@@ -1905,83 +2092,96 @@
                     { className: "grid grid-cols-1 md:grid-cols-2 gap-6" },
                     e(
                       "div",
-                      { className: "space-y-2" },
-                      e("h3", { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" }, "Individual Opportunities"),
-                      e("div", { ref: buyZoneRef, className: "shop-drop-zone" }, "Drop Offer Here To Acquire"),
+                      { className: "md:col-span-2 relative" },
                       e(
                         "div",
-                        { ref: directListRef, className: "border border-gray-200 bg-white p-2 shop-card-grid" },
-                        (shop.directItems || [])
-                          .filter((item) => !item.purchased)
-                          .map((item) =>
-                            e(
-                              "div",
-                              {
-                                key: item.id,
-                                "data-item-id": item.id,
-                                "data-item-type": item.itemType,
-                                onClick: (evt) => {
-                                  if (shouldSuppressCardClick()) return;
-                                  openDirectDetail(item, evt.currentTarget);
-                                },
-                                className: "shop-card-item",
-                              },
-                              (() => {
-                                const meta = typeMeta(item.itemType);
-                                return e(
-                                  React.Fragment,
-                                  null,
-                                  e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, `${meta.label} • ${getDisplayCost(item)} REP`),
-                                  e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, item.name)),
-                                );
-                              })(),
-                            ),
+                        { className: "grid grid-cols-1 md:grid-cols-2 gap-6" },
+                        e(
+                          "div",
+                          { className: "space-y-2" },
+                          e("h3", { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" }, "Individual Opportunities"),
+                          e(
+                            "div",
+                            { ref: directListRef, className: "border border-gray-200 bg-white p-2 shop-card-grid" },
+                            (shop.directItems || [])
+                              .filter((item) => !item.purchased)
+                              .map((item) =>
+                                e(
+                                  "div",
+                                  {
+                                    key: item.id,
+                                    "data-item-id": item.id,
+                                    "data-item-type": item.itemType,
+                                    onClick: (evt) => {
+                                      if (shouldSuppressCardClick()) return;
+                                      openDirectDetail(item, evt.currentTarget);
+                                    },
+                                    className: "shop-card-item",
+                                  },
+                                  (() => {
+                                    const meta = typeMeta(item.itemType);
+                                    return e(
+                                      React.Fragment,
+                                      null,
+                                      e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, `${meta.label} • ${getDisplayCost(item)} REP`),
+                                      e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, item.name)),
+                                    );
+                                  })(),
+                                ),
+                              ),
                           ),
+                        ),
+                        e(
+                          "div",
+                          { className: "space-y-2" },
+                          e("h3", { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" }, "Group Trainings"),
+                          e(
+                            "div",
+                            { ref: packListRef, className: "border border-gray-200 bg-white p-2 shop-card-grid" },
+                            (shop.packs || [])
+                              .filter((pack) => !pack.purchased)
+                              .map((pack) =>
+                                e(
+                                  "div",
+                                  {
+                                    key: pack.id,
+                                    "data-pack-id": pack.id,
+                                    onClick: (evt) => {
+                                      if (shouldSuppressCardClick()) return;
+                                      openPackDetail(pack, evt.currentTarget);
+                                    },
+                                    className: "shop-card-item",
+                                  },
+                                  (() => {
+                                    const meta = typeMeta(pack.type || "dev");
+                                    return e(
+                                      React.Fragment,
+                                      null,
+                                      e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, `pack • ${pack.cost || 0} REP`),
+                                      e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, pack.name)),
+                                    );
+                                  })(),
+                                ),
+                              ),
+                          ),
+                        ),
                       ),
-                    ),
-                    e(
-                      "div",
-                      { className: "space-y-2" },
-                      e("h3", { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" }, "Group Trainings"),
-                      e("div", { ref: openPackZoneRef, className: "shop-drop-zone" }, "Drop Pack Here To Open"),
                       e(
                         "div",
-                        { ref: packListRef, className: "border border-gray-200 bg-white p-2 shop-card-grid" },
-                        (shop.packs || [])
-                          .filter((pack) => !pack.purchased)
-                          .map((pack) =>
-                            e(
-                              "div",
-                              {
-                                key: pack.id,
-                                "data-pack-id": pack.id,
-                                onClick: (evt) => {
-                                  if (shouldSuppressCardClick()) return;
-                                  openPackDetail(pack, evt.currentTarget);
-                                },
-                                className: "shop-card-item",
-                              },
-                              (() => {
-                                const meta = typeMeta(pack.type || "dev");
-                                return e(
-                                  React.Fragment,
-                                  null,
-                                  e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, `pack • ${pack.cost || 0} REP`),
-                                  e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, pack.name)),
-                                );
-                              })(),
-                            ),
-                          ),
+                        {
+                          ref: sellOverlayRef,
+                          className: `drag-overlay-target sell ${dragOverlay.sellActive ? "active" : ""}`,
+                        },
+                        dragOverlay.sellLabel,
                       ),
                     ),
                     e(
                       "div",
                       { className: "space-y-2 md:col-span-2" },
                       e("h3", { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" }, "Manage Current Assets"),
-                      e("div", { ref: archiveZoneRef, className: "shop-drop-zone" }, "Drop Owned Asset Here To Archive"),
                       e(
                         "div",
-                        { className: "grid grid-cols-1 lg:grid-cols-2 gap-4 text-[11px]" },
+                        { className: "grid grid-cols-1 lg:grid-cols-2 gap-4 text-[11px] relative" },
                         e(
                           "div",
                           { className: "border border-gray-300 bg-white" },
@@ -2162,6 +2362,14 @@
                                 })
                               : null,
                           ),
+                        ),
+                        e(
+                          "div",
+                          {
+                            ref: buyOverlayRef,
+                            className: `drag-overlay-target buy ${dragOverlay.buyActive ? "active" : ""}`,
+                          },
+                          dragOverlay.buyLabel,
                         ),
                       ),
                     ),
@@ -2611,6 +2819,7 @@
         const [summaryData, setSummaryData] = React.useState(null);
         const [promotionData, setPromotionData] = React.useState(null);
         const [shopNotice, setShopNotice] = React.useState("");
+        const [shopDomRevision, setShopDomRevision] = React.useState(0);
 
         React.useEffect(() => {
           setSeedDraft(state.startConfig?.seedInput || "");
@@ -2667,6 +2876,12 @@
           if (reason === "not_open") return "Open the pack first.";
           if (reason === "no_picks") return "No pack picks remaining.";
           return fallback || "Unable to complete that action.";
+        }
+        function commitShopMutation(nextState, notice = "", screen = "shop-screen") {
+          setShopNotice(notice || "");
+          setState(nextState);
+          persistSave(nextState, screen);
+          setShopDomRevision((v) => v + 1);
         }
 
         function startMissionFromInbox() {
@@ -2904,49 +3119,48 @@
             return;
           }
           ReplyAllEngine.play.prepareShopState(nextState);
-          setState(nextState);
           setActiveScreen("shop");
-          persistSave(nextState, "shop-screen");
+          commitShopMutation(nextState, "", "shop-screen");
         }
 
         function onBuyItem(item) {
           const nextState = cloneState(state);
           ReplyAllEngine.play.attachRuntimeState(nextState);
           const result = ReplyAllEngine.core.buyDirectItemById(nextState, item?.id, {});
-          setShopNotice(getShopNotice(result));
+          const notice = getShopNotice(result);
+          setShopNotice(notice);
           if (!result?.ok) return;
-          setState(nextState);
-          persistSave(nextState, "shop-screen");
+          commitShopMutation(nextState, notice, "shop-screen");
         }
 
         function onReroll() {
           const nextState = cloneState(state);
           ReplyAllEngine.play.attachRuntimeState(nextState);
           const result = ReplyAllEngine.core.rerollShop(nextState);
-          setShopNotice(getShopNotice(result));
+          const notice = getShopNotice(result);
+          setShopNotice(notice);
           if (!result?.ok) return;
-          setState(nextState);
-          persistSave(nextState, "shop-screen");
+          commitShopMutation(nextState, notice, "shop-screen");
         }
 
         function onOpenPack(pack) {
           const nextState = cloneState(state);
           ReplyAllEngine.play.attachRuntimeState(nextState);
           const result = ReplyAllEngine.core.openPackById(nextState, pack?.id);
-          setShopNotice(getShopNotice(result));
+          const notice = getShopNotice(result);
+          setShopNotice(notice);
           if (!result?.ok) return;
-          setState(nextState);
-          persistSave(nextState, "shop-screen");
+          commitShopMutation(nextState, notice, "shop-screen");
         }
 
         function onSelectPackItem(packId, itemId) {
           const nextState = cloneState(state);
           ReplyAllEngine.play.attachRuntimeState(nextState);
           const result = ReplyAllEngine.core.selectPackItem(nextState, packId, itemId, {});
-          setShopNotice(getShopNotice(result));
+          const notice = getShopNotice(result);
+          setShopNotice(notice);
           if (!result?.ok) return;
-          setState(nextState);
-          persistSave(nextState, "shop-screen");
+          commitShopMutation(nextState, notice, "shop-screen");
         }
 
         function onClosePack() {
@@ -2955,9 +3169,7 @@
           if (nextState.activePackId) {
             ReplyAllEngine.core.closePack(nextState, nextState.activePackId);
           }
-          setShopNotice("");
-          setState(nextState);
-          persistSave(nextState, "shop-screen");
+          commitShopMutation(nextState, "", "shop-screen");
         }
 
         function onArchiveOwned(itemType, itemId, itemIndex = null) {
@@ -2975,38 +3187,68 @@
               : "Unable to archive that asset.",
           );
           if (!result?.ok) return;
-          setState(nextState);
-          persistSave(nextState, "shop-screen");
+          commitShopMutation(
+            nextState,
+            `Archived ${result.item?.name || itemType}. +${result.refund || 0} REP`,
+            "shop-screen",
+          );
         }
 
         function onDropBuyItem(itemId) {
           const nextState = cloneState(state);
           ReplyAllEngine.play.attachRuntimeState(nextState);
-          const result = ReplyAllEngine.core.buyDirectItemById(nextState, itemId, {});
-          setShopNotice(getShopNotice(result));
+          const result = ReplyAllEngine.core.applyShopDragAction(
+            nextState,
+            "buy_direct",
+            { itemId },
+            {},
+          );
+          const notice = getShopNotice(result);
+          setShopNotice(notice);
           if (!result?.ok) return;
-          setState(nextState);
-          persistSave(nextState, "shop-screen");
+          commitShopMutation(nextState, notice, "shop-screen");
         }
 
         function onDropOpenPack(packId) {
           const nextState = cloneState(state);
           ReplyAllEngine.play.attachRuntimeState(nextState);
-          const result = ReplyAllEngine.core.openPackById(nextState, packId);
-          setShopNotice(getShopNotice(result));
+          const result = ReplyAllEngine.core.applyShopDragAction(
+            nextState,
+            "open_pack",
+            { packId },
+            {},
+          );
+          const notice = getShopNotice(result);
+          setShopNotice(notice);
           if (!result?.ok) return;
-          setState(nextState);
-          persistSave(nextState, "shop-screen");
+          commitShopMutation(nextState, notice, "shop-screen");
         }
 
         function onDropArchiveOwned(itemType, itemId, itemIndex = null) {
-          onArchiveOwned(itemType, itemId, itemIndex);
+          const nextState = cloneState(state);
+          ReplyAllEngine.play.attachRuntimeState(nextState);
+          const result = ReplyAllEngine.core.applyShopDragAction(
+            nextState,
+            "archive_owned",
+            { itemType, itemId, itemIndex, withRefund: true },
+            {},
+          );
+          const notice = result?.ok
+            ? `Archived ${result.item?.name || itemType}. +${result.refund || 0} REP`
+            : "Unable to archive that asset.";
+          setShopNotice(notice);
+          if (!result?.ok) return;
+          commitShopMutation(nextState, notice, "shop-screen");
         }
 
         function onDropEquipFromShop(itemId, slotType) {
           const nextState = cloneState(state);
           ReplyAllEngine.play.attachRuntimeState(nextState);
-          const item = ReplyAllEngine.core.getDirectShopItemById(nextState, itemId);
+          const item = ReplyAllEngine.core.getDirectShopItemById(
+            nextState,
+            itemId,
+            slotType,
+          );
           if (!item) {
             setShopNotice("Offer not found.");
             return;
@@ -3015,15 +3257,16 @@
             setShopNotice("That item cannot be equipped in this slot.");
             return;
           }
-          const result = ReplyAllEngine.core.buyDirectItemById(
+          const result = ReplyAllEngine.core.applyShopDragAction(
             nextState,
-            itemId,
-            {},
+            "equip_from_shop",
+            { itemId, slotType },
+            { expectedItemType: slotType },
           );
-          setShopNotice(getShopNotice(result));
+          const notice = getShopNotice(result);
+          setShopNotice(notice);
           if (!result?.ok) return;
-          setState(nextState);
-          persistSave(nextState, "shop-screen");
+          commitShopMutation(nextState, notice, "shop-screen");
         }
 
         function onReorderSignatures(signatureIds) {
@@ -3050,8 +3293,7 @@
           if (!changed) return;
           const nextState = cloneState(state);
           nextState.player.signatures = reordered;
-          setState(nextState);
-          persistSave(nextState, "shop-screen");
+          commitShopMutation(nextState, "", "shop-screen");
         }
 
         function onNextQuarterFromShop() {
@@ -3059,6 +3301,7 @@
           const quarterStep = ReplyAllEngine.play.advanceQuarterWithPromotion(nextState);
           setShopNotice("");
           setState(nextState);
+          setShopDomRevision((v) => v + 1);
           if (quarterStep.needsPromotion && quarterStep.nextTitle) {
             setPromotionData(ReplyAllEngine.play.getPromotionStats(nextState));
             setActiveScreen("promotion");
@@ -3273,6 +3516,7 @@
 
         if (activeScreen === "shop") {
           return e(ShopScreen, {
+            key: `shop-${shopDomRevision}`,
             state,
             notice: shopNotice,
             onBuyItem,
