@@ -2975,9 +2975,7 @@
         };
         const resolveEntryTargetId = (entry) => {
           if (!entry || !opponents.length) return null;
-          const pools = [getIdentityTokens(entry.from), getIdentityTokens(entry.to)];
-          for (let i = 0; i < pools.length; i += 1) {
-            const tokens = pools[i];
+          const findMatchedOpponent = (tokens) => {
             for (let j = 0; j < tokens.length; j += 1) {
               const token = normalizeStakeholderKey(tokens[j]);
               const matched = opponents.find((opp) => {
@@ -2988,13 +2986,28 @@
                 ];
                 return keys.includes(token);
               });
-              if (matched && (matched.hp || 0) > 0) return matched.id;
+              if (matched) return matched;
             }
+            return null;
+          };
+
+          const fromMatch = findMatchedOpponent(getIdentityTokens(entry.from));
+          if (fromMatch) {
+            // If sender stakeholder already opted out, clicking this row should not retarget.
+            if ((fromMatch.hp || 0) <= 0) return null;
+            return fromMatch.id;
+          }
+
+          // Fallback to "To" only when sender isn't a known stakeholder (e.g. player-authored rows).
+          const toMatch = findMatchedOpponent(getIdentityTokens(entry.to));
+          if (toMatch && (toMatch.hp || 0) > 0) {
+            return toMatch.id;
           }
           return null;
         };
         const selectedTarget =
           opponents.find((o) => o.id === props.state.targetId) || opponents[0] || null;
+        const statCtx = props.state?._statCtx || null;
         const maxHp = Math.max(1, player.maxHp || player.hp || 1);
         const hpPct = Math.max(0, Math.min(100, ((player.hp || 0) / maxHp) * 100));
         const showDraftingIndicators =
@@ -3007,6 +3020,7 @@
           { id: "ESCALATE", label: "Escalate" },
           { id: "PROMOTE", label: "Self-Promote" },
           { id: "DEFLECT", label: "Deflect" },
+          { id: "ULT", label: "Reply All" },
         ];
         const actionLabelById = actionCards.reduce((acc, item) => {
           acc[item.id] = item.label;
@@ -3019,12 +3033,33 @@
         const [isOverEmailDrop, setIsOverEmailDrop] = React.useState(false);
         const [dragPointer, setDragPointer] = React.useState({ x: 0, y: 0 });
         const [actionDetailPopup, setActionDetailPopup] = React.useState(null);
+        const [stakeholderPopup, setStakeholderPopup] = React.useState(null);
         const dragAction = dragActionId
           ? actionCards.find((action) => action.id === dragActionId) || null
           : null;
-        const dragDetailText = dragActionId
-          ? (props.actionHints?.[dragActionId] || "No action details.")
-          : "";
+        const getActionDetailText = (actionId) => {
+          if (actionId === "PROMOTE") {
+            const curHp = Math.max(0, Math.ceil(player.hp || 0));
+            const curWins = Math.max(0, Math.floor(player.currentWins || 0));
+            const heal = statCtx
+              ? ReplyAllEngine.stats.getUnitSelfPromoteHeal(statCtx, player, 15)
+              : (player.selfPromoteHeal || 15);
+            const nextHp = Math.max(0, Math.ceil(Math.min(maxHp, (player.hp || 0) + heal)));
+            const nextWins = Math.max(0, curWins - (curWins > 0 ? 1 : 0));
+            return `Recover credibility and spend one win.\nHP: ${curHp} -> ${nextHp}\nWins: ${curWins} -> ${nextWins}`;
+          }
+          if (actionId === "DEFLECT") {
+            const reduce = statCtx
+              ? Math.floor(ReplyAllEngine.stats.getUnitDeflectReduce(statCtx, player))
+              : Math.floor(player.deflect || 0);
+            const retaliate = statCtx
+              ? Math.floor(ReplyAllEngine.stats.getUnitDeflectReflect(statCtx, player))
+              : Math.floor(player.retaliation || 0);
+            return `Prepare a defensive response.\nDeflect / Retaliate: ${reduce} / ${retaliate}`;
+          }
+          return props.actionHints?.[actionId] || "No action details.";
+        };
+        const dragDetailText = dragActionId ? getActionDetailText(dragActionId) : "";
         const dragDetailPos = React.useMemo(() => {
           if (!dragAction) return null;
           const padding = 8;
@@ -3043,10 +3078,51 @@
           return { left, top };
         }, [dragAction, dragPointer.x, dragPointer.y]);
         const actionDockTrack = useAdaptiveCardTrack(actionDockRef, actionCards.length);
+        const getAttackPreviewDamage = (target) => {
+          if (!target) return 0;
+          const singleDmg = statCtx
+            ? ReplyAllEngine.stats.getUnitDamage(statCtx, player, "single")
+            : (player.singleDmg || 0);
+          // Intentional: include flat defense only, not prepared deflect charge reduction.
+          const flatDef = statCtx
+            ? ReplyAllEngine.stats.getUnitFlatDef(statCtx, target)
+            : (target.defFlat || 0);
+          return Math.max(0, Math.floor(singleDmg - flatDef));
+        };
+        const getDragOverlayText = (actionId, releaseMode) => {
+          if (actionId === "ATTACK") {
+            const target = selectedTarget;
+            const targetName = target?.name || "target";
+            const dmg = getAttackPreviewDamage(target);
+            return releaseMode
+              ? `Release to reply to ${targetName} for -${dmg}`
+              : `Drag Here to reply to ${targetName} for -${dmg}`;
+          }
+          const label = actionLabelById[actionId] || "Use Action";
+          return releaseMode
+            ? `Release to ${label}`
+            : `Drag Here to ${label}`;
+        };
 
         const computeActionPopupPos = (anchorRect, popupWidth = 260, popupHeight = 124) => {
           const padding = 8;
           const gap = 12;
+          const roomRight = window.innerWidth - anchorRect.right - padding;
+          const roomLeft = anchorRect.left - padding;
+          let left = roomRight >= popupWidth
+            ? anchorRect.right + gap
+            : anchorRect.left - popupWidth - gap;
+          if (roomRight < popupWidth && roomLeft < popupWidth) {
+            left = Math.max(padding, Math.min(anchorRect.left, window.innerWidth - popupWidth - padding));
+          }
+          let top = anchorRect.top + Math.max(0, (anchorRect.height - popupHeight) / 2);
+          top = Math.max(padding, Math.min(top, window.innerHeight - popupHeight - padding));
+          left = Math.max(padding, Math.min(left, window.innerWidth - popupWidth - padding));
+          return { left, top };
+        };
+        const computeStakeholderPopupPos = (anchorRect, popupWidth = 260, popupHeight = 264) => {
+          const padding = 8;
+          const gap = 10;
           const roomRight = window.innerWidth - anchorRect.right - padding;
           const roomLeft = anchorRect.left - padding;
           let left = roomRight >= popupWidth
@@ -3072,6 +3148,32 @@
             clientY <= rect.bottom
           );
         };
+        const getActiveTargetByLooseId = (targetId) => {
+          if (targetId == null) return null;
+          const idStr = String(targetId);
+          return (
+            opponents.find((opp) => String(opp.id) === idStr && (opp.hp || 0) > 0) ||
+            null
+          );
+        };
+        const resolvePointerTargetId = (clientX, clientY) => {
+          if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) return null;
+          const node = document.elementFromPoint(clientX, clientY);
+          if (!node || typeof node.closest !== "function") return null;
+          const pill = node.closest("[data-target-id]");
+          if (pill) {
+            const targetId = pill.getAttribute("data-target-id");
+            const activeTarget = getActiveTargetByLooseId(targetId);
+            if (activeTarget) return activeTarget.id;
+          }
+          const entry = node.closest("[data-entry-target-id]");
+          if (entry) {
+            const targetId = entry.getAttribute("data-entry-target-id");
+            const activeTarget = getActiveTargetByLooseId(targetId);
+            if (activeTarget) return activeTarget.id;
+          }
+          return null;
+        };
 
         React.useEffect(() => {
           const onPointerMove = (evt) => {
@@ -3088,6 +3190,15 @@
             if (drag.active) {
               setDragPointer({ x: evt.clientX || 0, y: evt.clientY || 0 });
               setIsOverEmailDrop(isPointOverEmailDrop(evt.clientX, evt.clientY));
+              if (drag.actionId === "ATTACK") {
+                const hoveredTargetId = resolvePointerTargetId(evt.clientX, evt.clientY);
+                if (
+                  hoveredTargetId != null &&
+                  String(hoveredTargetId) !== String(props.state.targetId)
+                ) {
+                  props.onSelectTarget(hoveredTargetId);
+                }
+              }
             }
           };
           const onPointerUp = (evt) => {
@@ -3145,6 +3256,39 @@
           });
           props.onActionHover(actionId);
         };
+        const openStakeholderPopup = (targetId, anchorEl) => {
+          const rect = anchorEl?.getBoundingClientRect?.();
+          if (!rect) return;
+          if (stakeholderPopup && String(stakeholderPopup.targetId) === String(targetId)) {
+            setStakeholderPopup(null);
+            return;
+          }
+          setStakeholderPopup({
+            targetId,
+            ...computeStakeholderPopupPos(rect),
+          });
+        };
+        const onStakeholderClick = (opp, isOut, evt) => {
+          if (!opp || isOut) return;
+          if (selectedTarget && String(selectedTarget.id) === String(opp.id)) {
+            openStakeholderPopup(opp.id, evt.currentTarget);
+            return;
+          }
+          setStakeholderPopup(null);
+          props.onSelectTarget(opp.id);
+        };
+        const onEntryTargetClick = (entryTargetId, evt) => {
+          if (entryTargetId == null) return;
+          if (selectedTarget && String(selectedTarget.id) === String(entryTargetId)) {
+            openStakeholderPopup(entryTargetId, evt.currentTarget);
+            return;
+          }
+          setStakeholderPopup(null);
+          props.onSelectTarget(entryTargetId);
+        };
+        const popupTarget = stakeholderPopup
+          ? opponents.find((opp) => String(opp.id) === String(stakeholderPopup.targetId)) || null
+          : null;
         return e(
           "div",
           {
@@ -3232,10 +3376,8 @@
                         "div",
                         {
                           key: `target-${opp.id}`,
-                          onClick: () => {
-                            if (isOut) return;
-                            props.onSelectTarget(opp.id);
-                          },
+                          "data-target-id": String(opp.id),
+                          onClick: (evt) => onStakeholderClick(opp, isOut, evt),
                           className: `stakeholder-pill ${isSelected ? "active" : ""}`,
                           style: {
                             background: isOut
@@ -3308,10 +3450,11 @@
                         "div",
                         {
                           key: `log-${idx}-${entry.time || ""}`,
+                          "data-entry-target-id": entryTargetId != null ? String(entryTargetId) : undefined,
                           className: `message-entry p-0 border-2 border-gray-100 bg-white shadow-sm ${entry.classes || ""} ${
                             entryTargetId ? "cursor-pointer hover:border-[#000080]" : ""
                           }`,
-                          onClick: entryTargetId ? () => props.onSelectTarget(entryTargetId) : undefined,
+                          onClick: entryTargetId ? (evt) => onEntryTargetClick(entryTargetId, evt) : undefined,
                         },
                         e(
                           "div",
@@ -3342,8 +3485,8 @@
                         "div",
                         { className: "overlay-shell" },
                         isOverEmailDrop
-                          ? `Release to ${actionLabelById[dragActionId] || "Use Action"}`
-                          : `Drag Here to ${actionLabelById[dragActionId] || "Use Action"}`,
+                          ? getDragOverlayText(dragActionId, true)
+                          : getDragOverlayText(dragActionId, false),
                       ),
                     )
                   : null,
@@ -3420,7 +3563,23 @@
                       onClick: (evt) => onActionCardClick(action.id, evt),
                       onPointerDown: (evt) => onActionCardPointerDown(action.id, evt),
                     },
-                    e("div", { className: "shop-card-name" }, action.label),
+                    action.id === "ULT"
+                      ? e(
+                          "div",
+                          { className: "w-full flex flex-col items-center gap-1" },
+                          e("div", { className: "shop-card-name text-red-800" }, action.label),
+                          e(
+                            "div",
+                            { className: "momentum-meter w-full" },
+                            Array.from({ length: 8 }).map((_, i) =>
+                              e("div", {
+                                key: `ult-dock-${i}`,
+                                className: `momentum-segment ${i < Math.floor(player.ult || 0) ? "charged" : ""}`,
+                              }),
+                            ),
+                          ),
+                        )
+                      : e("div", { className: "shop-card-name" }, action.label),
                   );
                 }),
               ),
@@ -3440,7 +3599,23 @@
                     headerStyle: { background: "#000080", color: "#ffffff" },
                     frameStyle: { background: "#e5e7eb", color: "#111827" },
                   },
-                  e("div", { className: "shop-card-name" }, dragAction.label),
+                  dragAction.id === "ULT"
+                    ? e(
+                        "div",
+                        { className: "w-full flex flex-col items-center gap-1" },
+                        e("div", { className: "shop-card-name text-red-800" }, dragAction.label),
+                        e(
+                          "div",
+                          { className: "momentum-meter w-full" },
+                          Array.from({ length: 8 }).map((_, i) =>
+                            e("div", {
+                              key: `ult-drag-${i}`,
+                              className: `momentum-segment ${i < Math.floor(player.ult || 0) ? "charged" : ""}`,
+                            }),
+                          ),
+                        ),
+                      )
+                    : e("div", { className: "shop-card-name" }, dragAction.label),
                 ),
               )
             : null,
@@ -3481,9 +3656,106 @@
                 e(
                   "div",
                   { className: "text-[11px] leading-snug text-gray-800 whitespace-pre-wrap" },
-                  props.actionHints?.[actionDetailPopup.id] || "No action details.",
+                  getActionDetailText(actionDetailPopup.id),
                 ),
               )
+            : null,
+          popupTarget && stakeholderPopup
+            ? (() => {
+                const targetStatCtx = statCtx;
+                const hp = Math.max(0, Math.ceil(popupTarget.hp || 0));
+                const targetMaxHp = targetStatCtx
+                  ? Math.max(1, Math.ceil(ReplyAllEngine.stats.getUnitMaxHp(targetStatCtx, popupTarget)))
+                  : Math.max(1, Math.ceil(popupTarget.maxHp || popupTarget.hp || 1));
+                const hpPctTarget = Math.max(0, Math.min(100, (hp / targetMaxHp) * 100));
+                const replyTo = targetStatCtx
+                  ? Math.floor(ReplyAllEngine.stats.getUnitDamage(targetStatCtx, popupTarget, "single"))
+                  : Math.floor(popupTarget.singleDmg || 0);
+                const escalate = targetStatCtx
+                  ? Math.floor(ReplyAllEngine.stats.getUnitDamage(targetStatCtx, popupTarget, "escalate"))
+                  : Math.floor(popupTarget.escalateDmg || 0);
+                const replyAll = targetStatCtx
+                  ? Math.floor(ReplyAllEngine.stats.getUnitDamage(targetStatCtx, popupTarget, "replyAll"))
+                  : 0;
+                const deflect = targetStatCtx
+                  ? Math.floor(ReplyAllEngine.stats.getUnitDeflectReduce(targetStatCtx, popupTarget))
+                  : Math.floor(popupTarget.deflect || 0);
+                const retaliate = targetStatCtx
+                  ? Math.floor(ReplyAllEngine.stats.getUnitDeflectReflect(targetStatCtx, popupTarget))
+                  : Math.floor(popupTarget.retaliation || 0);
+                const promoteHeal = targetStatCtx
+                  ? Math.floor(ReplyAllEngine.stats.getUnitSelfPromoteHeal(targetStatCtx, popupTarget, 15))
+                  : Math.floor(popupTarget.selfPromoteHeal || 15);
+                const defense = targetStatCtx
+                  ? Math.floor(ReplyAllEngine.stats.getUnitFlatDef(targetStatCtx, popupTarget))
+                  : Math.floor(popupTarget.defFlat || 0);
+                const deptName = ReplyAllEngine.core.getDepartmentName(popupTarget.departmentId) || "Department N/A";
+                const titleName = popupTarget.title?.name || popupTarget.title || popupTarget.role || "Stakeholder";
+                return e(
+                  "div",
+                  {
+                    className: "fixed z-[160] w-[260px] shop-item-overlay-frame retro-border p-3 bg-[#e0e0e0]",
+                    style: {
+                      left: `${stakeholderPopup.left}px`,
+                      top: `${stakeholderPopup.top}px`,
+                    },
+                  },
+                  e(
+                    "div",
+                    { className: "flex justify-between items-start font-bold text-[11px] gap-2 border-b border-[#808080] pb-2 mb-2" },
+                    e(
+                      "div",
+                      { className: "truncate flex flex-col min-w-0" },
+                      e(
+                        "span",
+                        { className: "truncate text-[#000080] text-sm leading-none mb-1 flex items-baseline gap-1 min-w-0" },
+                        e("span", { className: "truncate" }, popupTarget.name || ""),
+                        popupTarget.email
+                          ? e("span", { className: "text-[9px] text-gray-500 truncate max-w-[140px]" }, `(${popupTarget.email})`)
+                          : null,
+                      ),
+                      e("span", { className: "text-[9px] text-[#404040] opacity-70 uppercase" }, titleName),
+                      e("span", { className: "text-[9px] text-[#404040] opacity-70 uppercase" }, deptName),
+                    ),
+                    e(
+                      "button",
+                      {
+                        className: "px-2 retro-button text-[10px] font-bold text-red-700",
+                        onClick: () => setStakeholderPopup(null),
+                      },
+                      "x",
+                    ),
+                  ),
+                  e(
+                    "div",
+                    { className: "mb-2" },
+                    e(
+                      "div",
+                      { className: "flex justify-between text-[10px] font-bold mb-1 uppercase text-[#404040]" },
+                      e("span", null, "Credibility"),
+                      e("span", null, `${hp}/${targetMaxHp}`),
+                    ),
+                    e(
+                      "div",
+                      { className: "h-3 bg-[#808080] border border-white shadow-[inset_1px_1px_1px_black]" },
+                      e("div", {
+                        className: "h-full bg-[#00ff00] border-r-2 border-[#008000]",
+                        style: { width: `${hpPctTarget}%` },
+                      }),
+                    ),
+                  ),
+                  e(
+                    "div",
+                    { className: "grid grid-cols-2 gap-2 text-[10px]" },
+                    e("div", { className: "bg-white retro-border-inset p-2" }, e("div", { className: "text-[9px] text-gray-500 font-bold uppercase" }, "Reply To"), e("div", { className: "font-mono font-bold" }, `${replyTo}`)),
+                    e("div", { className: "bg-white retro-border-inset p-2" }, e("div", { className: "text-[9px] text-gray-500 font-bold uppercase" }, "Escalate"), e("div", { className: "font-mono font-bold" }, `${escalate}`)),
+                    e("div", { className: "bg-white retro-border-inset p-2" }, e("div", { className: "text-[9px] text-gray-500 font-bold uppercase" }, "Reply All"), e("div", { className: "font-mono font-bold" }, `${replyAll}`)),
+                    e("div", { className: "bg-white retro-border-inset p-2" }, e("div", { className: "text-[9px] text-gray-500 font-bold uppercase" }, "Deflect"), e("div", { className: "font-mono font-bold" }, `${deflect} / ${retaliate}`)),
+                    e("div", { className: "bg-white retro-border-inset p-2" }, e("div", { className: "text-[9px] text-gray-500 font-bold uppercase" }, "Self-Promote"), e("div", { className: "font-mono font-bold" }, `${promoteHeal} / ${Math.max(0, popupTarget.wins || 0)}`)),
+                    e("div", { className: "bg-white retro-border-inset p-2" }, e("div", { className: "text-[9px] text-gray-500 font-bold uppercase" }, "Defense"), e("div", { className: "font-mono font-bold" }, `${defense}`)),
+                  ),
+                );
+              })()
             : null,
           props.ccPickerOpen
             ? e(
