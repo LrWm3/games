@@ -4745,6 +4745,7 @@
     getShopPackById,
     openPackById,
     applyShopDragAction,
+    getRerollCost,
     getItemCostByType,
     getOwnedAssets,
     archiveOwnedItem,

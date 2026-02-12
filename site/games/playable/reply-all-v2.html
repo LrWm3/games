@@ -1514,6 +1514,9 @@
         const statCtx = props.state._statCtx || null;
         const rep = props.state.player?.reputation || 0;
         const shop = props.state.shop || { directItems: [], packs: [], rerollCount: 0 };
+        const rerollCost = ReplyAllEngine.core.getRerollCost
+          ? ReplyAllEngine.core.getRerollCost(props.state)
+          : (2 + (shop.rerollCount || 0));
         const activePackId = props.state.activePackId || null;
         const activePack = (shop.packs || []).find((p) => p.id === activePackId) || null;
         const directDisplayItems = activePack
@@ -2574,7 +2577,7 @@
                   onClick: activePack ? props.onClosePack : props.onReroll,
                   className: "retro-button text-black text-[10px] py-1 px-2 w-full",
                 },
-                activePack ? "<Take Nothing>" : "Request Alternates",
+                activePack ? "<Take Nothing>" : `Request Alternates (${rerollCost} REP)`,
               ),
               e(
                 "div",
