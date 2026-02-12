@@ -468,6 +468,16 @@
     return prefix ? `${prefix} ${label}` : label;
   }
 
+  function formatMinutesClock(minutes) {
+    const total = Math.max(0, Math.floor(minutes || 0));
+    let h = Math.floor(total / 60);
+    const m = total % 60;
+    const suffix = h >= 12 ? "PM" : "AM";
+    if (h > 12) h -= 12;
+    if (h === 0) h = 12;
+    return `${h}:${m.toString().padStart(2, "0")} ${suffix}`;
+  }
+
   function formatThreadLimitLabel(limit) {
     const labels = {
       1: "once per thread",
@@ -540,6 +550,21 @@
     if (effect.selfPromoteHeal) parts.push(`Self-Promote +${effect.selfPromoteHeal}`);
     if (effect.replyDeptCleave) parts.push("Reply to hits entire target department");
     if (effect.replySecondaryHalf) parts.push("Reply to hits a random secondary for half damage");
+    if (Array.isArray(effect.statWindows) && effect.statWindows.length) {
+      effect.statWindows.forEach((win) => {
+        if (!win || !win.stats) return;
+        const start = typeof win.start === "number" ? win.start : null;
+        const end = typeof win.end === "number" ? win.end : null;
+        const windowText =
+          start == null
+            ? "Time window"
+            : end == null
+              ? `From ${formatMinutesClock(start)} onward`
+              : `From ${formatMinutesClock(start)} to ${formatMinutesClock(end)}`;
+        const windowStats = formatStatsText(win.stats);
+        if (windowStats) parts.push(`${windowText}: ${windowStats}`);
+      });
+    }
     if (Array.isArray(effect.scalers) && effect.scalers.length) {
       const buckets = {};
       effect.scalers.forEach((s) => {
@@ -626,16 +651,65 @@
         onceText = ` (${formatThreadLimitLabel(effect.threadLimit)})`;
       }
       result = `${eventLabel}${onceText}, gain ${statsLabel} until the end of this thread`;
+    } else if (effect.type === "add_thread_bonus_scaled") {
+      const eventLabel = eventText.replace("On ", "On '") + "'";
+      const scaleLabel =
+        effect.scaleBy === "wins_remaining"
+          ? "wins remaining"
+          : effect.scaleBy === "hp"
+            ? "cred"
+            : "points";
+      const step = effect.step || 1;
+      result = `${eventLabel}, every ${step} ${scaleLabel} grants ${statsText} until the end of this thread`;
     } else if (effect.type === "add_bcc") {
       const count = effect.count || 1;
       result = `${eventText}: gain ${count} Help Desk contact${count === 1 ? "" : "s"}`;
     } else if (effect.type === "duplicate_bcc") {
       const count = effect.count || 1;
       result = `${eventText}: duplicate ${count} Help Desk contact${count === 1 ? "" : "s"}`;
+    } else if (effect.type === "add_signoff_bonus_scaled") {
+      const step = effect.step || 1;
+      const scaleLabel =
+        effect.scaleBy === "hp"
+          ? "cred"
+          : effect.scaleBy === "wins_remaining"
+            ? "wins remaining"
+            : "points";
+      result = `${eventText}: every ${step} ${scaleLabel} adds ${formatStatsText(effect.stats || {})}`;
+    } else if (effect.type === "add_random_cc_bonus_scaled") {
+      const step = effect.step || 1;
+      const scaleLabel =
+        effect.scaleBy === "wins_remaining"
+          ? "wins remaining"
+          : effect.scaleBy === "hp"
+            ? "cred"
+            : effect.scaleBy === "active_cc_count"
+              ? "active Contacts"
+              : "points";
+      const limitLabel =
+        effect.threadLimit != null
+          ? ` (up to ${effect.threadLimit}x)`
+          : "";
+      const bonusText = formatStatsText(effect.stats || {});
+      const targetText = bonusText
+        ? `${upgradeVerb}s ${bonusText} on a random ${contactNoun}`
+        : `${upgradeVerb}s a random ${contactNoun}`;
+      result = `${eventText}: every ${step} ${scaleLabel} ${targetText}${limitLabel}`;
     } else if (effect.type === "add_all_cc_bonus") {
       result = statsText
         ? `${eventText}: all ${contactNoun}s gain ${statsText}`
         : `${eventText}: ${upgradeVerb} all ${contactNoun}s`;
+    } else if (effect.type === "add_cc_bonus_by_dept_pairs") {
+      result = statsText
+        ? `${eventText}: all active ${contactNoun}s gain ${statsText} for each same-dept pair`
+        : `${eventText}: ${upgradeVerb} all active ${contactNoun}s for each same-dept pair`;
+    } else if (effect.type === "add_signoff_bonus_by_dept_pairs") {
+      result = `${eventText}: gain ${formatStatsText(effect.stats || {})} per same-dept pair`;
+    } else if (effect.type === "rep_half_to_cc_escalate") {
+      const step = effect.step || 1;
+      result = statsText
+        ? `${eventText}: gain half REP; every ${step} REP missed adds ${statsText} to ${contactNoun}s`
+        : `${eventText}: gain half REP; every ${step} REP missed ${upgradeVerb}s a random ${contactNoun}`;
     } else if (effect.type === "gain_rep") {
       const amount = effect.amount || 0;
       result = `${eventText}: gain ${amount} REP`;
@@ -646,11 +720,19 @@
       const sign = amount >= 0 ? "+" : "";
       result = `${eventText}: this signature gains ${sign}${amount} ${statLabel}`;
     } else if (effect.type === "rep_scale_salutation") {
-      const stat = effect.stat || "singleDmg";
       const step = effect.step || 1;
-      const perStep = effect.amount || 1;
-      const statLabel = STAT_METADATA?.[stat]?.label || stat;
-      result = `${eventText}: every ${step} REP grants +${perStep} ${statLabel} to your greeting`;
+      const fromStats =
+        effect.stats && typeof effect.stats === "object"
+          ? formatStatsText(effect.stats)
+          : "";
+      if (fromStats) {
+        result = `${eventText}: every ${step} REP grants ${fromStats} to your greeting`;
+      } else {
+        const stat = effect.stat || "singleDmg";
+        const perStep = effect.amount || 1;
+        const statLabel = STAT_METADATA?.[stat]?.label || stat;
+        result = `${eventText}: every ${step} REP grants +${perStep} ${statLabel} to your greeting`;
+      }
     } else {
       result = statsText || describeEffect(effect) || "Effect";
     }
@@ -1485,6 +1567,7 @@
 
     if (p) {
       runUnitEffects(state, p, "thread_start", {}, helpers);
+      updateGreetingReputationScaling(state, helpers);
     }
 
     const opponents = buildOpponentsForMission(state, mission, data, helpers);
@@ -1531,6 +1614,13 @@
   function isMissionOverdue(state, mission) {
     const turns = mission && typeof mission.turns === "number" ? mission.turns : 0;
     return state.turn > turns;
+  }
+
+  function updateGreetingReputationScaling(state, helpers = {}) {
+    if (!state?.player) return;
+    runUnitEffects(state, state.player, "rep_tick", {
+      rep: state.player.reputation || 0,
+    }, helpers);
   }
 
   function saveGameState(state, helpers = {}) {
@@ -4268,6 +4358,7 @@
     } else {
       state.aiPlannedActions = {};
     }
+    updateGreetingReputationScaling(state, helpers);
     state.isProcessing = false;
     return {
       ok: true,

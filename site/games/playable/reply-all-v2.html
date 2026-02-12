@@ -31,6 +31,8 @@
         --win-border-dark: #404040;
         --win-wizard-text: #7b7b7b;
         --win-bg: #568fb5;
+        --shop-card-width: 84px;
+        --shop-card-height: 120px;
       }
       body {
         font-family: "Inter", sans-serif;
@@ -165,8 +167,8 @@
       }
       .shop-card-item {
         width: 100%;
-        max-width: 84px;
-        height: 120px;
+        max-width: var(--shop-card-width);
+        height: var(--shop-card-height);
         display: flex;
         flex-direction: column;
         text-align: center;
@@ -219,9 +221,10 @@
       }
       .shop-card-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, 84px);
+        grid-template-columns: repeat(auto-fill, var(--shop-card-width));
         gap: 8px;
         justify-content: center;
+        min-height: var(--shop-card-height);
       }
       .shop-card-body {
         padding: 6px;
@@ -273,38 +276,23 @@
         border-color: #1d4ed8;
         color: #1e3a8a;
       }
-      .drag-overlay-target.buy .buy-label-active {
-        display: none;
-      }
-      .drag-overlay-target.buy:has(.shop-card-item, .sortable-ghost, .sortable-chosen, .sortable-fallback) .buy-label-idle {
-        display: none;
-      }
-      .drag-overlay-target.buy:has(.shop-card-item, .sortable-ghost, .sortable-chosen, .sortable-fallback) .buy-label-active {
-        display: inline;
-      }
-      .drag-overlay-target.buy .shop-card-item,
-      .drag-overlay-target.buy .sortable-ghost,
-      .drag-overlay-target.buy .sortable-chosen,
-      .drag-overlay-target.buy .sortable-fallback {
-        display: none !important;
-      }
       .drag-overlay-target.sell {
         border-color: #b45309;
         color: #7c2d12;
       }
-      .drag-overlay-target.sell .sell-label-active {
+      .drag-overlay-target .overlay-label-active {
         display: none;
       }
-      .drag-overlay-target.sell:has(.shop-card-item, .sortable-ghost, .sortable-chosen, .sortable-fallback) .sell-label-idle {
+      .drag-overlay-target:has(.shop-card-item, .sortable-ghost, .sortable-chosen, .sortable-fallback) .overlay-label-idle {
         display: none;
       }
-      .drag-overlay-target.sell:has(.shop-card-item, .sortable-ghost, .sortable-chosen, .sortable-fallback) .sell-label-active {
+      .drag-overlay-target:has(.shop-card-item, .sortable-ghost, .sortable-chosen, .sortable-fallback) .overlay-label-active {
         display: inline;
       }
-      .drag-overlay-target.sell .shop-card-item,
-      .drag-overlay-target.sell .sortable-ghost,
-      .drag-overlay-target.sell .sortable-chosen,
-      .drag-overlay-target.sell .sortable-fallback {
+      .drag-overlay-target .shop-card-item,
+      .drag-overlay-target .sortable-ghost,
+      .drag-overlay-target .sortable-chosen,
+      .drag-overlay-target .sortable-fallback {
         display: none !important;
       }
       .buy-slot-outline {
@@ -1274,6 +1262,20 @@
         );
       }
 
+      function DragOverlayTarget(props) {
+        const tone = props.tone || "buy";
+        const active = !!props.active;
+        return e(
+          "div",
+          {
+            ref: props.overlayRef || null,
+            className: `drag-overlay-target ${tone} ${active ? "active" : ""}`,
+          },
+          e("span", { className: "overlay-label-idle" }, props.idleLabel || ""),
+          e("span", { className: "overlay-label-active" }, props.activeLabel || ""),
+        );
+      }
+
       function ShopScreen(props) {
         const player = props.state.player || {};
         const statCtx = props.state._statCtx || null;
@@ -1302,6 +1304,7 @@
           onDropOpenPack: props.onDropOpenPack,
           onDropArchiveOwned: props.onDropArchiveOwned,
           onDropEquipFromShop: props.onDropEquipFromShop,
+          onSelectPackItem: props.onSelectPackItem,
           onReorderAddressBook: props.onReorderAddressBook,
           onReorderSignatures: props.onReorderSignatures,
         });
@@ -1344,6 +1347,7 @@
             onDropOpenPack: props.onDropOpenPack,
             onDropArchiveOwned: props.onDropArchiveOwned,
             onDropEquipFromShop: props.onDropEquipFromShop,
+            onSelectPackItem: props.onSelectPackItem,
             onReorderAddressBook: props.onReorderAddressBook,
             onReorderSignatures: props.onReorderSignatures,
           };
@@ -1354,6 +1358,7 @@
           props.onDropOpenPack,
           props.onDropArchiveOwned,
           props.onDropEquipFromShop,
+          props.onSelectPackItem,
           props.onReorderAddressBook,
           props.onReorderSignatures,
         ]);
@@ -1431,10 +1436,11 @@
             nextPopup.itemIndex == null ? "" : String(nextPopup.itemIndex),
           ].join("|");
         }
-        function openDirectDetail(item, anchorEl) {
+        function openDirectDetail(item, anchorEl, opts = {}) {
           if (!item) return;
           const nextPopup = {
-            mode: "direct",
+            mode: opts.mode || "direct",
+            packId: opts.packId || null,
             item,
             itemType: item.itemType,
             cost: getDisplayCost(item),
@@ -1671,10 +1677,40 @@
           const itemId = dragEl?.dataset?.itemId || "";
           const itemType = dragEl?.dataset?.itemType || "";
           const packId = dragEl?.dataset?.packId || "";
+          const isPackOption = dragEl?.dataset?.packOption === "1";
           const itemIndexRaw = dragEl?.dataset?.itemIndex;
           const parsedIndex = itemIndexRaw == null ? null : Number(itemIndexRaw);
           const itemIndex = Number.isFinite(parsedIndex) ? parsedIndex : null;
-          if (packId) {
+          if (popupSource === "shop-offers") {
+            if (isPackOption && packId && itemId) {
+              const pack = (shopRef.current?.packs || []).find((p) => p.id === packId && !p.purchased);
+              const item = (pack?.options || []).find((i) => i.id === itemId) || null;
+              if (!item) return null;
+              return {
+                popup: {
+                  mode: "pack-option",
+                  packId,
+                  item,
+                  itemType: item.itemType,
+                  cost: 0,
+                },
+                identity: { itemId, itemType: item.itemType },
+              };
+            }
+            if (!itemId || !itemType) return null;
+            const item = (shopRef.current?.directItems || []).find((i) => i.id === itemId && !i.purchased);
+            if (!item) return null;
+            return {
+              popup: {
+                mode: "direct",
+                item,
+                itemType: item.itemType,
+                cost: getDisplayCost(item),
+              },
+              identity: { itemId, itemType },
+            };
+          }
+          if (packId && popupSource === "shop-pack-open") {
             const pack = (shopRef.current?.packs || []).find((p) => p.id === packId && !p.purchased);
             if (!pack) return null;
             return {
@@ -1688,19 +1724,6 @@
             };
           }
           if (!itemId || !itemType) return null;
-          if (popupSource === "shop-offers") {
-            const item = (shopRef.current?.directItems || []).find((i) => i.id === itemId && !i.purchased);
-            if (!item) return null;
-            return {
-              popup: {
-                mode: "direct",
-                item,
-                itemType: item.itemType,
-                cost: getDisplayCost(item),
-              },
-              identity: { itemId, itemType },
-            };
-          }
           if (popupSource === "owned-contact") {
             const item = (ownedRef.current?.addressBook || []).find((i) => i.id === itemId);
             if (!item) return null;
@@ -1834,6 +1857,10 @@
           if (!detailPopup) return;
           if (detailPopup.mode === "direct") {
             props.onBuyItem(detailPopup.item);
+          } else if (detailPopup.mode === "pack-option") {
+            if (detailPopup.packId && detailPopup.item?.id) {
+              props.onSelectPackItem(detailPopup.packId, detailPopup.item.id);
+            }
           } else if (detailPopup.mode === "pack") {
             props.onOpenPack(detailPopup.pack);
           } else if (detailPopup.mode === "owned") {
@@ -1851,10 +1878,13 @@
           if (!item) return null;
           const itemType = detailPopup.itemType || item.itemType || "contact";
           const isOwned = detailPopup.mode === "owned";
-          const actionCost = isOwned ? 0 : detailPopup.cost || 0;
-          const actionDisabled = isOwned ? false : rep < actionCost;
+          const isPackOption = detailPopup.mode === "pack-option";
+          const actionCost = isOwned || isPackOption ? 0 : detailPopup.cost || 0;
+          const actionDisabled = isOwned || isPackOption ? false : rep < actionCost;
           const actionLabel = isOwned
             ? `ARCHIVE +${detailPopup.refund || 0} REP`
+            : isPackOption
+              ? "SELECT"
             : detailPopup.mode === "pack"
               ? `ATTEND EVENT${actionCost > 0 ? ` (${actionCost} REP)` : ""}`
               : `REQUEST${actionCost > 0 ? ` (${actionCost} REP)` : ""}`;
@@ -1911,7 +1941,6 @@
         }
 
         React.useEffect(() => {
-          if (activePack) return undefined;
           if (typeof Sortable === "undefined") return undefined;
           const sortables = [];
           function getGroupName(source) {
@@ -1946,6 +1975,8 @@
                 },
                 onEnd: (evt) => {
                   if (popupSource) onDragPopupEnd();
+                  else closeDetailPopup();
+                  suppressCardClickUntilRef.current = Date.now() + 300;
                   if (typeof onEnd === "function") onEnd(evt);
                 },
               }),
@@ -1992,12 +2023,22 @@
               pull: false,
               put: (to, from, dragEl) => {
                 const groupName = getGroupName(from);
-                if (groupName === "shop-pack-open") return true;
+                if (groupName === "shop-pack-open") return !activePack;
                 if (groupName !== "shop-offers") return false;
                 return dragEl?.dataset?.itemType === "dev";
               },
             },
             onAdd: (evt) => {
+              const isPackOption = evt.item?.dataset?.packOption === "1";
+              const packIdFromOption = evt.item?.dataset?.packId;
+              const optionItemId = evt.item?.dataset?.itemId;
+              if (isPackOption && packIdFromOption && optionItemId) {
+                setTimeout(
+                  () => handlersRef.current.onSelectPackItem(packIdFromOption, optionItemId),
+                  0,
+                );
+                return;
+              }
               const packId = evt.item?.dataset?.packId;
               if (packId) {
                 setTimeout(() => handlersRef.current.onDropOpenPack(packId), 0);
@@ -2033,6 +2074,12 @@
             onAdd: (evt) => {
               const itemId = evt.item?.dataset?.itemId;
               const itemType = evt.item?.dataset?.itemType;
+              const packId = evt.item?.dataset?.packId;
+              const isPackOption = evt.item?.dataset?.packOption === "1";
+              if (isPackOption && packId && itemId && itemType === "contact") {
+                setTimeout(() => handlersRef.current.onSelectPackItem(packId, itemId), 0);
+                return;
+              }
               if (itemId && itemType === "contact") {
                 setTimeout(() => handlersRef.current.onDropEquipFromShop(itemId, "contact"), 0);
               }
@@ -2074,6 +2121,17 @@
             onAdd: (evt) => {
               const itemId = evt.item?.dataset?.itemId;
               const itemType = evt.item?.dataset?.itemType;
+              const packId = evt.item?.dataset?.packId;
+              const isPackOption = evt.item?.dataset?.packOption === "1";
+              if (
+                isPackOption &&
+                packId &&
+                itemId &&
+                (itemType === "salutation" || itemType === "signoff" || itemType === "signature")
+              ) {
+                setTimeout(() => handlersRef.current.onSelectPackItem(packId, itemId), 0);
+                return;
+              }
               if (
                 itemId &&
                 (itemType === "salutation" || itemType === "signoff" || itemType === "signature")
@@ -2114,6 +2172,12 @@
             draggable: ".shop-card-item",
             onAdd: (evt) => {
               const itemId = evt.item?.dataset?.itemId;
+              const packId = evt.item?.dataset?.packId;
+              const isPackOption = evt.item?.dataset?.packOption === "1";
+              if (isPackOption && packId && itemId) {
+                setTimeout(() => handlersRef.current.onSelectPackItem(packId, itemId), 0);
+                return;
+              }
               if (itemId) {
                 setTimeout(() => handlersRef.current.onDropEquipFromShop(itemId, "bcc"), 0);
               }
@@ -2191,35 +2255,15 @@
                 : null,
               e(
                 "button",
-                { onClick: props.onReroll, className: "retro-button text-black text-[10px] py-1 px-2 w-full" },
-                "Request Alternates",
+                {
+                  onClick: activePack ? props.onClosePack : props.onReroll,
+                  className: "retro-button text-black text-[10px] py-1 px-2 w-full",
+                },
+                activePack ? "<Take Nothing>" : "Request Alternates",
               ),
-              activePack
-                ? e(
-                    "div",
-                    { className: "space-y-2" },
-                    e("div", { className: "text-sm font-bold" }, activePack.name || "Training Pack"),
-                    e("div", { className: "text-[10px] text-gray-600" }, `Choose ${props.state.packsOpen?.[activePack.id]?.picksLeft || 0} more`),
-                    e(
-                      "div",
-                      { className: "space-y-2" },
-                      (activePack.options || []).map((item) =>
-                        e(
-                          "button",
-                          {
-                            key: `${activePack.id}-${item.id}`,
-                            onClick: () => props.onSelectPackItem(activePack.id, item.id),
-                            className: "w-full text-left retro-button p-2",
-                          },
-                          `${item.name} (${item.itemType})`,
-                        ),
-                      ),
-                    ),
-                    e("button", { onClick: props.onClosePack, className: "retro-button text-[10px] px-2 py-1" }, "Take Nothing"),
-                  )
-                : e(
-                    "div",
-                    { className: "grid grid-cols-1 md:grid-cols-2 gap-6" },
+              e(
+                "div",
+                { className: "grid grid-cols-1 md:grid-cols-2 gap-6" },
                     e(
                       "div",
                       { className: "md:col-span-2 relative" },
@@ -2228,23 +2272,30 @@
                         { className: "grid grid-cols-1 md:grid-cols-2 gap-6" },
                         e(
                           "div",
-                          { className: "space-y-2" },
-                          e("h3", { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" }, "Individual Opportunities"),
+                          { className: activePack ? "space-y-2 md:col-span-2" : "space-y-2" },
+                          e(
+                            "h3",
+                            { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" },
+                            activePack
+                              ? `${activePack.name || "Training Pack"} • Pick ${props.state.packsOpen?.[activePack.id]?.picksLeft || 0} of ${activePack.picks || 0}`
+                              : "Individual Opportunities",
+                          ),
                           e(
                             "div",
                             { ref: directListRef, className: "border border-gray-200 bg-white p-2 shop-card-grid" },
-                            (shop.directItems || [])
-                              .filter((item) => !item.purchased)
+                            (activePack ? (activePack.options || []) : (shop.directItems || []).filter((item) => !item.purchased))
                               .map((item) =>
                                 e(
                                   "div",
                                   {
-                                    key: item.id,
+                                    key: activePack ? `${activePack.id}-${item.id}` : item.id,
                                     "data-item-id": item.id,
                                     "data-item-type": item.itemType,
+                                    "data-pack-option": activePack ? "1" : undefined,
+                                    "data-pack-id": activePack ? activePack.id : undefined,
                                     onClick: (evt) => {
                                       if (shouldSuppressCardClick()) return;
-                                      openDirectDetail(item, evt.currentTarget);
+                                      openDirectDetail(item, evt.currentTarget, activePack ? { mode: "pack-option", packId: activePack.id } : {});
                                     },
                                     className: "shop-card-item",
                                   },
@@ -2253,7 +2304,7 @@
                                     return e(
                                       React.Fragment,
                                       null,
-                                      e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, `${meta.label} • ${getDisplayCost(item)} REP`),
+                                      e("div", { className: "shop-card-header", style: { background: meta.headerBg, color: meta.headerText } }, `${meta.label} • ${activePack ? 0 : getDisplayCost(item)} REP`),
                                       e("div", { className: "shop-card-frame", style: { background: meta.paneBg, color: meta.paneText } }, e("div", { className: "shop-card-name" }, item.name)),
                                     );
                                   })(),
@@ -2261,7 +2312,9 @@
                               ),
                           ),
                         ),
-                        e(
+                        activePack
+                          ? null
+                          : e(
                           "div",
                           { className: "space-y-2" },
                           e("h3", { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" }, "Group Trainings"),
@@ -2296,23 +2349,13 @@
                           ),
                         ),
                       ),
-                      e(
-                        "div",
-                        {
-                          ref: sellOverlayRef,
-                          className: `drag-overlay-target sell ${dragOverlay.sellActive ? "active" : ""}`,
-                        },
-                        e(
-                          React.Fragment,
-                          null,
-                          e(
-                            "span",
-                            { className: "sell-label-idle" },
-                            `Drag Here to ${dragOverlay.sellLabel}`,
-                          ),
-                          e("span", { className: "sell-label-active" }, dragOverlay.sellLabel),
-                        ),
-                      ),
+                      e(DragOverlayTarget, {
+                        overlayRef: sellOverlayRef,
+                        tone: "sell",
+                        active: dragOverlay.sellActive,
+                        idleLabel: `Drag Here to ${dragOverlay.sellLabel}`,
+                        activeLabel: dragOverlay.sellLabel,
+                      }),
                     ),
                     e(
                       "div",
@@ -2515,19 +2558,13 @@
                               : null,
                           ),
                         ),
-                        e(
-                          "div",
-                          {
-                            ref: buyOverlayRef,
-                            className: `drag-overlay-target buy ${dragOverlay.buyActive ? "active" : ""}`,
-                          },
-                          e(
-                            React.Fragment,
-                            null,
-                            e("span", { className: "buy-label-idle" }, dragOverlay.buyLabel),
-                            e("span", { className: "buy-label-active" }, dragOverlay.buyLabel),
-                          ),
-                        ),
+                        e(DragOverlayTarget, {
+                          overlayRef: buyOverlayRef,
+                          tone: "buy",
+                          active: dragOverlay.buyActive,
+                          idleLabel: `Drag Here to ${dragOverlay.buyLabel}`,
+                          activeLabel: dragOverlay.buyLabel,
+                        }),
                       ),
                     ),
                   ),
