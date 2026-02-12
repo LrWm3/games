@@ -165,6 +165,49 @@
       .momentum-segment.charged {
         background: #b91c1c;
       }
+      .contacts-container {
+        max-height: 28px;
+        overflow: hidden;
+      }
+      .stakeholder-pill {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 6px;
+        font-size: 9px;
+        font-weight: 700;
+        cursor: pointer;
+        border: 1px solid var(--win-border-dark);
+        box-shadow: 1px 1px 0 #000;
+        min-width: 50px;
+        white-space: nowrap;
+        background: #d4d4d4;
+        position: relative;
+        transition: transform 0.1s;
+      }
+      .stakeholder-pill.active {
+        border: 1px solid var(--win-blue);
+        outline: 1px solid var(--win-blue);
+        transform: translateY(-1px);
+        z-index: 10;
+      }
+      .stakeholder-pill .pill-text {
+        position: relative;
+        z-index: 2;
+        text-shadow: 0 0 2px #fff;
+        max-width: 96px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .stakeholder-pill .pill-hp {
+        font-size: 8px;
+        opacity: 0.7;
+        position: relative;
+        z-index: 2;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
       .shop-card-item {
         width: 100%;
         max-width: var(--shop-card-width);
@@ -2916,20 +2959,34 @@
                   e("span", { className: "font-bold w-4 text-right" }, "To:"),
                   e(
                     "div",
-                    { className: "flex gap-1 overflow-x-auto py-0.5" },
+                    { className: "contacts-container flex gap-1 overflow-x-auto no-scrollbar py-0.5" },
                     opponents.map((opp) => {
                       const oppMaxHp = Math.max(1, opp.maxHp || opp.hp || 1);
                       const pct = Math.max(0, Math.min(100, ((opp.hp || 0) / oppMaxHp) * 100));
+                      const hp = Math.max(0, Math.ceil(opp.hp || 0));
                       const isSelected = selectedTarget && selectedTarget.id === opp.id;
+                      const isOut = (opp.hp || 0) <= 0;
+                      const hue = (pct / 100) * 120;
+                      const fill = `hsl(${hue} 70% 75%)`;
+                      const empty = "#f3f4f6";
                       return e(
-                        "button",
+                        "div",
                         {
                           key: `target-${opp.id}`,
-                          onClick: () => props.onSelectTarget(opp.id),
-                          className: `px-2 py-0.5 border text-[9px] font-bold ${isSelected ? "bg-blue-800 text-white" : "bg-white text-gray-900"}`,
-                          title: `${Math.ceil(opp.hp || 0)}/${oppMaxHp}`,
+                          onClick: () => {
+                            if (isOut) return;
+                            props.onSelectTarget(opp.id);
+                          },
+                          className: `stakeholder-pill ${isSelected ? "active" : ""}`,
+                          style: {
+                            background: isOut
+                              ? "#e5e7eb"
+                              : `linear-gradient(90deg, ${fill} 0%, ${fill} ${pct}%, ${empty} ${pct}%, ${empty} 100%)`,
+                          },
+                          title: `${hp}/${oppMaxHp}`,
                         },
-                        `${opp.name} (${Math.round(pct)}%)`,
+                        e("span", { className: "pill-text" }, opp.name),
+                        e("span", { className: "pill-hp" }, `${hp}`),
                       );
                     }),
                   ),
