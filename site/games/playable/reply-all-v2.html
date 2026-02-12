@@ -3015,14 +3015,29 @@
         const aiPreviewRows = showDraftingIndicators
           ? ReplyAllEngine.core.getAiActionPreviewRows(props.state)
           : [];
-        const actionCards = [
+        const baseActionCards = [
           { id: "ATTACK", label: "Reply to" },
           { id: "ESCALATE", label: "Escalate" },
           { id: "PROMOTE", label: "Self-Promote" },
           { id: "DEFLECT", label: "Deflect" },
           { id: "ULT", label: "Reply All" },
+          { id: "ADDRESS_BOOK", label: "Address Book" },
         ];
-        const actionLabelById = actionCards.reduce((acc, item) => {
+        const contactMeta = ITEM_TYPE_LABELS?.contact || {
+          label: "Contact",
+          headerBg: "#111827",
+          headerText: "#ffffff",
+          paneBg: "#e5e7eb",
+          paneText: "#111827",
+        };
+        const bccMeta = ITEM_TYPE_LABELS?.bcc || {
+          label: "Internal Service",
+          headerBg: "#7c2d12",
+          headerText: "#ffffff",
+          paneBg: "#fef3c7",
+          paneText: "#78350f",
+        };
+        const actionLabelById = baseActionCards.reduce((acc, item) => {
           acc[item.id] = item.label;
           return acc;
         }, {});
@@ -3030,13 +3045,46 @@
         const actionDockRef = React.useRef(null);
         const dragRef = React.useRef(null);
         const [dragActionId, setDragActionId] = React.useState(null);
+        const [dragDrawerPayload, setDragDrawerPayload] = React.useState(null);
         const [isOverEmailDrop, setIsOverEmailDrop] = React.useState(false);
         const [dragPointer, setDragPointer] = React.useState({ x: 0, y: 0 });
         const [actionDetailPopup, setActionDetailPopup] = React.useState(null);
         const [stakeholderPopup, setStakeholderPopup] = React.useState(null);
+        const [addressDrawerOpen, setAddressDrawerOpen] = React.useState(false);
+        const [addressDrawerAddsUsed, setAddressDrawerAddsUsed] = React.useState(0);
+        const availableDrawerContacts = props.availableCcContacts || [];
+        const availableDrawerBccs = props.availableBccContacts || [];
+        const addressBookCards = [
+          ...availableDrawerContacts.map((contact) => ({
+            id: `AB_CONTACT_${contact.id}`,
+            label: contact.name,
+            kind: "drawer",
+            itemType: "contact",
+            item: contact,
+          })),
+          ...availableDrawerBccs.map((bcc, idx) => ({
+            id: `AB_BCC_${bcc.id}_${idx}`,
+            label: bcc.name,
+            kind: "drawer",
+            itemType: "bcc",
+            item: bcc,
+            bccIndex: idx,
+          })),
+          {
+            id: "CLOSE_ADDRESS_BOOK",
+            label: "Close Address Book",
+            kind: "action",
+          },
+        ];
+        const displayedActionCards = addressDrawerOpen ? addressBookCards : baseActionCards;
         const dragAction = dragActionId
-          ? actionCards.find((action) => action.id === dragActionId) || null
+          ? (displayedActionCards.find((action) => action.id === dragActionId) ||
+            baseActionCards.find((action) => action.id === dragActionId) ||
+            null)
           : null;
+        const activeDrag = dragAction
+          ? { kind: "action", actionId: dragAction.id }
+          : dragDrawerPayload;
         const getActionDetailText = (actionId) => {
           if (actionId === "PROMOTE") {
             const curHp = Math.max(0, Math.ceil(player.hp || 0));
@@ -3059,6 +3107,23 @@
           }
           return props.actionHints?.[actionId] || "No action details.";
         };
+        const getAddressCardSecondaryText = (card) => {
+          if (!card || card.kind !== "drawer") return "";
+          const item = card.item || {};
+          const lines = [];
+          if (item.description) lines.push(item.description);
+          if (card.itemType === "contact" && item.departmentId) {
+            const dept = ReplyAllEngine.core.getDepartmentName(item.departmentId);
+            if (dept) lines.push(`Department: ${dept}`);
+          }
+          const effectText = ReplyAllEngine.copy?.getItemBonusText
+            ? ReplyAllEngine.copy.getItemBonusText(item, {})
+            : "";
+          if (effectText && effectText !== "No listed effect.") {
+            lines.push(`Effects: ${effectText}`);
+          }
+          return lines.join(" • ");
+        };
         const dragDetailText = dragActionId ? getActionDetailText(dragActionId) : "";
         const dragDetailPos = React.useMemo(() => {
           if (!dragAction) return null;
@@ -3077,7 +3142,15 @@
           top = Math.max(padding, Math.min(top, window.innerHeight - popupHeight - padding));
           return { left, top };
         }, [dragAction, dragPointer.x, dragPointer.y]);
-        const actionDockTrack = useAdaptiveCardTrack(actionDockRef, actionCards.length);
+        const actionDockTrack = useAdaptiveCardTrack(actionDockRef, displayedActionCards.length);
+        const maxAddressAdds = Math.max(
+          1,
+          Math.floor(
+            statCtx
+              ? (ReplyAllEngine.stats.computeUnitStats(statCtx, player).numCCperCCaction || 1)
+              : (player.numCCperCCaction || 1),
+          ),
+        );
         const getAttackPreviewDamage = (target) => {
           if (!target) return 0;
           const singleDmg = statCtx
@@ -3089,8 +3162,9 @@
             : (target.defFlat || 0);
           return Math.max(0, Math.floor(singleDmg - flatDef));
         };
-        const getDragOverlayText = (actionId, releaseMode) => {
-          if (actionId === "ATTACK") {
+        const getDragOverlayText = (dragPayload, releaseMode) => {
+          if (!dragPayload) return "";
+          if (dragPayload.kind === "action" && dragPayload.actionId === "ATTACK") {
             const target = selectedTarget;
             const targetName = target?.name || "target";
             const dmg = getAttackPreviewDamage(target);
@@ -3098,7 +3172,19 @@
               ? `Release to reply to ${targetName} for -${dmg}`
               : `Drag Here to reply to ${targetName} for -${dmg}`;
           }
-          const label = actionLabelById[actionId] || "Use Action";
+          if (dragPayload.kind === "drawer") {
+            const label = dragPayload.item?.name || "contact";
+            return releaseMode
+              ? `Release to use ${label}`
+              : `Drag Here to use ${label}`;
+          }
+          if (dragPayload.kind === "action" && dragPayload.actionId === "ADDRESS_BOOK") {
+            return releaseMode ? "Release to open Address Book" : "Drag Here to open Address Book";
+          }
+          if (dragPayload.kind === "action" && dragPayload.actionId === "CLOSE_ADDRESS_BOOK") {
+            return releaseMode ? "Release to close Address Book" : "Drag Here to close Address Book";
+          }
+          const label = actionLabelById[dragPayload.actionId] || "Use Action";
           return releaseMode
             ? `Release to ${label}`
             : `Drag Here to ${label}`;
@@ -3184,13 +3270,18 @@
             const dist = Math.hypot(dx, dy);
             if (!drag.active && dist > 6) {
               drag.active = true;
-              setDragActionId(drag.actionId);
+              if (drag.kind === "action") {
+                setDragActionId(drag.actionId);
+              } else if (drag.kind === "drawer") {
+                setDragDrawerPayload(drag.payload);
+              }
               setActionDetailPopup(null);
+              setStakeholderPopup(null);
             }
             if (drag.active) {
               setDragPointer({ x: evt.clientX || 0, y: evt.clientY || 0 });
               setIsOverEmailDrop(isPointOverEmailDrop(evt.clientX, evt.clientY));
-              if (drag.actionId === "ATTACK") {
+              if (drag.kind === "action" && drag.actionId === "ATTACK") {
                 const hoveredTargetId = resolvePointerTargetId(evt.clientX, evt.clientY);
                 if (
                   hoveredTargetId != null &&
@@ -3207,14 +3298,46 @@
             const shouldCast =
               drag.active &&
               isPointOverEmailDrop(evt.clientX, evt.clientY) &&
-              !props.disabledActions?.[drag.actionId];
-            if (shouldCast) props.onAction(drag.actionId);
+              (drag.kind === "drawer" || !props.disabledActions?.[drag.actionId]);
+            if (shouldCast) {
+              if (drag.kind === "action") {
+                if (drag.actionId === "ADDRESS_BOOK") {
+                  setAddressDrawerOpen(true);
+                  setAddressDrawerAddsUsed(0);
+                } else if (drag.actionId === "CLOSE_ADDRESS_BOOK") {
+                  closeAddressDrawer(true);
+                } else {
+                  props.onAction(drag.actionId);
+                }
+              } else if (drag.kind === "drawer") {
+                let ok = false;
+                if (drag.payload?.itemType === "contact") {
+                  ok = !!props.onUseAddressContact?.(drag.payload.item?.id);
+                } else if (drag.payload?.itemType === "bcc") {
+                  ok = !!props.onUseAddressBcc?.(drag.payload.bccIndex);
+                }
+                if (ok) {
+                  setAddressDrawerAddsUsed((prev) => {
+                    const next = prev + 1;
+                    if (next >= maxAddressAdds) {
+                      setAddressDrawerOpen(false);
+                      window.setTimeout(() => {
+                        props.onAddressDrawerEndTurn?.();
+                      }, 0);
+                      return 0;
+                    }
+                    return next;
+                  });
+                }
+              }
+            }
             if (!drag.active) {
-              props.onActionHover(drag.actionId);
+              if (drag.kind === "action") props.onActionHover(drag.actionId);
             } else {
               props.onActionHover(null);
             }
             setDragActionId(null);
+            setDragDrawerPayload(null);
             setIsOverEmailDrop(false);
             setDragPointer({ x: 0, y: 0 });
             dragRef.current = null;
@@ -3227,11 +3350,12 @@
             window.removeEventListener("pointerup", onPointerUp);
             window.removeEventListener("pointercancel", onPointerUp);
           };
-        }, [props]);
+        }, [props, maxAddressAdds]);
 
         const onActionCardPointerDown = (actionId, evt) => {
           if (props.disabledActions?.[actionId]) return;
           dragRef.current = {
+            kind: "action",
             actionId,
             startX: evt.clientX || 0,
             startY: evt.clientY || 0,
@@ -3241,9 +3365,30 @@
           setActionDetailPopup(null);
           props.onActionHover(actionId);
         };
+        const onDrawerCardPointerDown = (payload, evt) => {
+          dragRef.current = {
+            kind: "drawer",
+            payload,
+            startX: evt.clientX || 0,
+            startY: evt.clientY || 0,
+            active: false,
+          };
+          setDragPointer({ x: evt.clientX || 0, y: evt.clientY || 0 });
+          setActionDetailPopup(null);
+          setStakeholderPopup(null);
+        };
 
         const onActionCardClick = (actionId, evt) => {
           if (props.disabledActions?.[actionId]) return;
+          if (actionId === "ADDRESS_BOOK") {
+            setAddressDrawerOpen(true);
+            setAddressDrawerAddsUsed(0);
+            return;
+          }
+          if (actionId === "CLOSE_ADDRESS_BOOK") {
+            closeAddressDrawer(true);
+            return;
+          }
           const rect = evt?.currentTarget?.getBoundingClientRect?.();
           if (!rect) return;
           if (actionDetailPopup?.id === actionId) {
@@ -3285,6 +3430,19 @@
           }
           setStakeholderPopup(null);
           props.onSelectTarget(entryTargetId);
+        };
+        const closeAddressDrawer = (manual = false) => {
+          if (
+            manual &&
+            addressDrawerAddsUsed > 0 &&
+            addressDrawerAddsUsed < maxAddressAdds
+          ) {
+            window.setTimeout(() => {
+              props.onAddressDrawerEndTurn?.();
+            }, 0);
+          }
+          setAddressDrawerOpen(false);
+          setAddressDrawerAddsUsed(0);
         };
         const popupTarget = stakeholderPopup
           ? opponents.find((opp) => String(opp.id) === String(stakeholderPopup.targetId)) || null
@@ -3396,15 +3554,21 @@
                   "div",
                   { className: "flex gap-2 items-center" },
                   e("span", { className: "font-bold w-4 text-right" }, "CC:"),
-                  e(
-                    "div",
-                    { className: "flex gap-1 text-gray-400 italic" },
-                    Array.isArray(player.buffs) && player.buffs.length
-                      ? player.buffs.map((b, idx) =>
-                          e("span", { key: `buff-${idx}`, className: "text-gray-700 not-italic" }, b.name || b.id || "CC"),
-                        )
-                      : "No one in loop.",
-                  ),
+                  (() => {
+                    const activeBuffs = [
+                      ...(Array.isArray(player.buffs) ? player.buffs : []),
+                      ...opponents.flatMap((o) => (Array.isArray(o.buffs) ? o.buffs : [])),
+                    ];
+                    return e(
+                      "div",
+                      { className: "flex gap-1 text-gray-400 italic" },
+                      activeBuffs.length
+                        ? activeBuffs.map((b, idx) =>
+                            e("span", { key: `buff-${idx}-${b?.id || "x"}`, className: "text-gray-700 not-italic" }, b.name || b.id || "CC"),
+                          )
+                        : "No one in loop.",
+                    );
+                  })(),
                 ),
                 e(
                   "div",
@@ -3475,7 +3639,7 @@
                     })(),
                   ),
                 ),
-                dragActionId
+                activeDrag
                   ? e(
                       "div",
                       {
@@ -3485,8 +3649,8 @@
                         "div",
                         { className: "overlay-shell" },
                         isOverEmailDrop
-                          ? getDragOverlayText(dragActionId, true)
-                          : getDragOverlayText(dragActionId, false),
+                          ? getDragOverlayText(activeDrag, true)
+                          : getDragOverlayText(activeDrag, false),
                       ),
                     )
                   : null,
@@ -3544,30 +3708,58 @@
                   className: "adaptive-card-track bg-white retro-border-inset p-2",
                   style: actionDockTrack.trackStyle,
                 },
-                actionCards.map((action, idx) => {
-                  const isDisabled = !!props.disabledActions[action.id];
-                  const isDragging = dragActionId === action.id;
+                displayedActionCards.map((card, idx) => {
+                  const isActionCard = card.kind !== "drawer";
+                  const isDisabled = isActionCard ? !!props.disabledActions[card.id] : false;
+                  const isDragging = dragActionId === card.id || dragDrawerPayload?.id === card.id;
+                  const isUlt = card.id === "ULT";
+                  const isContact = card.itemType === "contact";
+                  const isBcc = card.itemType === "bcc";
+                  const secondaryText = !isActionCard ? getAddressCardSecondaryText(card) : "";
+                  const headerStyle = isContact
+                    ? { background: contactMeta.headerBg, color: contactMeta.headerText }
+                    : isBcc
+                      ? { background: bccMeta.headerBg, color: bccMeta.headerText }
+                      : (isDisabled ? { background: "#9ca3af", color: "#1f2937" } : { background: "#000080", color: "#ffffff" });
+                  const frameStyle = isContact
+                    ? { background: contactMeta.paneBg, color: contactMeta.paneText }
+                    : isBcc
+                      ? { background: bccMeta.paneBg, color: bccMeta.paneText }
+                      : (isDisabled ? { background: "#d1d5db", color: "#4b5563" } : { background: "#e5e7eb", color: "#111827" });
                   return e(
                     ItemCard,
                     {
-                      key: action.id,
+                      key: card.id,
                       extraClassName: `game-action-card ${isDisabled ? "is-disabled" : ""} ${isDragging ? "is-dragging" : ""}`,
                       style: actionDockTrack.getCardStyle(idx),
-                      headerText: "Action",
-                      headerStyle: isDisabled
-                        ? { background: "#9ca3af", color: "#1f2937" }
-                        : { background: "#000080", color: "#ffffff" },
-                      frameStyle: isDisabled
-                        ? { background: "#d1d5db", color: "#4b5563" }
-                        : { background: "#e5e7eb", color: "#111827" },
-                      onClick: (evt) => onActionCardClick(action.id, evt),
-                      onPointerDown: (evt) => onActionCardPointerDown(action.id, evt),
+                      headerText: isContact ? contactMeta.label : isBcc ? bccMeta.label : "Action",
+                      headerStyle,
+                      frameStyle,
+                      onClick: (evt) => {
+                        if (isActionCard) onActionCardClick(card.id, evt);
+                      },
+                      onPointerDown: (evt) => {
+                        if (isActionCard) {
+                          onActionCardPointerDown(card.id, evt);
+                        } else {
+                          onDrawerCardPointerDown(
+                            {
+                              id: card.id,
+                              kind: "drawer",
+                              itemType: card.itemType,
+                              item: card.item,
+                              bccIndex: card.bccIndex,
+                            },
+                            evt,
+                          );
+                        }
+                      },
                     },
-                    action.id === "ULT"
+                    isUlt
                       ? e(
                           "div",
                           { className: "w-full flex flex-col items-center gap-1" },
-                          e("div", { className: "shop-card-name text-red-800" }, action.label),
+                          e("div", { className: "shop-card-name text-red-800" }, card.label),
                           e(
                             "div",
                             { className: "momentum-meter w-full" },
@@ -3579,7 +3771,38 @@
                             ),
                           ),
                         )
-                      : e("div", { className: "shop-card-name" }, action.label),
+                      : isContact
+                        ? e(
+                            "div",
+                            null,
+                            e("div", { className: "shop-card-name" }, card.label),
+                            e(
+                              "div",
+                              { className: "text-[8px] uppercase opacity-80 mt-1" },
+                              card.item?.departmentId
+                                ? ReplyAllEngine.core.getDepartmentName(card.item.departmentId)
+                                : "",
+                            ),
+                            secondaryText
+                              ? e(
+                                  "div",
+                                  { className: "text-[8px] opacity-80 mt-1 truncate", title: secondaryText },
+                                  secondaryText,
+                                )
+                              : null,
+                          )
+                        : e(
+                            "div",
+                            null,
+                            e("div", { className: "shop-card-name" }, card.label),
+                            secondaryText
+                              ? e(
+                                  "div",
+                                  { className: "text-[8px] opacity-80 mt-1 truncate", title: secondaryText },
+                                  secondaryText,
+                                )
+                              : null,
+                          ),
                   );
                 }),
               ),
@@ -3616,6 +3839,69 @@
                         ),
                       )
                     : e("div", { className: "shop-card-name" }, dragAction.label),
+                ),
+              )
+            : null,
+          !dragAction && dragDrawerPayload
+            ? e(
+                "div",
+                {
+                  className: "game-action-drag-proxy",
+                  style: { left: `${dragPointer.x}px`, top: `${dragPointer.y}px` },
+                },
+                e(
+                  ItemCard,
+                  {
+                    headerText:
+                      dragDrawerPayload.itemType === "bcc" ? bccMeta.label : contactMeta.label,
+                    headerStyle:
+                      dragDrawerPayload.itemType === "bcc"
+                        ? { background: bccMeta.headerBg, color: bccMeta.headerText }
+                        : { background: contactMeta.headerBg, color: contactMeta.headerText },
+                    frameStyle:
+                      dragDrawerPayload.itemType === "bcc"
+                        ? { background: bccMeta.paneBg, color: bccMeta.paneText }
+                        : { background: contactMeta.paneBg, color: contactMeta.paneText },
+                  },
+                  (() => {
+                    const secondaryText = getAddressCardSecondaryText({
+                      kind: "drawer",
+                      itemType: dragDrawerPayload.itemType,
+                      item: dragDrawerPayload.item,
+                    });
+                    return dragDrawerPayload.itemType === "contact"
+                      ? e(
+                          "div",
+                          null,
+                          e("div", { className: "shop-card-name" }, dragDrawerPayload.item?.name || "Item"),
+                          e(
+                            "div",
+                            { className: "text-[8px] uppercase opacity-80 mt-1" },
+                            dragDrawerPayload.item?.departmentId
+                              ? ReplyAllEngine.core.getDepartmentName(dragDrawerPayload.item.departmentId)
+                              : "",
+                          ),
+                          secondaryText
+                            ? e(
+                                "div",
+                                { className: "text-[8px] opacity-80 mt-1 truncate", title: secondaryText },
+                                secondaryText,
+                              )
+                            : null,
+                        )
+                      : e(
+                          "div",
+                          null,
+                          e("div", { className: "shop-card-name" }, dragDrawerPayload.item?.name || "Item"),
+                          secondaryText
+                            ? e(
+                                "div",
+                                { className: "text-[8px] opacity-80 mt-1 truncate", title: secondaryText },
+                                secondaryText,
+                              )
+                            : null,
+                        );
+                  })(),
                 ),
               )
             : null,
@@ -3976,6 +4262,7 @@
         const [promotionData, setPromotionData] = React.useState(null);
         const [shopNotice, setShopNotice] = React.useState("");
         const [shopDomRevision, setShopDomRevision] = React.useState(0);
+        const queuedAddressStateRef = React.useRef(null);
 
         React.useEffect(() => {
           setSeedDraft(state.startConfig?.seedInput || "");
@@ -4183,7 +4470,8 @@
           setState((prev) => ({ ...prev, targetId }));
         }
 
-        function onAction(actionType, extra = {}) {
+        function runActionFromState(baseState, actionType, extra = {}) {
+          queuedAddressStateRef.current = null;
           setShopNotice("");
           if (actionType === "CC" && !extra.contactId) {
             setCcPickerOpen(true);
@@ -4193,7 +4481,8 @@
             setBccPickerOpen(true);
             return;
           }
-          const nextState = cloneState(state);
+          const sourceState = baseState || state;
+          const nextState = cloneState(sourceState);
           ReplyAllEngine.play.attachRuntimeState(nextState);
           const result = ReplyAllEngine.play.runPlayerTurn(
             nextState,
@@ -4278,6 +4567,54 @@
           } else {
             setStatusText(`Turn ${nextState.turn} resolved.`);
           }
+        }
+        function onAction(actionType, extra = {}) {
+          runActionFromState(state, actionType, extra);
+        }
+
+        function onUseAddressContact(contactId) {
+          const baseState = queuedAddressStateRef.current || state;
+          const nextState = cloneState(baseState);
+          ReplyAllEngine.play.attachRuntimeState(nextState);
+          const result = ReplyAllEngine.core.resolvePlayerCcAction(
+            nextState,
+            nextState.targetId,
+            contactId,
+            {},
+          );
+          if (!result?.ok) {
+            setStatusText("Unable to use that contact.");
+            return false;
+          }
+          queuedAddressStateRef.current = nextState;
+          setState(nextState);
+          setStatusText(`Queued contact: ${result.contact?.name || "Contact"}.`);
+          return true;
+        }
+
+        function onUseAddressBcc(bccIndex) {
+          const baseState = queuedAddressStateRef.current || state;
+          const nextState = cloneState(baseState);
+          ReplyAllEngine.play.attachRuntimeState(nextState);
+          const result = ReplyAllEngine.core.resolvePlayerBccAction(
+            nextState,
+            null,
+            bccIndex,
+            {},
+          );
+          if (!result?.ok) {
+            setStatusText("Unable to use that internal service.");
+            return false;
+          }
+          queuedAddressStateRef.current = nextState;
+          setState(nextState);
+          setStatusText(`Queued internal service: ${result.bcc?.name || "Service"}.`);
+          return true;
+        }
+
+        function onAddressDrawerEndTurn() {
+          const queuedState = queuedAddressStateRef.current || state;
+          runActionFromState(queuedState, "PASS");
         }
 
         function onGoToPortal() {
@@ -4839,6 +5176,9 @@
           availableBccContacts,
           onPickCc: (contactId) => onAction("CC", { contactId }),
           onPickBcc: (bccIndex) => onAction("BCC", { bccIndex }),
+          onUseAddressContact,
+          onUseAddressBcc,
+          onAddressDrawerEndTurn,
           onCloseCcPicker: () => setCcPickerOpen(false),
           onCloseBccPicker: () => setBccPickerOpen(false),
           settingsOpen: gameSettingsOpen,

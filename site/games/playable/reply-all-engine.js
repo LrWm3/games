@@ -4318,7 +4318,10 @@
 
     const upperType = String(actionType || "").toUpperCase();
     let playerResult = null;
-    if (upperType === "CC") {
+    if (upperType === "PASS") {
+      // No direct player action; resolve queued contact/internal-service setup and then AI turn.
+      playerResult = { ok: true, type: "PASS" };
+    } else if (upperType === "CC") {
       playerResult = resolvePlayerCcAction(
         state,
         options.targetId || state.targetId,
@@ -4655,6 +4658,8 @@
     buildInboxRows,
     getAvailablePlayerCcContacts,
     getAvailablePlayerBccContacts,
+    resolvePlayerCcAction,
+    resolvePlayerBccAction,
     createStatCtx,
     attachRuntimeState,
     computeSummary,
@@ -4715,6 +4720,8 @@
     applySavedGame,
     getMetaState,
     addContactBuff,
+    resolvePlayerCcAction,
+    resolvePlayerBccAction,
     clearDeflectCharges,
     clearOpponentDeflects,
     runUnitEffectsPure,
