@@ -273,9 +273,44 @@
         border-color: #1d4ed8;
         color: #1e3a8a;
       }
+      .drag-overlay-target.buy .buy-label-active {
+        display: none;
+      }
+      .drag-overlay-target.buy:has(.shop-card-item, .sortable-ghost, .sortable-chosen, .sortable-fallback) .buy-label-idle {
+        display: none;
+      }
+      .drag-overlay-target.buy:has(.shop-card-item, .sortable-ghost, .sortable-chosen, .sortable-fallback) .buy-label-active {
+        display: inline;
+      }
+      .drag-overlay-target.buy .shop-card-item,
+      .drag-overlay-target.buy .sortable-ghost,
+      .drag-overlay-target.buy .sortable-chosen,
+      .drag-overlay-target.buy .sortable-fallback {
+        display: none !important;
+      }
       .drag-overlay-target.sell {
         border-color: #b45309;
         color: #7c2d12;
+      }
+      .drag-overlay-target.sell .sell-label-active {
+        display: none;
+      }
+      .drag-overlay-target.sell:has(.shop-card-item, .sortable-ghost, .sortable-chosen, .sortable-fallback) .sell-label-idle {
+        display: none;
+      }
+      .drag-overlay-target.sell:has(.shop-card-item, .sortable-ghost, .sortable-chosen, .sortable-fallback) .sell-label-active {
+        display: inline;
+      }
+      .drag-overlay-target.sell .shop-card-item,
+      .drag-overlay-target.sell .sortable-ghost,
+      .drag-overlay-target.sell .sortable-chosen,
+      .drag-overlay-target.sell .sortable-fallback {
+        display: none !important;
+      }
+      .buy-slot-outline {
+        outline: 2px dashed #1d4ed8;
+        outline-offset: 2px;
+        background: #eff6ff;
       }
       .address-book-header {
         font-size: 10px;
@@ -1240,11 +1275,26 @@
       }
 
       function ShopScreen(props) {
+        const player = props.state.player || {};
+        const statCtx = props.state._statCtx || null;
         const rep = props.state.player?.reputation || 0;
         const shop = props.state.shop || { directItems: [], packs: [], rerollCount: 0 };
         const activePackId = props.state.activePackId || null;
         const activePack = (shop.packs || []).find((p) => p.id === activePackId) || null;
         const owned = ReplyAllEngine.core.getOwnedAssets(props.state);
+        const addressCurrent = owned.addressBook.length;
+        const addressMax = statCtx
+          ? ReplyAllEngine.stats.getUnitAddressLimit(statCtx, player)
+          : Math.max(0, Math.floor(player.addressLimit ?? player.title?.addressLimit ?? 0));
+        const bccCurrent = owned.bcc.length;
+        const bccMax = statCtx
+          ? Math.max(0, Math.floor(ReplyAllEngine.stats.computeUnitStats(statCtx, player).bccLimit || 0))
+          : Math.max(0, Math.floor(player.bccLimit ?? 0));
+        const sigCurrent = owned.signatures.length;
+        const sigMax = Math.max(
+          0,
+          Math.floor(player?.title?.sigLimit ?? player?.sigLimit ?? player?.signatureLimit ?? 0),
+        );
         const shopRef = React.useRef(shop);
         const ownedRef = React.useRef(owned);
         const handlersRef = React.useRef({
@@ -1252,10 +1302,16 @@
           onDropOpenPack: props.onDropOpenPack,
           onDropArchiveOwned: props.onDropArchiveOwned,
           onDropEquipFromShop: props.onDropEquipFromShop,
+          onReorderAddressBook: props.onReorderAddressBook,
           onReorderSignatures: props.onReorderSignatures,
         });
         const [detailPopup, setDetailPopup] = React.useState(null);
         const [detailPopupPos, setDetailPopupPos] = React.useState({ left: 8, top: 8 });
+        const [slotBuyHint, setSlotBuyHint] = React.useState({
+          contact: false,
+          bcc: false,
+          email: false,
+        });
         const [dragOverlay, setDragOverlay] = React.useState({
           buyActive: false,
           buyLabel: "Buy for REP",
@@ -1288,6 +1344,7 @@
             onDropOpenPack: props.onDropOpenPack,
             onDropArchiveOwned: props.onDropArchiveOwned,
             onDropEquipFromShop: props.onDropEquipFromShop,
+            onReorderAddressBook: props.onReorderAddressBook,
             onReorderSignatures: props.onReorderSignatures,
           };
         }, [
@@ -1297,11 +1354,12 @@
           props.onDropOpenPack,
           props.onDropArchiveOwned,
           props.onDropEquipFromShop,
+          props.onReorderAddressBook,
           props.onReorderSignatures,
         ]);
         function getDisplayCost(item) {
           if (!item) return 0;
-          if (typeof item.cost === "number") return item.cost;
+          if (typeof item.cost === "number" && item.cost > 0) return item.cost;
           return ReplyAllEngine.core.getItemCostByType(
             item.rarity || "common",
             item.itemType || "contact",
@@ -1319,27 +1377,46 @@
           return map[itemType] || map.contact;
         }
         function itemTypeLabel(itemType) {
-          const labels = {
-            contact: "Contact",
-            signature: "Signature",
-            salutation: "Greeting",
-            signoff: "Sign-Off",
-            bcc: "Help Desk",
-            dev: "Training",
-          };
-          return labels[itemType] || "Item";
+          return ReplyAllEngine.copy?.getItemTypeLabel
+            ? ReplyAllEngine.copy.getItemTypeLabel(itemType || "")
+            : itemType || "Item";
         }
         function getItemDetailText(item, itemType) {
           if (!item) return "";
-          if (item.description) return item.description;
-          if (item.picksText) return item.picksText;
+          const formatPreviewValue = (field, value) => {
+            if (typeof value !== "number") return String(value ?? 0);
+            if (field.endsWith("Mult") || field.endsWith("Chance")) {
+              return `${Math.round(value * 100)}%`;
+            }
+            return String(value);
+          };
+          const lines = [];
+          if (item.description) lines.push(item.description);
+          else if (item.picksText) lines.push(item.picksText);
           if (itemType === "contact") {
             const dept = item.departmentId
               ? ReplyAllEngine.core.getDepartmentName(item.departmentId)
               : "";
-            return dept ? `Department: ${dept}` : "Potential contact.";
+            if (dept) lines.push(`Department: ${dept}`);
           }
-          return "No additional details.";
+          const effectText = ReplyAllEngine.copy?.getItemBonusText
+            ? ReplyAllEngine.copy.getItemBonusText(item, {})
+            : "";
+          if (effectText && effectText !== "No listed effect.") {
+            lines.push(`Effects: ${effectText}`);
+          }
+          if (itemType === "dev" && ReplyAllEngine.copy?.getTrainingStatPreview) {
+            const preview = ReplyAllEngine.copy.getTrainingStatPreview(player, item) || [];
+            if (preview.length) {
+              const previewText = preview
+                .map((row) =>
+                  `${row.label}: ${formatPreviewValue(row.field, row.before)} -> ${formatPreviewValue(row.field, row.after)}`,
+                )
+                .join("\n");
+              lines.push(`Training impact (base):\n${previewText}`);
+            }
+          }
+          return lines.length ? lines.join("\n\n") : "No additional details.";
         }
         function shouldSuppressCardClick() {
           return Date.now() < suppressCardClickUntilRef.current;
@@ -1413,6 +1490,30 @@
                   sellLabel: prev.sellLabel,
                 }
               : prev,
+          );
+        }
+        function clearSlotBuyHint() {
+          setSlotBuyHint((prev) =>
+            prev.contact || prev.bcc || prev.email
+              ? { contact: false, bcc: false, email: false }
+              : prev,
+          );
+        }
+        function setSlotBuyHintFromItemType(itemType) {
+          const next = {
+            contact: itemType === "contact",
+            bcc: itemType === "bcc",
+            email:
+              itemType === "salutation" ||
+              itemType === "signoff" ||
+              itemType === "signature",
+          };
+          setSlotBuyHint((prev) =>
+            prev.contact === next.contact &&
+            prev.bcc === next.bcc &&
+            prev.email === next.email
+              ? prev
+              : next,
           );
         }
         function findDirectItemById(itemId) {
@@ -1778,13 +1879,13 @@
               ),
               e("div", { className: "shop-rarity-badge" }, (item.rarity || "common").toUpperCase()),
             ),
-            e(
-              "div",
-              {
-                className: "text-[10px] leading-snug text-gray-800 bg-white/50 p-2 border border-[#808080] italic mb-3",
-              },
-              getItemDetailText(item, itemType),
-            ),
+              e(
+                "div",
+                {
+                  className: "text-[10px] leading-snug text-gray-800 bg-white/50 p-2 border border-[#808080] italic whitespace-pre-line mb-3",
+                },
+                getItemDetailText(item, itemType),
+              ),
             e(
               "div",
               { className: "flex gap-2" },
@@ -1859,9 +1960,11 @@
             draggable: ".shop-card-item",
             onStart: (evt) => {
               setBuyOverlayFromDragEl(evt?.item, "shop-offers");
+              setSlotBuyHintFromItemType(evt?.item?.dataset?.itemType || "");
             },
             onEnd: () => {
               clearDragOverlay();
+              clearSlotBuyHint();
             },
           });
 
@@ -1873,9 +1976,11 @@
             draggable: ".shop-card-item",
             onStart: (evt) => {
               setBuyOverlayFromDragEl(evt?.item, "shop-pack-open");
+              clearSlotBuyHint();
             },
             onEnd: () => {
               clearDragOverlay();
+              clearSlotBuyHint();
             },
           });
 
@@ -1918,10 +2023,10 @@
           addSortable(ownedContactRef, {
             popupSource: "owned-contact",
             animation: 120,
-            sort: false,
+            sort: true,
             group: {
               name: "owned-contact",
-              pull: "clone",
+              pull: true,
               put: (to, from, dragEl) => fromOffers(to, from, dragEl, "contact"),
             },
             draggable: ".shop-card-item",
@@ -1937,6 +2042,16 @@
             },
             onEnd: () => {
               clearDragOverlay();
+              clearSlotBuyHint();
+              if (!ownedContactRef.current) return;
+              const contactIds = Array.from(
+                ownedContactRef.current.querySelectorAll('[data-item-type="contact"][data-item-id]'),
+              )
+                .map((el) => el.dataset.itemId)
+                .filter(Boolean);
+              if (contactIds.length) {
+                setTimeout(() => handlersRef.current.onReorderAddressBook(contactIds), 0);
+              }
             },
           });
           addSortable(ownedEmailRef, {
@@ -1945,8 +2060,7 @@
             sort: true,
             group: {
               name: "owned-email",
-              pull: (to, from) =>
-                to?.options?.group?.name === "sell-overlay" ? "clone" : true,
+              pull: true,
               put: (to, from, dragEl) => {
                 if (!from) return false;
                 if (getGroupName(from) === "shop-offers") {
@@ -1969,6 +2083,7 @@
             },
             onEnd: () => {
               clearDragOverlay();
+              clearSlotBuyHint();
               if (!ownedEmailRef.current) return;
               const sigIds = Array.from(
                 ownedEmailRef.current.querySelectorAll('[data-item-type="signature"][data-item-id]'),
@@ -1989,7 +2104,7 @@
             sort: false,
             group: {
               name: "owned-bcc",
-              pull: "clone",
+              pull: true,
               put: (to, from) => {
                 const fromGroup = getGroupName(from);
                 if (fromGroup === "shop-offers") return true;
@@ -2008,6 +2123,7 @@
             },
             onEnd: () => {
               clearDragOverlay();
+              clearSlotBuyHint();
             },
           });
           addSortable(sellOverlayRef, {
@@ -2186,7 +2302,16 @@
                           ref: sellOverlayRef,
                           className: `drag-overlay-target sell ${dragOverlay.sellActive ? "active" : ""}`,
                         },
-                        dragOverlay.sellLabel,
+                        e(
+                          React.Fragment,
+                          null,
+                          e(
+                            "span",
+                            { className: "sell-label-idle" },
+                            `Drag Here to ${dragOverlay.sellLabel}`,
+                          ),
+                          e("span", { className: "sell-label-active" }, dragOverlay.sellLabel),
+                        ),
                       ),
                     ),
                     e(
@@ -2201,14 +2326,18 @@
                           { className: "border border-gray-300 bg-white" },
                           e(
                             "div",
-                            { className: "grid grid-cols-1 md:grid-cols-2 gap-2 p-2" },
+                            { className: "grid grid-cols-1 md:grid-cols-4 gap-2 p-2" },
                             e(
                               "div",
-                              null,
-                              e("div", { className: "address-book-header mb-2" }, "Address Book"),
+                              { className: "md:col-span-3" },
+                              e("div", { className: "address-book-header mb-2" }, `Address Book (${addressCurrent}/${addressMax})`),
                               e(
                                 "div",
-                                { ref: ownedContactRef, className: "shop-card-grid max-h-44 overflow-y-auto", style: { justifyContent: "start" } },
+                                {
+                                  ref: ownedContactRef,
+                                  className: `shop-card-grid max-h-44 overflow-y-auto ${slotBuyHint.contact ? "buy-slot-outline" : ""}`,
+                                  style: { justifyContent: "start" },
+                                },
                                 owned.addressBook.length
                                   ? owned.addressBook.map((item) => {
                                       const meta = typeMeta("contact");
@@ -2250,11 +2379,15 @@
                             ),
                             e(
                               "div",
-                              null,
-                              e("div", { className: "address-book-header mb-2" }, "Internal Services"),
+                              { className: "md:col-span-1" },
+                              e("div", { className: "address-book-header mb-2" }, `Internal Services (${bccCurrent}/${bccMax})`),
                               e(
                                 "div",
-                                { ref: ownedBccRef, className: "shop-card-grid max-h-44 overflow-y-auto", style: { justifyContent: "start" } },
+                                {
+                                  ref: ownedBccRef,
+                                  className: `shop-card-grid max-h-44 overflow-y-auto ${slotBuyHint.bcc ? "buy-slot-outline" : ""}`,
+                                  style: { justifyContent: "start" },
+                                },
                                 owned.bcc.length
                                   ? owned.bcc.map((item, idx) => {
                                       const meta = typeMeta("bcc");
@@ -2291,10 +2424,15 @@
                         e(
                           "div",
                           { className: "email-template-shell space-y-2" },
+                          e("div", { className: "address-book-header mb-1" }, `Signatures (${sigCurrent}/${sigMax})`),
                           e("div", { className: "text-[10px] text-gray-700" }, e("strong", null, "To:"), " everyone@gov.org"),
                           e(
                             "div",
-                            { ref: ownedEmailRef, className: "shop-card-grid max-h-56 overflow-y-auto border border-gray-200 p-2", style: { justifyContent: "start" } },
+                            {
+                              ref: ownedEmailRef,
+                              className: `shop-card-grid max-h-56 overflow-y-auto border border-gray-200 p-2 ${slotBuyHint.email ? "buy-slot-outline" : ""}`,
+                              style: { justifyContent: "start" },
+                            },
                             owned.salutation
                               ? (() => {
                                   const meta = typeMeta("salutation");
@@ -2383,7 +2521,12 @@
                             ref: buyOverlayRef,
                             className: `drag-overlay-target buy ${dragOverlay.buyActive ? "active" : ""}`,
                           },
-                          dragOverlay.buyLabel,
+                          e(
+                            React.Fragment,
+                            null,
+                            e("span", { className: "buy-label-idle" }, dragOverlay.buyLabel),
+                            e("span", { className: "buy-label-active" }, dragOverlay.buyLabel),
+                          ),
                         ),
                       ),
                     ),
@@ -2896,6 +3039,9 @@
           setState(nextState);
           setShopDomRevision((v) => v + 1);
         }
+        function reconcileShopDom() {
+          setShopDomRevision((v) => v + 1);
+        }
 
         function startMissionFromInbox() {
           const nextState = cloneState(state);
@@ -3214,7 +3360,10 @@
           );
           const notice = getShopNotice(result);
           setShopNotice(notice);
-          if (!result?.ok) return;
+          if (!result?.ok) {
+            reconcileShopDom();
+            return;
+          }
           commitShopMutation(nextState, notice);
         }
 
@@ -3229,7 +3378,10 @@
           );
           const notice = getShopNotice(result);
           setShopNotice(notice);
-          if (!result?.ok) return;
+          if (!result?.ok) {
+            reconcileShopDom();
+            return;
+          }
           commitShopMutation(nextState, notice);
         }
 
@@ -3246,7 +3398,10 @@
             ? `Archived ${result.item?.name || itemType}. +${result.refund || 0} REP`
             : "Unable to archive that asset.";
           setShopNotice(notice);
-          if (!result?.ok) return;
+          if (!result?.ok) {
+            reconcileShopDom();
+            return;
+          }
           commitShopMutation(nextState, notice);
         }
 
@@ -3274,7 +3429,10 @@
           );
           const notice = getShopNotice(result);
           setShopNotice(notice);
-          if (!result?.ok) return;
+          if (!result?.ok) {
+            reconcileShopDom();
+            return;
+          }
           commitShopMutation(nextState, notice);
         }
 
@@ -3302,6 +3460,31 @@
           if (!changed) return;
           const nextState = cloneState(state);
           nextState.player.signatures = reordered;
+          commitShopMutation(nextState, "");
+        }
+
+        function onReorderAddressBook(contactIds) {
+          if (!Array.isArray(contactIds) || !contactIds.length) return;
+          const current = state.player?.addressBook || [];
+          if (!current.length) return;
+          const currentSet = new Set(current);
+          const seen = new Set();
+          const reordered = [];
+          contactIds.forEach((id) => {
+            if (!id || seen.has(id) || !currentSet.has(id)) return;
+            reordered.push(id);
+            seen.add(id);
+          });
+          current.forEach((id) => {
+            if (!id || seen.has(id)) return;
+            reordered.push(id);
+          });
+          const changed =
+            reordered.length === current.length &&
+            reordered.some((id, idx) => id !== current[idx]);
+          if (!changed) return;
+          const nextState = cloneState(state);
+          nextState.player.addressBook = reordered;
           commitShopMutation(nextState, "");
         }
 
@@ -3353,7 +3536,7 @@
             ReplyAllEngine.play.attachRuntimeState(nextState);
             const result = ReplyAllEngine.play.debugMutatePlayerStats(
               nextState,
-              { reputation: 1000, escalateDmg: 1000 },
+              { reputation: 100, escalateDmg: 1000 },
               { mode: "add" },
             );
             if (!result?.ok) return;
@@ -3535,6 +3718,7 @@
             onDropOpenPack,
             onDropArchiveOwned,
             onDropEquipFromShop,
+            onReorderAddressBook,
             onReorderSignatures,
             onNextQuarter: onNextQuarterFromShop,
           });

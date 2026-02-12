@@ -454,6 +454,295 @@
     getSaveScreenFromUi,
   };
 
+  // ---------- Item Copy / Text Helpers ----------
+  function getItemTypeLabel(itemType) {
+    const entry = ITEM_TYPE_LABELS[itemType];
+    return entry ? entry.label : itemType;
+  }
+
+  function formatMultiplier(value, opts = {}) {
+    const prefix = opts.prefix == null ? "adds" : opts.prefix;
+    const decimals = Number.isFinite(opts.decimals) ? opts.decimals : 2;
+    const mult = 1 + (value || 0);
+    const label = `x${mult.toFixed(decimals)}`;
+    return prefix ? `${prefix} ${label}` : label;
+  }
+
+  function formatThreadLimitLabel(limit) {
+    const labels = {
+      1: "once per thread",
+      2: "twice per thread",
+      3: "thrice per thread",
+      4: "4x per thread",
+    };
+    return labels[limit] || `up to ${limit}x per thread`;
+  }
+
+  function formatStatsText(stats) {
+    if (!stats) return "";
+    const parts = [];
+    if (stats.globalDmg) parts.push(`+${stats.globalDmg} all messages`);
+    if (stats.singleDmg) parts.push(`+${stats.singleDmg} reply to`);
+    if (stats.escalateDmg) parts.push(`+${stats.escalateDmg} escalate`);
+    if (stats.maxHp) parts.push(`+${stats.maxHp} max cred`);
+    if (stats.repBonus) parts.push(`+${stats.repBonus} REP`);
+    if (stats.endRep) parts.push(`+${stats.endRep} end REP`);
+    if (stats.defFlat) parts.push(`+${stats.defFlat} defense`);
+    if (stats.deflect) parts.push(`+${stats.deflect} deflect`);
+    if (stats.retaliation) parts.push(`+${stats.retaliation} retaliation`);
+    if (stats.heal) parts.push(`+${stats.heal} cred/turn`);
+    if (stats.selfPromoteHeal) parts.push(`Self-Promote +${stats.selfPromoteHeal}`);
+    if (stats.wins) parts.push(`+${stats.wins} wins`);
+    if (stats.globalDmgMult) parts.push(`${formatMultiplier(stats.globalDmgMult)} all messages`);
+    if (stats.singleDmgMult) parts.push(`${formatMultiplier(stats.singleDmgMult)} reply to`);
+    if (stats.escalateDmgMult) parts.push(`${formatMultiplier(stats.escalateDmgMult)} escalate`);
+    if (stats.levMult) parts.push(`${formatMultiplier(stats.levMult)} leverage`);
+    if (stats.followUpChance) parts.push(`+${Math.round(stats.followUpChance * 100)}% follow-up`);
+    if (stats.dodge) parts.push(`+${Math.round(stats.dodge * 100)}% distraction`);
+    if (stats.addressLimit) parts.push(`+${stats.addressLimit} address limit`);
+    if (stats.escalateRecoverPerHit) parts.push(`Escalate recover +${stats.escalateRecoverPerHit}`);
+    if (stats.bccLimit) parts.push(`+${stats.bccLimit} Internal Services limit`);
+    if (stats.numCCperCCaction) parts.push(`+${stats.numCCperCCaction} CC per action`);
+    if (stats.contactTrainingLimit) parts.push(`+${stats.contactTrainingLimit} training limit`);
+    if (stats.levGainReply) parts.push(`Reply to +${stats.levGainReply} leverage`);
+    if (stats.levGainEscalate) parts.push(`Escalate +${stats.levGainEscalate} leverage`);
+    if (stats.levGainDeflect) parts.push(`Deflect +${stats.levGainDeflect} leverage`);
+    if (stats.levGainPromote) parts.push(`Self-Promote +${stats.levGainPromote} leverage`);
+    return parts.join(", ");
+  }
+
+  function formatDeptScalersText(deptScalers) {
+    if (!Array.isArray(deptScalers) || deptScalers.length === 0) return "";
+    return deptScalers
+      .map((s) => {
+        if (!s || !s.departmentId || !s.stat) return "";
+        const dept = DEPARTMENT_BY_ID?.[s.departmentId]?.name || s.departmentId;
+        const per = typeof s.per === "number" ? s.per : 0;
+        if (!per) return "";
+        const step = typeof s.step === "number" && s.step > 0 ? s.step : 1;
+        const statText = formatStatsText({ [s.stat]: per });
+        if (!statText) return "";
+        const stepLabel = step === 1 ? "contact" : `${step} contacts`;
+        return `When upgrading a ${dept} contact: ${statText} per ${dept} ${stepLabel}`;
+      })
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  function describeEffect(effect) {
+    if (!effect) return "";
+    const parts = [];
+    if (effect.special) parts.push(effect.special);
+    const statText = formatStatsText(effect);
+    if (statText) parts.push(statText);
+    if (effect.retaliation) parts.push(`Retaliation +${effect.retaliation}`);
+    if (effect.deflect) parts.push(`Deflect reduce +${effect.deflect}`);
+    if (effect.selfPromoteHeal) parts.push(`Self-Promote +${effect.selfPromoteHeal}`);
+    if (effect.replyDeptCleave) parts.push("Reply to hits entire target department");
+    if (effect.replySecondaryHalf) parts.push("Reply to hits a random secondary for half damage");
+    if (Array.isArray(effect.scalers) && effect.scalers.length) {
+      const buckets = {};
+      effect.scalers.forEach((s) => {
+        if (!s || !s.source || !s.stat) return;
+        const key = s.source;
+        if (!buckets[key]) buckets[key] = {};
+        buckets[key][s.stat] = (buckets[key][s.stat] || 0) + (s.per || 0);
+      });
+      Object.entries(buckets).forEach(([source, stats]) => {
+        const label = source === "cc" ? "Per CC" : "For each signature you have";
+        const chunks = [];
+        if (stats.singleDmg) chunks.push(`${stats.singleDmg} reply to`);
+        if (stats.escalateDmg) chunks.push(`${stats.escalateDmg} escalate`);
+        if (stats.maxHp) chunks.push(`${stats.maxHp} Max Cred`);
+        if (stats.selfPromoteHeal) chunks.push(`${stats.selfPromoteHeal} self-promote`);
+        if (stats.deflect) chunks.push(`${stats.deflect} deflect reduce`);
+        if (stats.retaliation) chunks.push(`${stats.retaliation} retaliation`);
+        if (chunks.length) {
+          const formatted = chunks.map((chunk) =>
+            chunk.trim().startsWith("-") ? chunk : `+${chunk}`,
+          );
+          parts.push(`${label}, ${formatted.join(", ")}`);
+        }
+      });
+    }
+    if (effect.deflectBoostSingle || effect.deflectBoostEscalate) {
+      parts.push(`On Deflect: +${effect.deflectBoostSingle || 0} reply to, +${effect.deflectBoostEscalate || 0} escalate`);
+    }
+    if (effect.defFlat) parts.push(`Reduce damage by ${effect.defFlat}`);
+    if (effect.followUpChance) parts.push(`Follow-up +${Math.round(effect.followUpChance * 100)}%`);
+    if (effect.escalateRecoverPerHit) parts.push(`Escalate recover +${effect.escalateRecoverPerHit}`);
+    if (effect.heal) parts.push(`+${effect.heal} Cred/turn`);
+    return parts.join(", ");
+  }
+
+  function formatEffect(effect, opts = {}) {
+    if (!effect) return "";
+    const includeLimit = !!opts.includeLimit;
+    const contactNoun = opts.contactNoun || "CC";
+    const upgradeVerb = opts.upgradeVerb || "upgrade";
+    const eventLabels = {
+      thread_start: "On thread start",
+      thread_end: "On thread end",
+      reply_to: "On Reply to",
+      reply_all: "On Reply All",
+      escalate: "On Escalate",
+      shop_enter: "On shop enter",
+      bcc_use: "On BCC",
+      deflect_action: "On Deflect",
+      deflect_proc: "On Being Hit While Deflecting",
+      remove_stakeholder: "On stakeholder removed",
+      cc_add: "On Contact added",
+      pack_purchase: "On pack purchase",
+      promote_overflow: "On self-promote overflow",
+      rep_adjust: "On REP adjust",
+      rep_tick: "On REP update",
+      stakeholder_opt_out: "On stakeholder removed",
+      stakeholder_opt_out_other: "On other stakeholder removed",
+    };
+    const eventText = eventLabels[effect.event] || "On event";
+    const statsText = formatStatsText(effect.stats || {});
+    let result = "";
+    if (effect.type === "add_random_cc_bonus") {
+      const count = effect.count || 1;
+      const countLabel = count > 1 ? `${count} random ${contactNoun}s` : `a random ${contactNoun}`;
+      const verb = count > 1 ? "gain" : "gains";
+      result = statsText ? `${eventText}: ${countLabel} ${verb} ${statsText}` : `${eventText}: ${upgradeVerb} ${countLabel}`;
+    } else if (effect.type === "add_cc_bonus") {
+      result = statsText ? `${eventText}: ${contactNoun} gains ${statsText}` : `${eventText}: ${upgradeVerb} that ${contactNoun}`;
+    } else if (effect.type === "add_signoff_bonus") {
+      const cleaned = statsText.replace(/adds\s+(x[\d.]+)/gi, "$1");
+      result = `${eventText}: gain ${cleaned} permanently`;
+    } else if (effect.type === "add_salutation_bonus") {
+      const cleaned = statsText.replace(/adds\s+(x[\d.]+)/gi, "$1");
+      result = `${eventText}: gain ${cleaned} permanently`;
+    } else if (effect.type === "add_thread_bonus") {
+      const eventLabel = eventText.replace("On ", "On '") + "'";
+      const statsLabel = statsText
+        .replace(/\+(\d+)\s+reply to/gi, "+$1 Reply To")
+        .replace(/\+(\d+)\s+escalate/gi, "+$1 Escalate")
+        .replace(/\+(\d+)\s+all messages/gi, "+$1 to your messages");
+      let onceText = "";
+      if (effect.threadLimit != null) {
+        onceText = ` (${formatThreadLimitLabel(effect.threadLimit)})`;
+      }
+      result = `${eventLabel}${onceText}, gain ${statsLabel} until the end of this thread`;
+    } else if (effect.type === "add_bcc") {
+      const count = effect.count || 1;
+      result = `${eventText}: gain ${count} Help Desk contact${count === 1 ? "" : "s"}`;
+    } else if (effect.type === "duplicate_bcc") {
+      const count = effect.count || 1;
+      result = `${eventText}: duplicate ${count} Help Desk contact${count === 1 ? "" : "s"}`;
+    } else if (effect.type === "add_all_cc_bonus") {
+      result = statsText
+        ? `${eventText}: all ${contactNoun}s gain ${statsText}`
+        : `${eventText}: ${upgradeVerb} all ${contactNoun}s`;
+    } else if (effect.type === "gain_rep") {
+      const amount = effect.amount || 0;
+      result = `${eventText}: gain ${amount} REP`;
+    } else if (effect.type === "grow_sig_stat") {
+      const stat = effect.stat || "";
+      const amount = effect.amount || 0;
+      const statLabel = STAT_METADATA?.[stat]?.label || stat || "signature stat";
+      const sign = amount >= 0 ? "+" : "";
+      result = `${eventText}: this signature gains ${sign}${amount} ${statLabel}`;
+    } else if (effect.type === "rep_scale_salutation") {
+      const stat = effect.stat || "singleDmg";
+      const step = effect.step || 1;
+      const perStep = effect.amount || 1;
+      const statLabel = STAT_METADATA?.[stat]?.label || stat;
+      result = `${eventText}: every ${step} REP grants +${perStep} ${statLabel} to your greeting`;
+    } else {
+      result = statsText || describeEffect(effect) || "Effect";
+    }
+
+    if (includeLimit && effect.threadLimit != null && !/per thread|up to/i.test(result)) {
+      result += ` (${formatThreadLimitLabel(effect.threadLimit)})`;
+    }
+    if (effect.requiresHpFull) result += " (requires full credibility)";
+    return result;
+  }
+
+  function getDisplayEffect(item, opts = {}) {
+    if (!item) return "";
+    if (Array.isArray(item.effects) && item.effects.length) {
+      const isSignoff = item.itemType === "signoff";
+      return item.effects
+        .map((effect) =>
+          formatEffect(effect, {
+            includeLimit: isSignoff,
+            contactNoun: isSignoff ? "Contact" : "CC",
+            upgradeVerb: isSignoff ? "train" : "upgrade",
+            ...opts,
+          }),
+        )
+        .join(" • ");
+    }
+    const parts = [];
+    const statsText = formatStatsText(item);
+    if (statsText) parts.push(statsText);
+    if (item.eff && typeof item.eff === "object") {
+      const effText = formatStatsText(item.eff);
+      if (effText) parts.push(effText);
+    }
+    const deptScalerText = formatDeptScalersText(item.deptScalers);
+    if (deptScalerText) parts.push(deptScalerText);
+    if (parts.length) return parts.join(" • ");
+    if (
+      item.scalers ||
+      item.statWindows ||
+      item.replyDeptCleave ||
+      item.replySecondaryHalf ||
+      item.deflectBoostSingle ||
+      item.deflectBoostEscalate ||
+      item.disableReplyTo ||
+      item.addSingleToEscalate ||
+      item.replyAllPerActive ||
+      item.escalatePerActive
+    ) {
+      const desc = describeEffect(item);
+      if (desc) return desc;
+    }
+    if (item.bonus) return item.bonus;
+    if (typeof item.getBonusText === "function") return item.getBonusText();
+    return "No listed effect.";
+  }
+
+  function getItemBonusText(item, opts = {}) {
+    return getDisplayEffect(item, opts);
+  }
+
+  function getTrainingStatPreview(player, item) {
+    if (!player || !item || item.itemType !== "dev") return [];
+    const source = item.stats && typeof item.stats === "object" ? item.stats : item;
+    const rows = [];
+    (STAT_FIELDS || []).forEach((field) => {
+      const delta = source[field];
+      if (typeof delta !== "number" || delta === 0) return;
+      const before = typeof player[field] === "number" ? player[field] : 0;
+      rows.push({
+        field,
+        label: STAT_METADATA?.[field]?.label || field,
+        before,
+        after: before + delta,
+        delta,
+      });
+    });
+    return rows;
+  }
+
+  ReplyAllEngine.copy = {
+    getItemTypeLabel,
+    formatMultiplier,
+    formatThreadLimitLabel,
+    formatStatsText,
+    formatDeptScalersText,
+    describeEffect,
+    formatEffect,
+    getDisplayEffect,
+    getItemBonusText,
+    getTrainingStatPreview,
+  };
+
   // ---------- Stat Math Helpers ----------
   function computeUnitStats(ctx, unit, turnOverride = null) {
     const { getUnitStatBlocks, getSalutationWindowStats, getSalutationPersistentStats,
@@ -2123,7 +2412,7 @@
       salutation: { common: 3, uncommon: 5, rare: 8 },
       signoff: { common: 3, uncommon: 5, rare: 8 },
       bcc: { common: 2, uncommon: 3, rare: 4 },
-      dev: { common: 0, uncommon: 0, rare: 0 },
+      dev: { common: 3, uncommon: 5, rare: 8 },
     };
     const row = table[type] || table.contact;
     return row[rarity] ?? row.common;
