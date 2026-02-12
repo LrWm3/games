@@ -327,6 +327,19 @@
         border: 1px solid #808080;
         padding: 8px;
       }
+      .email-card-track {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: flex-start;
+        overflow: hidden;
+        min-height: var(--shop-card-height);
+      }
+      .email-card-track .shop-card-item {
+        flex: 0 0 var(--shop-card-width);
+      }
+      .email-card-track > .shop-card-item + .shop-card-item {
+        margin-left: var(--email-card-overlap, 0px);
+      }
       .email-template-row {
         display: grid;
         grid-template-columns: 84px minmax(140px, 1fr) 84px;
@@ -1297,6 +1310,7 @@
           {
             className: `shop-card-item${props.extraClassName ? ` ${props.extraClassName}` : ""}`,
             onClick: props.onClick,
+            style: props.style || undefined,
             ...dataAttrs,
           },
           e(
@@ -1357,6 +1371,8 @@
           sellActive: false,
           sellLabel: "Sell for REP",
         });
+        const [emailTrackWidth, setEmailTrackWidth] = React.useState(0);
+        const [emailGhostCount, setEmailGhostCount] = React.useState(0);
         const detailPopupRef = React.useRef(null);
         const dragPopupRef = React.useRef({
           active: false,
@@ -1376,6 +1392,36 @@
         const ownedContactRef = React.useRef(null);
         const ownedEmailRef = React.useRef(null);
         const ownedBccRef = React.useRef(null);
+        React.useLayoutEffect(() => {
+          const el = ownedEmailRef.current;
+          if (!el) return undefined;
+          const readWidth = () => setEmailTrackWidth(el.clientWidth || 0);
+          readWidth();
+          if (typeof ResizeObserver !== "undefined") {
+            const ro = new ResizeObserver(() => readWidth());
+            ro.observe(el);
+            return () => ro.disconnect();
+          }
+          window.addEventListener("resize", readWidth);
+          return () => window.removeEventListener("resize", readWidth);
+        }, []);
+        React.useLayoutEffect(() => {
+          const el = ownedEmailRef.current;
+          if (!el) return undefined;
+          const readGhosts = () => {
+            const count = el.querySelectorAll(".sortable-ghost, .shop-card-ghost").length;
+            setEmailGhostCount(count);
+          };
+          readGhosts();
+          const mo = new MutationObserver(() => readGhosts());
+          mo.observe(el, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["class"],
+          });
+          return () => mo.disconnect();
+        }, []);
         React.useEffect(() => {
           shopRef.current = shop;
           ownedRef.current = owned;
@@ -1464,6 +1510,20 @@
             }
           }
           return lines.length ? lines.join("\n\n") : "No additional details.";
+        }
+        const emailCardCount = 3 + (owned.signatures?.length || 0) + (emailGhostCount > 0 ? 1 : 0);
+        const emailCardStep = React.useMemo(() => {
+          if (emailCardCount <= 1) return 0;
+          const cardWidth = 84;
+          const contentWidth = Math.max(cardWidth, (emailTrackWidth || cardWidth) - 16);
+          return (contentWidth - cardWidth) / (emailCardCount - 1);
+        }, [emailTrackWidth, emailCardCount]);
+        function getEmailCardStyle(index) {
+          if (index <= 0) return { position: "relative", zIndex: 1 };
+          return {
+            position: "relative",
+            zIndex: index + 1,
+          };
         }
         function shouldSuppressCardClick() {
           return Date.now() < suppressCardClickUntilRef.current;
@@ -2529,8 +2589,8 @@
                             "div",
                             {
                               ref: ownedEmailRef,
-                              className: `shop-card-grid max-h-56 overflow-y-auto border border-gray-200 p-2 ${slotBuyHint.email ? "buy-slot-outline" : ""}`,
-                              style: { justifyContent: "start" },
+                              className: `email-card-track border border-gray-200 p-2 ${slotBuyHint.email ? "buy-slot-outline" : ""}`,
+                              style: { "--email-card-overlap": `${emailCardStep - 84}px` },
                             },
                             owned.salutation
                               ? (() => {
@@ -2545,6 +2605,7 @@
                                         if (shouldSuppressCardClick()) return;
                                         openOwnedDetail("salutation", owned.salutation, null, evt.currentTarget);
                                       },
+                                      style: getEmailCardStyle(0),
                                       headerStyle: { background: meta.headerBg, color: meta.headerText },
                                       headerText: meta.label,
                                       frameStyle: { background: meta.paneBg, color: meta.paneText },
@@ -2557,6 +2618,7 @@
                                   return e(
                                     ItemCard,
                                     {
+                                      style: getEmailCardStyle(0),
                                       headerStyle: { background: meta.headerBg, color: meta.headerText },
                                       headerText: meta.label,
                                       frameStyle: { background: meta.paneBg, color: meta.paneText },
@@ -2570,6 +2632,7 @@
                                 itemType: "content",
                                 cardInstanceId: getCardInstanceId("owned-email", "content", "placeholder"),
                                 extraClassName: "template-content-card",
+                                style: getEmailCardStyle(1),
                                 headerStyle: { background: "#4b5563", color: "#fff" },
                                 headerText: "content",
                                 frameStyle: { background: "#f3f4f6", color: "#6b7280" },
@@ -2589,6 +2652,7 @@
                                         if (shouldSuppressCardClick()) return;
                                         openOwnedDetail("signoff", owned.signoff, null, evt.currentTarget);
                                       },
+                                      style: getEmailCardStyle(2),
                                       headerStyle: { background: meta.headerBg, color: meta.headerText },
                                       headerText: meta.label,
                                       frameStyle: { background: meta.paneBg, color: meta.paneText },
@@ -2601,6 +2665,7 @@
                                   return e(
                                     ItemCard,
                                     {
+                                      style: getEmailCardStyle(2),
                                       headerStyle: { background: meta.headerBg, color: meta.headerText },
                                       headerText: meta.label,
                                       frameStyle: { background: meta.paneBg, color: meta.paneText },
@@ -2609,7 +2674,7 @@
                                   );
                                 })(),
                             owned.signatures.length
-                              ? owned.signatures.map((item) => {
+                              ? owned.signatures.map((item, idx) => {
                                   const meta = typeMeta("signature");
                                   return e(
                                     ItemCard,
@@ -2622,6 +2687,7 @@
                                         if (shouldSuppressCardClick()) return;
                                         openOwnedDetail("signature", item, null, evt.currentTarget);
                                       },
+                                      style: getEmailCardStyle(idx + 3),
                                       headerStyle: { background: meta.headerBg, color: meta.headerText },
                                       headerText: meta.label,
                                       frameStyle: { background: meta.paneBg, color: meta.paneText },
@@ -3647,13 +3713,14 @@
             ReplyAllEngine.play.attachRuntimeState(nextState);
             const result = ReplyAllEngine.play.debugMutatePlayerStats(
               nextState,
-              { reputation: 100, escalateDmg: 1000 },
+              { reputation: 1000, escalateDmg: 1000 },
               { mode: "add" },
             );
             if (!result?.ok) return;
+            ReplyAllEngine.play.debugIncreaseSignatureLimit(nextState, 20);
             setState(nextState);
-            setShopNotice("Debug: +1000 REP, +1000 Escalate DMG.");
-            setStatusText("Debug: +1000 REP, +1000 Escalate DMG.");
+            setShopNotice("Debug: +1000 REP, +1000 Escalate DMG, +20 Sig Limit.");
+            setStatusText("Debug: +1000 REP, +1000 Escalate DMG, +20 Sig Limit.");
             persistSave(
               nextState,
               ReplyAllEngine.start.getSaveScreenFromUi(activeScreen),

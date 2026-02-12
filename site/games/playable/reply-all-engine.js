@@ -4542,6 +4542,38 @@
     return { ok: true, mode, applied, state };
   }
 
+  function debugIncreaseSignatureLimit(state, amount = 0) {
+    if (!state || !state.player) return { ok: false, reason: "missing_player" };
+    if (typeof amount !== "number" || !Number.isFinite(amount) || amount === 0) {
+      return { ok: false, reason: "invalid_amount" };
+    }
+    const p = state.player;
+    let touched = false;
+    if (p.title && typeof p.title === "object") {
+      const titleCurrent = typeof p.title.sigLimit === "number" ? p.title.sigLimit : 0;
+      p.title.sigLimit = titleCurrent + amount;
+      touched = true;
+    }
+    if (typeof p.sigLimit === "number") {
+      p.sigLimit += amount;
+      touched = true;
+    }
+    if (typeof p.signatureLimit === "number") {
+      p.signatureLimit += amount;
+      touched = true;
+    }
+    if (!touched) {
+      p.sigLimit = amount;
+      if (p.title && typeof p.title === "object") {
+        p.title.sigLimit = amount;
+      }
+    }
+    attachRuntimeState(state);
+    const effectiveLimit =
+      p?.title?.sigLimit ?? p.sigLimit ?? p.signatureLimit ?? 0;
+    return { ok: true, amount, signatureLimit: effectiveLimit, state };
+  }
+
   ReplyAllEngine.play = {
     formatTurnTime,
     getMissionHeaderSubject,
@@ -4563,6 +4595,7 @@
     runPlayerTurn,
     startMissionWithIntro,
     debugMutatePlayerStats,
+    debugIncreaseSignatureLimit,
   };
 
   ReplyAllEngine.core = {
