@@ -2153,9 +2153,9 @@
           }
         }
       },
-      add_cc_bonus: (state, unit, effect, ctx) => {
+      add_cc_bonus: (state, unit, effect, _owner, _boosts, ctx) => {
         if (unit.id !== "player") return;
-        if (!ctx.contact) return;
+        if (!ctx || !ctx.contact) return;
         helpers.applyContactPermanentBoost?.(
           state.player,
           ctx.contact.id,
@@ -4048,7 +4048,7 @@
     if (!available.length) return { ok: false, reason: "no_contacts" };
     const chosen =
       available.find((c) => c.id === contactId) || available[0];
-    const buff = addContactBuff(state, target, chosen, state.player.name, helpers);
+    const buff = addContactBuff(state, state.player, chosen, state.player.name, helpers);
     if (!buff) return { ok: false, reason: "buff_failed" };
     applyLeverage(state, "reply_to", 0);
     addMessageEntry(
