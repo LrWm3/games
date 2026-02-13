@@ -365,6 +365,7 @@
       roundEndUpgrades: {},
       expenseReportActive: false,
       messageLogEntries: [],
+      previousRoundSummary: "",
       player: getBasePlayerState(name, email),
     };
     const parsedSeed = parseSeedInput(nextState.startConfig?.seedInput);
@@ -4366,6 +4367,44 @@
     return result;
   }
 
+  function summarizePlayerAction(state, upperType, playerResult) {
+    if (!upperType) return "You: (none)";
+    if (upperType === "PASS") return "You: Pass";
+    if (upperType === "CC") {
+      const contactName = playerResult?.contact?.name || "contact";
+      const targetName = playerResult?.target?.name || "thread";
+      return `You: CC ${contactName} -> ${targetName}`;
+    }
+    if (upperType === "BCC") {
+      const bccName = playerResult?.bcc?.name || "internal service";
+      return `You: BCC ${bccName}`;
+    }
+    if (upperType === "ATTACK") {
+      const dmg = Math.max(0, Math.floor(playerResult?.result?.dmg || 0));
+      return `You: Reply To (-${dmg})`;
+    }
+    if (upperType === "ESCALATE") {
+      const total = Array.isArray(playerResult?.results)
+        ? playerResult.results.reduce((acc, r) => acc + Math.max(0, Math.floor(r?.dmg || 0)), 0)
+        : 0;
+      return `You: Escalate (-${total})`;
+    }
+    if (upperType === "ULT") {
+      const total = Array.isArray(playerResult?.results)
+        ? playerResult.results.reduce((acc, r) => acc + Math.max(0, Math.floor(r?.dmg || 0)), 0)
+        : 0;
+      return `You: Reply All (-${total})`;
+    }
+    if (upperType === "PROMOTE") {
+      const heal = Math.max(0, Math.floor(playerResult?.heal || 0));
+      return `You: Self-Promote (+${heal} HP)`;
+    }
+    if (upperType === "DEFLECT") {
+      return "You: Deflect";
+    }
+    return `You: ${upperType}`;
+  }
+
   function runPlayerTurn(state, actionType, options = {}, data = {}, helpers = {}) {
     attachRuntimeState(state);
     if (!state || state.gameOver || !state.missionActive) {
@@ -4387,6 +4426,12 @@
       ? ReplyAllEngine.stats.getUnitTotalHeal(statCtx, player)
       : 0;
     player.hp = Math.min(maxHp, (player.hp || 0) + passiveHeal);
+    const playerHpBeforeRound = Math.max(0, Math.floor(player.hp || 0));
+    const opponentHpBeforeRound = {};
+    (state.opponents || []).forEach((opp) => {
+      opponentHpBeforeRound[opp.id] = Math.max(0, Math.floor(opp.hp || 0));
+    });
+    const roundUpgradesBefore = { ...(state.roundEndUpgrades || {}) };
 
     const planned = state.aiPlannedActions || planAiActions(state, helpers);
     (state.opponents || [])
@@ -4516,6 +4561,42 @@
       state.aiPlannedActions = {};
     }
     updateGreetingReputationScaling(state, helpers);
+    const playerActionSummary = summarizePlayerAction(state, upperType, playerResult);
+    const aiParts = (state.opponents || [])
+      .filter((opp) => {
+        const before = opponentHpBeforeRound[opp.id];
+        if (before == null) return false;
+        return before > 0 || (opp.hp || 0) > 0;
+      })
+      .map((opp) => {
+        const before = opponentHpBeforeRound[opp.id] ?? 0;
+        const after = Math.max(0, Math.floor(opp.hp || 0));
+        if (after !== before) return `${opp.name}: ${before}->${after}`;
+        return `${opp.name}: no change`;
+      });
+    const playerHpAfterRound = Math.max(0, Math.floor(player.hp || 0));
+    const playerHpPart =
+      playerHpAfterRound !== playerHpBeforeRound
+        ? `You HP: ${playerHpBeforeRound}->${playerHpAfterRound}`
+        : `You HP: ${playerHpAfterRound}`;
+    const trainingEvents = Object.entries(state.roundEndUpgrades || {})
+      .map(([id, count]) => [id, Number(count) || 0, Number(roundUpgradesBefore[id] || 0)])
+      .filter(([, afterCount, beforeCount]) => afterCount > beforeCount)
+      .map(([id, afterCount, beforeCount]) => {
+        const delta = afterCount - beforeCount;
+        const name = CONTACTS.find((c) => c.id === id)?.name || id;
+        return `${name} +${delta}`;
+      });
+    const trainingPart = trainingEvents.length
+      ? `Training: ${trainingEvents.join(", ")}`
+      : "Training: none";
+    const optedOut = (state.opponents || [])
+      .filter((opp) => (opponentHpBeforeRound[opp.id] || 0) > 0 && (opp.hp || 0) <= 0)
+      .map((opp) => opp.name);
+    const optOutPart = optedOut.length ? `Opted out: ${optedOut.join(", ")}` : "";
+    state.previousRoundSummary = [playerActionSummary, playerHpPart, trainingPart, ...aiParts, optOutPart]
+      .filter(Boolean)
+      .join("\n");
     state.isProcessing = false;
     return {
       ok: true,
@@ -4533,6 +4614,7 @@
     const mission = missions[state.currentMissionIndex] || missions[0] || null;
     if (!mission) return { state, mission: null, entry: null };
     state.messageLogEntries = [];
+    state.previousRoundSummary = "";
     const intro = formatMissionIntro(mission, state.player, state.opponents || []);
     const entry = buildMessageEntry(
       state,

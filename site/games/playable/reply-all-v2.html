@@ -623,6 +623,7 @@
           roundEndUpgrades: {},
           expenseReportActive: false,
           messageLogEntries: [],
+          previousRoundSummary: "",
         };
       }
 
@@ -4084,6 +4085,21 @@
                             ` is ${row.text}`,
                           ),
                         ),
+                      )
+                    : null,
+                  props.state.previousRoundSummary
+                    ? e(
+                        "div",
+                        {
+                          className:
+                            "message-entry p-2 border border-gray-300 bg-[#f8f8e8] text-[10px] leading-snug text-gray-800 whitespace-pre-wrap",
+                        },
+                        e(
+                          "div",
+                          { className: "uppercase tracking-wide text-[9px] text-gray-600 mb-1" },
+                          `${formatTurnTime(Math.max(0, (props.state.turn || 0) - 1))} Thread Summary`,
+                        ),
+                        e("div", null, props.state.previousRoundSummary),
                       )
                     : null,
                   (props.state.messageLogEntries || []).map((entry, idx) =>
