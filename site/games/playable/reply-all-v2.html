@@ -3450,6 +3450,15 @@
         const [stakeholderPopup, setStakeholderPopup] = React.useState(null);
         const [addressDrawerOpen, setAddressDrawerOpen] = React.useState(false);
         const [addressDrawerAddsUsed, setAddressDrawerAddsUsed] = React.useState(0);
+        const [collectionsOpen, setCollectionsOpen] = React.useState(false);
+        const [collectionsCategory, setCollectionsCategory] = React.useState("contacts");
+        const [collectionsPage, setCollectionsPage] = React.useState(0);
+        const [collectionsPopup, setCollectionsPopup] = React.useState(null);
+        const collectionsPopupRef = React.useRef(null);
+        const collectionsDragRef = React.useRef({
+          active: false,
+          cleanup: null,
+        });
         const [toExpanded, setToExpanded] = React.useState(false);
         const [toWrapCount, setToWrapCount] = React.useState(0);
         const toContainerRef = React.useRef(null);
@@ -3485,6 +3494,219 @@
           },
         ];
         const displayedActionCards = addressDrawerOpen ? addressBookCards : baseActionCards;
+        const collectionTypeMeta = (itemType) => {
+          if (itemType === "seminar") return ITEM_TYPE_LABELS?.email || ITEM_TYPE_LABELS?.contact || {};
+          return ITEM_TYPE_LABELS?.[itemType] || ITEM_TYPE_LABELS?.contact || {};
+        };
+        const getSeminarCollectionItems = React.useMemo(() => {
+          const tierConfig = {
+            small: { cost: 3, options: 2, picks: 1 },
+            medium: { cost: 5, options: 3, picks: 1 },
+            large: { cost: 7, options: 3, picks: 2 },
+          };
+          const packNames = {
+            contact: {
+              small: "Personnel Mixer",
+              medium: "Recruitment Drive",
+              large: "Executive Search",
+            },
+            email: {
+              small: "Comms Tune-up",
+              medium: "Messaging Workshop",
+              large: "Branding Overhaul",
+            },
+            dev: {
+              small: "Lunch & Learn",
+              medium: "Daily Professional Course",
+              large: "Annual Conference",
+            },
+            bcc: {
+              small: "Help Desk Onboarding",
+              medium: "Tier 1 Support Ticket",
+              large: "Priority Escalation Bundle",
+            },
+          };
+          const types = ["contact", "email", "dev", "bcc"];
+          return types.flatMap((type) =>
+            (PACK_TIERS || []).map((tier) => {
+              const cfg = tierConfig[tier] || tierConfig.small;
+              return {
+                id: `seminar_${type}_${tier}`,
+                itemType: "seminar",
+                packType: type,
+                tier,
+                name: packNames[type]?.[tier] || `${tier} ${type} seminar`,
+                description: `Pick ${cfg.picks} of ${cfg.options} ${type} options.`,
+                cost: cfg.cost,
+                optionsCount: cfg.options,
+                picks: cfg.picks,
+              };
+            }),
+          );
+        }, []);
+        const trainingCollectionItems = React.useMemo(
+          () =>
+            (TRAINING_UPGRADE_STATS || []).map((entry) => ({
+              id: entry.id,
+              name: entry.name,
+              ...(entry.stats || {}),
+              itemType: "dev",
+            })),
+          [],
+        );
+        const collectionCategories = React.useMemo(
+          () => ([
+            { id: "contacts", label: "Contacts", itemType: "contact", items: CONTACTS || [] },
+            { id: "greetings", label: "Greetings", itemType: "salutation", items: SALUTATIONS || [] },
+            { id: "signoffs", label: "Sign-offs", itemType: "signoff", items: SIGNOFFS || [] },
+            { id: "signatures", label: "Signatures", itemType: "signature", items: SIGNATURES || [] },
+            { id: "internal", label: "Internal Services", itemType: "bcc", items: BCC_CONTACTS || [] },
+            { id: "training", label: "Training", itemType: "dev", items: trainingCollectionItems || [] },
+            { id: "seminars", label: "Seminars", itemType: "seminar", items: getSeminarCollectionItems || [] },
+          ]),
+          [trainingCollectionItems, getSeminarCollectionItems],
+        );
+        const activeCollectionCategory =
+          collectionCategories.find((cat) => cat.id === collectionsCategory) || collectionCategories[0];
+        const collectionItems = activeCollectionCategory?.items || [];
+        const collectionPagesTotal = Math.max(1, Math.ceil(collectionItems.length / 6));
+        const clampedCollectionPage =
+          ((collectionsPage % collectionPagesTotal) + collectionPagesTotal) % collectionPagesTotal;
+        const collectionSliceStart = clampedCollectionPage * 6;
+        const collectionPageItems = collectionItems.slice(collectionSliceStart, collectionSliceStart + 6);
+        const collectionTopItems = collectionPageItems.slice(0, 3);
+        const collectionBottomItems = collectionPageItems.slice(3, 6);
+        const collectionPageText = `${clampedCollectionPage}/${Math.max(0, collectionPagesTotal - 1)}`;
+        const collectionTopRef = React.useRef(null);
+        const collectionBottomRef = React.useRef(null);
+        const getCollectionDetailText = (item, itemType) => {
+          if (!item) return "No additional details.";
+          const lines = [];
+          if (item.description) lines.push(item.description);
+          if (item.picksText) lines.push(item.picksText);
+          if (itemType === "seminar") {
+            const typeLabel = ITEM_TYPE_LABELS?.[item.packType]?.label || item.packType || "Pack";
+            lines.push(`Type: ${typeLabel}`);
+            lines.push(`Tier: ${String(item.tier || "").toUpperCase()}`);
+            lines.push(`Cost: ${item.cost || 0} REP`);
+            lines.push(`Picks: ${item.picks || 0} of ${item.optionsCount || 0}`);
+            return lines.join("\n");
+          }
+          if (itemType === "contact" && item.departmentId) {
+            const dept = ReplyAllEngine.core.getDepartmentName(item.departmentId);
+            if (dept) lines.push(`Department: ${dept}`);
+          }
+          const effectText = ReplyAllEngine.copy?.getItemBonusText
+            ? ReplyAllEngine.copy.getItemBonusText(item, {})
+            : "";
+          if (effectText && effectText !== "No listed effect.") {
+            lines.push(`Effects: ${effectText}`);
+          }
+          if (itemType === "dev" && ReplyAllEngine.copy?.getTrainingStatPreview) {
+            const preview = ReplyAllEngine.copy.getTrainingStatPreview(player, item) || [];
+            if (preview.length) {
+              lines.push(
+                "Training impact (base):\n" +
+                  preview
+                    .map((row) => `${row.label}: ${row.before} -> ${row.after}`)
+                    .join("\n"),
+              );
+            }
+          }
+          return lines.length ? lines.join("\n\n") : "";
+        };
+        const computeCollectionsDragPopupPos = (clientX, clientY, popupWidth = 260, popupHeight = 172) => {
+          const anchorRect = {
+            left: clientX - 42,
+            right: clientX + 42,
+            top: clientY - 60,
+            bottom: clientY + 60,
+            width: 84,
+            height: 120,
+          };
+          return computeAnchoredPopupPosition(anchorRect, popupWidth, popupHeight, {
+            padding: 8,
+            gap: 12,
+            alignY: "center",
+            verticalFallbackOnHorizontalClamp: true,
+          });
+        };
+        const openCollectionPopupFromAnchor = (item, itemType, anchorRect) => {
+          if (!item || !anchorRect) return;
+          const pos = computeAnchoredPopupPosition(anchorRect, 260, 172, {
+            padding: 8,
+            gap: 10,
+            alignY: "center",
+          });
+          const nextPopup = {
+            id: item.id || "",
+            itemType,
+            title: item.name || "Item",
+            detail: getCollectionDetailText(item, itemType),
+            left: pos.left,
+            top: pos.top,
+            dragMode: false,
+          };
+          if (
+            collectionsPopup &&
+            !collectionsPopup.dragMode &&
+            collectionsPopup.id === nextPopup.id &&
+            collectionsPopup.itemType === nextPopup.itemType
+          ) {
+            setCollectionsPopup(null);
+            return;
+          }
+          setCollectionsPopup(nextPopup);
+        };
+        const onCollectionCardPointerDown = (item, itemType, evt) => {
+          if (!item || !evt || evt.button > 0) return;
+          const originX = evt.clientX || 0;
+          const originY = evt.clientY || 0;
+          const anchorRect = evt.currentTarget?.getBoundingClientRect?.() || null;
+          const payload = {
+            id: item.id || "",
+            itemType,
+            title: item.name || "Item",
+            detail: getCollectionDetailText(item, itemType),
+          };
+          let dragActive = false;
+          const onMove = (moveEvt) => {
+            const x = moveEvt.clientX || 0;
+            const y = moveEvt.clientY || 0;
+            if (!dragActive && Math.hypot(x - originX, y - originY) > 6) {
+              dragActive = true;
+            }
+            if (!dragActive) return;
+            const pos = computeCollectionsDragPopupPos(x, y);
+            setCollectionsPopup({
+              ...payload,
+              left: pos.left,
+              top: pos.top,
+              dragMode: true,
+            });
+          };
+          const onUp = () => {
+            window.removeEventListener("pointermove", onMove);
+            window.removeEventListener("pointerup", onUp);
+            window.removeEventListener("pointercancel", onUp);
+            collectionsDragRef.current.active = false;
+            collectionsDragRef.current.cleanup = null;
+            if (dragActive) {
+              setCollectionsPopup(null);
+              return;
+            }
+            openCollectionPopupFromAnchor(item, itemType, anchorRect);
+          };
+          collectionsDragRef.current.active = true;
+          collectionsDragRef.current.cleanup = () => {
+            window.removeEventListener("pointermove", onMove);
+            window.removeEventListener("pointerup", onUp);
+            window.removeEventListener("pointercancel", onUp);
+          };
+          window.addEventListener("pointermove", onMove);
+          window.addEventListener("pointerup", onUp);
+          window.addEventListener("pointercancel", onUp);
+        };
         const dragAction = dragActionId
           ? (displayedActionCards.find((action) => action.id === dragActionId) ||
             baseActionCards.find((action) => action.id === dragActionId) ||
@@ -3714,12 +3936,25 @@
           });
         useViewportClampedPopup(actionDetailPopup, setActionDetailPopup, actionDetailPopupRef);
         useViewportClampedPopup(ccDetailPopup, setCcDetailPopup, ccDetailPopupRef);
+        useViewportClampedPopup(collectionsPopup, setCollectionsPopup, collectionsPopupRef);
         const computeStakeholderPopupPos = (anchorRect, popupWidth = 260, popupHeight = 264) =>
           computeAnchoredPopupPosition(anchorRect, popupWidth, popupHeight, {
             padding: 8,
             gap: 10,
             alignY: "center",
           });
+        React.useEffect(() => {
+          setCollectionsPage(0);
+          setCollectionsPopup(null);
+        }, [collectionsCategory]);
+        React.useEffect(
+          () => () => {
+            if (collectionsDragRef.current.cleanup) {
+              collectionsDragRef.current.cleanup();
+            }
+          },
+          [],
+        );
 
         const isPointOverEmailDrop = (clientX, clientY) => {
           const el = emailDropRef.current;
@@ -4869,10 +5104,265 @@
                     ),
                     e(
                       "button",
+                      {
+                        onClick: () => {
+                          props.onCloseSettings();
+                          setCollectionsOpen(true);
+                        },
+                        className: "w-full retro-button text-[11px] font-bold py-1.5",
+                      },
+                      "Collections",
+                    ),
+                    e(
+                      "button",
                       { onClick: props.onCloseSettings, className: "w-full retro-button text-[11px] font-bold py-1.5" },
                       "Back to Work",
                     ),
                   ),
+                ),
+              )
+            : null,
+          collectionsOpen
+            ? e(
+                "div",
+                {
+                  className: "fixed inset-0 bg-black/45 z-[126] flex items-center justify-center p-2 sm:p-4",
+                  onClick: () => {
+                    setCollectionsOpen(false);
+                    setCollectionsPopup(null);
+                  },
+                },
+                e(
+                  "div",
+                  {
+                    className: "bg-[#c0c0c0] retro-border w-full max-w-5xl max-h-[92dvh] flex flex-col shadow-2xl overflow-hidden",
+                    onClick: (evt) => evt.stopPropagation(),
+                  },
+                  e(
+                    "div",
+                    { className: "window-titlebar text-white px-2 py-1 text-[10px] font-bold flex justify-between items-center" },
+                    e("span", null, "Collections"),
+                    e(
+                      "button",
+                      {
+                        onClick: () => {
+                          setCollectionsOpen(false);
+                          setCollectionsPopup(null);
+                        },
+                        className:
+                          "w-3.5 h-3.5 bg-[#c0c0c0] border border-white shadow-[1px_1px_0px_black] text-black text-[9px] flex items-center justify-center font-bold",
+                      },
+                      "x",
+                    ),
+                  ),
+                  e(
+                    "div",
+                    { className: "flex flex-col md:flex-row min-h-0 flex-1" },
+                    e(
+                      "div",
+                      { className: "md:w-52 border-b md:border-b-0 md:border-r border-[#808080] bg-[#d4d4d4] p-2 overflow-x-auto md:overflow-y-auto" },
+                      e(
+                        "div",
+                        { className: "flex md:flex-col gap-2 min-w-max md:min-w-0" },
+                        collectionCategories.map((cat) =>
+                          e(
+                            "button",
+                            {
+                              key: `collection-cat-${cat.id}`,
+                              className: `retro-button text-[11px] font-bold py-1.5 px-2 text-left whitespace-nowrap ${
+                                cat.id === activeCollectionCategory?.id ? "bg-white" : ""
+                              }`,
+                              onClick: () => setCollectionsCategory(cat.id),
+                            },
+                            cat.label,
+                          ),
+                        ),
+                      ),
+                    ),
+                    e(
+                      "div",
+                      { className: "flex-1 min-h-0 p-2 sm:p-3 flex flex-col gap-2" },
+                      e(
+                        "div",
+                        { className: "flex items-center justify-between gap-2" },
+                        e("div", { className: "text-[11px] font-bold uppercase text-[#000080]" }, activeCollectionCategory?.label || "Collections"),
+                        e(
+                          "div",
+                          { className: "flex items-center gap-2" },
+                          e(
+                            "button",
+                            {
+                              className: "retro-button text-[10px] font-bold py-1 px-2",
+                              onClick: () => {
+                                setCollectionsPopup(null);
+                                setCollectionsPage((prev) =>
+                                  prev <= 0 ? collectionPagesTotal - 1 : prev - 1,
+                                );
+                              },
+                            },
+                            "< Prev",
+                          ),
+                          e("span", { className: "text-[10px] font-mono w-14 text-center" }, collectionPageText),
+                          e(
+                            "button",
+                            {
+                              className: "retro-button text-[10px] font-bold py-1 px-2",
+                              onClick: () => {
+                                setCollectionsPopup(null);
+                                setCollectionsPage((prev) =>
+                                  prev >= collectionPagesTotal - 1 ? 0 : prev + 1,
+                                );
+                              },
+                            },
+                            "Next >",
+                          ),
+                        ),
+                      ),
+                      e(
+                        "div",
+                        { className: "flex-1 min-h-0 flex flex-col gap-2 overflow-hidden" },
+                        e(
+                          "div",
+                          { className: "border border-[#808080] bg-white p-2 min-h-[128px] flex items-center" },
+                          e(AdaptiveCardRack, {
+                            areaRef: collectionTopRef,
+                            className: "adaptive-card-track w-full",
+                            items: collectionTopItems,
+                            renderItem: (item, idx, track) =>
+                              e(
+                                ItemCard,
+                                {
+                                  key: `collection-top-${item.id}-${idx}`,
+                                  itemId: item.id,
+                                  itemType: activeCollectionCategory?.itemType,
+                                  cardInstanceId: `collection:${activeCollectionCategory?.id}:${item.id}`,
+                                  onPointerDown: (evt) =>
+                                    onCollectionCardPointerDown(
+                                      item,
+                                      activeCollectionCategory?.itemType,
+                                      evt,
+                                    ),
+                                  style: track.getCardStyle(idx),
+                                  headerText: collectionTypeMeta(activeCollectionCategory?.itemType)?.label || "Item",
+                                  headerStyle: {
+                                    background: collectionTypeMeta(activeCollectionCategory?.itemType)?.headerBg || "#000080",
+                                    color: collectionTypeMeta(activeCollectionCategory?.itemType)?.headerText || "#fff",
+                                  },
+                                  frameStyle: {
+                                    background: collectionTypeMeta(activeCollectionCategory?.itemType)?.paneBg || "#e5e7eb",
+                                    color: collectionTypeMeta(activeCollectionCategory?.itemType)?.paneText || "#111827",
+                                  },
+                                },
+                                e("div", { className: "shop-card-name" }, item.name || item.id),
+                              ),
+                            renderEmpty: () =>
+                              e("div", { className: "text-[10px] text-gray-500 italic p-2" }, "No entries."),
+                          }),
+                        ),
+                        e(
+                          "div",
+                          { className: "border border-[#808080] bg-white p-2 min-h-[128px] flex items-center" },
+                          e(AdaptiveCardRack, {
+                            areaRef: collectionBottomRef,
+                            className: "adaptive-card-track w-full",
+                            items: collectionBottomItems,
+                            renderItem: (item, idx, track) =>
+                              e(
+                                ItemCard,
+                                {
+                                  key: `collection-bottom-${item.id}-${idx}`,
+                                  itemId: item.id,
+                                  itemType: activeCollectionCategory?.itemType,
+                                  cardInstanceId: `collection:${activeCollectionCategory?.id}:${item.id}`,
+                                  onPointerDown: (evt) =>
+                                    onCollectionCardPointerDown(
+                                      item,
+                                      activeCollectionCategory?.itemType,
+                                      evt,
+                                    ),
+                                  style: track.getCardStyle(idx),
+                                  headerText: collectionTypeMeta(activeCollectionCategory?.itemType)?.label || "Item",
+                                  headerStyle: {
+                                    background: collectionTypeMeta(activeCollectionCategory?.itemType)?.headerBg || "#000080",
+                                    color: collectionTypeMeta(activeCollectionCategory?.itemType)?.headerText || "#fff",
+                                  },
+                                  frameStyle: {
+                                    background: collectionTypeMeta(activeCollectionCategory?.itemType)?.paneBg || "#e5e7eb",
+                                    color: collectionTypeMeta(activeCollectionCategory?.itemType)?.paneText || "#111827",
+                                  },
+                                },
+                                e("div", { className: "shop-card-name" }, item.name || item.id),
+                              ),
+                            renderEmpty: () =>
+                              e("div", { className: "text-[10px] text-gray-500 italic p-2" }, "No entries."),
+                          }),
+                        ),
+                      ),
+                      e(
+                        "div",
+                        { className: "flex items-center justify-between gap-2 pt-1" },
+                        e(
+                          "button",
+                          {
+                            className: "retro-button text-[11px] font-bold py-1 px-3",
+                            onClick: () => {
+                              setCollectionsOpen(false);
+                              setCollectionsPopup(null);
+                              props.onOpenSettings?.();
+                            },
+                          },
+                          "Back to Settings",
+                        ),
+                        e(
+                          "button",
+                          {
+                            className: "retro-button text-[11px] font-bold py-1 px-3",
+                            onClick: () => {
+                              setCollectionsOpen(false);
+                              setCollectionsPopup(null);
+                            },
+                          },
+                          "Back to Work",
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : null,
+          collectionsOpen && collectionsPopup
+            ? e(
+                "div",
+                {
+                  ref: collectionsPopupRef,
+                  className: "game-action-detail-popup shop-item-overlay-frame retro-border p-3",
+                  style: {
+                    left: `${collectionsPopup.left}px`,
+                    top: `${collectionsPopup.top}px`,
+                    zIndex: 127,
+                  },
+                },
+                e(
+                  "div",
+                  { className: "flex items-center justify-between gap-2 mb-1" },
+                  e(
+                    "div",
+                    { className: "text-[10px] font-bold uppercase text-[#000080]" },
+                    collectionsPopup.title || "Item",
+                  ),
+                  e(
+                    "button",
+                    {
+                      className: "retro-button text-[9px] px-1.5 py-0.5 leading-none",
+                      onClick: () => setCollectionsPopup(null),
+                    },
+                    "x",
+                  ),
+                ),
+                e(
+                  "div",
+                  { className: "text-[11px] leading-snug text-gray-800 whitespace-pre-wrap" },
+                  collectionsPopup.detail || "No additional details.",
                 ),
               )
             : null,
