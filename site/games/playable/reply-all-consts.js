@@ -4125,6 +4125,7 @@ const STAT_FIELDS = [
   "repBonus",
   "endRep",
   "addressLimit",
+  "signatureLimit",
   "numCCperCCaction",
   "bccLimit",
   "contactTrainingLimit",
@@ -4209,6 +4210,7 @@ const STAT_METADATA = {
   repBonus: { label: "Bonus Reputation", shortName: "Bonus Rep" },
   endRep: { label: "End Reputation", shortName: "End Rep" },
   addressLimit: { label: "Address Limit", shortName: "Address" },
+  signatureLimit: { label: "Signature Limit", shortName: "Signatures" },
   numCCperCCaction: { label: "CCs per Action", shortName: "CC / Action" },
   bccLimit: {
     label: "Internal Services Limit",

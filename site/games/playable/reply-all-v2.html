@@ -1570,7 +1570,11 @@
         const sigCurrent = owned.signatures.length;
         const sigMax = Math.max(
           0,
-          Math.floor(player?.title?.sigLimit ?? player?.sigLimit ?? player?.signatureLimit ?? 0),
+          Math.floor(
+            statCtx
+              ? ReplyAllEngine.stats.getUnitSignatureLimit(statCtx, player)
+              : (player?.signatureLimit ?? player?.sigLimit ?? player?.title?.signatureLimit ?? player?.title?.sigLimit ?? 0),
+          ),
         );
         const shopRef = React.useRef(shop);
         const ownedRef = React.useRef(owned);

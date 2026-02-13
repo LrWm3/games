@@ -826,6 +826,16 @@
   };
 
   // ---------- Stat Math Helpers ----------
+  function getStatFieldValue(block, field) {
+    if (!block) return undefined;
+    if (field === "signatureLimit") {
+      if (typeof block.signatureLimit === "number") return block.signatureLimit;
+      if (typeof block.sigLimit === "number") return block.sigLimit;
+      return undefined;
+    }
+    return block[field];
+  }
+
   function computeUnitStats(ctx, unit, turnOverride = null) {
     const { getUnitStatBlocks, getSalutationWindowStats, getSalutationPersistentStats,
       getSignoffPersistentStats, getUnitWinScaleStats } = ctx;
@@ -835,7 +845,7 @@
     (getUnitStatBlocks ? getUnitStatBlocks(unit) : []).forEach((block) => {
       if (!block) return;
       STAT_FIELDS.forEach((field) => {
-        const value = block[field];
+        const value = getStatFieldValue(block, field);
         if (typeof value === "number") stats[field] += value;
       });
     });
@@ -980,6 +990,20 @@
     return Math.max(0, Math.floor(limit));
   }
 
+  function getUnitSignatureLimit(ctx, unit) {
+    const computed = computeUnitStats(ctx, unit).signatureLimit;
+    if (typeof computed === "number" && Number.isFinite(computed) && computed > 0) {
+      return Math.max(0, Math.floor(computed));
+    }
+    const fallback =
+      unit?.signatureLimit ??
+      unit?.sigLimit ??
+      unit?.title?.signatureLimit ??
+      unit?.title?.sigLimit ??
+      0;
+    return Math.max(0, Math.floor(fallback || 0));
+  }
+
   ReplyAllEngine.stats = {
     computeUnitStats,
     getUnitDamage,
@@ -992,6 +1016,7 @@
     getUnitFollowUpChance,
     getUnitEscalateRecover,
     getUnitAddressLimit,
+    getUnitSignatureLimit,
   };
 
   function getStatCtx(state) {
@@ -1026,6 +1051,12 @@
     if (u.repBonus == null) u.repBonus = 0;
     if (u.endRep == null) u.endRep = 0;
     if (u.addressLimit == null) u.addressLimit = 0;
+    if (u.signatureLimit == null) {
+      if (typeof u.sigLimit === "number") u.signatureLimit = u.sigLimit;
+      else if (u.title && typeof u.title.sigLimit === "number") u.signatureLimit = u.title.sigLimit;
+      else u.signatureLimit = 0;
+    }
+    if (u.sigLimit == null) u.sigLimit = u.signatureLimit;
     if (u.numCCperCCaction == null) u.numCCperCCaction = 1;
     if (u.bccLimit == null) u.bccLimit = 0;
     if (u.contactTrainingLimit == null) u.contactTrainingLimit = 3;
@@ -1722,7 +1753,8 @@
 
   function hydratePlayer(saved) {
     if (!saved) return saved;
-    const title = TITLES.find((t) => t.id === saved.titleId) || TITLES[0];
+    const titleBase = TITLES.find((t) => t.id === saved.titleId) || TITLES[0];
+    const title = titleBase ? { ...titleBase } : null;
     const salutation = saved.salutationId
       ? SALUTATIONS.find((s) => s.id === saved.salutationId) || null
       : null;
@@ -1750,6 +1782,12 @@
       contactTrainingCount: saved.contactTrainingCount || {},
       coachingBoosts: saved.coachingBoosts || {},
     };
+    const hydratedSigLimit =
+      (typeof saved.signatureLimit === "number" ? saved.signatureLimit : null) ??
+      (typeof saved.sigLimit === "number" ? saved.sigLimit : null) ??
+      (typeof title?.sigLimit === "number" ? title.sigLimit : 0);
+    player.signatureLimit = hydratedSigLimit;
+    player.sigLimit = hydratedSigLimit;
     applyUnitDefaults(player);
     return player;
   }
@@ -2598,7 +2636,15 @@
       if ((p.addressBook || []).length >= limit) return { ok: false, reason: "limit" };
     } else if (item.itemType === "signature") {
       if ((p.signatures || []).some((s) => s.id === item.id)) return { ok: false, reason: "owned" };
-      const limit = p?.title?.sigLimit ?? p.sigLimit ?? p.signatureLimit ?? 0;
+      const statCtx = getStatCtx(state);
+      const limit = statCtx
+        ? ReplyAllEngine.stats.getUnitSignatureLimit(statCtx, p)
+        : Math.max(
+            0,
+            Math.floor(
+              p?.signatureLimit ?? p?.sigLimit ?? p?.title?.signatureLimit ?? p?.title?.sigLimit ?? 0,
+            ),
+          );
       if ((p.signatures || []).length >= limit) return { ok: false, reason: "limit" };
     } else if (item.itemType === "salutation") {
       // always allowed (replace)
@@ -4162,7 +4208,19 @@
       details.statPack = chosen.map((u) => u.id);
       addSystemMessage("Executive Review", `Applied ${chosen.length} training adjustment(s).`);
     } else if (effect === "randomSignature") {
-      const sigLimit = player?.title?.sigLimit ?? player.sigLimit ?? 0;
+      const statCtx = getStatCtx(state);
+      const sigLimit = statCtx
+        ? ReplyAllEngine.stats.getUnitSignatureLimit(statCtx, player)
+        : Math.max(
+            0,
+            Math.floor(
+              player?.signatureLimit ??
+                player?.sigLimit ??
+                player?.title?.signatureLimit ??
+                player?.title?.sigLimit ??
+                0,
+            ),
+          );
       if ((player.signatures || []).length >= sigLimit) {
         addSystemMessage("Signature Provisioning Failed", "Signature capacity reached.");
       } else {
@@ -4622,30 +4680,16 @@
       return { ok: false, reason: "invalid_amount" };
     }
     const p = state.player;
-    let touched = false;
-    if (p.title && typeof p.title === "object") {
-      const titleCurrent = typeof p.title.sigLimit === "number" ? p.title.sigLimit : 0;
-      p.title.sigLimit = titleCurrent + amount;
-      touched = true;
-    }
-    if (typeof p.sigLimit === "number") {
-      p.sigLimit += amount;
-      touched = true;
-    }
-    if (typeof p.signatureLimit === "number") {
-      p.signatureLimit += amount;
-      touched = true;
-    }
-    if (!touched) {
-      p.sigLimit = amount;
-      if (p.title && typeof p.title === "object") {
-        p.title.sigLimit = amount;
-      }
-    }
+    const currentLimit =
+      (typeof p.signatureLimit === "number" ? p.signatureLimit : null) ??
+      (typeof p.sigLimit === "number" ? p.sigLimit : null) ??
+      (typeof p.title?.signatureLimit === "number" ? p.title.signatureLimit : null) ??
+      (typeof p.title?.sigLimit === "number" ? p.title.sigLimit : 0);
+    const nextLimit = currentLimit + amount;
+    p.signatureLimit = nextLimit;
+    p.sigLimit = nextLimit;
     attachRuntimeState(state);
-    const effectiveLimit =
-      p?.title?.sigLimit ?? p.sigLimit ?? p.signatureLimit ?? 0;
-    return { ok: true, amount, signatureLimit: effectiveLimit, state };
+    return { ok: true, amount, signatureLimit: nextLimit, state };
   }
 
   ReplyAllEngine.play = {
