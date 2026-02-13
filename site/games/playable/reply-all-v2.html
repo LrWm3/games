@@ -4138,6 +4138,30 @@
                     ReplyAllEngine.play.getMissionSubSubject(mission),
                   ),
                 ),
+                e(
+                  "div",
+                  { className: "pt-1" },
+                  e(
+                    "div",
+                    {
+                      className: "h-5 w-full border border-[#808080] relative bg-[#e5e7eb] px-2",
+                      style: {
+                        background: `linear-gradient(90deg, hsl(${(hpPct / 100) * 120} 70% 75%) 0%, hsl(${(hpPct / 100) * 120} 70% 75%) ${hpPct}%, #f3f4f6 ${hpPct}%, #f3f4f6 100%)`,
+                      },
+                    },
+                    e(
+                      "div",
+                      { className: "flex items-center justify-between text-[9px] font-bold uppercase text-[#000080] h-full" },
+                      e("span", null, "YOUR CREDIBILITY"),
+                      e(
+                        "span",
+                        { className: "flex items-center gap-2" },
+                        e("span", { className: "font-mono tracking-tight" }, ReplyAllEngine.play.formatTurnTime(props.state.turn || 0)),
+                        e("span", { className: "font-mono" }, `${Math.ceil(player.hp || 0)}/${maxHp}`),
+                      ),
+                    ),
+                  ),
+                ),
               ),
               e(
                 "div",
@@ -4233,44 +4257,6 @@
                       ),
                     )
                   : null,
-              ),
-              e(
-                "div",
-                { className: "bg-[#dfdfdf] border-t border-[#808080] flex flex-col gap-1 shrink-0" },
-                e(
-                  "div",
-                  {
-                    className: "h-5 w-full border border-[#808080] relative bg-[#e5e7eb] px-2",
-                    style: {
-                      background: `linear-gradient(90deg, hsl(${(hpPct / 100) * 120} 70% 75%) 0%, hsl(${(hpPct / 100) * 120} 70% 75%) ${hpPct}%, #f3f4f6 ${hpPct}%, #f3f4f6 100%)`,
-                    },
-                  },
-                  e(
-                    "div",
-                    { className: "flex items-center justify-between text-[9px] font-bold uppercase text-[#000080] h-full" },
-                    e("span", null, "Credibility"),
-                    e("span", { className: "font-mono" }, `${Math.ceil(player.hp || 0)}/${maxHp}`),
-                  ),
-                ),
-              ),
-              e(
-                "div",
-                { className: "p-2 bg-[#c0c0c0] border-t-1 border-white shrink-0" },
-                e(
-                  "div",
-                  { className: "bg-[#c0c0c0] border border-[#808080] px-1.5 flex gap-px text-[10px] h-7 items-center mb-2" },
-                  e(
-                    "div",
-                    { className: "retro-border-inset px-2.5 flex items-center flex-grow h-5 bg-gray-100 truncate overflow-hidden" },
-                    props.statusText || "Ready.",
-                  ),
-                  e(
-                    "div",
-                    { className: "retro-border-inset px-2.5 flex items-center w-[90px] h-5 bg-gray-100 justify-center flex-shrink-0" },
-                    ReplyAllEngine.play.formatTurnTime(props.state.turn || 0),
-                  ),
-                ),
-                e("div", { className: "text-[10px] text-center text-gray-700 italic pt-1" }, "Use action cards below and drag into email view."),
               ),
             ),
           ),
