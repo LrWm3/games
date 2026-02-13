@@ -2176,21 +2176,40 @@
         }
         function computeDetailPopupPosition(anchorRect, popupWidth, popupHeight) {
           const padding = 8;
+          const gap = 10;
           if (!anchorRect) return { left: padding, top: padding };
           const roomRight = window.innerWidth - anchorRect.right - padding;
           const roomLeft = anchorRect.left - padding;
-          let left = anchorRect.right + padding;
+          const preferredLeft =
+            roomRight < popupWidth && roomLeft > roomRight
+              ? anchorRect.left - popupWidth - padding
+              : anchorRect.right + padding;
+          let left = preferredLeft;
           if (roomRight < popupWidth && roomLeft > roomRight) {
             left = anchorRect.left - popupWidth - padding;
           }
+          const maxLeft = window.innerWidth - popupWidth - padding;
+          const clampedHorizontally =
+            preferredLeft > maxLeft || preferredLeft < padding;
           if (left + popupWidth > window.innerWidth - padding) {
-            left = Math.max(padding, window.innerWidth - popupWidth - padding);
+            left = Math.max(padding, maxLeft);
           }
           if (left < padding) left = padding;
+
           let top = anchorRect.top;
+          if (dragPopupRef.current.active && clampedHorizontally) {
+            const roomAbove = anchorRect.top - padding - gap;
+            const roomBelow = window.innerHeight - anchorRect.bottom - padding - gap;
+            if (roomBelow >= popupHeight || roomBelow >= roomAbove) {
+              top = anchorRect.bottom + gap;
+            } else {
+              top = anchorRect.top - popupHeight - gap;
+            }
+          }
           if (top + popupHeight > window.innerHeight - padding) {
             top = Math.max(padding, window.innerHeight - popupHeight - padding);
           }
+          if (top < padding) top = padding;
           return { left, top };
         }
 
@@ -2665,7 +2684,6 @@
               { className: "window-titlebar text-white px-2 py-1 flex justify-between items-center text-xs font-bold shrink-0" },
               e("span", null, "INTRA-NET: HR PORTAL & EMPLOYEE SERVICES"),
               e("span", { className: "bg-yellow-400 text-black px-2 rounded-sm ml-auto mr-4" }, `REP:${rep}`),
-              e("button", { onClick: props.onNextQuarter, className: "retro-button text-black text-[10px] py-0 px-2 h-5" }, "NEXT QUARTER >"),
             ),
             e(
               "div",
@@ -2678,12 +2696,24 @@
                   )
                 : null,
               e(
-                "button",
-                {
-                  onClick: activePack ? props.onClosePack : props.onReroll,
-                  className: "retro-button text-black text-[10px] py-1 px-2 w-full",
-                },
-                activePack ? "<Take Nothing>" : `Request Alternates (${rerollCost} REP)`,
+                "div",
+                { className: "flex items-center gap-6" },
+                e(
+                  "button",
+                  {
+                    onClick: activePack ? props.onClosePack : props.onReroll,
+                    className: "retro-button text-black text-[10px] py-1 px-2 flex-1",
+                  },
+                  activePack ? "<Take Nothing>" : `Reroll (${rerollCost} REP)`,
+                ),
+                e(
+                  "button",
+                  {
+                    onClick: props.onNextQuarter,
+                    className: "retro-button text-black text-[10px] py-1 px-2 whitespace-nowrap",
+                  },
+                  "NEXT QUARTER >",
+                ),
               ),
               e(
                 "div",
