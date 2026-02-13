@@ -3339,6 +3339,9 @@
         const [stakeholderPopup, setStakeholderPopup] = React.useState(null);
         const [addressDrawerOpen, setAddressDrawerOpen] = React.useState(false);
         const [addressDrawerAddsUsed, setAddressDrawerAddsUsed] = React.useState(0);
+        const [toExpanded, setToExpanded] = React.useState(false);
+        const [toWrapCount, setToWrapCount] = React.useState(0);
+        const toContainerRef = React.useRef(null);
         const [ccExpanded, setCcExpanded] = React.useState(false);
         const [ccWrapCount, setCcWrapCount] = React.useState(0);
         const ccContainerRef = React.useRef(null);
@@ -3380,6 +3383,14 @@
           ? { kind: "action", actionId: dragAction.id }
           : dragDrawerPayload;
         const isReplyDrag = activeDrag?.kind === "action" && activeDrag.actionId === "ATTACK";
+        const sortedOpponents = React.useMemo(() => {
+          return [...opponents].sort((a, b) => {
+            const aOut = (a?.hp || 0) <= 0 ? 1 : 0;
+            const bOut = (b?.hp || 0) <= 0 ? 1 : 0;
+            if (aOut !== bOut) return aOut - bOut;
+            return String(a?.name || "").localeCompare(String(b?.name || ""));
+          });
+        }, [opponents]);
         const getActionDetailText = (actionId) => {
           if (actionId === "PROMOTE") {
             const curHp = Math.max(0, Math.ceil(player.hp || 0));
@@ -3526,6 +3537,35 @@
             ? `Release to ${label}`
             : `Drag Here to ${label}`;
         };
+        React.useLayoutEffect(() => {
+          const node = toContainerRef.current;
+          if (!node || !sortedOpponents.length) {
+            if (toWrapCount !== 0) setToWrapCount(0);
+            return undefined;
+          }
+          const measure = () => {
+            const pills = Array.from(node.querySelectorAll(".stakeholder-pill"));
+            if (!pills.length) {
+              if (toWrapCount !== 0) setToWrapCount(0);
+              return;
+            }
+            const firstRowTop = pills[0].offsetTop;
+            const wrapped = pills.reduce(
+              (count, pill) => (pill.offsetTop === firstRowTop ? count : count + 1),
+              0,
+            );
+            if (wrapped !== toWrapCount) setToWrapCount(wrapped);
+          };
+          const raf = window.requestAnimationFrame(measure);
+          window.addEventListener("resize", measure);
+          return () => {
+            window.cancelAnimationFrame(raf);
+            window.removeEventListener("resize", measure);
+          };
+        }, [sortedOpponents.length, toExpanded, toWrapCount]);
+        React.useEffect(() => {
+          if (!sortedOpponents.length && toExpanded) setToExpanded(false);
+        }, [sortedOpponents.length, toExpanded]);
         React.useLayoutEffect(() => {
           const node = ccContainerRef.current;
           if (!node || !sortedBuffs.length) {
@@ -4030,40 +4070,57 @@
                     "div",
                     {
                       ref: targetDropRef,
-                      className: `contacts-container flex gap-1 overflow-x-auto no-scrollbar py-0.5 ${
+                      className: `contacts-container flex items-center gap-1 py-0.5 ${
                         isReplyDrag ? "reply-target-pulse" : ""
                       }`,
                     },
-                    opponents.map((opp) => {
-                      const oppMaxHp = Math.max(1, opp.maxHp || opp.hp || 1);
-                      const pct = Math.max(0, Math.min(100, ((opp.hp || 0) / oppMaxHp) * 100));
-                      const hp = Math.max(0, Math.ceil(opp.hp || 0));
-                      const isSelected = selectedTarget && selectedTarget.id === opp.id;
-                      const isOut = (opp.hp || 0) <= 0;
-                      const hue = (pct / 100) * 120;
-                      const fill = `hsl(${hue} 70% 75%)`;
-                      const empty = "#f3f4f6";
-                      return e(
-                        "div",
-                        {
-                          key: `target-${opp.id}`,
-                          "data-target-id": String(opp.id),
-                          onClick: (evt) => onStakeholderClick(opp, isOut, evt),
-                          className: `stakeholder-pill ${isSelected ? "active" : ""} ${
-                            isReplyDrag && !isOut ? "reply-target-pulse" : ""
-                          }`,
-                          style: {
-                            background: isOut
-                              ? "#e5e7eb"
-                              : `linear-gradient(90deg, ${fill} 0%, ${fill} ${pct}%, ${empty} ${pct}%, ${empty} 100%)`,
+                    e(
+                      "div",
+                      {
+                        ref: toContainerRef,
+                        className: `cc-contacts-container ${toExpanded ? "expanded" : ""}`,
+                      },
+                      sortedOpponents.map((opp) => {
+                        const oppMaxHp = Math.max(1, opp.maxHp || opp.hp || 1);
+                        const pct = Math.max(0, Math.min(100, ((opp.hp || 0) / oppMaxHp) * 100));
+                        const hp = Math.max(0, Math.ceil(opp.hp || 0));
+                        const isSelected = selectedTarget && selectedTarget.id === opp.id;
+                        const isOut = (opp.hp || 0) <= 0;
+                        const hue = (pct / 100) * 120;
+                        const fill = `hsl(${hue} 70% 75%)`;
+                        const empty = "#f3f4f6";
+                        return e(
+                          "div",
+                          {
+                            key: `target-${opp.id}`,
+                            "data-target-id": String(opp.id),
+                            onClick: (evt) => onStakeholderClick(opp, isOut, evt),
+                            className: `stakeholder-pill ${isSelected ? "active" : ""} ${
+                              isReplyDrag && !isOut ? "reply-target-pulse" : ""
+                            }`,
+                            style: {
+                              background: isOut
+                                ? "#e5e7eb"
+                                : `linear-gradient(90deg, ${fill} 0%, ${fill} ${pct}%, ${empty} ${pct}%, ${empty} 100%)`,
+                            },
+                            title: `${hp}/${oppMaxHp}`,
                           },
-                          title: `${hp}/${oppMaxHp}`,
-                        },
-                        e("span", { className: "pill-text" }, opp.name),
-                        e("span", { className: "pill-hp" }, `${hp}`),
-                      );
-                    }),
+                          e("span", { className: "pill-text" }, opp.name),
+                          e("span", { className: "pill-hp" }, `${hp}`),
+                        );
+                      }),
+                    ),
                   ),
+                  toWrapCount > 0 || toExpanded
+                    ? e(
+                        "span",
+                        {
+                          className: "contacts-more text-[9px]",
+                          onClick: () => setToExpanded((prev) => !prev),
+                        },
+                        toExpanded ? "Show less" : `+ ${toWrapCount} more`,
+                      )
+                    : null,
                   activeDrag && activeDrag.kind === "action" && activeDrag.actionId === "ATTACK"
                     ? e(
                         "div",
