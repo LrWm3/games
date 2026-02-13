@@ -624,6 +624,7 @@
           expenseReportActive: false,
           messageLogEntries: [],
           previousRoundSummary: "",
+          queuedPlayerAction: null,
         };
       }
 
@@ -1614,6 +1615,106 @@
         };
       }
 
+      function AdaptiveCardRack(props) {
+        const internalRef = React.useRef(null);
+        const areaRef = props.areaRef || internalRef;
+        const items = Array.isArray(props.items) ? props.items : [];
+        const track = useAdaptiveCardTrack(areaRef, props.cardCount ?? items.length);
+        return e(
+          props.tag || "div",
+          {
+            ref: areaRef,
+            className: props.className || "adaptive-card-track",
+            style: {
+              ...(props.style || {}),
+              ...(track.trackStyle || {}),
+            },
+          },
+          items.map((item, idx) => props.renderItem(item, idx, track)),
+          typeof props.renderEmpty === "function" && !items.length
+            ? props.renderEmpty()
+            : null,
+        );
+      }
+
+      function computeAnchoredPopupPosition(anchorRect, popupWidth, popupHeight, opts = {}) {
+        const padding = Number.isFinite(opts.padding) ? opts.padding : 8;
+        const gap = Number.isFinite(opts.gap) ? opts.gap : 10;
+        const alignY = opts.alignY === "center" ? "center" : "top";
+        const preferLeft =
+          typeof opts.preferLeft === "boolean" ? opts.preferLeft : null;
+        const verticalFallbackOnHorizontalClamp =
+          !!opts.verticalFallbackOnHorizontalClamp;
+        if (!anchorRect) return { left: padding, top: padding };
+        const roomRight = window.innerWidth - anchorRect.right - padding;
+        const roomLeft = anchorRect.left - padding;
+
+        let left = anchorRect.right + gap;
+        const chooseLeft =
+          preferLeft == null
+            ? roomRight < popupWidth && roomLeft > roomRight
+            : preferLeft;
+        if (chooseLeft) {
+          left = anchorRect.left - popupWidth - gap;
+        }
+
+        const maxLeft = window.innerWidth - popupWidth - padding;
+        const clampedHorizontally = left > maxLeft || left < padding;
+        left = Math.max(padding, Math.min(left, maxLeft));
+
+        let top =
+          alignY === "center"
+            ? anchorRect.top + Math.max(0, (anchorRect.height - popupHeight) / 2)
+            : anchorRect.top;
+        if (verticalFallbackOnHorizontalClamp && clampedHorizontally) {
+          const roomAbove = anchorRect.top - padding - gap;
+          const roomBelow = window.innerHeight - anchorRect.bottom - padding - gap;
+          if (roomBelow >= popupHeight || roomBelow >= roomAbove) {
+            top = anchorRect.bottom + gap;
+          } else {
+            top = anchorRect.top - popupHeight - gap;
+          }
+        }
+        const maxTop = window.innerHeight - popupHeight - padding;
+        top = Math.max(padding, Math.min(top, maxTop));
+        return { left, top };
+      }
+
+      function useViewportClampedPopup(popup, setPopup, popupRef) {
+        React.useLayoutEffect(() => {
+          if (!popup || !popupRef.current) return;
+          const el = popupRef.current;
+          const rect = el.getBoundingClientRect();
+          const padding = 8;
+          const maxLeft = Math.max(padding, window.innerWidth - rect.width - padding);
+          const maxTop = Math.max(padding, window.innerHeight - rect.height - padding);
+          const nextLeft = Math.max(padding, Math.min(popup.left, maxLeft));
+          const nextTop = Math.max(padding, Math.min(popup.top, maxTop));
+          if (nextLeft !== popup.left || nextTop !== popup.top) {
+            setPopup((prev) => (prev ? { ...prev, left: nextLeft, top: nextTop } : prev));
+          }
+        }, [popup, popupRef, setPopup]);
+
+        React.useEffect(() => {
+          if (!popup || !popupRef.current) return undefined;
+          const onResize = () => {
+            const el = popupRef.current;
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            const padding = 8;
+            const maxLeft = Math.max(padding, window.innerWidth - rect.width - padding);
+            const maxTop = Math.max(padding, window.innerHeight - rect.height - padding);
+            const nextLeft = Math.max(padding, Math.min(popup.left, maxLeft));
+            const nextTop = Math.max(padding, Math.min(popup.top, maxTop));
+            if (nextLeft !== popup.left || nextTop !== popup.top) {
+              setPopup((prev) => (prev ? { ...prev, left: nextLeft, top: nextTop } : prev));
+            }
+          };
+          window.addEventListener("resize", onResize);
+          return () => window.removeEventListener("resize", onResize);
+        }, [popup, popupRef, setPopup]);
+      }
+
       function ShopScreen(props) {
         const player = props.state.player || {};
         const statCtx = props.state._statCtx || null;
@@ -1694,8 +1795,6 @@
         const ownedContactRef = React.useRef(null);
         const ownedEmailRef = React.useRef(null);
         const ownedBccRef = React.useRef(null);
-        const directTrack = useAdaptiveCardTrack(directListRef, directDisplayItems.length);
-        const packTrack = useAdaptiveCardTrack(packListRef, packDisplayItems.length);
         const ownedContactTrack = useAdaptiveCardTrack(ownedContactRef, owned.addressBook.length);
         const ownedBccTrack = useAdaptiveCardTrack(ownedBccRef, owned.bcc.length);
         const ownedEmailTrack = useAdaptiveCardTrack(ownedEmailRef, 3 + (owned.signatures?.length || 0));
@@ -2225,42 +2324,12 @@
           closeDetailPopup();
         }
         function computeDetailPopupPosition(anchorRect, popupWidth, popupHeight) {
-          const padding = 8;
-          const gap = 10;
-          if (!anchorRect) return { left: padding, top: padding };
-          const roomRight = window.innerWidth - anchorRect.right - padding;
-          const roomLeft = anchorRect.left - padding;
-          const preferredLeft =
-            roomRight < popupWidth && roomLeft > roomRight
-              ? anchorRect.left - popupWidth - padding
-              : anchorRect.right + padding;
-          let left = preferredLeft;
-          if (roomRight < popupWidth && roomLeft > roomRight) {
-            left = anchorRect.left - popupWidth - padding;
-          }
-          const maxLeft = window.innerWidth - popupWidth - padding;
-          const clampedHorizontally =
-            preferredLeft > maxLeft || preferredLeft < padding;
-          if (left + popupWidth > window.innerWidth - padding) {
-            left = Math.max(padding, maxLeft);
-          }
-          if (left < padding) left = padding;
-
-          let top = anchorRect.top;
-          if (dragPopupRef.current.active && clampedHorizontally) {
-            const roomAbove = anchorRect.top - padding - gap;
-            const roomBelow = window.innerHeight - anchorRect.bottom - padding - gap;
-            if (roomBelow >= popupHeight || roomBelow >= roomAbove) {
-              top = anchorRect.bottom + gap;
-            } else {
-              top = anchorRect.top - popupHeight - gap;
-            }
-          }
-          if (top + popupHeight > window.innerHeight - padding) {
-            top = Math.max(padding, window.innerHeight - popupHeight - padding);
-          }
-          if (top < padding) top = padding;
-          return { left, top };
+          return computeAnchoredPopupPosition(anchorRect, popupWidth, popupHeight, {
+            padding: 8,
+            gap: 10,
+            alignY: "top",
+            verticalFallbackOnHorizontalClamp: !!dragPopupRef.current.active,
+          });
         }
 
         React.useLayoutEffect(() => {
@@ -2857,14 +2926,12 @@
                               : "Opportunities",
                           ),
                           e(
-                            "div",
+                            AdaptiveCardRack,
                             {
-                              ref: directListRef,
+                              areaRef: directListRef,
                               className: "border border-gray-200 bg-white p-2 adaptive-card-track",
-                              style: directTrack.trackStyle,
-                            },
-                            directDisplayItems
-                              .map((item, idx) => {
+                              items: directDisplayItems,
+                              renderItem: (item, idx, track) => {
                                 const meta = typeMeta(item.itemType);
                                 return e(
                                   ItemCard,
@@ -2884,7 +2951,7 @@
                                       if (shouldSuppressCardClick()) return;
                                       openDirectDetail(item, evt.currentTarget, activePack ? { mode: "pack-option", packId: activePack.id } : {});
                                     },
-                                    style: getTrackCardStyle(idx, directTrack),
+                                    style: getTrackCardStyle(idx, track),
                                     headerStyle: { background: meta.headerBg, color: meta.headerText },
                                     headerText:
                                       (activePack ? 0 : getDisplayCost(item)) > 0
@@ -2894,7 +2961,8 @@
                                   },
                                   e("div", { className: "shop-card-name" }, item.name),
                                 );
-                              }),
+                              },
+                            },
                           ),
                         ),
                         activePack
@@ -2904,14 +2972,12 @@
                           { className: "space-y-2" },
                           e("h3", { className: "text-xs font-bold uppercase border-b border-[#808080] pb-1" }, "Seminars"),
                           e(
-                            "div",
+                            AdaptiveCardRack,
                             {
-                              ref: packListRef,
+                              areaRef: packListRef,
                               className: "border border-gray-200 bg-white p-2 adaptive-card-track",
-                              style: packTrack.trackStyle,
-                            },
-                            packDisplayItems
-                              .map((pack, idx) => {
+                              items: packDisplayItems,
+                              renderItem: (pack, idx, track) => {
                                 const meta = typeMeta(pack.type || "dev");
                                 return e(
                                   ItemCard,
@@ -2923,7 +2989,7 @@
                                       if (shouldSuppressCardClick()) return;
                                       openPackDetail(pack, evt.currentTarget);
                                     },
-                                    style: getTrackCardStyle(idx, packTrack),
+                                    style: getTrackCardStyle(idx, track),
                                     headerStyle: { background: meta.headerBg, color: meta.headerText },
                                     headerText:
                                       (pack.cost || 0) > 0
@@ -2933,7 +2999,8 @@
                                   },
                                   e("div", { className: "shop-card-name" }, pack.name),
                                 );
-                              }),
+                              },
+                            },
                           ),
                         ),
                       ),
@@ -3204,18 +3271,59 @@
       function CampaignCompleteScreen(props) {
         const player = props.player || {};
         const titleName = player.title?.name || "Executive";
+        const seedText = props.seed != null ? String(props.seed) : "—";
         return e(
           "div",
-          { className: "fixed inset-0 z-[140] bg-black/60 flex items-center justify-center p-4" },
+          { className: "fixed inset-0 z-[140] bg-black flex items-center justify-center p-4" },
           e(
             "div",
-            { className: "bg-[#c0c0c0] retro-border max-w-sm w-full p-4" },
-            e("div", { className: "text-xl font-bold terminal-font mb-2 text-[#0f5132]" }, "CAMPAIGN COMPLETE"),
-            e("div", { className: "text-[12px] text-gray-700 mb-3" }, `${player.name || "Employee"} closed every required thread.`),
-            e("div", { className: "text-[11px] mb-1" }, `Role: ${titleName}`),
-            e("div", { className: "text-[11px] mb-1" }, `Reputation: ${player.reputation || 0}`),
-            e("div", { className: "text-[11px] mb-4" }, `Period: ${(player.quarter || "Q3")} - YR ${player.year || 1}`),
-            e("button", { onClick: props.onBackToMenu, className: "w-full retro-button py-2 font-bold" }, "BACK TO MENU"),
+            { className: "bg-[#c0c0c0] retro-border max-w-sm w-full shadow-2xl overflow-hidden win-panel" },
+            e(
+              "div",
+              { className: "bg-emerald-800 text-white px-2 py-1 flex justify-between items-center text-xs font-bold" },
+              e("span", null, "SYSTEM ACCESS RESTORED"),
+              e("span", null, "✕"),
+            ),
+            e(
+              "div",
+              { className: "p-6 flex flex-col items-center" },
+              e("h2", { className: "text-2xl font-bold terminal-font mb-4 text-emerald-800" }, "EMPLOYMENT SECURED"),
+              e(
+                "div",
+                { className: "w-full bg-white retro-border-inset p-4 space-y-3 text-[11px] mb-6 leading-tight" },
+                e("p", { className: "font-bold text-center border-b pb-2 mb-2" }, "Final Employee Records"),
+                e("div", { className: "flex justify-between" }, e("span", { className: "text-gray-500 uppercase" }, "Final Title:"), e("span", { className: "font-bold" }, titleName)),
+                e("div", { className: "flex justify-between" }, e("span", { className: "text-gray-500 uppercase" }, "Period:"), e("span", { className: "font-bold" }, `${player.quarter || "Q3"} - YR ${player.year || 1}`)),
+                e("div", { className: "flex justify-between" }, e("span", { className: "text-gray-500 uppercase" }, "Total Reputation:"), e("span", { className: "font-bold" }, String(player.reputation || 0))),
+                e("div", { className: "flex justify-between" }, e("span", { className: "text-gray-500 uppercase" }, "Address Book:"), e("span", { className: "font-bold" }, `${(player.addressBook || []).length} Contacts`)),
+                e("div", { className: "flex justify-between" }, e("span", { className: "text-gray-500 uppercase" }, "Seed:"), e("span", { className: "font-bold" }, seedText)),
+              ),
+              e(
+                "div",
+                { className: "text-[12px] italic text-emerald-900 px-2 leading-relaxed" },
+                '"It has come to our attention that your thread performance exceeds executive benchmarks. Your access has been reinstated and your next rotation is ready."',
+              ),
+              e(
+                "button",
+                { onClick: props.onContinueCampaign, className: "mt-6 w-full py-2 retro-button font-bold text-sm" },
+                "CONTINUE",
+              ),
+              e(
+                "button",
+                { onClick: props.onDownloadLog, className: "mt-2 w-full py-2 retro-button font-bold text-sm" },
+                "DOWNLOAD SESSION LOG",
+              ),
+              e(
+                "button",
+                { onClick: props.onCopySeed, className: "mt-2 w-full py-2 retro-button font-bold text-sm" },
+                "COPY SEED",
+              ),
+              e(
+                "button",
+                { onClick: props.onBackToMenu, className: "mt-2 w-full py-2 retro-button font-bold text-sm" },
+                "BACK TO MENU",
+              ),
+            ),
           ),
         );
       }
@@ -3290,7 +3398,10 @@
           return (a.name || "").localeCompare(b.name || "");
         });
         const statCtx = props.state?._statCtx || null;
-        const maxHp = Math.max(1, player.maxHp || player.hp || 1);
+        const computedPlayerMaxHp = statCtx
+          ? ReplyAllEngine.stats.getUnitMaxHp(statCtx, player)
+          : (player.maxHp || player.hp || 1);
+        const maxHp = Math.max(1, computedPlayerMaxHp || player.hp || 1);
         const hpPct = Math.max(0, Math.min(100, ((player.hp || 0) / maxHp) * 100));
         const showDraftingIndicators =
           !!props.state.missionActive && !props.state.isProcessing && !props.state.gameOver;
@@ -3490,7 +3601,6 @@
           top = Math.max(padding, Math.min(top, window.innerHeight - popupHeight - padding));
           return { left, top };
         }, [activeDrag, dragPointer.x, dragPointer.y]);
-        const actionDockTrack = useAdaptiveCardTrack(actionDockRef, displayedActionCards.length);
         const maxAddressAdds = Math.max(
           1,
           Math.floor(
@@ -3596,100 +3706,20 @@
           if (!sortedBuffs.length && ccExpanded) setCcExpanded(false);
         }, [sortedBuffs.length, ccExpanded]);
 
-        const computeActionPopupPos = (anchorRect, popupWidth = 260, popupHeight = 124) => {
-          const padding = 8;
-          const gap = 12;
-          const roomRight = window.innerWidth - anchorRect.right - padding;
-          const roomLeft = anchorRect.left - padding;
-          let left = roomRight >= popupWidth
-            ? anchorRect.right + gap
-            : anchorRect.left - popupWidth - gap;
-          if (roomRight < popupWidth && roomLeft < popupWidth) {
-            left = Math.max(padding, Math.min(anchorRect.left, window.innerWidth - popupWidth - padding));
-          }
-          let top = anchorRect.top + Math.max(0, (anchorRect.height - popupHeight) / 2);
-          top = Math.max(padding, Math.min(top, window.innerHeight - popupHeight - padding));
-          left = Math.max(padding, Math.min(left, window.innerWidth - popupWidth - padding));
-          return { left, top };
-        };
-        React.useLayoutEffect(() => {
-          if (!actionDetailPopup || !actionDetailPopupRef.current) return;
-          const el = actionDetailPopupRef.current;
-          const rect = el.getBoundingClientRect();
-          const padding = 8;
-          const maxLeft = Math.max(padding, window.innerWidth - rect.width - padding);
-          const maxTop = Math.max(padding, window.innerHeight - rect.height - padding);
-          const nextLeft = Math.max(padding, Math.min(actionDetailPopup.left, maxLeft));
-          const nextTop = Math.max(padding, Math.min(actionDetailPopup.top, maxTop));
-          if (nextLeft !== actionDetailPopup.left || nextTop !== actionDetailPopup.top) {
-            setActionDetailPopup((prev) => (prev ? { ...prev, left: nextLeft, top: nextTop } : prev));
-          }
-        }, [actionDetailPopup]);
-        React.useEffect(() => {
-          if (!actionDetailPopup || !actionDetailPopupRef.current) return undefined;
-          const onResize = () => {
-            const el = actionDetailPopupRef.current;
-            if (!el) return;
-            const rect = el.getBoundingClientRect();
-            const padding = 8;
-            const maxLeft = Math.max(padding, window.innerWidth - rect.width - padding);
-            const maxTop = Math.max(padding, window.innerHeight - rect.height - padding);
-            const nextLeft = Math.max(padding, Math.min(actionDetailPopup.left, maxLeft));
-            const nextTop = Math.max(padding, Math.min(actionDetailPopup.top, maxTop));
-            if (nextLeft !== actionDetailPopup.left || nextTop !== actionDetailPopup.top) {
-              setActionDetailPopup((prev) => (prev ? { ...prev, left: nextLeft, top: nextTop } : prev));
-            }
-          };
-          window.addEventListener("resize", onResize);
-          return () => window.removeEventListener("resize", onResize);
-        }, [actionDetailPopup]);
-        React.useLayoutEffect(() => {
-          if (!ccDetailPopup || !ccDetailPopupRef.current) return;
-          const el = ccDetailPopupRef.current;
-          const rect = el.getBoundingClientRect();
-          const padding = 8;
-          const maxLeft = Math.max(padding, window.innerWidth - rect.width - padding);
-          const maxTop = Math.max(padding, window.innerHeight - rect.height - padding);
-          const nextLeft = Math.max(padding, Math.min(ccDetailPopup.left, maxLeft));
-          const nextTop = Math.max(padding, Math.min(ccDetailPopup.top, maxTop));
-          if (nextLeft !== ccDetailPopup.left || nextTop !== ccDetailPopup.top) {
-            setCcDetailPopup((prev) => (prev ? { ...prev, left: nextLeft, top: nextTop } : prev));
-          }
-        }, [ccDetailPopup]);
-        React.useEffect(() => {
-          if (!ccDetailPopup || !ccDetailPopupRef.current) return undefined;
-          const onResize = () => {
-            const el = ccDetailPopupRef.current;
-            if (!el) return;
-            const rect = el.getBoundingClientRect();
-            const padding = 8;
-            const maxLeft = Math.max(padding, window.innerWidth - rect.width - padding);
-            const maxTop = Math.max(padding, window.innerHeight - rect.height - padding);
-            const nextLeft = Math.max(padding, Math.min(ccDetailPopup.left, maxLeft));
-            const nextTop = Math.max(padding, Math.min(ccDetailPopup.top, maxTop));
-            if (nextLeft !== ccDetailPopup.left || nextTop !== ccDetailPopup.top) {
-              setCcDetailPopup((prev) => (prev ? { ...prev, left: nextLeft, top: nextTop } : prev));
-            }
-          };
-          window.addEventListener("resize", onResize);
-          return () => window.removeEventListener("resize", onResize);
-        }, [ccDetailPopup]);
-        const computeStakeholderPopupPos = (anchorRect, popupWidth = 260, popupHeight = 264) => {
-          const padding = 8;
-          const gap = 10;
-          const roomRight = window.innerWidth - anchorRect.right - padding;
-          const roomLeft = anchorRect.left - padding;
-          let left = roomRight >= popupWidth
-            ? anchorRect.right + gap
-            : anchorRect.left - popupWidth - gap;
-          if (roomRight < popupWidth && roomLeft < popupWidth) {
-            left = Math.max(padding, Math.min(anchorRect.left, window.innerWidth - popupWidth - padding));
-          }
-          let top = anchorRect.top + Math.max(0, (anchorRect.height - popupHeight) / 2);
-          top = Math.max(padding, Math.min(top, window.innerHeight - popupHeight - padding));
-          left = Math.max(padding, Math.min(left, window.innerWidth - popupWidth - padding));
-          return { left, top };
-        };
+        const computeActionPopupPos = (anchorRect, popupWidth = 260, popupHeight = 124) =>
+          computeAnchoredPopupPosition(anchorRect, popupWidth, popupHeight, {
+            padding: 8,
+            gap: 12,
+            alignY: "center",
+          });
+        useViewportClampedPopup(actionDetailPopup, setActionDetailPopup, actionDetailPopupRef);
+        useViewportClampedPopup(ccDetailPopup, setCcDetailPopup, ccDetailPopupRef);
+        const computeStakeholderPopupPos = (anchorRect, popupWidth = 260, popupHeight = 264) =>
+          computeAnchoredPopupPosition(anchorRect, popupWidth, popupHeight, {
+            padding: 8,
+            gap: 10,
+            alignY: "center",
+          });
 
         const isPointOverEmailDrop = (clientX, clientY) => {
           const el = emailDropRef.current;
@@ -3866,30 +3896,35 @@
           return ok;
         };
 
+        const beginActionDockDrag = (dragPayload, evt, opts = {}) => {
+          const pointX = evt?.clientX || 0;
+          const pointY = evt?.clientY || 0;
+          dragRef.current = {
+            ...dragPayload,
+            startX: pointX,
+            startY: pointY,
+            active: false,
+          };
+          setDragPointer({ x: pointX, y: pointY });
+          if (opts.clearActionPopup !== false) setActionDetailPopup(null);
+          if (opts.clearStakeholderPopup) setStakeholderPopup(null);
+          if (opts.hoverActionId) props.onActionHover(opts.hoverActionId);
+        };
+
         const onActionCardPointerDown = (actionId, evt) => {
           if (props.disabledActions?.[actionId] && actionId !== "ULT") return;
-          dragRef.current = {
-            kind: "action",
-            actionId,
-            startX: evt.clientX || 0,
-            startY: evt.clientY || 0,
-            active: false,
-          };
-          setDragPointer({ x: evt.clientX || 0, y: evt.clientY || 0 });
-          setActionDetailPopup(null);
-          props.onActionHover(actionId);
+          beginActionDockDrag(
+            { kind: "action", actionId },
+            evt,
+            { clearActionPopup: true, hoverActionId: actionId },
+          );
         };
         const onDrawerCardPointerDown = (payload, evt) => {
-          dragRef.current = {
-            kind: "drawer",
-            payload,
-            startX: evt.clientX || 0,
-            startY: evt.clientY || 0,
-            active: false,
-          };
-          setDragPointer({ x: evt.clientX || 0, y: evt.clientY || 0 });
-          setActionDetailPopup(null);
-          setStakeholderPopup(null);
+          beginActionDockDrag(
+            { kind: "drawer", payload },
+            evt,
+            { clearActionPopup: true, clearStakeholderPopup: true },
+          );
         };
         const onDrawerCardClick = (card, evt) => {
           const rect = evt?.currentTarget?.getBoundingClientRect?.();
@@ -4326,94 +4361,97 @@
               e(
                 "div",
                 {
-                  ref: actionDockRef,
-                  className: "adaptive-card-track bg-white retro-border-inset p-2",
-                  style: actionDockTrack.trackStyle,
+                  className: "bg-white retro-border-inset p-2",
                 },
-                displayedActionCards.map((card, idx) => {
-                  const isActionCard = card.kind !== "drawer";
-                  const isDisabled = isActionCard ? !!props.disabledActions[card.id] : !!card.unavailable;
-                  const isDragging = dragActionId === card.id || dragDrawerPayload?.id === card.id;
-                  const isUlt = card.id === "ULT";
-                  const isContact = card.itemType === "contact";
-                  const isBcc = card.itemType === "bcc";
-                  const headerStyle = !isActionCard && isDisabled
-                    ? { background: "#9ca3af", color: "#1f2937" }
-                    : isContact
-                    ? { background: contactMeta.headerBg, color: contactMeta.headerText }
-                    : isBcc
-                      ? { background: bccMeta.headerBg, color: bccMeta.headerText }
-                      : (isDisabled ? { background: "#9ca3af", color: "#1f2937" } : { background: "#000080", color: "#ffffff" });
-                  const frameStyle = !isActionCard && isDisabled
-                    ? { background: "#d1d5db", color: "#4b5563" }
-                    : isContact
-                    ? { background: contactMeta.paneBg, color: contactMeta.paneText }
-                    : isBcc
-                      ? { background: bccMeta.paneBg, color: bccMeta.paneText }
-                      : (isDisabled ? { background: "#d1d5db", color: "#4b5563" } : { background: "#e5e7eb", color: "#111827" });
-                  return e(
-                    ItemCard,
-                    {
-                      key: card.id,
-                      extraClassName: `game-action-card ${isDisabled ? "is-disabled" : ""} ${isDragging ? "is-dragging" : ""}`,
-                      style: actionDockTrack.getCardStyle(idx),
-                      headerText: isContact ? contactMeta.label : isBcc ? bccMeta.label : "Action",
-                      headerStyle,
-                      frameStyle,
-                      onClick: (evt) => {
-                        if (isActionCard) onActionCardClick(card.id, evt);
-                        else onDrawerCardClick(card, evt);
+                e(AdaptiveCardRack, {
+                  areaRef: actionDockRef,
+                  className: "adaptive-card-track",
+                  items: displayedActionCards,
+                  renderItem: (card, idx, track) => {
+                    const isActionCard = card.kind !== "drawer";
+                    const isDisabled = isActionCard ? !!props.disabledActions[card.id] : !!card.unavailable;
+                    const isDragging = dragActionId === card.id || dragDrawerPayload?.id === card.id;
+                    const isUlt = card.id === "ULT";
+                    const isContact = card.itemType === "contact";
+                    const isBcc = card.itemType === "bcc";
+                    const headerStyle = !isActionCard && isDisabled
+                      ? { background: "#9ca3af", color: "#1f2937" }
+                      : isContact
+                      ? { background: contactMeta.headerBg, color: contactMeta.headerText }
+                      : isBcc
+                        ? { background: bccMeta.headerBg, color: bccMeta.headerText }
+                        : (isDisabled ? { background: "#9ca3af", color: "#1f2937" } : { background: "#000080", color: "#ffffff" });
+                    const frameStyle = !isActionCard && isDisabled
+                      ? { background: "#d1d5db", color: "#4b5563" }
+                      : isContact
+                      ? { background: contactMeta.paneBg, color: contactMeta.paneText }
+                      : isBcc
+                        ? { background: bccMeta.paneBg, color: bccMeta.paneText }
+                        : (isDisabled ? { background: "#d1d5db", color: "#4b5563" } : { background: "#e5e7eb", color: "#111827" });
+                    return e(
+                      ItemCard,
+                      {
+                        key: card.id,
+                        extraClassName: `game-action-card ${isDisabled ? "is-disabled" : ""} ${isDragging ? "is-dragging" : ""}`,
+                        style: track.getCardStyle(idx),
+                        headerText: isContact ? contactMeta.label : isBcc ? bccMeta.label : "Action",
+                        headerStyle,
+                        frameStyle,
+                        onClick: (evt) => {
+                          if (isActionCard) onActionCardClick(card.id, evt);
+                          else onDrawerCardClick(card, evt);
+                        },
+                        onPointerDown: (evt) => {
+                          if (isActionCard) {
+                            onActionCardPointerDown(card.id, evt);
+                          } else {
+                            onDrawerCardPointerDown(
+                              {
+                                id: card.id,
+                                kind: "drawer",
+                                itemType: card.itemType,
+                                item: card.item,
+                                bccIndex: card.bccIndex,
+                                unavailable: !!card.unavailable,
+                                unavailableReason: card.unavailableReason || "",
+                                waitText: card.waitText || "",
+                                blockedByStakeholder: card.blockedByStakeholder || null,
+                              },
+                              evt,
+                            );
+                          }
+                        },
                       },
-                      onPointerDown: (evt) => {
-                        if (isActionCard) {
-                          onActionCardPointerDown(card.id, evt);
-                        } else {
-                          onDrawerCardPointerDown(
-                            {
-                              id: card.id,
-                              kind: "drawer",
-                              itemType: card.itemType,
-                              item: card.item,
-                              bccIndex: card.bccIndex,
-                              unavailable: !!card.unavailable,
-                              unavailableReason: card.unavailableReason || "",
-                              waitText: card.waitText || "",
-                              blockedByStakeholder: card.blockedByStakeholder || null,
-                            },
-                            evt,
-                          );
-                        }
-                      },
-                    },
-                    isUlt
-                      ? e(
-                          "div",
-                          { className: "w-full flex flex-col items-center gap-1" },
-                          e("div", { className: "shop-card-name text-red-800" }, card.label),
-                          e(
+                      isUlt
+                        ? e(
                             "div",
-                            { className: "momentum-meter w-full" },
-                            Array.from({ length: 8 }).map((_, i) =>
-                              e("div", {
-                                key: `ult-dock-${i}`,
-                                className: `momentum-segment ${i < Math.floor(player.ult || 0) ? "charged" : ""}`,
-                              }),
+                            { className: "w-full flex flex-col items-center gap-1" },
+                            e("div", { className: "shop-card-name text-red-800" }, card.label),
+                            e(
+                              "div",
+                              { className: "momentum-meter w-full" },
+                              Array.from({ length: 8 }).map((_, i) =>
+                                e("div", {
+                                  key: `ult-dock-${i}`,
+                                  className: `momentum-segment ${i < Math.floor(player.ult || 0) ? "charged" : ""}`,
+                                }),
+                              ),
                             ),
+                          )
+                        : e(
+                            "div",
+                            { className: "w-full flex flex-col" },
+                            e("div", { className: "shop-card-name" }, card.label),
+                            card.unavailable
+                              ? e(
+                                  "div",
+                                  { className: "text-[9px] leading-tight text-gray-600 mt-1 whitespace-normal" },
+                                  card.unavailableReason || "Unavailable",
+                                )
+                              : null,
                           ),
-                        )
-                      : e(
-                          "div",
-                          { className: "w-full flex flex-col" },
-                          e("div", { className: "shop-card-name" }, card.label),
-                          card.unavailable
-                            ? e(
-                                "div",
-                                { className: "text-[9px] leading-tight text-gray-600 mt-1 whitespace-normal" },
-                                card.unavailableReason || "Unavailable",
-                              )
-                            : null,
-                        ),
-                  );
+                    );
+                  },
                 }),
               ),
             ),
@@ -4843,39 +4881,56 @@
                 "div",
                 {
                   className:
-                    "fixed inset-0 z-[130] bg-black/50 flex items-center justify-center p-4",
+                    "fixed inset-0 z-[130] bg-black flex items-center justify-center p-4",
                 },
                 e(
                   "div",
-                  { className: "bg-[#c0c0c0] retro-border max-w-sm w-full p-4" },
+                  { className: "bg-[#c0c0c0] retro-border max-w-sm w-full shadow-2xl overflow-hidden" },
                   e(
                     "div",
-                    { className: "text-base font-bold mb-2" },
-                    props.outcomeOverlay.title,
+                    { className: "bg-red-800 text-white px-2 py-1 flex justify-between items-center text-xs font-bold" },
+                    e("span", null, "SYSTEM LOCKOUT - SECURITY BREACH"),
+                    e("span", null, "✕"),
                   ),
                   e(
                     "div",
-                    { className: "text-[12px] text-gray-700 mb-4" },
-                    props.outcomeOverlay.body,
-                  ),
-                  e(
-                    "div",
-                    { className: "flex gap-2 justify-end" },
+                    { className: "p-6 flex flex-col items-center" },
+                    e("h2", { className: "text-2xl font-bold terminal-font mb-4 text-red-800" }, "NOTICE OF TERMINATION"),
+                    e(
+                      "div",
+                      { className: "w-full bg-white retro-border-inset p-4 space-y-3 text-[11px] mb-6 leading-tight" },
+                      e("p", { className: "font-bold text-center border-b pb-2 mb-2" }, "Final Employee Records"),
+                      e("div", { className: "flex justify-between" }, e("span", { className: "text-gray-500 uppercase" }, "Final Title:"), e("span", { className: "font-bold" }, props.player?.title?.name || "Cubicle Resident")),
+                      e("div", { className: "flex justify-between" }, e("span", { className: "text-gray-500 uppercase" }, "Period:"), e("span", { className: "font-bold" }, `${props.player?.quarter || "Q3"} - YR ${props.player?.year || 1}`)),
+                      e("div", { className: "flex justify-between" }, e("span", { className: "text-gray-500 uppercase" }, "Total Reputation:"), e("span", { className: "font-bold" }, String(props.player?.reputation || 0))),
+                      e("div", { className: "flex justify-between" }, e("span", { className: "text-gray-500 uppercase" }, "Address Book:"), e("span", { className: "font-bold" }, `${(props.player?.addressBook || []).length} Contacts`)),
+                      e("div", { className: "flex justify-between" }, e("span", { className: "text-gray-500 uppercase" }, "Seed:"), e("span", { className: "font-bold" }, props.seed != null ? String(props.seed) : "—")),
+                    ),
+                    e(
+                      "div",
+                      { className: "text-[12px] italic text-gray-800 px-2 leading-relaxed" },
+                      props.outcomeOverlay.body,
+                    ),
+                    e("div", { className: "mt-8 text-[10px] text-gray-500 uppercase tracking-widest animate-pulse" }, "Access Revoked. See Security."),
                     e(
                       "button",
-                      {
-                        className: "retro-button text-[11px] px-4 py-1",
-                        onClick: props.onBackToInbox,
-                      },
-                      "Inbox",
+                      { className: "mt-6 w-full py-2 retro-button font-bold text-sm", onClick: props.onTryAgain },
+                      "TRY AGAIN",
                     ),
                     e(
                       "button",
-                      {
-                        className: "retro-button text-[11px] px-4 py-1",
-                        onClick: props.onBackToMenu,
-                      },
-                      "Menu",
+                      { className: "mt-2 w-full py-2 retro-button font-bold text-sm", onClick: props.onDownloadLog },
+                      "DOWNLOAD SESSION LOG",
+                    ),
+                    e(
+                      "button",
+                      { className: "mt-2 w-full py-2 retro-button font-bold text-sm", onClick: props.onCopySeed },
+                      "COPY SEED",
+                    ),
+                    e(
+                      "button",
+                      { className: "mt-2 w-full py-2 retro-button font-bold text-sm", onClick: props.onBackToMenu },
+                      "BACK TO MENU",
                     ),
                   ),
                 ),
@@ -5236,6 +5291,18 @@
             setStatusText("Unable to use that contact.");
             return false;
           }
+          const queued = nextState.queuedPlayerAction && typeof nextState.queuedPlayerAction === "object"
+            ? nextState.queuedPlayerAction
+            : { type: "CC", result: { contacts: [] } };
+          const existingContacts = Array.isArray(queued.result?.contacts) ? queued.result.contacts : [];
+          nextState.queuedPlayerAction = {
+            type: "CC",
+            result: {
+              contacts: [...existingContacts, { contact: result.contact || null, target: result.target || null }],
+              contact: result.contact || null,
+              target: result.target || null,
+            },
+          };
           queuedAddressStateRef.current = nextState;
           setState(nextState);
           setStatusText(`Queued contact: ${result.contact?.name || "Contact"}.`);
@@ -5256,6 +5323,18 @@
             setStatusText("Unable to use that internal service.");
             return false;
           }
+          const queued = nextState.queuedPlayerAction && typeof nextState.queuedPlayerAction === "object"
+            ? nextState.queuedPlayerAction
+            : { type: "BCC", result: { bccs: [] } };
+          const existingBccs = Array.isArray(queued.result?.bccs) ? queued.result.bccs : [];
+          nextState.queuedPlayerAction = {
+            type: queued.type === "CC" ? "CC" : "BCC",
+            result: {
+              ...(queued.result || {}),
+              bccs: [...existingBccs, { bcc: result.bcc || null, name: result.bcc?.name || null }],
+              bcc: result.bcc || null,
+            },
+          };
           queuedAddressStateRef.current = nextState;
           setState(nextState);
           setStatusText(`Queued internal service: ${result.bcc?.name || "Service"}.`);
@@ -5650,6 +5729,105 @@
           setStatusText("Ready.");
         }
 
+        function downloadSessionLog() {
+          try {
+            const payload = {
+              seed: state.seed ?? null,
+              player: state.player || null,
+              analytics: state.analytics || { events: [], rounds: [] },
+              timestamp: new Date().toISOString(),
+            };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], {
+              type: "application/json",
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `reply-all-session-${state.seed ?? "seed"}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          } catch (err) {
+            setStatusText("Unable to download session log.");
+          }
+        }
+
+        function copySeedToClipboard() {
+          const seedValue = state.seed != null ? String(state.seed) : "";
+          if (!seedValue) {
+            setStatusText("No seed available to copy.");
+            return;
+          }
+          if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(seedValue)
+              .then(() => setStatusText(`Seed copied: ${seedValue}`))
+              .catch(() => setStatusText("Unable to copy seed."));
+            return;
+          }
+          try {
+            const ta = document.createElement("textarea");
+            ta.value = seedValue;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            document.body.removeChild(ta);
+            setStatusText(`Seed copied: ${seedValue}`);
+          } catch (err) {
+            setStatusText("Unable to copy seed.");
+          }
+        }
+
+        function onTryAgainFromOutcome() {
+          clearSaveFromStorage();
+          setResumeSave(null);
+          const fresh = ReplyAllEngine.start.ensureStartState(
+            {
+              ...createInitialState(),
+              startConfig: { ...ReplyAllEngine.start.DEFAULT_START_CONFIG },
+            },
+            metaState,
+          );
+          const freshState = ReplyAllEngine.play.attachRuntimeState(fresh.state);
+          const restoredName = state.player?.name || playerName || "eke vdh";
+          setSummaryData(null);
+          setPromotionData(null);
+          setShopNotice("");
+          setStatusText("Ready.");
+          setState(freshState);
+          setPlayerName(restoredName);
+          setGameSettingsOpen(false);
+          setCcPickerOpen(false);
+          setBccPickerOpen(false);
+          setActiveScreen("induction");
+        }
+
+        function onContinueCampaignFromComplete() {
+          const nextState = cloneState(state);
+          nextState.gameOver = false;
+          nextState.gameWon = false;
+          nextState.lossReason = null;
+          nextState.missionActive = false;
+          nextState.isProcessing = false;
+          nextState.turn = 0;
+          nextState.currentMissionIndex = 0;
+          nextState.messageLogEntries = [];
+          nextState.previousRoundSummary = "";
+          nextState.roundEndUpgrades = {};
+          nextState.queuedPlayerAction = null;
+          nextState.aiPlannedActions = {};
+          nextState.missionCycle = (nextState.missionCycle || 0) + 1;
+          nextState.rngStates = {};
+          ReplyAllEngine.play.attachRuntimeState(nextState);
+          setSummaryData(null);
+          setPromotionData(null);
+          setShopNotice("");
+          setStatusText("Ready.");
+          setState(nextState);
+          setActiveScreen("inbox");
+          persistSave(nextState, "inbox-screen");
+        }
+
         React.useEffect(() => {
           const onKeyDown = (evt) => {
             const isDebugHotkey =
@@ -5782,12 +5960,12 @@
           ? state.lossReason === "timeout"
             ? {
                 title: "Deadline Missed",
-                body: "The thread exceeded its due time and closed against you.",
+                body: '"It has come to our attention that this thread was not resolved within the required time window. The Executive Council\'s Office values timeliness and must serve as a role model for other departments. As a result, your access has been revoked."',
               }
             : state.lossReason === "defeat"
               ? {
                   title: "Credibility Collapsed",
-                  body: "You were forced out of the thread.",
+                  body: '"Credibility is of utmost importance for ECO staff. As a result of correspondence recently brought to our attention, your role here has come to an end."',
                 }
               : {
                   title: "Thread Archived",
@@ -5882,6 +6060,10 @@
         if (activeScreen === "campaign-complete") {
           return e(CampaignCompleteScreen, {
             player: state.player,
+            seed: state.seed,
+            onContinueCampaign: onContinueCampaignFromComplete,
+            onDownloadLog: downloadSessionLog,
+            onCopySeed: copySeedToClipboard,
             onBackToMenu: onBackToMenuFromCampaign,
           });
         }
@@ -5896,6 +6078,11 @@
           actionHints,
           statusText: computedStatusText,
           outcomeOverlay,
+          player: state.player,
+          seed: state.seed,
+          onTryAgain: onTryAgainFromOutcome,
+          onDownloadLog: downloadSessionLog,
+          onCopySeed: copySeedToClipboard,
           ccPickerOpen,
           bccPickerOpen,
           availableCcContacts,

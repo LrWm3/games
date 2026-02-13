@@ -366,6 +366,7 @@
       expenseReportActive: false,
       messageLogEntries: [],
       previousRoundSummary: "",
+      queuedPlayerAction: null,
       player: getBasePlayerState(name, email),
     };
     const parsedSeed = parseSeedInput(nextState.startConfig?.seedInput);
@@ -1108,16 +1109,53 @@
   }
 
   // 3.2 Mission Lifecycle
+  function scaleMissionOpponentStatsForCycle(input, multiplier) {
+    if (!input || typeof input !== "object" || multiplier === 1) {
+      return input ? { ...input } : {};
+    }
+    const scaled = { ...input };
+    const scalableKeys = [
+      "maxHp",
+      "singleDmg",
+      "escalateDmg",
+      "globalDmg",
+      "singleDmgMult",
+      "escalateDmgMult",
+      "globalDmgMult",
+      "wins",
+      "retaliation",
+      "deflect",
+      "selfPromoteHeal",
+      "defFlat",
+      "heal",
+    ];
+    scalableKeys.forEach((key) => {
+      const value = scaled[key];
+      if (typeof value !== "number" || !Number.isFinite(value)) return;
+      scaled[key] = value * multiplier;
+    });
+    return scaled;
+  }
+
   function buildOpponentsForMission(state, mission, data, helpers = {}) {
     const employees = data?.employees || [];
-    const opponentBaseStats = mission?.opponentBaseStats || {};
+    const cycle = Math.max(0, Number(state?.missionCycle || 0) || 0);
+    const cycleMultiplier = Math.pow(2, cycle);
+    const opponentBaseStats = scaleMissionOpponentStatsForCycle(
+      mission?.opponentBaseStats || {},
+      cycleMultiplier,
+    );
     const missionLinesOnly = !!mission?.onlyMissionLines;
     const opponents = (mission?.opponents || []).map((missionOpponent) => {
       const employee = employees.find((e) => e.id === missionOpponent.employeeId);
+      const scaledMissionOpponent = scaleMissionOpponentStatsForCycle(
+        missionOpponent,
+        cycleMultiplier,
+      );
       const clone = {
         ...(employee ? JSON.parse(JSON.stringify(employee)) : {}),
         ...JSON.parse(JSON.stringify(opponentBaseStats)),
-        ...JSON.parse(JSON.stringify(missionOpponent)),
+        ...JSON.parse(JSON.stringify(scaledMissionOpponent)),
       };
       applyUnitDefaults(clone);
       if (employee?.id) clone.employeeId = employee.id;
@@ -4442,11 +4480,34 @@
     if (!upperType) return "You: (none)";
     if (upperType === "PASS") return "You: Pass";
     if (upperType === "CC") {
+      const queuedContacts = Array.isArray(playerResult?.contacts)
+        ? playerResult.contacts
+        : [];
+      if (queuedContacts.length > 1) {
+        return `You: CC ${queuedContacts.length} contacts`;
+      }
+      if (queuedContacts.length === 1) {
+        const first = queuedContacts[0] || {};
+        const contactName = first.contact?.name || "contact";
+        const targetName = first.target?.name || "thread";
+        return `You: CC ${contactName} -> ${targetName}`;
+      }
       const contactName = playerResult?.contact?.name || "contact";
       const targetName = playerResult?.target?.name || "thread";
       return `You: CC ${contactName} -> ${targetName}`;
     }
     if (upperType === "BCC") {
+      const queuedBccs = Array.isArray(playerResult?.bccs)
+        ? playerResult.bccs
+        : [];
+      if (queuedBccs.length > 1) {
+        return `You: BCC ${queuedBccs.length} internal services`;
+      }
+      if (queuedBccs.length === 1) {
+        const first = queuedBccs[0] || {};
+        const bccName = first.bcc?.name || first.name || "internal service";
+        return `You: BCC ${bccName}`;
+      }
       const bccName = playerResult?.bcc?.name || "internal service";
       return `You: BCC ${bccName}`;
     }
@@ -4516,10 +4577,17 @@
       });
 
     const upperType = String(actionType || "").toUpperCase();
+    const queuedPlayerAction = state.queuedPlayerAction || null;
+    const reportedType =
+      upperType === "PASS" && queuedPlayerAction?.type
+        ? String(queuedPlayerAction.type).toUpperCase()
+        : upperType;
     let playerResult = null;
     if (upperType === "PASS") {
       // No direct player action; resolve queued contact/internal-service setup and then AI turn.
-      playerResult = { ok: true, type: "PASS" };
+      playerResult = queuedPlayerAction?.result
+        ? { ok: true, type: reportedType, ...queuedPlayerAction.result }
+        : { ok: true, type: "PASS" };
     } else if (upperType === "CC") {
       playerResult = resolvePlayerCcAction(
         state,
@@ -4658,7 +4726,7 @@
       state.aiPlannedActions = {};
     }
     updateGreetingReputationScaling(state, helpers);
-    const playerActionSummary = summarizePlayerAction(state, upperType, playerResult);
+    const playerActionSummary = summarizePlayerAction(state, reportedType, playerResult);
     const aiParts = (state.opponents || [])
       .filter((opp) => {
         const before = opponentHpBeforeRound[opp.id];
@@ -4694,10 +4762,11 @@
     state.previousRoundSummary = [playerActionSummary, playerHpPart, trainingPart, ...aiParts, optOutPart]
       .filter(Boolean)
       .join("\n");
+    state.queuedPlayerAction = null;
     state.isProcessing = false;
     return {
       ok: true,
-      action: upperType,
+      action: reportedType,
       playerResult,
       gameOver: !!state.gameOver,
       lossReason: state.lossReason || null,
@@ -4712,6 +4781,7 @@
     if (!mission) return { state, mission: null, entry: null };
     state.messageLogEntries = [];
     state.previousRoundSummary = "";
+    state.queuedPlayerAction = null;
     const intro = formatMissionIntro(mission, state.player, state.opponents || []);
     const entry = buildMessageEntry(
       state,
