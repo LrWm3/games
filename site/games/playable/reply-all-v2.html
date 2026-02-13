@@ -1666,6 +1666,7 @@
           sellActive: false,
           sellLabel: "Sell for REP",
         });
+        const [mobileAssetDragPriority, setMobileAssetDragPriority] = React.useState(false);
         const detailPopupRef = React.useRef(null);
         const dragPopupRef = React.useRef({
           active: false,
@@ -1800,6 +1801,10 @@
             obj.id || "",
             nextPopup.itemIndex == null ? "" : String(nextPopup.itemIndex),
           ].join("|");
+        }
+        function shouldPrioritizeAssetsForDragEl(dragEl) {
+          const type = dragEl?.dataset?.itemType || "";
+          return type === "signature" || type === "salutation" || type === "signoff";
         }
         function openDirectDetail(item, anchorEl, opts = {}) {
           if (!item) return;
@@ -2384,11 +2389,13 @@
                 ...sortableOptions,
                 onStart: (evt) => {
                   setCardDragViewportLock(true);
+                  setMobileAssetDragPriority(shouldPrioritizeAssetsForDragEl(evt?.item));
                   if (popupSource) onDragPopupStart(evt, popupSource);
                   if (typeof onStart === "function") onStart(evt);
                 },
                 onEnd: (evt) => {
                   setCardDragViewportLock(false);
+                  setMobileAssetDragPriority(false);
                   if (popupSource) onDragPopupEnd();
                   else closeDetailPopup();
                   suppressCardClickUntilRef.current = Date.now() + 300;
@@ -2669,9 +2676,13 @@
 
           return () => {
             setCardDragViewportLock(false);
+            setMobileAssetDragPriority(false);
             sortables.forEach((s) => s.destroy());
           };
         }, [activePack]);
+
+        const prioritizeAssetsOnMobile =
+          !!mobileAssetDragPriority || !!(activePack && activePack.type === "email");
 
         return e(
           "div",
@@ -2832,7 +2843,11 @@
                         { className: "grid grid-cols-1 lg:grid-cols-2 gap-4 text-[11px] relative" },
                         e(
                           "div",
-                          { className: "border border-gray-300 bg-white" },
+                          {
+                            className: `border border-gray-300 bg-white ${
+                              prioritizeAssetsOnMobile ? "order-2 lg:order-1" : "order-1"
+                            }`,
+                          },
                           e(
                             "div",
                             { className: "grid grid-cols-1 md:grid-cols-4 gap-2 p-2" },
@@ -2917,7 +2932,11 @@
                         ),
                         e(
                           "div",
-                          { className: "email-template-shell space-y-2" },
+                          {
+                            className: `email-template-shell space-y-2 ${
+                              prioritizeAssetsOnMobile ? "order-1 lg:order-2" : "order-2"
+                            }`,
+                          },
                           e("div", { className: "address-book-header mb-1" }, `Signatures (${sigCurrent}/${sigMax})`),
                           e("div", { className: "text-[10px] text-gray-700" }, e("strong", null, "To:"), " everyone@gov.org"),
                           e(
