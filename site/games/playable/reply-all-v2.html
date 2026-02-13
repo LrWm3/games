@@ -3334,13 +3334,15 @@
         const [dragPointer, setDragPointer] = React.useState({ x: 0, y: 0 });
         const [actionDetailPopup, setActionDetailPopup] = React.useState(null);
         const [ccDetailPopup, setCcDetailPopup] = React.useState(null);
+        const actionDetailPopupRef = React.useRef(null);
+        const ccDetailPopupRef = React.useRef(null);
         const [stakeholderPopup, setStakeholderPopup] = React.useState(null);
         const [addressDrawerOpen, setAddressDrawerOpen] = React.useState(false);
         const [addressDrawerAddsUsed, setAddressDrawerAddsUsed] = React.useState(0);
         const [ccExpanded, setCcExpanded] = React.useState(false);
         const [ccWrapCount, setCcWrapCount] = React.useState(0);
         const ccContainerRef = React.useRef(null);
-        const availableDrawerContacts = props.availableCcContacts || [];
+        const availableDrawerContacts = props.ccContactStatuses || props.availableCcContacts || [];
         const availableDrawerBccs = props.availableBccContacts || [];
         const addressBookCards = [
           ...availableDrawerContacts.map((contact) => ({
@@ -3349,6 +3351,10 @@
             kind: "drawer",
             itemType: "contact",
             item: contact,
+            unavailable: contact.available === false,
+            unavailableReason: contact.statusText || "",
+            waitText: contact.waitText || "",
+            blockedByStakeholder: contact.blockedByStakeholder || null,
           })),
           ...availableDrawerBccs.map((bcc, idx) => ({
             id: `AB_BCC_${bcc.id}_${idx}`,
@@ -3400,7 +3406,7 @@
           if (!drawerPayload) return "No additional details.";
           const item = drawerPayload.item || {};
           if (drawerPayload.itemType === "contact") {
-            return getThreadContactDetailText(item);
+            return getThreadContactDetailText(item, drawerPayload);
           }
           const lines = [];
           if (item.description) lines.push(item.description);
@@ -3412,7 +3418,7 @@
           }
           return lines.length ? lines.join("\n\n") : "No additional details.";
         };
-        const getThreadContactDetailText = (contact) => {
+        const getThreadContactDetailText = (contact, cardMeta = null) => {
           if (!contact) return "No additional details.";
           const lines = [];
           if (contact.title || contact.subtitle) {
@@ -3439,6 +3445,10 @@
           if (effectText && effectText !== "No listed effect.") {
             lines.push(`Effects: ${effectText}`);
           }
+          const reason = cardMeta?.unavailableReason || contact.statusText || "";
+          const waitText = cardMeta?.waitText || contact.waitText || "";
+          if (reason) lines.push(reason);
+          if (waitText) lines.push(`(${waitText})`);
           return lines.length ? lines.join("\n\n") : "No additional details.";
         };
         const getCcDetailText = (buff) => getThreadContactDetailText(buff);
@@ -3562,6 +3572,68 @@
           left = Math.max(padding, Math.min(left, window.innerWidth - popupWidth - padding));
           return { left, top };
         };
+        React.useLayoutEffect(() => {
+          if (!actionDetailPopup || !actionDetailPopupRef.current) return;
+          const el = actionDetailPopupRef.current;
+          const rect = el.getBoundingClientRect();
+          const padding = 8;
+          const maxLeft = Math.max(padding, window.innerWidth - rect.width - padding);
+          const maxTop = Math.max(padding, window.innerHeight - rect.height - padding);
+          const nextLeft = Math.max(padding, Math.min(actionDetailPopup.left, maxLeft));
+          const nextTop = Math.max(padding, Math.min(actionDetailPopup.top, maxTop));
+          if (nextLeft !== actionDetailPopup.left || nextTop !== actionDetailPopup.top) {
+            setActionDetailPopup((prev) => (prev ? { ...prev, left: nextLeft, top: nextTop } : prev));
+          }
+        }, [actionDetailPopup]);
+        React.useEffect(() => {
+          if (!actionDetailPopup || !actionDetailPopupRef.current) return undefined;
+          const onResize = () => {
+            const el = actionDetailPopupRef.current;
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            const padding = 8;
+            const maxLeft = Math.max(padding, window.innerWidth - rect.width - padding);
+            const maxTop = Math.max(padding, window.innerHeight - rect.height - padding);
+            const nextLeft = Math.max(padding, Math.min(actionDetailPopup.left, maxLeft));
+            const nextTop = Math.max(padding, Math.min(actionDetailPopup.top, maxTop));
+            if (nextLeft !== actionDetailPopup.left || nextTop !== actionDetailPopup.top) {
+              setActionDetailPopup((prev) => (prev ? { ...prev, left: nextLeft, top: nextTop } : prev));
+            }
+          };
+          window.addEventListener("resize", onResize);
+          return () => window.removeEventListener("resize", onResize);
+        }, [actionDetailPopup]);
+        React.useLayoutEffect(() => {
+          if (!ccDetailPopup || !ccDetailPopupRef.current) return;
+          const el = ccDetailPopupRef.current;
+          const rect = el.getBoundingClientRect();
+          const padding = 8;
+          const maxLeft = Math.max(padding, window.innerWidth - rect.width - padding);
+          const maxTop = Math.max(padding, window.innerHeight - rect.height - padding);
+          const nextLeft = Math.max(padding, Math.min(ccDetailPopup.left, maxLeft));
+          const nextTop = Math.max(padding, Math.min(ccDetailPopup.top, maxTop));
+          if (nextLeft !== ccDetailPopup.left || nextTop !== ccDetailPopup.top) {
+            setCcDetailPopup((prev) => (prev ? { ...prev, left: nextLeft, top: nextTop } : prev));
+          }
+        }, [ccDetailPopup]);
+        React.useEffect(() => {
+          if (!ccDetailPopup || !ccDetailPopupRef.current) return undefined;
+          const onResize = () => {
+            const el = ccDetailPopupRef.current;
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            const padding = 8;
+            const maxLeft = Math.max(padding, window.innerWidth - rect.width - padding);
+            const maxTop = Math.max(padding, window.innerHeight - rect.height - padding);
+            const nextLeft = Math.max(padding, Math.min(ccDetailPopup.left, maxLeft));
+            const nextTop = Math.max(padding, Math.min(ccDetailPopup.top, maxTop));
+            if (nextLeft !== ccDetailPopup.left || nextTop !== ccDetailPopup.top) {
+              setCcDetailPopup((prev) => (prev ? { ...prev, left: nextLeft, top: nextTop } : prev));
+            }
+          };
+          window.addEventListener("resize", onResize);
+          return () => window.removeEventListener("resize", onResize);
+        }, [ccDetailPopup]);
         const computeStakeholderPopupPos = (anchorRect, popupWidth = 260, popupHeight = 264) => {
           const padding = 8;
           const gap = 10;
@@ -3731,6 +3803,7 @@
 
         const useDrawerPayload = (payload) => {
           if (!payload) return false;
+          if (payload.unavailable) return false;
           let ok = false;
           if (payload.itemType === "contact") {
             ok = !!props.onUseAddressContact?.(payload.item?.id);
@@ -3754,7 +3827,7 @@
         };
 
         const onActionCardPointerDown = (actionId, evt) => {
-          if (props.disabledActions?.[actionId]) return;
+          if (props.disabledActions?.[actionId] && actionId !== "ULT") return;
           dragRef.current = {
             kind: "action",
             actionId,
@@ -3791,12 +3864,16 @@
             itemType: card.itemType,
             item: card.item,
             bccIndex: card.bccIndex,
+            unavailable: !!card.unavailable,
+            unavailableReason: card.unavailableReason || "",
+            waitText: card.waitText || "",
+            blockedByStakeholder: card.blockedByStakeholder || null,
             ...computeActionPopupPos(rect),
           });
         };
 
         const onActionCardClick = (actionId, evt) => {
-          if (props.disabledActions?.[actionId]) return;
+          if (props.disabledActions?.[actionId] && actionId !== "ULT") return;
           if (actionId === "ADDRESS_BOOK") {
             setAddressDrawerOpen(true);
             setAddressDrawerAddsUsed(0);
@@ -3822,6 +3899,7 @@
         const onActionDetailUse = () => {
           if (!actionDetailPopup) return;
           if (actionDetailPopup.kind === "drawer") {
+            if (actionDetailPopup.unavailable) return;
             const ok = useDrawerPayload(actionDetailPopup);
             if (ok) setActionDetailPopup(null);
             return;
@@ -4211,17 +4289,21 @@
                 },
                 displayedActionCards.map((card, idx) => {
                   const isActionCard = card.kind !== "drawer";
-                  const isDisabled = isActionCard ? !!props.disabledActions[card.id] : false;
+                  const isDisabled = isActionCard ? !!props.disabledActions[card.id] : !!card.unavailable;
                   const isDragging = dragActionId === card.id || dragDrawerPayload?.id === card.id;
                   const isUlt = card.id === "ULT";
                   const isContact = card.itemType === "contact";
                   const isBcc = card.itemType === "bcc";
-                  const headerStyle = isContact
+                  const headerStyle = !isActionCard && isDisabled
+                    ? { background: "#9ca3af", color: "#1f2937" }
+                    : isContact
                     ? { background: contactMeta.headerBg, color: contactMeta.headerText }
                     : isBcc
                       ? { background: bccMeta.headerBg, color: bccMeta.headerText }
                       : (isDisabled ? { background: "#9ca3af", color: "#1f2937" } : { background: "#000080", color: "#ffffff" });
-                  const frameStyle = isContact
+                  const frameStyle = !isActionCard && isDisabled
+                    ? { background: "#d1d5db", color: "#4b5563" }
+                    : isContact
                     ? { background: contactMeta.paneBg, color: contactMeta.paneText }
                     : isBcc
                       ? { background: bccMeta.paneBg, color: bccMeta.paneText }
@@ -4250,6 +4332,10 @@
                               itemType: card.itemType,
                               item: card.item,
                               bccIndex: card.bccIndex,
+                              unavailable: !!card.unavailable,
+                              unavailableReason: card.unavailableReason || "",
+                              waitText: card.waitText || "",
+                              blockedByStakeholder: card.blockedByStakeholder || null,
                             },
                             evt,
                           );
@@ -4272,7 +4358,18 @@
                             ),
                           ),
                         )
-                      : e("div", { className: "shop-card-name" }, card.label),
+                      : e(
+                          "div",
+                          { className: "w-full flex flex-col" },
+                          e("div", { className: "shop-card-name" }, card.label),
+                          card.unavailable
+                            ? e(
+                                "div",
+                                { className: "text-[9px] leading-tight text-gray-600 mt-1 whitespace-normal" },
+                                card.unavailableReason || "Unavailable",
+                              )
+                            : null,
+                        ),
                   );
                 }),
               ),
@@ -4325,11 +4422,15 @@
                     headerText:
                       dragDrawerPayload.itemType === "bcc" ? bccMeta.label : contactMeta.label,
                     headerStyle:
-                      dragDrawerPayload.itemType === "bcc"
+                      dragDrawerPayload.unavailable
+                        ? { background: "#9ca3af", color: "#1f2937" }
+                        : dragDrawerPayload.itemType === "bcc"
                         ? { background: bccMeta.headerBg, color: bccMeta.headerText }
                         : { background: contactMeta.headerBg, color: contactMeta.headerText },
                     frameStyle:
-                      dragDrawerPayload.itemType === "bcc"
+                      dragDrawerPayload.unavailable
+                        ? { background: "#d1d5db", color: "#4b5563" }
+                        : dragDrawerPayload.itemType === "bcc"
                         ? { background: bccMeta.paneBg, color: bccMeta.paneText }
                         : { background: contactMeta.paneBg, color: contactMeta.paneText },
                   },
@@ -4360,6 +4461,7 @@
             ? e(
                 "div",
                 {
+                  ref: actionDetailPopupRef,
                   className: "game-action-detail-popup shop-item-overlay-frame retro-border p-3",
                   style: {
                     left: `${actionDetailPopup.left}px`,
@@ -4383,17 +4485,23 @@
                 e(
                   "div",
                   { className: "flex gap-2 mt-3" },
-                  e(
-                    "button",
-                    {
-                      className: "flex-1 retro-button text-[10px] font-bold py-1 uppercase",
-                      disabled:
-                        actionDetailPopup.kind === "action" &&
-                        !!props.disabledActions?.[actionDetailPopup.id],
-                      onClick: onActionDetailUse,
-                    },
-                    "Use",
-                  ),
+                  (() => {
+                    const useDisabled =
+                      (actionDetailPopup.kind === "action" &&
+                        !!props.disabledActions?.[actionDetailPopup.id]) ||
+                      (actionDetailPopup.kind === "drawer" && !!actionDetailPopup.unavailable);
+                    return e(
+                      "button",
+                      {
+                        className: `flex-1 retro-button text-[10px] font-bold py-1 uppercase ${
+                          useDisabled ? "opacity-50 cursor-not-allowed" : ""
+                        }`,
+                        disabled: useDisabled,
+                        onClick: onActionDetailUse,
+                      },
+                      "Use",
+                    );
+                  })(),
                   e(
                     "button",
                     {
@@ -4409,6 +4517,7 @@
             ? e(
                 "div",
                 {
+                  ref: ccDetailPopupRef,
                   className: "game-cc-detail-popup shop-item-overlay-frame retro-border p-3",
                   style: {
                     left: `${ccDetailPopup.left}px`,
@@ -5536,9 +5645,17 @@
           return () => window.removeEventListener("keydown", onKeyDown);
         }, [state, activeScreen]);
 
-        const availableCcContacts = ReplyAllEngine.play.getAvailablePlayerCcContacts(
-          state,
-        );
+        const ccContactStatuses = ReplyAllEngine.play.getPlayerCcContactStatuses
+          ? ReplyAllEngine.play.getPlayerCcContactStatuses(state)
+          : ReplyAllEngine.play.getAvailablePlayerCcContacts(state).map((c) => ({
+              ...c,
+              available: true,
+              status: "available",
+              statusText: "",
+              waitText: "",
+              blockedByStakeholder: null,
+            }));
+        const availableCcContacts = ccContactStatuses.filter((c) => c.available);
         const availableBccContacts = ReplyAllEngine.play.getAvailablePlayerBccContacts(
           state,
         );
@@ -5609,7 +5726,7 @@
             ? "Deflect unavailable."
             : "Deflect incoming damage and reflect pressure.",
           ULT: disabledActions.ULT
-            ? "Reply All requires full leverage."
+            ? `Reply All requires full leverage (would deal ~${Math.floor(playerDamageUlt)} to all).`
             : `Reply All for ~${Math.floor(playerDamageUlt)} to all.`,
         };
 
@@ -5739,6 +5856,7 @@
           ccPickerOpen,
           bccPickerOpen,
           availableCcContacts,
+          ccContactStatuses,
           availableBccContacts,
           onPickCc: (contactId) => onAction("CC", { contactId }),
           onPickBcc: (bccIndex) => onAction("BCC", { bccIndex }),

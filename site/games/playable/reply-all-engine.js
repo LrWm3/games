@@ -4041,6 +4041,77 @@
       .filter((c) => c && !isContactInLoop(state, c.id) && !isContactImplicated(state, c));
   }
 
+  function getPlayerCcContactStatuses(state) {
+    const addressBookIds = state?.player?.addressBook || [];
+    const opponents = state?.opponents || [];
+    const activeOpponents = opponents.filter((o) => (o?.hp || 0) > 0);
+    return addressBookIds
+      .map((id) => CONTACTS.find((c) => c.id === id))
+      .filter(Boolean)
+      .map((contact) => {
+        const playerHasContact = (state.player?.buffs || []).some(
+          (b) => b?.id === contact.id && b?.usedBy === state.player?.name,
+        );
+        if (playerHasContact) {
+          return {
+            ...contact,
+            available: false,
+            status: "already_cc_self",
+            statusText: "Already CC'd by you.",
+            waitText: "",
+            blockedByStakeholder: null,
+          };
+        }
+
+        let blockedByStakeholder = null;
+        let blockedByName = "";
+        for (let i = 0; i < activeOpponents.length; i += 1) {
+          const opp = activeOpponents[i];
+          const buff = (opp.buffs || []).find((b) => b?.id === contact.id);
+          if (!buff) continue;
+          blockedByStakeholder = opp;
+          blockedByName = buff.usedBy || opp.name || "";
+          break;
+        }
+        if (blockedByStakeholder) {
+          const byLabel = blockedByName || "another stakeholder";
+          return {
+            ...contact,
+            available: false,
+            status: "already_cc_other",
+            statusText: `Already CC'd by ${byLabel}.`,
+            waitText: blockedByStakeholder?.name
+              ? `May be CC'd once ${blockedByStakeholder.name} opts out.`
+              : "",
+            blockedByStakeholder: blockedByStakeholder?.name || null,
+          };
+        }
+
+        const implicatedStakeholder = activeOpponents.find(
+          (o) => o.employeeId && contact.employeeId && o.employeeId === contact.employeeId,
+        );
+        if (implicatedStakeholder) {
+          return {
+            ...contact,
+            available: false,
+            status: "implicated",
+            statusText: "Implicated in this thread.",
+            waitText: `May be CC'd once ${implicatedStakeholder.name} opts out.`,
+            blockedByStakeholder: implicatedStakeholder.name || null,
+          };
+        }
+
+        return {
+          ...contact,
+          available: true,
+          status: "available",
+          statusText: "",
+          waitText: "",
+          blockedByStakeholder: null,
+        };
+      });
+  }
+
   function collectDefeats(state, byPlayer, attacker, helpers = {}) {
     (state.opponents || []).forEach((o) => {
       if (o.hp > 0) return;
@@ -4834,6 +4905,7 @@
     addMessageEntry,
     buildInboxRows,
     getAvailablePlayerCcContacts,
+    getPlayerCcContactStatuses,
     getAvailablePlayerBccContacts,
     resolvePlayerCcAction,
     resolvePlayerBccAction,
