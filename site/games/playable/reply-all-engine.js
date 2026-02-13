@@ -2474,7 +2474,6 @@
             : unit.maxHp ?? unit.hp;
           if (unit.hp < maxHp) return;
         }
-          return;
         if (effect.chance != null) {
           const key = helpers.rngKeyForContext?.(state, context) || "misc";
           const rngStore = getRngStore(state);
@@ -2577,6 +2576,14 @@
       mergedHelpers.rngKeyForContext = (s, ctx) => {
         if (ctx?.pack) return getRngStore(s).shopKey(s);
         return "misc";
+      };
+    }
+    if (!mergedHelpers.recordEndRoundUpgrade) {
+      mergedHelpers.recordEndRoundUpgrade = (contactId) => {
+        if (!contactId) return;
+        if (!state.roundEndUpgrades) state.roundEndUpgrades = {};
+        state.roundEndUpgrades[contactId] =
+          (state.roundEndUpgrades[contactId] || 0) + 1;
       };
     }
     return runUnitEffectsPure(state, unit, event, context, mergedHelpers);
@@ -2758,7 +2765,25 @@
   function getOwnedAssets(state) {
     const p = state?.player || {};
     const addressBook = (p.addressBook || [])
-      .map((id) => CONTACTS.find((c) => c.id === id))
+      .map((id) => {
+        const base = CONTACTS.find((c) => c.id === id);
+        if (!base) return null;
+        const boosts = p.contactPermanentBoosts?.[id] || null;
+        const mergedEff = { ...(base.eff || {}) };
+        if (boosts && typeof boosts === "object") {
+          Object.keys(boosts).forEach((key) => {
+            const value = boosts[key];
+            if (typeof value !== "number") return;
+            mergedEff[key] = (mergedEff[key] || 0) + value;
+          });
+        }
+        return {
+          ...base,
+          eff: Object.keys(mergedEff).length ? mergedEff : base.eff,
+          trainingBoosts: boosts ? { ...boosts } : null,
+          trainingCount: p.contactTrainingCount?.[id] || 0,
+        };
+      })
       .filter(Boolean);
     return {
       addressBook,

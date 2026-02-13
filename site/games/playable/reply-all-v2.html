@@ -212,6 +212,11 @@
         z-index: 130;
         width: 260px;
       }
+      .game-cc-detail-popup {
+        position: fixed;
+        z-index: 130;
+        width: 260px;
+      }
       .game-action-dock {
         position: fixed;
         left: 50%;
@@ -1771,6 +1776,13 @@
               ? ReplyAllEngine.core.getDepartmentName(item.departmentId)
               : "";
             if (dept) lines.push(`Department: ${dept}`);
+            if (item.trainingBoosts && ReplyAllEngine.copy?.formatStatsText) {
+              const trainedText = ReplyAllEngine.copy.formatStatsText(item.trainingBoosts);
+              if (trainedText) {
+                const trainingCount = Math.max(0, Math.floor(item.trainingCount || 0));
+                lines.push(`Training (${trainingCount}): ${trainedText}`);
+              }
+            }
           }
           const effectText = ReplyAllEngine.copy?.getItemBonusText
             ? ReplyAllEngine.copy.getItemBonusText(item, {})
@@ -3320,6 +3332,7 @@
         const [isOverTargetDrop, setIsOverTargetDrop] = React.useState(false);
         const [dragPointer, setDragPointer] = React.useState({ x: 0, y: 0 });
         const [actionDetailPopup, setActionDetailPopup] = React.useState(null);
+        const [ccDetailPopup, setCcDetailPopup] = React.useState(null);
         const [stakeholderPopup, setStakeholderPopup] = React.useState(null);
         const [addressDrawerOpen, setAddressDrawerOpen] = React.useState(false);
         const [addressDrawerAddsUsed, setAddressDrawerAddsUsed] = React.useState(0);
@@ -3385,12 +3398,11 @@
         const getDrawerDetailText = (drawerPayload) => {
           if (!drawerPayload) return "No additional details.";
           const item = drawerPayload.item || {};
+          if (drawerPayload.itemType === "contact") {
+            return getThreadContactDetailText(item);
+          }
           const lines = [];
           if (item.description) lines.push(item.description);
-          if (drawerPayload.itemType === "contact" && item.departmentId) {
-            const dept = ReplyAllEngine.core.getDepartmentName(item.departmentId);
-            if (dept) lines.push(`Department: ${dept}`);
-          }
           const effectText = ReplyAllEngine.copy?.getItemBonusText
             ? ReplyAllEngine.copy.getItemBonusText(item, {})
             : "";
@@ -3399,6 +3411,36 @@
           }
           return lines.length ? lines.join("\n\n") : "No additional details.";
         };
+        const getThreadContactDetailText = (contact) => {
+          if (!contact) return "No additional details.";
+          const lines = [];
+          if (contact.title || contact.subtitle) {
+            const subtitle = contact.subtitle ? ` • ${contact.subtitle}` : "";
+            lines.push(`${contact.title || ""}${subtitle}`.trim());
+          }
+          if (contact.departmentId) {
+            const dept = ReplyAllEngine.core.getDepartmentName(contact.departmentId);
+            if (dept) lines.push(`Department: ${dept}`);
+          }
+          const trainingBoosts =
+            (contact.id && player?.contactPermanentBoosts?.[contact.id]) || null;
+          const trainingCount =
+            (contact.id && Number(player?.contactTrainingCount?.[contact.id])) || 0;
+          if (trainingBoosts && ReplyAllEngine.copy?.formatStatsText) {
+            const trainingText = ReplyAllEngine.copy.formatStatsText(trainingBoosts);
+            if (trainingText) {
+              lines.push(`Training (${Math.max(0, trainingCount)}): ${trainingText}`);
+            }
+          }
+          const effectText = ReplyAllEngine.copy?.getItemBonusText
+            ? ReplyAllEngine.copy.getItemBonusText(contact, {})
+            : "";
+          if (effectText && effectText !== "No listed effect.") {
+            lines.push(`Effects: ${effectText}`);
+          }
+          return lines.length ? lines.join("\n\n") : "No additional details.";
+        };
+        const getCcDetailText = (buff) => getThreadContactDetailText(buff);
         const dragDetailTitle = dragAction
           ? (actionLabelById[dragAction.id] || dragAction.id)
           : dragDrawerPayload
@@ -3602,6 +3644,7 @@
               }
               setActionDetailPopup(null);
               setStakeholderPopup(null);
+              setCcDetailPopup(null);
             }
             if (drag.active) {
               const overEmail = isPointOverEmailDrop(evt.clientX, evt.clientY);
@@ -3668,19 +3711,22 @@
           };
         }, [props, maxAddressAdds]);
         React.useEffect(() => {
-          if (!actionDetailPopup || activeDrag) return undefined;
+          if ((!actionDetailPopup && !ccDetailPopup) || activeDrag) return undefined;
           const onPointerDown = (evt) => {
             const node = evt?.target;
             if (!node || typeof node.closest !== "function") return;
             if (node.closest(".game-action-detail-popup")) return;
+            if (node.closest(".game-cc-detail-popup")) return;
             if (node.closest(".game-action-card")) return;
+            if (node.closest(".cc-pill")) return;
             setActionDetailPopup(null);
+            setCcDetailPopup(null);
           };
           window.addEventListener("pointerdown", onPointerDown, true);
           return () => {
             window.removeEventListener("pointerdown", onPointerDown, true);
           };
-        }, [actionDetailPopup, activeDrag]);
+        }, [actionDetailPopup, ccDetailPopup, activeDrag]);
 
         const useDrawerPayload = (payload) => {
           if (!payload) return false;
@@ -3968,8 +4014,25 @@
                           sortedBuffs.map((b, idx) => {
                             const subtitle = b.subtitle ? ` • ${b.subtitle}` : "";
                             return e(
-                              "div",
-                              { key: `buff-${idx}-${b?.id || "x"}`, className: "cc-pill" },
+                              "button",
+                              {
+                                key: `buff-${idx}-${b?.id || "x"}`,
+                                className: "cc-pill",
+                                type: "button",
+                                onClick: (evt) => {
+                                  evt.stopPropagation();
+                                  const anchorRect = evt.currentTarget?.getBoundingClientRect?.();
+                                  if (!anchorRect) return;
+                                  const pos = computeActionPopupPos(anchorRect, 260, 164);
+                                  setActionDetailPopup(null);
+                                  setStakeholderPopup(null);
+                                  setCcDetailPopup({
+                                    buff: b,
+                                    left: pos.left,
+                                    top: pos.top,
+                                  });
+                                },
+                              },
                               e("span", { className: "pill-text" }, `${b.name || b.id || "CC"}${subtitle} (by ${b.usedBy || "Unknown"})`),
                             );
                           }),
@@ -4320,6 +4383,45 @@
                     {
                       className: "retro-button text-[10px] font-bold py-1 px-2 uppercase",
                       onClick: () => setActionDetailPopup(null),
+                    },
+                    "X",
+                  ),
+                ),
+              )
+            : null,
+          ccDetailPopup && !activeDrag
+            ? e(
+                "div",
+                {
+                  className: "game-cc-detail-popup shop-item-overlay-frame retro-border p-3",
+                  style: {
+                    left: `${ccDetailPopup.left}px`,
+                    top: `${ccDetailPopup.top}px`,
+                  },
+                },
+                e(
+                  "div",
+                  { className: "text-[10px] font-bold uppercase text-[#000080] mb-1" },
+                  "CC Profile",
+                ),
+                e(
+                  "div",
+                  { className: "text-[11px] font-bold text-gray-900 mb-1" },
+                  ccDetailPopup.buff?.name || "Contact",
+                ),
+                e(
+                  "div",
+                  { className: "text-[11px] leading-snug text-gray-800 whitespace-pre-wrap" },
+                  getCcDetailText(ccDetailPopup.buff),
+                ),
+                e(
+                  "div",
+                  { className: "flex justify-end mt-3" },
+                  e(
+                    "button",
+                    {
+                      className: "retro-button text-[10px] font-bold py-1 px-2 uppercase",
+                      onClick: () => setCcDetailPopup(null),
                     },
                     "X",
                   ),
