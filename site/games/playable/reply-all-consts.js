@@ -1319,7 +1319,7 @@ const SIGNOFFS = [
     ],
   },
   {
-    id: "team_regards_signoff",
+    id: "team_with_regards_signoff",
     name: "With regards from the team,",
     rarity: "common",
     effects: [

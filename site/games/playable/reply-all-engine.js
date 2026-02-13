@@ -4471,6 +4471,32 @@
       };
       playerResult = resolveAction(state, action, helpers);
       if (playerResult && playerResult.ok) {
+        if (upperType === "ATTACK") {
+          runUnitEffects(state, state.player, "reply_to", {
+            targetId: action.targetId || state.targetId,
+            result: playerResult.result || null,
+          }, helpers);
+        }
+        if (upperType === "ESCALATE") {
+          runUnitEffects(state, state.player, "escalate", {
+            results: Array.isArray(playerResult.results) ? playerResult.results : [],
+          }, helpers);
+        }
+        if (upperType === "ULT") {
+          runUnitEffects(state, state.player, "reply_all", {
+            results: Array.isArray(playerResult.results) ? playerResult.results : [],
+          }, helpers);
+        }
+        if (upperType === "DEFLECT") {
+          runUnitEffects(state, state.player, "deflect_action", {}, helpers);
+        }
+        if (upperType === "PROMOTE") {
+          const overflow = Math.max(
+            0,
+            Math.floor((playerResult.before || 0) + (playerResult.heal || 0) - (maxHp || 0)),
+          );
+          runUnitEffects(state, state.player, "promote_overflow", { overflow }, helpers);
+        }
         if (upperType === "ATTACK") applyLeverage(state, "reply_to", 2);
         if (upperType === "ESCALATE") applyLeverage(state, "escalate", 1);
         if (upperType === "DEFLECT") applyLeverage(state, "deflect", 0);
