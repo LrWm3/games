@@ -33,16 +33,42 @@
         --win-bg: #568fb5;
         --shop-card-width: 84px;
         --shop-card-height: 120px;
+        --bg-viewport-h: 100dvh;
+        --fg-viewport-h: 100svh;
+      }
+      @supports not (height: 100dvh) {
+        :root {
+          --bg-viewport-h: 100vh;
+        }
+      }
+      @supports not (height: 100svh) {
+        :root {
+          --fg-viewport-h: 100vh;
+        }
+      }
+      html,
+      body,
+      #app {
+        height: var(--bg-viewport-h);
+        min-height: var(--bg-viewport-h);
       }
       body {
         font-family: "Inter", sans-serif;
         background-color: var(--win-bg);
-        min-height: 100dvh;
         margin: 0;
         color: black;
+        overflow: hidden;
+        overscroll-behavior: none;
+        -webkit-overflow-scrolling: touch;
       }
       .win-bg {
         background-color: var(--win-bg);
+        min-height: var(--bg-viewport-h);
+      }
+      body.is-dragging-cards {
+        overflow: hidden !important;
+        overscroll-behavior: none;
+        touch-action: none;
       }
       .terminal-font {
         font-family: "VT323", monospace;
@@ -446,6 +472,10 @@
         align-items: flex-start;
         overflow: hidden;
         min-height: calc(var(--shop-card-height) + 2px + 16px);
+        touch-action: pan-x;
+        overscroll-behavior: contain;
+        -webkit-user-select: none;
+        user-select: none;
       }
       .adaptive-card-track .shop-card-item {
         flex: 0 0 var(--shop-card-width);
@@ -486,7 +516,7 @@
       }
     </style>
   </head>
-  <body class="min-h-screen flex items-center justify-center">
+  <body>
     <div id="app" class="w-full"></div>
 
     <script>
@@ -571,6 +601,11 @@
             } catch (err) {}
           },
         });
+      }
+
+      function setCardDragViewportLock(isLocked) {
+        if (!document || !document.body || !document.body.classList) return;
+        document.body.classList.toggle("is-dragging-cards", !!isLocked);
       }
 
       function StartScreen(props) {
@@ -2261,10 +2296,12 @@
                 ghostClass: "shop-card-ghost",
                 ...sortableOptions,
                 onStart: (evt) => {
+                  setCardDragViewportLock(true);
                   if (popupSource) onDragPopupStart(evt, popupSource);
                   if (typeof onStart === "function") onStart(evt);
                 },
                 onEnd: (evt) => {
+                  setCardDragViewportLock(false);
                   if (popupSource) onDragPopupEnd();
                   else closeDetailPopup();
                   suppressCardClickUntilRef.current = Date.now() + 300;
@@ -2544,6 +2581,7 @@
           });
 
           return () => {
+            setCardDragViewportLock(false);
             sortables.forEach((s) => s.destroy());
           };
         }, [activePack]);
@@ -3277,6 +3315,7 @@
             const dist = Math.hypot(dx, dy);
             if (!drag.active && dist > 6) {
               drag.active = true;
+              setCardDragViewportLock(true);
               if (drag.kind === "action") {
                 setDragActionId(drag.actionId);
               } else if (drag.kind === "drawer") {
@@ -3329,6 +3368,7 @@
             setDragDrawerPayload(null);
             setIsOverEmailDrop(false);
             setDragPointer({ x: 0, y: 0 });
+            setCardDragViewportLock(false);
             dragRef.current = null;
           };
           window.addEventListener("pointermove", onPointerMove);
@@ -3338,8 +3378,23 @@
             window.removeEventListener("pointermove", onPointerMove);
             window.removeEventListener("pointerup", onPointerUp);
             window.removeEventListener("pointercancel", onPointerUp);
+            setCardDragViewportLock(false);
           };
         }, [props, maxAddressAdds]);
+        React.useEffect(() => {
+          if (!actionDetailPopup || activeDrag) return undefined;
+          const onPointerDown = (evt) => {
+            const node = evt?.target;
+            if (!node || typeof node.closest !== "function") return;
+            if (node.closest(".game-action-detail-popup")) return;
+            if (node.closest(".game-action-card")) return;
+            setActionDetailPopup(null);
+          };
+          window.addEventListener("pointerdown", onPointerDown, true);
+          return () => {
+            window.removeEventListener("pointerdown", onPointerDown, true);
+          };
+        }, [actionDetailPopup, activeDrag]);
 
         const useDrawerPayload = (payload) => {
           if (!payload) return false;
@@ -3492,7 +3547,8 @@
           "div",
           {
             className:
-              "fixed inset-0 z-[95] flex flex-col w-[calc(100%-1rem)] h-[calc(100%-9rem)] max-w-5xl bg-[#c0c0c0] retro-border overflow-hidden m-2",
+              "fixed top-0 bottom-0 left-0 right-0 z-[95] flex flex-col w-[calc(100%-1rem)] h-[calc(100%-9rem)] max-w-5xl bg-[#c0c0c0] retro-border overflow-hidden mx-auto my-2",
+            style: { minHeight: "calc(var(--fg-viewport-h) - 9rem)" },
           },
           e(
             "div",
