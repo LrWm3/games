@@ -3576,7 +3576,7 @@
         const collectionPageItems = collectionItems.slice(collectionSliceStart, collectionSliceStart + 6);
         const collectionTopItems = collectionPageItems.slice(0, 3);
         const collectionBottomItems = collectionPageItems.slice(3, 6);
-        const collectionPageText = `${clampedCollectionPage}/${Math.max(0, collectionPagesTotal - 1)}`;
+        const collectionPageText = `${clampedCollectionPage + 1}/${collectionPagesTotal}`;
         const collectionTopRef = React.useRef(null);
         const collectionBottomRef = React.useRef(null);
         const getCollectionDetailText = (item, itemType) => {
