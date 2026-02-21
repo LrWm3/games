@@ -72,11 +72,11 @@
         "8": 2.304,
         "9": 2.315,
         "10": 2.33,
-        Hack: 2.5,
-        Board: 2.7,
-        Control: 3.1,
-        Normal: 3.6,
-        Peel: 4.3,
+        Hack: 2.36,
+        Board: 2.45,
+        Control: 2.6,
+        Normal: 2.9,
+        Peel: 3.6,
       };
 
       const DEFAULT_PHYSICS = {
@@ -525,8 +525,8 @@
             <div
               className="absolute bg-yellow-500/10 pointer-events-none"
               style={{
-                left: `calc(50% - ${0.142 * scale}px)`,
-                width: `${0.284 * scale}px`,
+                left: `calc(50% - ${0.0284 * scale}px)`,
+                width: `${0.0568 * scale}px`,
                 top: RINK.TEE_LINE * scale,
                 height: (RINK.HOG_LINE - RINK.TEE_LINE) * scale,
               }}
@@ -707,7 +707,7 @@
         const [houseCamZoom, setHouseCamZoom] = useState(() => {
           const saved = localStorage.getItem("curling_house_cam_zoom_adv");
           const parsed = saved ? parseFloat(saved) : 2.2;
-          return Number.isFinite(parsed) ? Math.max(1.2, Math.min(6, parsed)) : 2.2;
+          return Number.isFinite(parsed) ? Math.max(1.2, Math.min(7.8, parsed)) : 2.2;
         });
 
         const engineRef = useRef(
@@ -740,6 +740,9 @@
         const mainSheetRef = useRef(null);
         const houseCamSheetRef = useRef(null);
         const prevBroomXRef = useRef(0);
+        const shotHistoryRef = useRef([{ stones: [], nextColor: -1 }]);
+        const shotHistoryIndexRef = useRef(0);
+        const [, setHistoryTick] = useState(0);
 
         useEffect(() => {
           localStorage.setItem("curling_weights_adv", JSON.stringify(weights));
@@ -805,10 +808,64 @@
           return () => window.removeEventListener("resize", updateScale);
         }, []);
 
+        const resetHistoryWithCurrentState = useCallback(() => {
+          shotHistoryRef.current = [
+            {
+              stones: engineRef.current.stones.map((s) => s.clone()),
+              nextColor: engineRef.current.nextColor,
+            },
+          ];
+          shotHistoryIndexRef.current = 0;
+          setHistoryTick((v) => v + 1);
+        }, []);
+
+        const recordShotState = useCallback(() => {
+          const truncated = shotHistoryRef.current.slice(
+            0,
+            shotHistoryIndexRef.current + 1,
+          );
+          truncated.push({
+            stones: engineRef.current.stones.map((s) => s.clone()),
+            nextColor: engineRef.current.nextColor,
+          });
+          shotHistoryRef.current = truncated;
+          shotHistoryIndexRef.current = truncated.length - 1;
+          setHistoryTick((v) => v + 1);
+        }, []);
+
+        const applyHistoryState = useCallback((targetIndex) => {
+          const entry = shotHistoryRef.current[targetIndex];
+          if (!entry) return;
+          engineRef.current.stones = entry.stones.map((s) => s.clone());
+          engineRef.current.nextColor = entry.nextColor;
+          setStones([...engineRef.current.stones]);
+          setPrediction(null);
+          setViolationMsg(null);
+          setSnapshotState(null);
+          snapshotRef.current = null;
+          shotHistoryIndexRef.current = targetIndex;
+          setHistoryTick((v) => v + 1);
+        }, []);
+
+        const handleUndoShot = () => {
+          if (isSimulating || shotHistoryIndexRef.current <= 0) return;
+          applyHistoryState(shotHistoryIndexRef.current - 1);
+        };
+
+        const handleRedoShot = () => {
+          if (
+            isSimulating ||
+            shotHistoryIndexRef.current >= shotHistoryRef.current.length - 1
+          )
+            return;
+          applyHistoryState(shotHistoryIndexRef.current + 1);
+        };
+
         const runPhysics = useCallback((preThrowSnapshot) => {
           if (engineRef.current.update(preThrowSnapshot)) {
             setIsSimulating(false);
             setStones([...engineRef.current.stones]);
+            recordShotState();
             if (engineRef.current.lastViolation) {
               setViolationMsg(engineRef.current.lastViolation);
               setTimeout(() => setViolationMsg(null), 4000);
@@ -818,7 +875,7 @@
             setStones([...engineRef.current.stones]);
             requestAnimationFrame(() => runPhysics(preThrowSnapshot));
           }
-        }, []);
+        }, [recordShotState]);
 
         const handleSimulate = () => {
           const v = parseFloat(weights[selectedWeight]);
@@ -866,6 +923,7 @@
             setStones([...engineRef.current.stones]);
             setPrediction(null);
             setViolationMsg(null);
+            resetHistoryWithCurrentState();
           }
         };
 
@@ -878,6 +936,7 @@
           setPrediction(null);
           setIsSimulating(false);
           setViolationMsg(null);
+          resetHistoryWithCurrentState();
         };
 
         const clampBroomToScoringZone = (x, y) => {
@@ -973,12 +1032,34 @@
                 </div>
               )}
 
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className={`px-3 py-1.5 rounded text-[9px] font-bold border border-white/5 uppercase transition ${showSettings ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300"}`}
-              >
-                {showSettings ? "Close" : "Setup"}
-              </button>
+              <div className="flex items-center gap-1 ml-2">
+                <button
+                  onClick={handleUndoShot}
+                  disabled={
+                    isSimulating || shotHistoryIndexRef.current <= 0
+                  }
+                  className="px-2 py-1 rounded text-[9px] font-bold border border-white/10 uppercase bg-slate-800 text-slate-200 disabled:opacity-40"
+                >
+                  Undo
+                </button>
+                <button
+                  onClick={handleRedoShot}
+                  disabled={
+                    isSimulating ||
+                    shotHistoryIndexRef.current >=
+                      shotHistoryRef.current.length - 1
+                  }
+                  className="px-2 py-1 rounded text-[9px] font-bold border border-white/10 uppercase bg-slate-800 text-slate-200 disabled:opacity-40"
+                >
+                  Redo
+                </button>
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className={`px-3 py-1 rounded text-[9px] font-bold border border-white/5 uppercase transition ${showSettings ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300"}`}
+                >
+                  {showSettings ? "Close" : "Setup"}
+                </button>
+              </div>
             </div>
 
             {/* Center Views */}
@@ -1023,7 +1104,7 @@
                     <input
                       type="range"
                       min="1.2"
-                      max="6"
+                      max="7.8"
                       step="0.1"
                       value={houseCamZoom}
                       onChange={(e) => setHouseCamZoom(parseFloat(e.target.value))}
@@ -1032,7 +1113,7 @@
                     <button
                       onClick={() =>
                         setHouseCamZoom((z) =>
-                          Math.min(6, Math.round((z + 0.1) * 10) / 10),
+                          Math.min(7.8, Math.round((z + 0.1) * 10) / 10),
                         )
                       }
                       className="w-5 h-5 rounded bg-slate-800 text-slate-200 text-xs font-black"
