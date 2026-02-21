@@ -116,7 +116,7 @@
         constructor(color, pos, velocity, angle, spin, phys) {
           this.color = color;
           this.mass = 19.0;
-          this.outerRadius = 0.142;
+          this.outerRadius = 0.145;
           this.ringRadius = 0.065;
           this.phys = phys;
           this.weight = this.mass * phys.g;
@@ -814,12 +814,14 @@
         const [currentEnd, setCurrentEnd] = useState(1);
         const [completedEnds, setCompletedEnds] = useState([]);
         const [hammerTeam, setHammerTeam] = useState("yellow");
+        const [lastShotDebug, setLastShotDebug] = useState(null);
 
         const [scale, setScale] = useState(10);
         const mainViewRef = useRef(null);
         const mainSheetRef = useRef(null);
         const houseCamSheetRef = useRef(null);
         const prevBroomXRef = useRef(0);
+        const activeShotDebugRef = useRef(null);
         const shotHistoryRef = useRef([{ stones: [], nextColor: -1 }]);
         const shotHistoryIndexRef = useRef(0);
         const [, setHistoryTick] = useState(0);
@@ -1005,11 +1007,66 @@
         }, [hammerTeam, resetHistoryWithCurrentState, scoreEnd]);
 
         const runPhysics = useCallback((preThrowSnapshot) => {
-          if (engineRef.current.update(preThrowSnapshot)) {
+          const stepDt = engineRef.current.dt;
+          const tracker = activeShotDebugRef.current;
+          const trackedStoneBefore =
+            tracker && engineRef.current.stones[tracker.stoneIndex]
+              ? engineRef.current.stones[tracker.stoneIndex]
+              : null;
+          const nearHogY = RINK.LENGTH - RINK.HOG_LINE;
+          const farHogY = RINK.HOG_LINE;
+          const finished = engineRef.current.update(preThrowSnapshot);
+
+          if (tracker && trackedStoneBefore) {
+            const trackedStoneAfter = engineRef.current.stones[tracker.stoneIndex];
+            if (trackedStoneAfter) {
+              const prevY = tracker.prevY;
+              const currentY = trackedStoneAfter.pos[1];
+              const markCrossing = (targetY, key) => {
+                if (tracker[key] !== null) return;
+                if (prevY > targetY && currentY <= targetY) {
+                  const denom = prevY - currentY;
+                  const frac =
+                    denom > 1e-9
+                      ? Math.max(0, Math.min(1, (prevY - targetY) / denom))
+                      : 0;
+                  tracker[key] = tracker.elapsed + stepDt * frac;
+                }
+              };
+              markCrossing(nearHogY, "nearHogTime");
+              markCrossing(farHogY, "farHogTime");
+              tracker.prevY = currentY;
+            }
+            tracker.elapsed += stepDt;
+          }
+
+          if (finished) {
             setIsSimulating(false);
             setStones([...engineRef.current.stones]);
             recordShotState();
             finalizeEndIfComplete();
+            if (tracker) {
+              const trackedStone = engineRef.current.stones[tracker.stoneIndex];
+              const rotations = trackedStone
+                ? Math.abs(
+                    (trackedStone.angularPos - tracker.startAngularPos) /
+                      (2 * Math.PI),
+                  )
+                : null;
+              const hogToHog =
+                tracker.nearHogTime !== null && tracker.farHogTime !== null
+                  ? tracker.farHogTime - tracker.nearHogTime
+                  : null;
+              setLastShotDebug({
+                rotations,
+                toNearHog: tracker.nearHogTime,
+                hogToHog,
+                totalTime: tracker.elapsed,
+                reachedNearHog: tracker.nearHogTime !== null,
+                reachedFarHog: tracker.farHogTime !== null,
+              });
+              activeShotDebugRef.current = null;
+            }
             if (engineRef.current.lastViolation) {
               setViolationMsg(engineRef.current.lastViolation);
               setTimeout(() => setViolationMsg(null), 4000);
@@ -1038,6 +1095,7 @@
 
         const handleDeliver = () => {
           setViolationMsg(null);
+          setLastShotDebug(null);
           const preThrowStones = engineRef.current.stones.map((s) => s.clone());
           setSnapshotState({
             stones: preThrowStones,
@@ -1054,6 +1112,16 @@
           );
 
           engineRef.current.addStone(v, angle, spin);
+          const shotStoneIndex = engineRef.current.stones.length - 1;
+          const shotStone = engineRef.current.stones[shotStoneIndex];
+          activeShotDebugRef.current = {
+            stoneIndex: shotStoneIndex,
+            startAngularPos: shotStone ? shotStone.angularPos : 0,
+            prevY: shotStone ? shotStone.pos[1] : RINK.HACK_Y,
+            elapsed: 0,
+            nearHogTime: null,
+            farHogTime: null,
+          };
           setIsSimulating(true);
           runPhysics(snapshotRef.current);
         };
@@ -1166,6 +1234,8 @@
             ))}
           </div>
         );
+        const formatDebugTime = (t) =>
+          typeof t === "number" ? `${t.toFixed(2)}s` : "n/a";
         const orderedWeightKeys = [...Object.keys(weights)].sort((a, b) => {
           const aNumMatch = a.match(/^(\d+(?:\.\d+)?)/);
           const bNumMatch = b.match(/^(\d+(?:\.\d+)?)/);
@@ -1297,6 +1367,36 @@
                 <div className="absolute top-2 left-2 z-20 bg-slate-950/80 px-2 py-1 rounded text-[9px] font-black text-blue-500 uppercase tracking-widest border border-white/5 shadow-lg">
                   {isSimulating ? "Chase Cam" : "House Cam"}
                 </div>
+                {lastShotDebug && !showSettings && (
+                  <div className="absolute top-10 right-2 z-20 bg-slate-950/85 border border-white/10 rounded px-2 py-1.5 text-[9px] lg:text-[10px] font-mono leading-tight">
+                    <div className="text-slate-300">
+                      Rotations:{" "}
+                      <span className="text-white">
+                        {typeof lastShotDebug.rotations === "number"
+                          ? lastShotDebug.rotations.toFixed(2)
+                          : "n/a"}
+                      </span>
+                    </div>
+                    <div className="text-slate-300">
+                      Release-Near Hog:{" "}
+                      <span className="text-white">
+                        {formatDebugTime(lastShotDebug.toNearHog)}
+                      </span>
+                    </div>
+                    <div className="text-slate-300">
+                      Hog-Hog:{" "}
+                      <span className="text-white">
+                        {formatDebugTime(lastShotDebug.hogToHog)}
+                      </span>
+                    </div>
+                    <div className="text-slate-300">
+                      Total:{" "}
+                      <span className="text-white">
+                        {formatDebugTime(lastShotDebug.totalTime)}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 {!isSimulating && (
                   <div className="absolute top-2 right-2 z-20 flex items-center gap-2 bg-slate-950/80 px-2 py-1 rounded border border-white/10">
                     <button
