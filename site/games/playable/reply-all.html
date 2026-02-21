@@ -2207,17 +2207,25 @@
       // Static data moved to reply-all-consts.js
 
       function getMetaState() {
-        try {
-          const raw = localStorage.getItem(META_KEY);
-          if (raw) return JSON.parse(raw);
-        } catch (e) {}
-        return null;
+        return ReplyAllEngine.core.getMetaState({
+          onLoadMetaState: () => {
+            try {
+              const raw = localStorage.getItem(META_KEY);
+              if (raw) return JSON.parse(raw);
+            } catch (e) {}
+            return null;
+          },
+        });
       }
 
       function saveMetaState() {
-        try {
-          localStorage.setItem(META_KEY, JSON.stringify(metaState));
-        } catch (e) {}
+        ReplyAllEngine.core.saveMetaState(metaState, {
+          onSaveMetaState: (payload) => {
+            try {
+              localStorage.setItem(META_KEY, JSON.stringify(payload));
+            } catch (e) {}
+          },
+        });
       }
 
       let state = {
@@ -2635,144 +2643,55 @@
       const loginBtn = document.getElementById("login-btn");
 
       function getSavedGame() {
-        try {
-          const raw = localStorage.getItem(SAVE_KEY);
-          return raw ? JSON.parse(raw) : null;
-        } catch (e) {
-          return null;
-        }
+        return ReplyAllEngine.core.getSavedGame({
+          onLoadGamePayload: () => {
+            try {
+              const raw = localStorage.getItem(SAVE_KEY);
+              return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+              return null;
+            }
+          },
+        });
       }
 
       function clearSavedGame() {
-        try {
-          localStorage.removeItem(SAVE_KEY);
-        } catch (e) {}
-      }
-
-      function serializePlayer(player) {
-        return {
-          ...player,
-          titleId: player.title ? player.title.id : null,
-          salutationId: player.salutation ? player.salutation.id : null,
-          signOffId: player.signOff ? player.signOff.id : null,
-          signatureIds: player.signatures
-            ? player.signatures.map((s) => s.id)
-            : [],
-          bccIds: player.bccContacts ? player.bccContacts.map((b) => b.id) : [],
-          discoveredSets: player.discoveredSets || [],
-        };
-      }
-
-      function hydratePlayer(saved) {
-        const title = TITLES.find((t) => t.id === saved.titleId) || TITLES[0];
-        const salutation = saved.salutationId
-          ? SALUTATIONS.find((s) => s.id === saved.salutationId) || null
-          : null;
-        const signOff = saved.signOffId
-          ? SIGNOFFS.find((s) => s.id === saved.signOffId) || null
-          : null;
-        const signatures = Array.isArray(saved.signatureIds)
-          ? saved.signatureIds
-              .map((id) => SIGNATURES.find((s) => s.id === id))
-              .filter(Boolean)
-          : [];
-        const bccContacts = Array.isArray(saved.bccIds)
-          ? saved.bccIds
-              .map((id) => BCC_CONTACTS.find((b) => b.id === id))
-              .filter(Boolean)
-          : [];
-        const player = {
-          ...saved,
-          title,
-          salutation,
-          signOff,
-          signatures,
-          bccContacts,
-          discoveredSets: saved.discoveredSets || [],
-          contactTrainingCount: saved.contactTrainingCount || {},
-          coachingBoosts: saved.coachingBoosts || {},
-        };
-        applyUnitDefaults(player);
-        return player;
-      }
-
-      function serializeShop(shop) {
-        const mapItem = (item) => ({
-          id: item.id,
-          purchased: !!item.purchased,
-          itemType: item.itemType,
+        ReplyAllEngine.core.clearSavedGame({
+          onClearSavedGame: () => {
+            try {
+              localStorage.removeItem(SAVE_KEY);
+            } catch (e) {}
+          },
         });
-        return {
-          directItems: (shop.directItems || []).map(mapItem),
-          packs: (shop.packs || []).map((p) => ({
-            ...p,
-            options: (p.options || []).map(mapItem),
-          })),
-        };
-      }
-
-      function hydrateShop(savedShop) {
-        if (!savedShop) return { directItems: [], packs: [] };
-
-        const getItem = (s) => {
-          let source = [];
-          if (s.itemType === "contact") source = CONTACTS;
-          else if (s.itemType === "signature") source = SIGNATURES;
-          else if (s.itemType === "salutation") source = SALUTATIONS;
-          else if (s.itemType === "signoff") source = SIGNOFFS;
-          else if (s.itemType === "bcc") source = BCC_CONTACTS;
-          else if (s.itemType === "dev") source = getTrainingUpgrades();
-
-          const found = source.find((item) => item.id === s.id);
-          if (!found) return null;
-          return { ...found, purchased: !!s.purchased, itemType: s.itemType };
-        };
-
-        return {
-          directItems: (savedShop.directItems || [])
-            .map(getItem)
-            .filter(Boolean),
-          packs: (savedShop.packs || []).map((p) => ({
-            ...p,
-            options: (p.options || []).map(getItem).filter(Boolean),
-          })),
-        };
       }
 
       function saveGame() {
-        try {
-          const payload = {
-            state: {
-              ...state,
-              player: serializePlayer(state.player),
-              shop: serializeShop(state.shop),
-            },
-            opponents,
-            activeScreen: [
-              "start-screen",
-              "induction-screen",
-              "game-ui",
-              "inbox-screen",
-              "summary-screen",
-              "shop-screen",
-              "promotion-screen",
-              "lose-screen",
-            ].find((id) => {
-              const el = document.getElementById(id);
-              return el && !el.classList.contains("hidden");
-            }),
-          };
-          localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
-        } catch (e) {}
+        const activeScreen = [
+          "start-screen",
+          "induction-screen",
+          "game-ui",
+          "inbox-screen",
+          "summary-screen",
+          "shop-screen",
+          "promotion-screen",
+          "lose-screen",
+        ].find((id) => {
+          const el = document.getElementById(id);
+          return el && !el.classList.contains("hidden");
+        });
+        ReplyAllEngine.core.saveGame(state, opponents, activeScreen, {
+          onSaveGamePayload: (payload) => {
+            try {
+              localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+            } catch (e) {}
+          },
+        });
       }
 
       function applySavedGame(save) {
         if (!save || !save.state) return false;
-        state = {
-          ...save.state,
-          player: hydratePlayer(save.state.player),
-          shop: hydrateShop(save.state.shop),
-        };
+        const restored = ReplyAllEngine.core.applySavedGame(save) || {};
+        state = restored.state || save.state;
         metaState = getMetaState() || metaState;
         ensureStartDefaults();
         if (state.startUnlocks) {
@@ -2796,7 +2715,11 @@
         if (!state.rngStates) state.rngStates = {};
         resetRngStreams();
         if (!state.aiPlannedActions) state.aiPlannedActions = {};
-        opponents = Array.isArray(save.opponents) ? save.opponents : [];
+        opponents = Array.isArray(restored.opponents)
+          ? restored.opponents
+          : Array.isArray(save.opponents)
+            ? save.opponents
+            : [];
         opponents.forEach((o) => {
           applyUnitDefaults(o);
           if (!o._lineBags) o._lineBags = {};
@@ -3321,53 +3244,23 @@
       function getUnitDamage(u, type, turnOverride = null) {
         return ReplyAllEngine.stats.getUnitDamage(statCtx, u, type, turnOverride);
       }
-
       function getStatBlockFromObject(obj) {
-        if (!obj) return null;
-        const stats = {};
-        let hasAny = false;
-        STAT_FIELDS.forEach((field) => {
-          const value = obj[field];
-          if (typeof value === "number" && value !== 0) {
-            stats[field] = value;
-            hasAny = true;
-          }
+        return ReplyAllEngine.log.getStatBlockFromObject(obj, STAT_FIELDS);
+      }
         });
         return hasAny ? stats : null;
       }
-
       function getStatSources(u) {
-        const sources = [];
-        const pushSource = (label, obj) => {
-          const stats = getStatBlockFromObject(obj);
-          if (stats) sources.push({ label, stats });
-        };
-        if (!u) return sources;
-        pushSource("Base", u);
-        if (u.title) pushSource(`Title: ${u.title.name}`, u.title);
-        if (u.salutation)
-          pushSource(`Greeting: ${u.salutation.name}`, u.salutation);
-        if (u.salutation && Array.isArray(u.salutation.scalers)) {
-          const ccCount = Array.isArray(u.buffs)
-            ? u.buffs.filter((b) => b.usedBy === u.name).length
-            : 0;
-          const sigCount = Array.isArray(u.signatures) ? u.signatures.length : 0;
-          const counts = { cc: ccCount, sig: sigCount };
-          const scalerStats = {};
-          u.salutation.scalers.forEach((s) => {
-            if (!s || !s.source || !s.stat) return;
-            const count = counts[s.source] || 0;
-            if (!count) return;
-            const per = typeof s.per === "number" ? s.per : 0;
-            if (!per) return;
-            scalerStats[s.stat] = (scalerStats[s.stat] || 0) + per * count;
-          });
-          if (Object.keys(scalerStats).length) {
-            sources.push({
-              label: `Greeting scaling (${ccCount} CC, ${sigCount} sig)`,
-              stats: scalerStats,
-            });
-          }
+        return ReplyAllEngine.log.getStatSources(state, u, {
+          statFields: STAT_FIELDS,
+          getSalutationWindowStats,
+          getSalutationPersistentStats,
+          getSignoffPersistentStats,
+          getUnitWinScaleStats,
+          getUnitRemainingWins,
+          isSetActive,
+        });
+      }
         }
         const salutationWindowStats = getSalutationWindowStats(u);
         if (salutationWindowStats && u.salutation) {
@@ -3455,39 +3348,18 @@
         return ReplyAllEngine.stats.getUnitAddressLimit(statCtx, u);
       }
 
-
-      function resolveFollowUps({
-        attacker,
-        target,
-        baseDamage,
-        combatKey,
-        onHit,
-        onExtras,
-      }) {
-        const results = [];
-        let chance = getUnitFollowUpChance(attacker);
-        while (chance > 0 && target && target.hp > 0) {
-          const hit = rngNext(combatKey) < chance;
-          if (!hit) break;
-          const result = applyDamage(attacker, target, baseDamage);
-          results.push(result);
-          if (typeof onHit === "function") onHit(result, results.length);
-          if (typeof onExtras === "function") onExtras(result, results.length);
-          chance = Math.max(chance - 1, 0);
-          if (attacker.hp != null && attacker.hp <= 0) break;
-        }
-        return results;
+      function resolveFollowUps({ attacker, target, baseDamage, combatKey, onHit, onExtras }) {
+        return ReplyAllEngine.core.resolveFollowUps(
+          state,
+          { attacker, target, baseDamage, combatKey, onHit, onExtras },
+          { getUnitFollowUpChance, runUnitEffects },
+        );
       }
-
-
       function clearDeflectCharges(unit) {
-        if (!unit) return;
-        unit.deflectChargeReduce = 0;
-        unit.deflectChargeReflect = 0;
+        ReplyAllEngine.core.clearDeflectCharges(unit);
       }
-
       function clearOpponentDeflects() {
-        opponents.forEach((o) => clearDeflectCharges(o));
+        ReplyAllEngine.core.clearOpponentDeflects(state);
       }
 
       function getUnitBounceDamage(u) {
@@ -3510,52 +3382,18 @@
       }
 
       function applyDamage(attacker, target, rawDamage, options = {}) {
-        const targetHpBefore = target ? target.hp : null;
-        const attackerHpBefore =
-          attacker && attacker.hp != null ? attacker.hp : null;
-        let dmg = Math.max(0, Math.floor(rawDamage));
-        if (!options.ignoreDefense) {
-          const flatDef = getUnitFlatDef(target);
-          dmg = Math.max(0, dmg - flatDef);
-        }
-        let blocked = 0;
-        if (
-          (target.deflectChargeReduce > 0 ||
-            target.deflectChargeReflect > 0) &&
-          dmg > 0
-        ) {
-          const reducedBy = Math.min(target.deflectChargeReduce, dmg);
-          dmg -= reducedBy;
-          blocked += reducedBy;
-        }
-
-        target.hp -= dmg;
-
-        let reflected = 0;
-        if (
-          !options.ignoreReflect &&
-          target.deflectChargeReflect > 0 &&
-          attacker
-        ) {
-          reflected = target.deflectChargeReflect;
-          blocked += reflected;
-          if (attacker.id === "player") {
-            state.player.hp -= reflected;
-          } else if (attacker.hp != null) {
-            attacker.hp -= reflected;
-          }
-        }
-        const targetHpAfter = target ? target.hp : null;
-        const attackerHpAfter =
-          attacker && attacker.hp != null ? attacker.hp : null;
-        if (blocked > 0 && target && target.salutation) {
-          runUnitEffects(target, "deflect_proc", { attacker, target, blocked });
-        }
-
-        if (blocked > 0 && attacker && attacker.id === "player") {
+        const result = ReplyAllEngine.core.applyDamage(
+          state,
+          attacker,
+          target,
+          rawDamage,
+          options,
+          { runUnitEffects },
+        );
+        if (result.blocked > 0 && attacker && attacker.id === "player") {
           playSound("trash");
         }
-        if (target && target.id === "player" && dmg > 0) {
+        if (target && target.id === "player" && result.dmg > 0) {
           playSound("thunk");
         }
         if (
@@ -3563,75 +3401,56 @@
           attacker.id !== "player" &&
           target &&
           target.id !== "player" &&
-          dmg > 0
+          result.dmg > 0
         ) {
           playSound("swipe");
         }
-
         updateUI();
-        return {
-          dmg,
-          blocked,
-          reflected,
-          targetHpBefore,
-          targetHpAfter,
-          attackerHpBefore,
-          attackerHpAfter,
-        };
+        return result;
       }
 
       function applyDepartmentCleave(attacker, target, damage) {
-        if (!damage || !target || !target.departmentId)
-          return { total: 0, hits: 0 };
-        const units = [...opponents, state.player];
-        let total = 0;
-        let hits = 0;
-        units.forEach((u) => {
-          if (!u || u.hp <= 0) return;
-          if (u === target) return;
-          if (attacker && u === attacker) return;
-          if (u.departmentId !== target.departmentId) return;
-          const result = applyDamage(attacker, u, damage);
-          total += result.dmg;
-          hits += 1;
-          if (u !== state.player && u.hp <= 0) {
-            handleOpponentDefeat(u, attacker && attacker.id === "player", attacker);
-          }
+        return ReplyAllEngine.core.applyDepartmentCleave(state, attacker, target, damage, {
+          runUnitEffects,
+          getUnitMaxHp,
+          onDepartmentUnlock: (deptId) => {
+            if (deptId !== "it") return;
+            metaState.departmentUnlocks = metaState.departmentUnlocks || {
+              executive: true,
+              it: false,
+              finance: false,
+            };
+            if (!metaState.departmentUnlocks.it) {
+              metaState.departmentUnlocks.it = true;
+              saveMetaState();
+            }
+          },
+          onDefeat: (unit) => {
+            addEmailToLog(
+              unit.name,
+              "everyone@gov.org",
+              "Unsubscribing",
+              unit.defeatMessage,
+              "italic text-gray-600 bg-gray-50 border-l-4 border-gray-400",
+            );
+          },
+          onThreadEnd: () => {
+            saveGame();
+            endQuarter();
+          },
         });
-        return { total, hits };
       }
 
       function isContactInLoop(contactId) {
-        if (state.player.buffs.some((b) => b.id === contactId)) return true;
-        for (const opp of opponents) {
-          if (opp.hp > 0 && opp.buffs.some((b) => b.id === contactId))
-            return true;
-        }
-        return false;
+        return ReplyAllEngine.core.isContactInLoop(state, contactId);
       }
-
       function getContactUsedBy(contactId) {
-        const playerBuff = state.player.buffs.find((b) => b.id === contactId);
-        if (playerBuff) return playerBuff.usedBy || state.player.name;
-        for (const opp of opponents) {
-          const buff = (opp.buffs || []).find((b) => b.id === contactId);
-          if (buff) return buff.usedBy || opp.name;
-        }
-        return null;
+        return ReplyAllEngine.core.getContactUsedBy(state, contactId);
       }
-
       function getPlayerLeverageGain(actionType, base) {
-        const p = state.player;
-        const stats = computeUnitStats(p);
-        const bonusMap = {
-          reply_to: stats.levGainReply || 0,
-          escalate: stats.levGainEscalate || 0,
-          deflect: stats.levGainDeflect || 0,
-          promote: stats.levGainPromote || 0,
-        };
-        const bonus = bonusMap[actionType] || 0;
-        const totalBase = base + bonus;
-        return totalBase * (1 + stats.levMult);
+        return ReplyAllEngine.core.getPlayerLeverageGain(state, actionType, base, {
+          computeUnitStats,
+        });
       }
 
       function formatMessageBody(sender, content) {
@@ -3671,211 +3490,100 @@
         if (!extras.length) return body;
         return `${body}<hr class="m-1">${extras.join("<br>")}`;
       }
-
       function pickRandomItem(list, fallback, rngKey = "misc") {
-        if (!Array.isArray(list) || list.length === 0) return fallback;
-        return list[rngInt(rngKey, list.length)];
+        return ReplyAllEngine.core.pickRandomItem(state, list, fallback, rngKey);
       }
 
       function drawFromLineBag(holder, key, source, fallback) {
-        if (!holder) return fallback;
-        if (!holder._lineBags) holder._lineBags = {};
-        let bag = holder._lineBags[key];
-        if (!Array.isArray(bag) || bag.length === 0) {
-          const fresh = Array.isArray(source) ? [...source] : [];
-          if (fresh.length === 0) return fallback;
-          bag = shuffle(fresh, getMissionStreamKey("combat"));
-        }
-        const next = bag.pop();
-        holder._lineBags[key] = bag;
-        return next == null ? fallback : next;
+        return ReplyAllEngine.core.drawFromLineBag(
+          state,
+          holder,
+          key,
+          source,
+          fallback,
+          getMissionStreamKey("combat"),
+        );
       }
 
       function getPlayerLineBagKey(action, missionId, titleId) {
-        return `player:${action}:${missionId || "default"}:${titleId || "base"}`;
+        return ReplyAllEngine.core.getPlayerLineBagKey(action, missionId, titleId);
       }
 
       function getPlayerActionLines(action, missionId) {
-        const p = state.player;
-        const titleId = p.title ? p.title.id : null;
-        const byMission = (p[`${action}LinesByMission`] || {})[missionId] || [];
-        const byTitle = (p[`${action}LinesByTitle`] || {})[titleId] || [];
-        let base = [];
-        if (action === "attack") base = p.attacks || [];
-        else if (action === "selfPromote") base = p.selfPromoteLines || [];
-        else if (action === "replyAll") base = p.replyAllLines || [];
-        else if (action === "escalate") base = p.escalateLines || [];
-        else if (action === "deflect") base = p.deflectLines || [];
-        return [...base, ...byMission, ...byTitle];
+        return ReplyAllEngine.core.getPlayerActionLines(state, action, missionId);
       }
 
       function getUnitSelfPromoteLines(unit) {
-        if (
-          Array.isArray(unit.selfPromoteLines) &&
-          unit.selfPromoteLines.length
-        )
-          return unit.selfPromoteLines;
-        if (unit.selfPromote) return [unit.selfPromote];
-        return [];
+        return ReplyAllEngine.core.getUnitSelfPromoteLines(unit);
       }
 
       function getDepartmentName(departmentId) {
-        if (!departmentId) return "";
-        return DEPARTMENT_BY_ID[departmentId]?.name || departmentId;
+        return ReplyAllEngine.core.getDepartmentName(departmentId);
       }
 
       function formatLoopInText(contact, fallback) {
-        if (!contact || !contact.loopInText) return fallback;
-        const departmentName = getDepartmentName(contact.departmentId);
-        return contact.loopInText
-          .replace(/{name}/g, contact.name || "")
-          .replace(/{title}/g, contact.title || "")
-          .replace(/{department}/g, departmentName);
+        return ReplyAllEngine.core.formatLoopInText(contact, fallback);
       }
 
       function decideAiAction(ai, alive, player) {
-        const combatKey = getMissionStreamKey("combat");
-        const playerTarget = {
-          id: "player",
-          name: player.name,
-          email: player.email,
-          departmentId: player.departmentId,
-        };
-        const pool = [
-          ...alive.filter((o) => o.id !== ai.id),
-          playerTarget,
-        ];
-        const weights = pool.map((t) => {
-          if (t.id === "player") {
-            return t.departmentId === ai.departmentId ? 0.5 : 1.5;
-          }
-          if (t.departmentId === ai.departmentId) return 0;
-          return 1.0;
+        return ReplyAllEngine.core.decideAiAction(state, ai, alive, player, {
+          combatKey: getMissionStreamKey("combat"),
+          computeUnitStats,
+          getUnitDamage,
+          getUnitFlatDef,
+          getUnitTotalHeal,
+          getUnitSelfPromoteHeal,
+          getUnitMaxHp,
+          isContactInLoop,
+          isContactImplicated,
+          logPassiveHeal: (s, u, before, after, trigger) =>
+            logPassiveHeal(u, before, after, trigger),
         });
-        let totalWeight = weights.reduce((acc, w) => acc + w, 0);
-        let random = rngNext(combatKey) * totalWeight;
-        let target = pool[0];
-        for (let i = 0; i < pool.length; i++) {
-          random -= weights[i];
-          if (random <= 0) {
-            target = pool[i];
-            break;
-          }
-        }
-
-        const roll = rngNext(combatKey);
-        const maxHp = getUnitMaxHp(ai);
-        const aiHpBeforePassive = ai.hp;
-        ai.hp = Math.min(maxHp, ai.hp + getUnitTotalHeal(ai));
-        logPassiveHeal(ai, aiHpBeforePassive, ai.hp, "ai_turn_start");
-
-        const promoteHeal = getUnitSelfPromoteHeal(ai, 15);
-        const defFlat = getUnitFlatDef(ai);
-        const defReduce = ai.deflectChargeReduce || 0;
-        const playerSingle = getUnitDamage(player, "single");
-        const playerEscalate = getUnitDamage(player, "escalate");
-        const dmgSingle = Math.max(0, playerSingle - defFlat - defReduce);
-        const dmgEscalate = Math.max(0, playerEscalate - defFlat - defReduce);
-        const inOneHitRange = dmgSingle >= ai.hp || dmgEscalate >= ai.hp;
-        const canUseFullPromote =
-          promoteHeal > 0 && ai.hp + promoteHeal <= maxHp;
-        const selfPromoteEligible =
-          ai.hp < maxHp && ai.wins > 0 && inOneHitRange && canUseFullPromote;
-
-        const availFromBook = ai.addressBook
-          .map((id) => CONTACTS.find((con) => con.id === id))
-          .filter(
-            (c) => c && !isContactInLoop(c.id) && !isContactImplicated(c),
-          );
-        if (roll < 0.15 && availFromBook.length > 0) {
-          const numPicks = computeUnitStats(ai).numCCperCCaction;
-          const picks = [];
-          for (let p = 0; p < numPicks; p++) {
-            const currentAvail = ai.addressBook
-              .map((id) => CONTACTS.find((con) => con.id === id))
-              .filter(
-                (c) =>
-                  c && !isContactInLoop(c.id) && !isContactImplicated(c),
-              );
-            if (currentAvail.length === 0) break;
-            picks.push(
-              currentAvail[rngInt(combatKey, currentAvail.length)],
-            );
-          }
-          if (picks.length) {
-            return { type: "cc", target, ccTargets: picks };
-          }
-        }
-        if (roll < 0.3 && selfPromoteEligible) {
-          return { type: "promote", target, promoteHeal, maxHp };
-        }
-
-        const actionRoll = rngNext(combatKey);
-        if (
-          actionRoll < 0.15 &&
-          ai.deflectChargeReduce <= 0 &&
-          ai.deflectChargeReflect <= 0
-        ) {
-          return { type: "deflect", target };
-        }
-        if (actionRoll < 0.35) return { type: "escalate", target };
-        return { type: "attack", target };
       }
 
       function planAiActions() {
-        const alive = opponents.filter((o) => o.hp > 0);
-        const plans = {};
-        alive.forEach((a) => {
-          plans[a.id] = decideAiAction(a, alive, state.player);
-        });
-        state.aiPlannedActions = plans;
-        logGameEvent("ai_plans", {
-          plans: Object.entries(plans).map(([id, plan]) => ({
-            actorId: id,
-            actorName: opponents.find((o) => o.id === id)?.name || null,
-            action: plan?.type || null,
-            targetId: plan?.target?.id || null,
-            targetName: plan?.target?.name || null,
-            ccTargets: plan?.ccTargets
-              ? plan.ccTargets.map((c) => c.id)
-              : [],
-          })),
+        ReplyAllEngine.core.planAiActions(state, {
+          combatKey: getMissionStreamKey("combat"),
+          computeUnitStats,
+          getUnitDamage,
+          getUnitFlatDef,
+          getUnitTotalHeal,
+          getUnitSelfPromoteHeal,
+          getUnitMaxHp,
+          isContactInLoop,
+          isContactImplicated,
+          logPassiveHeal: (s, u, before, after, trigger) =>
+            logPassiveHeal(u, before, after, trigger),
+          logPlans: (plans, alive) => {
+            logGameEvent("ai_plans", {
+              plans: Object.entries(plans).map(([id, plan]) => ({
+                actorId: id,
+                actorName: opponents.find((o) => o.id === id)?.name || null,
+                action: plan?.type || null,
+                targetId: plan?.target?.id || null,
+                targetName: plan?.target?.name || null,
+                ccTargets: plan?.ccTargets
+                  ? plan.ccTargets.map((c) => c.id)
+                  : [],
+              })),
+            });
+          },
         });
         renderDraftingIndicators();
       }
-
       function isPlannedActionValid(ai, plan) {
-        if (!plan || !ai || ai.hp <= 0) return false;
-        const target =
-          plan.target &&
-          (plan.target.id === "player"
-            ? { id: "player" }
-            : opponents.find((o) => o.id === plan.target.id));
-        if (plan.type === "cc") {
-          const available = ai.addressBook
-            .map((id) => CONTACTS.find((con) => con.id === id))
-            .filter(
-              (c) => c && !isContactInLoop(c.id) && !isContactImplicated(c),
-            );
-          if (!available.length) return false;
-          const plannedIds = (plan.ccTargets || []).map((c) => c.id);
-          return plannedIds.some((id) =>
-            available.some((c) => c.id === id),
-          );
-        }
+        return ReplyAllEngine.core.isPlannedActionValid(state, ai, plan, {
+          isContactInLoop,
+          isContactImplicated,
+        });
+      }
         if (plan.type === "attack") return !!target && target.id != null;
         if (plan.type === "escalate") return true;
         if (plan.type === "deflect")
           return ai.deflectChargeReduce <= 0 && ai.deflectChargeReflect <= 0;
         if (plan.type === "promote") return ai.wins > 0;
-        return false;
-      }
-
       function isContactImplicated(contact) {
-        if (!contact || !contact.employeeId) return false;
-        return opponents.some(
-          (o) => o.hp > 0 && o.employeeId === contact.employeeId,
-        );
+        return ReplyAllEngine.core.isContactImplicated(state, contact);
       }
 
       function openCcProfile(contact, anchorEl) {
@@ -3948,33 +3656,11 @@
         openPackView();
       }
 
-      function snapshotItemEffects(item) {
-        if (!item) return null;
-        const snapshot = {};
-        if (item.effects) {
-          snapshot.effects = JSON.parse(JSON.stringify(item.effects));
-        }
-        if (item.eff) {
-          snapshot.eff = JSON.parse(JSON.stringify(item.eff));
-        }
-        if (item.statWindows) {
-          snapshot.statWindows = JSON.parse(JSON.stringify(item.statWindows));
-        }
-        if (item.scalers) {
-          snapshot.scalers = JSON.parse(JSON.stringify(item.scalers));
-        }
-        if (item.deptScalers) {
-          snapshot.deptScalers = JSON.parse(JSON.stringify(item.deptScalers));
-        }
-        const stats = {};
-        STAT_FIELDS.forEach((field) => {
-          if (typeof item[field] === "number") stats[field] = item[field];
+      function snapshotItemEffects(item, otherFields = SNAPSHOT_ITEM_OTHER_FIELDS) {
+        return ReplyAllEngine.log.snapshotItemEffects(item, {
+          otherFields,
+          statFields: STAT_FIELDS,
         });
-        SNAPSHOT_ITEM_OTHER_FIELDS.forEach((field) => {
-          if (item[field] !== undefined) snapshot[field] = item[field];
-        });
-        if (Object.keys(stats).length) snapshot.stats = stats;
-        return Object.keys(snapshot).length ? snapshot : null;
       }
 
       function alertAcquireFailure(item, reason) {
@@ -4212,177 +3898,52 @@
       }
 
       function addRandomBccs(player, count) {
-        const limit = computeUnitStats(player).bccLimit || 0;
-        const slots = Math.max(0, limit - player.bccContacts.length);
-        if (slots <= 0) return [];
-        const owned = new Set(player.bccContacts.map((b) => b.id));
-        const pool = BCC_CONTACTS.filter((b) => !owned.has(b.id));
-        const picks = Math.min(count, slots, pool.length);
-        if (picks <= 0) return [];
-        const picked = pickWeighted(pool, picks, "bcc_create");
-        picked.forEach((b) => player.bccContacts.push({ ...b }));
-        if (player.id === "player") logBccGains(picked, "effect:add_bcc");
+        const picked = ReplyAllEngine.core.addRandomBccs(state, player, count);
+        if (player.id === "player" && picked?.length)
+          logBccGains(picked, "effect:add_bcc");
         return picked;
       }
 
       function duplicateRandomOwnedBccs(player, count) {
-        const limit = computeUnitStats(player).bccLimit || 0;
-        const slots = Math.max(0, limit - player.bccContacts.length);
-        if (slots <= 0) return [];
-        const pool = player.bccContacts;
-        if (!pool.length) return [];
-        const picks = Math.min(count, slots);
-        const added = [];
-        for (let i = 0; i < picks; i++) {
-          const picked = pool[rngInt("bcc_create", pool.length)];
-          if (picked) {
-            const clone = { ...picked };
-            player.bccContacts.push(clone);
-            added.push(clone);
-          }
-        }
-        if (player.id === "player")
+        const added = ReplyAllEngine.core.duplicateRandomOwnedBccs(
+          state,
+          player,
+          count,
+        );
+        if (player.id === "player" && added?.length)
           logBccGains(added, "effect:duplicate_bcc");
         return added;
       }
 
       function applyContactPermanentBoost(player, contactId, stats) {
-        if (!player || !contactId || !stats) return;
-        if (!player.contactPermanentBoosts)
-          player.contactPermanentBoosts = {};
-        if (!player.contactEffectBoosts)
-          player.contactEffectBoosts = {};
-        if (!player.contactTrainingCount)
-          player.contactTrainingCount = {};
-
-        const currentCount = player.contactTrainingCount[contactId] || 0;
-        const trainingLimit =
-          computeUnitStats(player).contactTrainingLimit ?? 3;
-        if (currentCount >= trainingLimit) return;
-        player.contactTrainingCount[contactId] = currentCount + 1;
-
-        const current = player.contactPermanentBoosts[contactId] || {};
-        const next = { ...current };
-        Object.keys(stats).forEach((key) => {
-          const value = stats[key];
-          if (typeof value !== "number") return;
-          next[key] = (next[key] || 0) + value;
-        });
-
-        const contact = CONTACTS.find((c) => c.id === contactId);
-        if (contact && contact.eff) {
-          Object.keys(contact.eff).forEach((key) => {
-            const value = contact.eff[key];
-            if (typeof value !== "number") return;
-            next[key] = (next[key] || 0) + value;
-          });
-        }
-        if (contact && Array.isArray(contact.effects)) {
-          contact.effects.forEach((effect) => {
-            if (
-              !effect ||
-              (effect.type !== "add_thread_bonus" &&
-                effect.type !== "add_thread_bonus_scaled")
-            )
-              return;
-            if (!effect.stats) return;
-            const currentEffect = player.contactEffectBoosts[contactId] || {};
-            const nextEffect = { ...currentEffect };
-            Object.keys(effect.stats).forEach((key) => {
-              const value = effect.stats[key];
-              if (typeof value !== "number") return;
-              nextEffect[key] = (nextEffect[key] || 0) + value;
-            });
-            player.contactEffectBoosts[contactId] = nextEffect;
-          });
-        }
-        const upgrade = player.contactUpgrades && player.contactUpgrades[contactId];
-        if (upgrade && upgrade.eff) {
-          Object.keys(upgrade.eff).forEach((key) => {
-            const value = upgrade.eff[key];
-            if (typeof value !== "number") return;
-            next[key] = (next[key] || 0) + value;
-          });
-        }
-        const deptScalerBonus = getDeptScalerBonusForContact(player, contactId);
-        if (deptScalerBonus) {
-          Object.keys(deptScalerBonus).forEach((key) => {
-            const value = deptScalerBonus[key];
-            if (typeof value !== "number") return;
-            next[key] = (next[key] || 0) + value;
-          });
-        }
-
-        player.contactPermanentBoosts[contactId] = next;
+        ReplyAllEngine.core.applyContactPermanentBoost(
+          state,
+          player,
+          contactId,
+          stats,
+        );
       }
 
       function applyBuffStats(buff, stats) {
-        if (!buff || !stats) return;
-        buff.eff = { ...(buff.eff || {}) };
-        Object.keys(stats).forEach((key) => {
-          const value = stats[key];
-          if (typeof value !== "number") return;
-          buff.eff[key] = (buff.eff[key] || 0) + value;
-        });
+        ReplyAllEngine.core.applyBuffStats(buff, stats);
       }
 
       function applyRandomCcBoost(player, stats, applyImmediate = true) {
-        const trainingLimit = computeUnitStats(player).contactTrainingLimit ?? 3;
-        const pool = player.buffs
-          .filter(
-            (b) =>
-              b.usedBy === player.name &&
-              !b.noTraining &&
-              (player.contactTrainingCount?.[b.id] || 0) < trainingLimit,
-          )
-          .sort((a, b) => (a.id || "").localeCompare(b.id || ""));
-        if (pool.length === 0) return null;
-        const picked = pool[rngInt(getMissionStreamKey("cc_upgrades"), pool.length)];
-        applyContactPermanentBoost(player, picked.id, stats);
-        if (applyImmediate) {
-          applyBuffStats(picked, stats);
-          const originalContact = CONTACTS.find((c) => c.id === picked.id);
-          if (originalContact && originalContact.eff) {
-            applyBuffStats(picked, originalContact.eff);
-          }
-          const upgrade = player.contactUpgrades && player.contactUpgrades[picked.id];
-          if (upgrade && upgrade.eff) {
-            applyBuffStats(picked, upgrade.eff);
-          }
-          const deptScalerBonus = getDeptScalerBonusForContact(player, picked.id);
-          if (deptScalerBonus) {
-            applyBuffStats(picked, deptScalerBonus);
-          }
-        }
-        return picked;
+        return ReplyAllEngine.core.applyRandomCcBoost(
+          state,
+          player,
+          stats,
+          applyImmediate,
+        );
       }
 
       function applyRandomCcBoostMultiple(player, stats, count) {
-        if (!player || !stats || !count) return [];
-        const pool = player.buffs
-          .filter((b) => b.usedBy === player.name && !b.noTraining)
-          .sort((a, b) => (a.id || "").localeCompare(b.id || ""));
-        if (pool.length === 0) return [];
-        const picked = [];
-        for (let i = 0; i < count; i++) {
-          const target = pool[rngInt(getMissionStreamKey("cc_upgrades"), pool.length)];
-          applyContactPermanentBoost(player, target.id, stats);
-          applyBuffStats(target, stats);
-          const originalContact = CONTACTS.find((c) => c.id === target.id);
-          if (originalContact && originalContact.eff) {
-            applyBuffStats(target, originalContact.eff);
-          }
-          const upgrade = player.contactUpgrades && player.contactUpgrades[target.id];
-          if (upgrade && upgrade.eff) {
-            applyBuffStats(target, upgrade.eff);
-          }
-          const deptScalerBonus = getDeptScalerBonusForContact(player, target.id);
-          if (deptScalerBonus) {
-            applyBuffStats(target, deptScalerBonus);
-          }
-          picked.push(target);
-        }
-        return picked;
+        return ReplyAllEngine.core.applyRandomCcBoostMultiple(
+          state,
+          player,
+          stats,
+          count,
+        );
       }
 
       function recordEndRoundUpgrade(contactId) {
@@ -4393,584 +3954,68 @@
       }
 
       function getDeptScalerBonusForContact(player, contactId) {
-        if (!player || !contactId || !Array.isArray(player.signatures)) return null;
-        const contact = CONTACTS.find((c) => c.id === contactId);
-        if (!contact || !contact.departmentId) return null;
-        const deptCounts = {};
-        if (Array.isArray(player.addressBook)) {
-          player.addressBook.forEach((id) => {
-            const entry = CONTACTS.find((c) => c.id === id);
-            if (!entry || !entry.departmentId) return;
-            deptCounts[entry.departmentId] =
-              (deptCounts[entry.departmentId] || 0) + 1;
-          });
-        }
-        const count = deptCounts[contact.departmentId] || 0;
-        if (!count) return null;
-        const bonus = {};
-        player.signatures.forEach((s) => {
-          if (!Array.isArray(s.deptScalers)) return;
-          s.deptScalers.forEach((scaler) => {
-            if (!scaler || !scaler.departmentId || !scaler.stat) return;
-            if (scaler.departmentId !== contact.departmentId) return;
-            const per = typeof scaler.per === "number" ? scaler.per : 0;
-            if (!per) return;
-            const step =
-              typeof scaler.step === "number" && scaler.step > 0
-                ? scaler.step
-                : 1;
-            const times = Math.floor(count / step);
-            if (!times) return;
-            bonus[scaler.stat] = (bonus[scaler.stat] || 0) + per * times;
-          });
-        });
-        return Object.keys(bonus).length ? bonus : null;
+        return ReplyAllEngine.core.getDeptScalerBonusForContact(
+          state,
+          player,
+          contactId,
+        );
       }
 
       function applyUnitPermanentBoost(unit, sourceId, stats) {
-        if (!unit || !sourceId || !stats) return;
-        if (!unit.signoffBonuses) unit.signoffBonuses = {};
-        const current = unit.signoffBonuses[sourceId] || {};
-        const next = { ...current };
-        Object.keys(stats).forEach((key) => {
-          const value = stats[key];
-          if (typeof value !== "number") return;
-          next[key] = (next[key] || 0) + value;
-        });
-        unit.signoffBonuses[sourceId] = next;
+        ReplyAllEngine.core.applyUnitPermanentBoost(unit, sourceId, stats);
       }
 
       function applyUnitThreadBonus(unit, stats) {
-        if (!unit || !stats) return;
-        if (!unit.threadBonuses) unit.threadBonuses = {};
-        Object.keys(stats).forEach((key) => {
-          const value = stats[key];
-          if (typeof value !== "number") return;
-          unit.threadBonuses[key] = (unit.threadBonuses[key] || 0) + value;
-        });
+        ReplyAllEngine.core.applyUnitThreadBonus(unit, stats);
       }
 
       function applySalutationPermanentBoost(unit, sourceId, stats) {
-        if (!unit || !sourceId || !stats) return;
-        if (!unit.salutationBonuses) unit.salutationBonuses = {};
-        const current = unit.salutationBonuses[sourceId] || {};
-        const next = { ...current };
-        Object.keys(stats).forEach((key) => {
-          const value = stats[key];
-          if (typeof value !== "number") return;
-          next[key] = (next[key] || 0) + value;
-        });
-        unit.salutationBonuses[sourceId] = next;
+        ReplyAllEngine.core.applySalutationPermanentBoost(unit, sourceId, stats);
       }
 
       function setSalutationBonus(unit, sourceId, stats) {
-        if (!unit || !sourceId || !stats) return;
-        if (!unit.salutationBonuses) unit.salutationBonuses = {};
-        const next = { ...(unit.salutationBonuses[sourceId] || {}) };
-        Object.keys(stats).forEach((key) => {
-          const value = stats[key];
-          if (typeof value !== "number") return;
-          if (next[key] == null || value > next[key]) next[key] = value;
-        });
-        unit.salutationBonuses[sourceId] = next;
+        ReplyAllEngine.core.setSalutationBonus(unit, sourceId, stats);
       }
 
       function runUnitEffects(unit, event, context = {}) {
-        if (!unit) return;
-        const results = {};
-        const sources = [];
-        if (unit.salutation && Array.isArray(unit.salutation.effects))
-          sources.push({ owner: unit.salutation, id: unit.salutation.id });
-        if (unit.signOff && Array.isArray(unit.signOff.effects))
-          sources.push({ owner: unit.signOff, id: unit.signOff.id });
-        if (Array.isArray(unit.signatures)) {
-          unit.signatures.forEach((sig) => {
-            if (Array.isArray(sig.effects))
-              sources.push({ owner: sig, id: sig.id });
-          });
-        }
-        if (Array.isArray(unit.buffs)) {
-          unit.buffs
-            .filter((b) => b.usedBy === unit.name && Array.isArray(b.effects))
-            .forEach((b) => sources.push({ owner: b, id: b.id }));
-        }
-        const trackEndUpgrades = unit.id === "player";
-        const EFFECT_HANDLERS = {
-          add_random_cc_bonus: (effect, owner) => {
-            if (unit.id !== "player") return;
-            const count = effect.count || 1;
-            for (let i = 0; i < count; i++) {
-              const picked = applyRandomCcBoost(
-                state.player,
-                effect.stats || {},
-                true,
-              );
-              if (trackEndUpgrades && picked) {
-                recordEndRoundUpgrade(picked.id);
-              }
-            }
-          },
-          add_cc_bonus: (effect) => {
-            if (unit.id !== "player") return;
-            if (!context.contact) return;
-            applyContactPermanentBoost(
-              state.player,
-              context.contact.id,
-              effect.stats || {},
-            );
-            if (trackEndUpgrades) {
-              recordEndRoundUpgrade(context.contact.id);
-            }
-          },
-          add_signoff_bonus: (effect, owner) => {
-            applyUnitPermanentBoost(unit, owner.id, effect.stats || {});
-          },
-          add_salutation_bonus: (effect, owner) => {
-            applySalutationPermanentBoost(unit, owner.id, effect.stats || {});
-          },
-          add_thread_bonus: (effect, owner, contactEffectBoosts) => {
-            const stats = { ...(effect.stats || {}) };
-            if (contactEffectBoosts) {
-              Object.keys(contactEffectBoosts).forEach((key) => {
-                const value = contactEffectBoosts[key];
-                if (typeof value !== "number") return;
-                stats[key] = (stats[key] || 0) + value;
-              });
-            }
-            applyUnitThreadBonus(unit, stats);
-          },
-          grow_sig_stat: (effect, owner) => {
-            if (owner && owner.itemType === "signature") {
-              owner[effect.stat] = (owner[effect.stat] || 0) + effect.amount;
-            }
-          },
-          gain_rep: (effect) => {
-            if (unit.id !== "player") return;
-            state.player.reputation += effect.amount || 0;
-          },
-          add_thread_bonus_scaled: (effect, owner, contactEffectBoosts) => {
-            const step = effect.step || 1;
-            let base = 0;
-            if (effect.scaleBy === "wins_remaining")
-              base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
-            if (effect.scaleBy === "hp") base = unit.hp || 0;
-            if (effect.scaleBy === "overflow") base = context.overflow || 0;
-            const steps = Math.floor(base / step);
-            if (steps > 0) {
-              const scaled = {};
-              const combinedStats = { ...(effect.stats || {}) };
-              if (contactEffectBoosts) {
-                Object.keys(contactEffectBoosts).forEach((key) => {
-                  const value = contactEffectBoosts[key];
-                  if (typeof value !== "number") return;
-                  combinedStats[key] = (combinedStats[key] || 0) + value;
-                });
-              }
-              Object.keys(combinedStats).forEach((key) => {
-                const value = combinedStats[key];
-                if (typeof value !== "number") return;
-                scaled[key] = value * steps;
-              });
-              applyUnitThreadBonus(unit, scaled);
-            }
-          },
-          add_bcc: (effect) => {
-            if (unit.id !== "player") return;
-            addRandomBccs(state.player, effect.count || 1);
-          },
-          duplicate_bcc: (effect) => {
-            if (unit.id !== "player") return;
-            duplicateRandomOwnedBccs(state.player, effect.count || 1);
-          },
-          add_signoff_bonus_scaled: (effect, owner) => {
-            const step = effect.step || 1;
-            let base = 0;
-            if (effect.scaleBy === "hp") base = unit.hp || 0;
-            if (effect.scaleBy === "wins_remaining")
-              base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
-            if (effect.scaleBy === "overflow") base = context.overflow || 0;
-            const steps = Math.floor(base / step);
-            if (steps > 0) {
-              const scaled = {};
-              Object.keys(effect.stats || {}).forEach((key) => {
-                const value = effect.stats[key];
-                if (typeof value !== "number") return;
-                scaled[key] = value * steps;
-              });
-              applyUnitPermanentBoost(unit, owner.id, scaled);
-            }
-          },
-          add_random_cc_bonus_scaled: (effect) => {
-            if (unit.id !== "player") return;
-            const step = effect.step || 1;
-            let base = 0;
-            if (effect.scaleBy === "wins_remaining")
-              base = typeof unit.currentWins === "number" ? unit.currentWins : 0;
-            if (effect.scaleBy === "hp") base = unit.hp || 0;
-            if (effect.scaleBy === "overflow")
-              base =
-                typeof context.overflow === "number" ? context.overflow : 0;
-            if (effect.scaleBy === "active_cc_count")
-              base = Array.isArray(unit.buffs)
-                ? unit.buffs.filter((b) => b.usedBy === unit.name).length
-                : 0;
-            if (base <= 0) return;
-            const count = Math.floor(base / step);
-            if (count <= 0) return;
-            const scaled = {};
-            Object.keys(effect.stats || {}).forEach((key) => {
-              const value = effect.stats[key];
-              if (typeof value !== "number") return;
-              scaled[key] = value;
-            });
-            const limit =
-              effect.threadLimit != null
-                ? Math.max(0, effect.threadLimit)
-                : null;
-            const countToApply =
-              limit != null ? Math.min(count, limit) : count;
-            const picked = applyRandomCcBoostMultiple(
-              state.player,
-              scaled,
-              countToApply,
-            );
-            if (trackEndUpgrades && picked.length) {
-              picked.forEach((p) => recordEndRoundUpgrade(p.id));
-            }
-          },
-          add_all_cc_bonus: (effect) => {
-            if (unit.id !== "player") return;
-            const scope = effect.scope || "thread";
-            const ids =
-              scope === "addressBook"
-                ? state.player.addressBook
-                : state.player.buffs
-                    .filter((b) => b.usedBy === state.player.name)
-                    .map((b) => b.id);
-            ids.forEach((cid) => {
-              applyContactPermanentBoost(
-                state.player,
-                cid,
-                effect.stats || {},
-              );
-              const buff = state.player.buffs.find(
-                (b) => b.id === cid && b.usedBy === state.player.name,
-              );
-              if (buff) {
-                applyBuffStats(buff, effect.stats || {});
-                const originalContact = CONTACTS.find((c) => c.id === cid);
-                if (originalContact && originalContact.eff) {
-                  applyBuffStats(buff, originalContact.eff);
-                }
-                const upgrade =
-                  state.player.contactUpgrades &&
-                  state.player.contactUpgrades[cid];
-                if (upgrade && upgrade.eff) {
-                  applyBuffStats(buff, upgrade.eff);
-                }
-                const deptScalerBonus = getDeptScalerBonusForContact(
-                  state.player,
-                  cid,
-                );
-                if (deptScalerBonus) {
-                  applyBuffStats(buff, deptScalerBonus);
-                }
-              }
-              if (trackEndUpgrades) {
-                recordEndRoundUpgrade(cid);
-              }
-            });
-          },
-          add_cc_bonus_by_dept_pairs: (effect) => {
-            if (unit.id !== "player") return;
-            const playerCcs = state.player.buffs.filter(
-              (b) => b.usedBy === state.player.name,
-            );
-            const countsByDept = {};
-            playerCcs.forEach((b) => {
-              const dept = b.departmentId || "unknown";
-              countsByDept[dept] = (countsByDept[dept] || 0) + 1;
-            });
-            let totalPairs = 0;
-            Object.values(countsByDept).forEach((count) => {
-              if (count >= 2) totalPairs += Math.floor((count * (count - 1)) / 2);
-            });
-            if (totalPairs <= 0) return;
-            const scaled = {};
-            Object.keys(effect.stats || {}).forEach((key) => {
-              const value = effect.stats[key];
-              if (typeof value !== "number") return;
-              scaled[key] = value * totalPairs;
-            });
-            playerCcs.forEach((b) => {
-              applyContactPermanentBoost(state.player, b.id, scaled);
-              applyBuffStats(b, scaled);
-              const originalContact = CONTACTS.find((c) => c.id === b.id);
-              if (originalContact && originalContact.eff) {
-                applyBuffStats(b, originalContact.eff);
-              }
-              const upgrade =
-                state.player.contactUpgrades &&
-                state.player.contactUpgrades[b.id];
-              if (upgrade && upgrade.eff) {
-                applyBuffStats(b, upgrade.eff);
-              }
-              const deptScalerBonus = getDeptScalerBonusForContact(
-                state.player,
-                b.id,
-              );
-              if (deptScalerBonus) {
-                applyBuffStats(b, deptScalerBonus);
-              }
-              if (trackEndUpgrades) {
-                recordEndRoundUpgrade(b.id);
-              }
-            });
-          },
-          add_signoff_bonus_by_dept_pairs: (effect, owner) => {
-            const playerCcs = state.player.buffs.filter(
-              (b) => b.usedBy === state.player.name,
-            );
-            const countsByDept = {};
-            playerCcs.forEach((b) => {
-              const dept = b.departmentId || "unknown";
-              countsByDept[dept] = (countsByDept[dept] || 0) + 1;
-            });
-            let pairs = 0;
-            Object.values(countsByDept).forEach((count) => {
-              if (count >= 2) pairs += Math.floor((count * (count - 1)) / 2);
-            });
-            if (pairs > 0) {
-              const scaled = {};
-              Object.keys(effect.stats || {}).forEach((key) => {
-                const value = effect.stats[key];
-                if (typeof value !== "number") return;
-                scaled[key] = value * pairs;
-              });
-              applyUnitPermanentBoost(unit, owner.id, scaled);
-            }
-          },
-          rep_scale_salutation: (effect, owner) => {
-            const rep = typeof context.rep === "number" ? context.rep : 0;
-            const step = effect.step || 1;
-            const target = Math.floor(rep / step);
-            if (target <= 0) return;
-            const scaled = {};
-            Object.keys(effect.stats || {}).forEach((key) => {
-              const value = effect.stats[key];
-              if (typeof value !== "number") return;
-              scaled[key] = value * target;
-            });
-            setSalutationBonus(unit, owner.id, scaled);
-          },
-          rep_half_to_cc_escalate: (effect) => {
-            if (!context.summary) return;
-            const total = context.summary.totalRep || 0;
-            const repAward = Math.floor(total / 2);
-            const missed = total - repAward;
-            const step = effect.step || 1;
-            const steps = Math.floor(missed / step);
-            if (steps > 0) {
-              const scaled = {};
-              Object.keys(effect.stats || {}).forEach((key) => {
-                const value = effect.stats[key];
-                if (typeof value !== "number") return;
-                scaled[key] = value;
-              });
-              const limit =
-                effect.threadLimit != null
-                  ? Math.max(0, effect.threadLimit)
-                  : null;
-              const countToApply =
-                limit != null ? Math.min(steps, limit) : steps;
-              applyRandomCcBoostMultiple(state.player, scaled, countToApply);
-            }
-            results.repAward = repAward;
-          },
-        };
-        sources.forEach(({ owner, id }) => {
-          owner.effects.forEach((effect) => {
-            if (!effect || effect.event !== event) return;
-            const contactEffectBoosts =
-              unit.id === "player" &&
-              owner &&
-              owner.id &&
-              owner.id.startsWith("cc_") &&
-              state.player.contactEffectBoosts
-                ? state.player.contactEffectBoosts[owner.id]
-                : null;
-            if (effect.requiresPackType && context.pack) {
-              if (context.pack.type !== effect.requiresPackType) return;
-            }
-            if (effect.requiresFullLeverage && unit.ult < LEVERAGE_MAX) return;
-            if (
-              effect.requiresHpFull &&
-              unit.hp < getUnitMaxHp(unit)
-            )
-              return;
-            if (effect.chance != null) {
-              const key =
-                state.activeScreen === "game-ui"
-                  ? getMissionStreamKey("combat")
-                  : state.activeScreen === "shop-screen"
-                    ? getShopStreamKey()
-                    : "misc";
-              if (rngNext(key) > effect.chance) return;
-            }
-            if (effect.threadLimit != null) {
-              if (!state.threadEffectFlags) state.threadEffectFlags = {};
-              const key = `${event}:${id}:${effect.type}`;
-              const used = state.threadEffectFlags[key] || 0;
-              if (used >= effect.threadLimit) return;
-              state.threadEffectFlags[key] = used + 1;
-            }
-            const handler = EFFECT_HANDLERS[effect.type];
-            let effectSnapshot = null;
-            try {
-              effectSnapshot = JSON.parse(JSON.stringify(effect));
-            } catch (err) {
-              effectSnapshot = { type: effect.type, event: effect.event };
-            }
-            const effectContext = {};
-            if (context.contact)
-              effectContext.contactId = context.contact.id || null;
-            if (context.pack) {
-              effectContext.packId = context.pack.id || null;
-              effectContext.packType = context.pack.type || null;
-            }
-            if (context.summary)
-              effectContext.summary = {
-                totalRep: context.summary.totalRep,
-                baseRep: context.summary.baseRep,
-                bonusRep: context.summary.bonusRep,
-                interestRep: context.summary.interestRep,
-                winsRep: context.summary.winsRep,
-              };
-            logGameEvent("effect_trigger", {
-              event,
-              effectType: effect.type,
-              effect: effectSnapshot,
-              ownerId: owner.id || null,
-              ownerName: owner.name || null,
-              ownerItemType: owner.itemType || null,
-              unitId: unit.id || null,
-              unitName: unit.name || null,
-              context: effectContext,
-              handled: !!handler,
-            });
-            if (handler) handler(effect, owner, contactEffectBoosts);
-          });
+        return ReplyAllEngine.core.runUnitEffects(state, unit, event, context, {
+          recordEndRoundUpgrade,
+          logEffectTrigger: (payload) => logGameEvent("effect_trigger", payload),
         });
-        return results;
       }
 
       function addContactBuff(target, contact, usedBy) {
-        const buff = JSON.parse(JSON.stringify(contact));
-        buff.usedBy = usedBy;
-        if (usedBy === state.player.name) {
-          runUnitEffects(state.player, "cc_add", { contact: buff });
-          const permanentBoost =
-            state.player.contactPermanentBoosts &&
-            state.player.contactPermanentBoosts[buff.id];
-          if (permanentBoost) {
-            const baseEff = buff.eff || {};
-            buff.eff = { ...baseEff };
-            Object.keys(permanentBoost).forEach((key) => {
-              const value = permanentBoost[key];
-              if (typeof value !== "number") return;
-              buff.eff[key] = (buff.eff[key] || 0) + value;
-            });
-          }
-        }
-        if (usedBy === state.player.name && state.player.contactUpgrades) {
-          const upgrade = state.player.contactUpgrades[buff.id];
-          if (upgrade && upgrade.eff) {
-            applyBuffStats(buff, upgrade.eff);
-            buff.subtitle = upgrade.subtitle || buff.subtitle;
-          }
-        }
-        logGameEvent("cc_added", {
-          actor: usedBy,
-          contactId: buff.id,
-          contactName: buff.name || null,
-          targetId: target.id || null,
-          targetName: target.name || null,
-          statsSnapshot: snapshotContactStatsForLog(buff, usedBy),
-        });
-        target.buffs.push(buff);
-        if (buff.eff && buff.eff.maxHp) {
-          target.hp = Math.min(
-            getUnitMaxHp(target),
-            target.hp + buff.eff.maxHp,
-          );
-        }
-        playSound("connect");
-
-        if (
-          contact.id === "cc_andrew_legal" ||
-          contact.id === "cc_megan_legal"
-        ) {
-          const hasAndrew = target.buffs.some(
-            (b) => b.id === "cc_andrew_legal" && b.usedBy === usedBy,
-          );
-          const hasMegan = target.buffs.some(
-            (b) => b.id === "cc_megan_legal" && b.usedBy === usedBy,
-          );
-          const hasElsie = target.buffs.some(
-            (b) => b.id === "cc_elsie" && b.usedBy === usedBy,
-          );
-          if (hasAndrew && hasMegan && !hasElsie) {
-            const elsie = CONTACTS.find((c) => c.id === "cc_elsie");
-            if (elsie) {
-              addContactBuff(target, elsie, usedBy);
+        return ReplyAllEngine.core.addContactBuff(state, target, contact, usedBy, {
+          runUnitEffects,
+          getUnitMaxHp,
+          onBuffAdded: () => playSound("connect"),
+          onAutoAdd: (autoContact, kind, actorName) => {
+            if (!autoContact) return;
+            if (kind === "elsie") {
               addEmailToLog(
-                usedBy,
+                actorName,
                 "everyone@gov.org",
                 "New Addition to the Thread!",
                 formatLoopInText(
-                  elsie,
+                  autoContact,
                   "Wait, is that a baby on the CC list? It's Elsie!",
                 ),
                 "bg-pink-50 border-l-4 border-pink-300",
               );
-            }
-          }
-        }
-
-        if (
-          contact.id === "cc_anneke_executive_council_office" ||
-          contact.id === "cc_willy_boy_information_technology"
-        ) {
-          const hasAnneke = target.buffs.some(
-            (b) =>
-              b.id === "cc_anneke_executive_council_office" &&
-              b.usedBy === usedBy,
-          );
-          const hasWill = target.buffs.some(
-            (b) =>
-              b.id === "cc_willy_boy_information_technology" &&
-              b.usedBy === usedBy,
-          );
-          const hasTater = target.buffs.some(
-            (b) => b.id === "cc_tater_the_dog" && b.usedBy === usedBy,
-          );
-          if (hasAnneke && hasWill && !hasTater) {
-            const tater = CONTACTS.find((c) => c.id === "cc_tater_the_dog");
-            if (tater) {
-              addContactBuff(target, tater, usedBy);
+            } else if (kind === "tater") {
               addEmailToLog(
-                usedBy,
+                actorName,
                 "everyone@gov.org",
                 "Bark! Bark!",
                 formatLoopInText(
-                  tater,
+                  autoContact,
                   "Tater is here to help! Who's a good boy? <strong>{name}</strong> is!",
                 ),
                 "bg-amber-50 border-l-4 border-amber-300",
               );
             }
-          }
-        }
+          },
+        });
       }
 
       function startQuarter() {
@@ -5966,12 +5011,9 @@
           </div>
         `;
       }
-
       function shuffle(array, rngKey = "misc") {
-        for (let i = array.length - 1; i > 0; i--) {
-          const j = rngInt(rngKey, i + 1);
-          [array[i], array[j]] = [array[j], array[i]];
-        }
+        return ReplyAllEngine.core.shuffle(state, array, rngKey);
+      }
         return array;
       }
 
@@ -6474,7 +5516,7 @@
           parts.push(`+${stats.addressLimit} address limit`);
         if (stats.escalateRecoverPerHit)
           parts.push(`Escalate recover +${stats.escalateRecoverPerHit}`);
-        if (stats.bccLimit) parts.push(`+${stats.bccLimit} Help Desk limit`);
+        if (stats.bccLimit) parts.push(`+${stats.bccLimit} Internal Services limit`);
         if (stats.numCCperCCaction)
           parts.push(`+${stats.numCCperCCaction} CC per action`);
         if (stats.contactTrainingLimit)
@@ -6659,8 +5701,6 @@
           );
         if (item.itemType === "signoff")
           return state.player.signOff && state.player.signOff.id === item.id;
-        return false;
-      }
 
       function hasSpaceForItem(item) {
         if (item.itemType === "contact")
@@ -7307,8 +6347,6 @@
             item: currentPackOptions.find((i) => i.id === id),
           };
         }
-        return null;
-      }
 
       function initOwnedSortables() {
         if (typeof Sortable === "undefined") return;
@@ -8563,7 +7601,7 @@
           const empty = document.createElement("div");
           empty.className = "px-2 py-2 text-[10px] italic text-gray-400";
           empty.id = "empty-bcc-list";
-          empty.innerText = "No Internal Service contacts.";
+          empty.innerText = "No Internal Service contacts";
           bccList.appendChild(empty);
         }
       }
@@ -8811,8 +7849,6 @@
         for (const field of STAT_FIELDS) {
           if (typeof item[field] === "number" && item[field] !== 0) return field;
         }
-        return null;
-      }
 
       function getPrimaryStatDelta(item) {
         if (!item) return 0;
@@ -8910,57 +7946,36 @@
           sourcesEl.appendChild(div);
         });
       }
-
       function handleOpponentDefeat(o, byPlayer = false, attacker = null) {
-        if (o.isDefeated) return;
-        o.hp = 0;
-        o.isDefeated = true;
-        o.buffs = [];
-        logGameEvent("stakeholder_opt_out", {
-          actorId: o.employeeId || o.id,
-          actorName: o.name,
-          byPlayer,
-        });
-        runUnitEffects(state.player, "stakeholder_opt_out", { target: o, byPlayer, attacker });
-        if (!byPlayer && attacker && attacker.id !== "player") {
-          runUnitEffects(state.player, "stakeholder_opt_out_other", { target: o, attacker });
-        }
-        if (o.employeeId === "colin_information_technology") {
-          metaState.departmentUnlocks = metaState.departmentUnlocks || {
-            executive: true,
-            it: false,
-            finance: false,
-          };
-          if (!metaState.departmentUnlocks.it) {
-            metaState.departmentUnlocks.it = true;
-            saveMetaState();
-          }
-        }
-        if (byPlayer) {
-          state.removedByPlayer++;
-          o.removedByPlayer = true;
-          runUnitEffects(state.player, "remove_stakeholder", { target: o });
-        }
-        addEmailToLog(
-          o.name,
-          "everyone@gov.org",
-          "Unsubscribing",
-          o.defeatMessage,
-          "italic text-gray-600 bg-gray-50 border-l-4 border-gray-400",
-        );
-        if (state.targetId === o.id) {
-          const next = opponents.find((opp) => opp.hp > 0);
-          if (next) state.targetId = next.id;
-        }
-        if (opponents.every((opp) => opp.hp <= 0)) {
-          if (!state.gameOver) {
-            runUnitEffects(state.player, "thread_end", {});
-            state.player.hp = getUnitMaxHp(state.player);
-            state.gameOver = true;
+        return ReplyAllEngine.core.handleOpponentDefeat(state, o, byPlayer, attacker, {
+          runUnitEffects,
+          getUnitMaxHp,
+          onDepartmentUnlock: (deptId) => {
+            if (deptId !== "it") return;
+            metaState.departmentUnlocks = metaState.departmentUnlocks || {
+              executive: true,
+              it: false,
+              finance: false,
+            };
+            if (!metaState.departmentUnlocks.it) {
+              metaState.departmentUnlocks.it = true;
+              saveMetaState();
+            }
+          },
+          onDefeat: (unit) => {
+            addEmailToLog(
+              unit.name,
+              "everyone@gov.org",
+              "Unsubscribing",
+              unit.defeatMessage,
+              "italic text-gray-600 bg-gray-50 border-l-4 border-gray-400",
+            );
+          },
+          onThreadEnd: () => {
             saveGame();
             endQuarter();
-          }
-        }
+          },
+        });
       }
 
       function formatTurnTime(turn) {
@@ -9510,70 +8525,37 @@
       }
 
       function logGameEvent(type, data = {}) {
-        if (!state.analytics) return;
-        const mission = MISSIONS[state.currentMissionIndex] || {};
-        const event = {
-          ts: Date.now(),
-          type,
-          turn: state.turn,
-          quarter: state.player.quarter,
-          year: state.player.year,
-          missionId: mission.id || null,
-          ...data,
-        };
-        state.analytics.events.push(event);
+        ReplyAllEngine.log.logEvent(state, type, data);
       }
 
       function logInventorySnapshot(source) {
-        const p = state.player;
-        logGameEvent("inventory_snapshot", {
-          source,
-          reputation: p.reputation,
-          addressBook: [...p.addressBook],
-          signatures: (p.signatures || []).map((s) => s.id),
-          salutation: p.salutation ? p.salutation.id : null,
-          signOff: p.signOff ? p.signOff.id : null,
-          bccs: (p.bccContacts || []).map((b) => b.id),
-        });
+        ReplyAllEngine.log.logInventorySnapshot(state, source);
       }
 
       function logResolvedPlayerSheet(source) {
         const p = state.player;
         const totals = computeUnitStats(p);
         const sources = getStatSources(p);
-        logGameEvent("player_sheet", {
-          source,
-          totals,
-          sources,
-        });
+        ReplyAllEngine.log.logResolvedPlayerSheet(state, source, totals, sources);
       }
 
       function logPassiveHeal(unit, hpBefore, hpAfter, trigger) {
-        if (!unit) return;
-        const amount = Math.max(0, (hpAfter || 0) - (hpBefore || 0));
-        if (amount <= 0) return;
-        logGameEvent("healing", {
-          source: "passive",
-          trigger: trigger || null,
-          unitId: unit.id || null,
-          unitName: unit.name || null,
-          amount,
+        ReplyAllEngine.log.logPassiveHeal(
+          state,
+          unit,
           hpBefore,
           hpAfter,
-        });
+          trigger,
+        );
       }
 
       function logBccGains(added, reason, extra = {}) {
-        if (!added || !added.length) return;
-        logGameEvent("bcc_gain", {
-          reason,
-          bccs: added.map((b) => ({
-            id: b.id,
-            name: b.name || null,
-            rarity: b.rarity || null,
-            effects: snapshotItemEffects(b),
-          })),
+        ReplyAllEngine.log.logBccGains(state, added, reason, {
           ...extra,
+          snapshotOptions: {
+            otherFields: SNAPSHOT_ITEM_OTHER_FIELDS,
+            statFields: STAT_FIELDS,
+          },
         });
       }
 
@@ -11008,49 +9990,10 @@
       }
 
       function snapshotContactStatsForLog(contact, usedBy) {
-        if (!contact) return null;
-        const baseEff = contact.eff ? { ...contact.eff } : null;
-        const boosts =
-          state.player.contactPermanentBoosts &&
-          state.player.contactPermanentBoosts[contact.id]
-            ? { ...state.player.contactPermanentBoosts[contact.id] }
-            : null;
-        const upgrades =
-          state.player.contactUpgrades && state.player.contactUpgrades[contact.id]
-            ? state.player.contactUpgrades[contact.id]
-            : null;
-        const upgradeEff =
-          upgrades && upgrades.eff ? { ...upgrades.eff } : null;
-        const trainingCount =
-          (state.player.contactTrainingCount &&
-            state.player.contactTrainingCount[contact.id]) ||
-          0;
-        const deptScalerBonus =
-          usedBy === state.player.name
-            ? getDeptScalerBonusForContact(state.player, contact.id)
-            : null;
-        const effective = {};
-        const mergeInto = (target, stats) => {
-          if (!stats) return;
-          Object.keys(stats).forEach((key) => {
-            const value = stats[key];
-            if (typeof value !== "number") return;
-            target[key] = (target[key] || 0) + value;
-          });
-        };
-        mergeInto(effective, baseEff);
-        mergeInto(effective, boosts);
-        mergeInto(effective, upgradeEff);
-        mergeInto(effective, deptScalerBonus);
-        return {
-          baseEff,
-          boosts,
-          upgradeEff,
-          deptScalerBonus,
-          trainingCount,
-          effective,
-        };
+        return ReplyAllEngine.log.snapshotContactStats(state, contact, usedBy);
       }
+
+
 
       function renderContactDetailHTML(contact, parts, options = {}) {
         const {
