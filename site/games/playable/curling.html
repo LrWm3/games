@@ -109,6 +109,7 @@
 
       const WEIGHT_LABEL_ORDER = ["Hack", "Board", "Control", "Normal", "Peel"];
       const STONES_PER_TEAM = 8;
+      const GUIDE_DOT_COUNT = 3;
 
       // --- ENGINE CLASSES ---
       class Stone {
@@ -451,11 +452,14 @@
           }));
           const movedFlags = sim.stones.map(() => false);
           const stonePaths = sim.stones.map((s) => (s.removed ? [] : [[...s.pos]]));
+          const stoneTimes = sim.stones.map((s) => (s.removed ? [] : [0]));
 
           let finished = false;
           let iters = 0;
+          let simTime = 0;
 
           while (!finished && iters < 5000) {
+            simTime += sim.dt;
             finished = sim.update(simSnapshot);
             for (let i = 0; i < sim.stones.length; i++) {
               const s = sim.stones[i];
@@ -480,6 +484,7 @@
                   Math.hypot(last[0] - s.pos[0], last[1] - s.pos[1]) > 0.001
                 ) {
                   path.push([...s.pos]);
+                  stoneTimes[i].push(simTime);
                 }
               }
             }
@@ -496,10 +501,11 @@
               Math.hypot(last[0] - s.pos[0], last[1] - s.pos[1]) > 0.001
             ) {
               path.push([...s.pos]);
+              stoneTimes[i].push(simTime);
             }
           }
 
-          return { stonePaths, movedFlags, finalStones: sim.stones };
+          return { stonePaths, stoneTimes, movedFlags, finalStones: sim.stones };
         }
       }
 
@@ -604,23 +610,93 @@
                 {prediction.stonePaths.map((path, i) => {
                   const stone = prediction.finalStones[i];
                   if (!prediction.movedFlags[i] || path.length < 2) return null;
-                  return (
-                    <polyline
-                      key={`path-${i}`}
-                      points={path
-                        .map(
-                          (p) =>
-                            `${(RINK.WIDTH / 2 + p[0]) * scale},${p[1] * scale}`,
+                  const times = prediction.stoneTimes?.[i] || [];
+                  const pathD =
+                    "M " +
+                    path
+                      .map(
+                        (p) =>
+                          `${(RINK.WIDTH / 2 + p[0]) * scale} ${p[1] * scale}`,
+                      )
+                      .join(" L ");
+                  const guideColor =
+                    stone.color === -1
+                      ? "rgba(239,68,68,0.8)"
+                      : "rgba(250,204,21,0.8)";
+                  const cumulativeDistances = [0];
+                  for (let p = 1; p < path.length; p++) {
+                    const segment = Math.hypot(
+                      path[p][0] - path[p - 1][0],
+                      path[p][1] - path[p - 1][1],
+                    );
+                    cumulativeDistances.push(
+                      cumulativeDistances[cumulativeDistances.length - 1] +
+                        segment,
+                    );
+                  }
+                  const totalDistance =
+                    cumulativeDistances[cumulativeDistances.length - 1];
+                  const hasTimingData =
+                    times.length === path.length &&
+                    times[times.length - 1] > times[0] &&
+                    totalDistance > 0;
+                  const keyTimes = hasTimingData
+                    ? times
+                        .map((t) =>
+                          (
+                            (t - times[0]) /
+                            (times[times.length - 1] - times[0])
+                          ).toFixed(4),
                         )
-                        .join(" ")}
-                      fill="none"
-                      stroke={
-                        stone.color === -1
-                          ? "rgba(239,68,68,0.8)"
-                          : "rgba(250,204,21,0.8)"
-                      }
-                      strokeWidth="1"
-                    />
+                        .join(";")
+                    : null;
+                  const keyPoints = hasTimingData
+                    ? cumulativeDistances
+                        .map((d) => (d / totalDistance).toFixed(4))
+                        .join(";")
+                    : null;
+                  const animDur = hasTimingData
+                    ? Math.max(
+                        1.4,
+                        Math.min(7, (times[times.length - 1] - times[0]) * 0.4),
+                      )
+                    : "1.8s";
+                  const animDurSec =
+                    typeof animDur === "number" ? animDur : 1.8;
+                  const animDurStr =
+                    typeof animDur === "number"
+                      ? `${animDur.toFixed(2)}s`
+                      : animDur;
+                  return (
+                    <g key={`path-${i}`}>
+                      <path
+                        d={pathD}
+                        fill="none"
+                        stroke={guideColor}
+                        strokeWidth="1"
+                      />
+                      {Array.from({ length: GUIDE_DOT_COUNT }).map((_, dotIdx) => (
+                        <circle
+                          key={`dot-${i}-${dotIdx}`}
+                          r={Math.max(1.6, scale * 0.018)}
+                          fill={guideColor}
+                          stroke="rgba(255,255,255,0.7)"
+                          strokeWidth="0.4"
+                          opacity={0.95 - dotIdx * 0.18}
+                        >
+                          <animateMotion
+                            dur={animDurStr}
+                            begin={`${(-dotIdx * animDurSec) / GUIDE_DOT_COUNT}s`}
+                            repeatCount="indefinite"
+                            rotate="auto"
+                            path={pathD}
+                            calcMode={hasTimingData ? "linear" : undefined}
+                            keyTimes={hasTimingData ? keyTimes : undefined}
+                            keyPoints={hasTimingData ? keyPoints : undefined}
+                          />
+                        </circle>
+                      ))}
+                    </g>
                   );
                 })}
                 {prediction.finalStones
@@ -637,8 +713,9 @@
                           : "rgba(234,179,8,0.25)"
                       }
                       stroke="rgba(255,255,255,0.7)"
-                      strokeWidth="1.5"
-                      strokeDasharray="2 2"
+                      strokeWidth="1"
+                      strokeLinecap="round"
+                      strokeDasharray="0.5 1.2"
                     />
                   ))}
               </svg>
