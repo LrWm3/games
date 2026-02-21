@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Pro Curling Tuner: Multi-Cam Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      body {
+        background-color: #020617;
+        overflow: hidden;
+        touch-action: none;
+        font-family: ui-sans-serif, system-ui;
+      }
+      .ice-sheet {
+        background: linear-gradient(
+          to bottom,
+          #cbd5e1 0%,
+          #f8fafc 40%,
+          #f1f5f9 60%,
+          #cbd5e1 100%
+        );
+        position: relative;
+      }
+      .house-ring {
+        border-radius: 50%;
+        position: absolute;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+      }
+      .no-select {
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .settings-scroll::-webkit-scrollbar {
+        width: 4px;
+      }
+      .settings-scroll::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 10px;
+      }
+      .chase-layer {
+        transition: transform 0.05s linear;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect, useRef, useCallback } = React;
+
+      // --- CALIBRATED DEFAULTS & CONSTANTS ---
+      const DEFAULT_WEIGHTS = {
+        1: 2.05,
+        2: 2.1,
+        3: 2.15,
+        4: 2.2,
+        5: 2.25,
+        6: 2.28,
+        "7 (Tee)": 2.315,
+        8: 2.325,
+        9: 2.335,
+        10: 2.35,
+        Hack: 2.5,
+        Board: 2.7,
+        Control: 3.1,
+        Normal: 3.6,
+        Peel: 4.3,
+      };
+
+      const DEFAULT_PHYSICS = {
+        mu_0: 0.0085,
+        A: 10.0,
+        g: 9.81,
+        eps: 1e-6,
+        spin_rate: 1.6,
+        restitution: 0.55,
+        stone_friction: 0.2,
+      };
+
+      const RINK = {
+        WIDTH: 4.75,
+        LENGTH: 45.72,
+        BACK_LINE: 3.658,
+        TEE_LINE: 5.487,
+        HOG_LINE: 11.888,
+        HOUSE_RADII: [1.829, 1.219, 0.61, 0.152],
+        HACK_Y: 45.72 - 1.0,
+        FAR_TEE_Y: 5.487,
+        COLORS: ["#2563eb", "#ffffff", "#dc2626", "#ffffff"],
+      };
+
+      // --- ENGINE CLASSES ---
+      class Stone {
+        constructor(color, pos, velocity, angle, spin, phys) {
+          this.color = color;
+          this.mass = 19.0;
+          this.outerRadius = 0.142;
+          this.ringRadius = 0.065;
+          this.phys = phys;
+          this.weight = this.mass * phys.g;
+          this.inertia = 0.5 * this.mass * Math.pow(this.outerRadius, 2);
+
+          this.pos = [...pos];
+          this.vel = [Math.sin(angle) * velocity, -Math.cos(angle) * velocity];
+          this.acc = [0, 0];
+          this.angularPos = 0;
+          this.angularVel = spin;
+          this.angularAcc = 0;
+          this.isStopped = false;
+          this.removed = false;
+          this.touchedInPlay = false; // Tracks if it hit a legal stone
+        }
+
+        clone() {
+          const copy = new Stone(
+            this.color,
+            [...this.pos],
+            [0, 0],
+            0,
+            0,
+            this.phys,
+          );
+          copy.vel = [...this.vel];
+          copy.acc = [...this.acc];
+          copy.angularVel = this.angularVel;
+          copy.angularPos = this.angularPos;
+          copy.isStopped = this.isStopped;
+          copy.removed = this.removed;
+          copy.touchedInPlay = this.touchedInPlay;
+          return copy;
+        }
+
+        unstep(dt) {
+          this.pos = math.subtract(this.pos, math.multiply(this.vel, dt));
+          this.vel = math.subtract(this.vel, math.multiply(this.acc, dt));
+          this.angularPos -= this.angularVel * dt;
+          this.angularVel -= this.angularAcc * dt;
+          this.isStopped = false;
+        }
+
+        step(dt) {
+          const speed = math.norm(this.vel);
+          const spinMag = Math.abs(this.angularVel);
+
+          if (speed < this.phys.eps && spinMag < 0.05) {
+            this.vel = [0, 0];
+            this.angularVel = 0;
+            this.isStopped = true;
+            return true;
+          }
+
+          const curlFactor = (2 * spinMag) / (1 + Math.pow(spinMag, 1.5));
+          const wanderIntensity =
+            0.02 * Math.exp(-3 * spinMag) * Math.min(speed, 1.0);
+          const wanderForce = [
+            (Math.random() - 0.5) * wanderIntensity,
+            (Math.random() - 0.5) * wanderIntensity,
+          ];
+
+          let netForce = [...wanderForce];
+          let totalTorque = 0;
+          const numPoints = 20;
+          const dTheta = (2 * Math.PI) / numPoints;
+          const effectiveA = this.phys.A * curlFactor;
+          const k = effectiveA / (effectiveA + 1);
+          const normalForcePerPoint = this.weight / numPoints;
+          const motionAngle = Math.atan2(this.vel[0], -this.vel[1]);
+
+          for (let i = 0; i < numPoints; i++) {
+            const theta = i * dTheta;
+            const relPos = [
+              Math.sin(theta) * this.ringRadius,
+              -Math.cos(theta) * this.ringRadius,
+            ];
+            const tangent = [Math.cos(theta), Math.sin(theta)];
+            const rotVel = math.multiply(
+              this.angularVel * this.ringRadius,
+              tangent,
+            );
+            const pointVel = math.add(this.vel, rotVel);
+            const pointSpeed = math.norm(pointVel);
+
+            const phi = theta - motionAngle;
+            const mu =
+              (this.phys.mu_0 / Math.sqrt(Math.max(pointSpeed, 1e-4))) *
+              (1 - k * Math.cos(phi));
+
+            if (pointSpeed > 1e-7) {
+              let fMag = Math.min(
+                normalForcePerPoint * Math.max(mu, 0),
+                (pointSpeed * (this.mass / numPoints)) / dt,
+              );
+              const fDir = math.divide(pointVel, -pointSpeed);
+              const fVec = math.multiply(fMag, fDir);
+              netForce = math.add(netForce, fVec);
+              totalTorque += relPos[0] * fVec[1] - relPos[1] * fVec[0];
+            }
+          }
+
+          this.angularAcc = totalTorque / this.inertia;
+          this.angularVel += this.angularAcc * dt;
+          this.angularPos += this.angularVel * dt;
+          this.acc = math.divide(netForce, this.mass);
+          this.vel = math.add(this.vel, math.multiply(this.acc, dt));
+          this.pos = math.add(this.pos, math.multiply(this.vel, dt));
+
+          return false;
+        }
+      }
+
+      class CurlingEngine {
+        constructor(physics) {
+          this.stones = [];
+          this.accuracy = 0;
+          this.nextColor = -1; // -1 = Red, 1 = Yellow
+          this.phys = physics;
+          this.intervals = [0.3, 0.1, 0.05];
+          this.rulesApplied = false;
+          this.lastViolation = null;
+        }
+
+        get dt() {
+          return this.intervals[this.accuracy];
+        }
+
+        clone() {
+          const copy = new CurlingEngine(this.phys);
+          copy.stones = this.stones.map((s) => s.clone());
+          copy.accuracy = this.accuracy;
+          copy.nextColor = this.nextColor;
+          return copy;
+        }
+
+        addStone(velocity, angle, spin) {
+          const stone = new Stone(
+            this.nextColor,
+            [0, RINK.HACK_Y],
+            velocity,
+            angle,
+            spin,
+            this.phys,
+          );
+          this.stones.push(stone);
+          this.nextColor *= -1;
+          this.accuracy = 0;
+          this.rulesApplied = false;
+          this.lastViolation = null;
+        }
+
+        update(snapshotStones) {
+          let finished = true;
+          const dt = this.dt;
+
+          for (let stone of this.stones) {
+            if (!stone.isStopped) {
+              if (!stone.step(dt)) finished = false;
+              if (stone.pos[1] < RINK.HOG_LINE)
+                this.accuracy = Math.max(this.accuracy, 1);
+            }
+          }
+
+          this.stones.forEach((s) => {
+            if (!s.removed && !s.isStopped) {
+              // Standard out of bounds
+              if (
+                Math.abs(s.pos[0]) > RINK.WIDTH / 2 ||
+                s.pos[1] < RINK.BACK_LINE - s.outerRadius
+              ) {
+                s.removed = true;
+                s.isStopped = true;
+              }
+            }
+          });
+
+          this.handleCollisions(dt);
+
+          if (finished && snapshotStones && !this.rulesApplied) {
+            this.applyRules(snapshotStones);
+            this.rulesApplied = true;
+          }
+
+          return finished;
+        }
+
+        handleCollisions(dt) {
+          for (let i = 0; i < this.stones.length; i++) {
+            for (let j = i + 1; j < this.stones.length; j++) {
+              const s1 = this.stones[i],
+                s2 = this.stones[j];
+              if (s1.removed || s2.removed) continue;
+
+              const delta = math.subtract(s1.pos, s2.pos);
+              const dist = math.norm(delta);
+              const min = s1.outerRadius + s2.outerRadius;
+
+              if (dist <= min) {
+                if (this.accuracy < 2) {
+                  this.stones.forEach((s) => s.unstep(dt));
+                  this.accuracy = 2;
+                  return;
+                }
+
+                // Flag if contacting a stone legally in play (past hog line)
+                if (s1.pos[1] < RINK.HOG_LINE || s2.pos[1] < RINK.HOG_LINE) {
+                  s1.touchedInPlay = true;
+                  s2.touchedInPlay = true;
+                }
+
+                const normal = math.divide(delta, dist);
+                const tangent = [-normal[1], normal[0]];
+                const relVel = math.subtract(s1.vel, s2.vel);
+                const relNormVel = math.dot(relVel, normal);
+
+                if (relNormVel < 0) {
+                  const jNormMag =
+                    (-(1 + this.phys.restitution) * relNormVel) /
+                    (1 / s1.mass + 1 / s2.mass);
+                  const jNorm = math.multiply(jNormMag, normal);
+                  let relTangVel =
+                    math.dot(relVel, tangent) -
+                    (s1.angularVel * s1.outerRadius +
+                      s2.angularVel * s2.outerRadius);
+                  const iFactor =
+                    Math.pow(s1.outerRadius, 2) / s1.inertia +
+                    1 / s1.mass +
+                    Math.pow(s2.outerRadius, 2) / s2.inertia +
+                    1 / s2.mass;
+                  const jTangMag =
+                    Math.min(
+                      this.phys.stone_friction * jNormMag,
+                      Math.abs(relTangVel) / iFactor,
+                    ) * Math.sign(relTangVel);
+                  const jTang = math.multiply(-jTangMag, tangent);
+                  const impulse = math.add(jNorm, jTang);
+                  s1.vel = math.add(s1.vel, math.divide(impulse, s1.mass));
+                  s2.vel = math.subtract(s2.vel, math.divide(impulse, s2.mass));
+                  s1.angularVel += (jTangMag * s1.outerRadius) / s1.inertia;
+                  s2.angularVel -= (jTangMag * s2.outerRadius) / s2.inertia;
+                  s1.isStopped = false;
+                  s2.isStopped = false;
+                }
+                const nudge = math.multiply((min - dist) / 2 + 0.001, normal);
+                s1.pos = math.add(s1.pos, nudge);
+                s2.pos = math.subtract(s2.pos, nudge);
+              }
+            }
+          }
+        }
+
+        applyRules(snapshotStones) {
+          const deliveredStone = this.stones[this.stones.length - 1];
+          if (!deliveredStone) return;
+
+          const deliveryNum = this.stones.length;
+
+          // 1. FGZ / No-Tick Rule (Applies to first 5 stones of the end)
+          if (deliveryNum <= 5) {
+            let violation = false;
+            for (let i = 0; i < snapshotStones.length; i++) {
+              const oldS = snapshotStones[i];
+              if (oldS.color === deliveredStone.color || oldS.removed) continue;
+
+              const inHouse =
+                Math.hypot(oldS.pos[0], oldS.pos[1] - RINK.FAR_TEE_Y) <=
+                RINK.HOUSE_RADII[0] + oldS.outerRadius;
+              const inFGZ =
+                !inHouse &&
+                oldS.pos[1] <= RINK.HOG_LINE &&
+                oldS.pos[1] >= RINK.TEE_LINE;
+              const onCenter = Math.abs(oldS.pos[0]) <= oldS.outerRadius;
+
+              if (inFGZ) {
+                const newS = this.stones[i];
+                if (newS.removed) {
+                  // FGZ Knockout Violation
+                  violation = true;
+                  break;
+                }
+                if (onCenter) {
+                  // No-Tick Violation
+                  const newInHouse =
+                    Math.hypot(newS.pos[0], newS.pos[1] - RINK.FAR_TEE_Y) <=
+                    RINK.HOUSE_RADII[0] + newS.outerRadius;
+                  const newOnCenter = Math.abs(newS.pos[0]) <= newS.outerRadius;
+                  if (!newOnCenter || newInHouse || newS.removed) {
+                    violation = true;
+                    break;
+                  }
+                }
+              }
+            }
+
+            if (violation) {
+              deliveredStone.removed = true;
+              for (let i = 0; i < snapshotStones.length; i++) {
+                if (snapshotStones[i].color !== deliveredStone.color) {
+                  this.stones[i].pos = [...snapshotStones[i].pos];
+                  this.stones[i].removed = snapshotStones[i].removed;
+                }
+              }
+              this.lastViolation =
+                "FGZ / No-Tick Violation: Opponent stones replaced.";
+              return;
+            }
+          }
+
+          // 2. Hog Line Violation
+          if (
+            !deliveredStone.removed &&
+            deliveredStone.pos[1] >= RINK.HOG_LINE
+          ) {
+            if (!deliveredStone.touchedInPlay) {
+              deliveredStone.removed = true;
+              this.lastViolation = "Hog Line Violation: Stone removed.";
+            }
+          }
+        }
+
+        predictPath(velocity, angle, spin, snapshotStones) {
+          const sim = this.clone();
+          sim.addStone(velocity, angle, spin);
+          const newStone = sim.stones[sim.stones.length - 1];
+
+          // For accurate simulation, pass the virtual initial state
+          const simSnapshot = sim.stones.map((s) => s.clone());
+          simSnapshot.pop(); // Remove the newly added one to represent state before throw
+
+          const path = [];
+          let finished = false;
+          let iters = 0;
+
+          while (!finished && iters < 5000) {
+            finished = sim.update(simSnapshot);
+            if (iters % 6 === 0 && !newStone.isStopped && !newStone.removed) {
+              path.push([...newStone.pos]);
+            }
+            iters++;
+          }
+          return { path, finalStones: sim.stones };
+        }
+      }
+
+      // --- SHARED SHEET VIEW COMPONENT ---
+      const SheetContent = ({
+        scale,
+        stones,
+        broomX,
+        isSimulating,
+        prediction,
+      }) => {
+        const width = RINK.WIDTH * scale;
+        const height = RINK.LENGTH * scale;
+
+        return (
+          <div
+            className="relative ice-sheet shadow-2xl"
+            style={{ width, height }}
+          >
+            {/* Center Line */}
+            <div className="absolute left-1/2 w-[1px] h-full bg-blue-400/20 -translate-x-1/2" />
+
+            {/* No-Tick Zone Highlight (FGZ Center Line) */}
+            <div
+              className="absolute bg-yellow-500/10 pointer-events-none"
+              style={{
+                left: `calc(50% - ${0.142 * scale}px)`,
+                width: `${0.284 * scale}px`,
+                top: RINK.TEE_LINE * scale,
+                height: (RINK.HOG_LINE - RINK.TEE_LINE) * scale,
+              }}
+            />
+
+            {/* Back Line */}
+            <div
+              className="absolute w-full h-[2px] bg-slate-800/60"
+              style={{ top: RINK.BACK_LINE * scale }}
+            />
+            <span
+              className="absolute left-2 text-[6px] text-slate-700 font-bold uppercase"
+              style={{ top: RINK.BACK_LINE * scale - 10 }}
+            >
+              Back
+            </span>
+
+            {/* Tee Line */}
+            <div
+              className="absolute w-full h-[1px] bg-slate-800/30"
+              style={{ top: RINK.TEE_LINE * scale }}
+            />
+            <span
+              className="absolute left-2 text-[6px] text-slate-600 font-bold uppercase"
+              style={{ top: RINK.TEE_LINE * scale - 10 }}
+            >
+              Tee
+            </span>
+
+            {/* Hog Line */}
+            <div
+              className="absolute w-full h-[4px] bg-red-600/50 border-y border-red-900/50"
+              style={{ top: RINK.HOG_LINE * scale }}
+            />
+            <span
+              className="absolute left-2 text-[6px] text-red-700 font-bold uppercase"
+              style={{ top: RINK.HOG_LINE * scale - 10 }}
+            >
+              Hog
+            </span>
+
+            {/* Target House */}
+            <div
+              className="absolute left-1/2"
+              style={{
+                top: RINK.FAR_TEE_Y * scale,
+                transform: "translateX(-50%)",
+              }}
+            >
+              {RINK.HOUSE_RADII.map((r, i) => (
+                <div
+                  key={i}
+                  className="house-ring"
+                  style={{
+                    width: r * 2 * scale,
+                    height: r * 2 * scale,
+                    backgroundColor: RINK.COLORS[i],
+                    opacity: 0.8,
+                  }}
+                />
+              ))}
+              <div className="absolute w-[1px] h-[400px] bg-red-400/20 left-0 -top-[200px]" />
+            </div>
+
+            {/* Hack/Start House */}
+            <div
+              className="absolute left-1/2 opacity-20"
+              style={{
+                top: (RINK.LENGTH - RINK.FAR_TEE_Y) * scale,
+                transform: "translateX(-50%)",
+              }}
+            >
+              {RINK.HOUSE_RADII.map((r, i) => (
+                <div
+                  key={i}
+                  className="house-ring"
+                  style={{
+                    width: r * 2 * scale,
+                    height: r * 2 * scale,
+                    backgroundColor: RINK.COLORS[i],
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Prediction Layer Overlay */}
+            {prediction && (
+              <svg
+                className="absolute inset-0 pointer-events-none z-10"
+                style={{ width, height }}
+              >
+                <polyline
+                  points={prediction.path
+                    .map(
+                      (p) =>
+                        `${(RINK.WIDTH / 2 + p[0]) * scale},${p[1] * scale}`,
+                    )
+                    .join(" ")}
+                  fill="none"
+                  stroke="rgba(255,255,255,0.6)"
+                  strokeWidth="2"
+                  strokeDasharray="4 4"
+                />
+                {prediction.finalStones
+                  .filter((s) => !s.removed)
+                  .map((s, i) => (
+                    <circle
+                      key={`ghost-${i}`}
+                      cx={(RINK.WIDTH / 2 + s.pos[0]) * scale}
+                      cy={s.pos[1] * scale}
+                      r={s.outerRadius * scale}
+                      fill={
+                        s.color === -1
+                          ? "rgba(239,68,68,0.25)"
+                          : "rgba(234,179,8,0.25)"
+                      }
+                      stroke="rgba(255,255,255,0.7)"
+                      strokeWidth="1.5"
+                      strokeDasharray="2 2"
+                    />
+                  ))}
+              </svg>
+            )}
+
+            {/* Broom */}
+            {!isSimulating && typeof broomX === "number" && (
+              <div
+                className="absolute pointer-events-none flex flex-col items-center z-10"
+                style={{
+                  left: `calc(50% + ${broomX * scale}px)`,
+                  top: RINK.FAR_TEE_Y * scale,
+                  transform: "translate(-50%, -100%)",
+                }}
+              >
+                <div className="w-4 h-4 rounded-full border-[3px] border-slate-900 mb-1 animate-pulse" />
+                <div className="w-[2px] h-24 bg-slate-900/40" />
+              </div>
+            )}
+
+            {/* Real Stones */}
+            {stones
+              .filter((s) => !s.removed)
+              .map((s, i) => (
+                <div
+                  key={i}
+                  className="absolute rounded-full shadow-xl flex items-center justify-center border border-black/40 z-20"
+                  style={{
+                    width: s.outerRadius * 2 * scale,
+                    height: s.outerRadius * 2 * scale,
+                    left: `calc(50% + ${s.pos[0] * scale}px)`,
+                    top: s.pos[1] * scale,
+                    backgroundColor: s.color === -1 ? "#ef4444" : "#eab308",
+                    transform: `translate(-50%, -50%) rotate(${s.angularPos}rad)`,
+                  }}
+                >
+                  <div className="w-full h-[20%] bg-black/30" />
+                </div>
+              ))}
+          </div>
+        );
+      };
+
+      // --- MAIN APP ---
+      const App = () => {
+        const [weights, setWeights] = useState(() => {
+          const saved = localStorage.getItem("curling_weights_adv");
+          return saved ? JSON.parse(saved) : DEFAULT_WEIGHTS;
+        });
+        const [phys, setPhys] = useState(() => {
+          const saved = localStorage.getItem("curling_phys_adv");
+          return saved ? JSON.parse(saved) : DEFAULT_PHYSICS;
+        });
+
+        const engineRef = useRef(new CurlingEngine(phys));
+        const snapshotRef = useRef(null);
+
+        const [stones, setStones] = useState([]);
+        const [isSimulating, setIsSimulating] = useState(false);
+        const [selectedWeight, setSelectedWeight] = useState("7 (Tee)");
+        const [rotation, setRotation] = useState(1);
+        const [broomX, setBroomX] = useState(0);
+
+        const [showSettings, setShowSettings] = useState(false);
+        const [prediction, setPrediction] = useState(null);
+        const [snapshotState, setSnapshotState] = useState(null);
+        const [violationMsg, setViolationMsg] = useState(null);
+
+        const [scale, setScale] = useState(10);
+        const mainViewRef = useRef(null);
+
+        useEffect(() => {
+          localStorage.setItem("curling_weights_adv", JSON.stringify(weights));
+          localStorage.setItem("curling_phys_adv", JSON.stringify(phys));
+          engineRef.current.phys = phys;
+          setPrediction(null);
+        }, [weights, phys]);
+
+        useEffect(() => {
+          setPrediction(null);
+        }, [broomX, selectedWeight, rotation]);
+
+        useEffect(() => {
+          const updateScale = () => {
+            if (mainViewRef.current)
+              setScale(mainViewRef.current.clientHeight / (RINK.LENGTH + 1));
+          };
+          updateScale();
+          window.addEventListener("resize", updateScale);
+          setTimeout(updateScale, 100);
+          return () => window.removeEventListener("resize", updateScale);
+        }, []);
+
+        const runPhysics = useCallback((preThrowSnapshot) => {
+          if (engineRef.current.update(preThrowSnapshot)) {
+            setIsSimulating(false);
+            setStones([...engineRef.current.stones]);
+            if (engineRef.current.lastViolation) {
+              setViolationMsg(engineRef.current.lastViolation);
+              setTimeout(() => setViolationMsg(null), 4000);
+              engineRef.current.lastViolation = null;
+            }
+          } else {
+            setStones([...engineRef.current.stones]);
+            requestAnimationFrame(() => runPhysics(preThrowSnapshot));
+          }
+        }, []);
+
+        const handleSimulate = () => {
+          const v = parseFloat(weights[selectedWeight]);
+          const spin = rotation * phys.spin_rate;
+          const angle = Math.atan2(broomX, -(RINK.FAR_TEE_Y - RINK.HACK_Y));
+          const currentSnapshot = engineRef.current.stones.map((s) =>
+            s.clone(),
+          );
+          setPrediction(
+            engineRef.current.predictPath(v, angle, spin, currentSnapshot),
+          );
+        };
+
+        const handleDeliver = () => {
+          setViolationMsg(null);
+          const preThrowStones = engineRef.current.stones.map((s) => s.clone());
+          setSnapshotState({
+            stones: preThrowStones,
+            nextColor: engineRef.current.nextColor,
+          });
+          snapshotRef.current = preThrowStones;
+          setPrediction(null);
+
+          const v = parseFloat(weights[selectedWeight]);
+          const spin = rotation * phys.spin_rate;
+          const angle = Math.atan2(broomX, -(RINK.FAR_TEE_Y - RINK.HACK_Y));
+
+          engineRef.current.addStone(v, angle, spin);
+          setIsSimulating(true);
+          runPhysics(snapshotRef.current);
+        };
+
+        const handleReset = () => {
+          if (snapshotState && !isSimulating) {
+            engineRef.current.stones = snapshotState.stones.map((s) =>
+              s.clone(),
+            );
+            engineRef.current.nextColor = snapshotState.nextColor;
+            setStones([...engineRef.current.stones]);
+            setPrediction(null);
+            setViolationMsg(null);
+          }
+        };
+
+        const clearStones = () => {
+          engineRef.current.stones = [];
+          engineRef.current.nextColor = -1;
+          setStones([]);
+          setSnapshotState(null);
+          snapshotRef.current = null;
+          setPrediction(null);
+          setIsSimulating(false);
+          setViolationMsg(null);
+        };
+
+        const handleAim = (clientX) => {
+          if (isSimulating || !mainViewRef.current) return;
+          const rect = mainViewRef.current.getBoundingClientRect();
+          const center = rect.left + rect.width / 2;
+          setBroomX((clientX - center) / scale);
+        };
+
+        const activeStone = isSimulating
+          ? stones.find((s) => !s.isStopped) || stones[stones.length - 1]
+          : stones.length > 0
+            ? stones[stones.length - 1]
+            : null;
+        const chaseY = activeStone ? activeStone.pos[1] : RINK.HACK_Y;
+
+        return (
+          <div className="flex flex-col lg:flex-row h-screen w-full bg-slate-950 text-white overflow-hidden font-sans">
+            {/* --- CAMS PANEL (Top Row on Mobile, Left Column on Desktop) --- */}
+            <div className="flex flex-row lg:flex-col h-[28vh] lg:h-full lg:w-[320px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 z-20">
+              {/* HOUSE CAM */}
+              <div className="flex-1 lg:flex-[1] border-r lg:border-r-0 lg:border-b border-white/10 relative overflow-hidden bg-slate-900/80 shadow-inner">
+                <div className="absolute top-2 left-2 z-20 bg-slate-950/80 px-2 py-1 rounded text-[9px] font-black text-blue-500 uppercase tracking-widest border border-white/5 shadow-lg">
+                  House Cam
+                </div>
+                <div
+                  className="absolute left-1/2 w-full origin-top"
+                  style={{
+                    transform: `translateX(-50%) scale(2.2) translateY(-${(RINK.FAR_TEE_Y - 3) * scale}px)`,
+                  }}
+                >
+                  <div className="flex justify-center w-full">
+                    <SheetContent
+                      scale={scale}
+                      stones={stones}
+                      broomX={null}
+                      isSimulating={isSimulating}
+                      prediction={prediction}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* CHASE CAM */}
+              <div className="flex-1 lg:flex-[1] relative overflow-hidden bg-slate-900/80 shadow-inner">
+                <div className="absolute top-2 left-2 z-20 bg-slate-950/80 px-2 py-1 rounded text-[9px] font-black text-blue-500 uppercase tracking-widest border border-white/5 shadow-lg">
+                  Chase Cam
+                </div>
+                <div
+                  className="absolute top-0 left-1/2 w-full origin-top transform-gpu"
+                  style={{ transform: `translateX(-50%) scale(2.8)` }}
+                >
+                  <div
+                    className="flex justify-center w-full chase-layer"
+                    style={{
+                      transform: `translateY(calc(8vh - ${chaseY * scale}px))`,
+                    }}
+                  >
+                    <SheetContent
+                      scale={scale}
+                      stones={stones}
+                      broomX={null}
+                      isSimulating={isSimulating}
+                      prediction={prediction}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* --- MAIN GAME VIEW (Bottom on Mobile, Right on Desktop) --- */}
+            <div className="flex-1 flex flex-col relative bg-slate-950 z-10 shadow-2xl min-w-0">
+              {/* Header */}
+              <div className="p-3 lg:p-4 bg-slate-900 flex justify-between items-center border-b border-white/10 shrink-0 relative">
+                <div>
+                  <h1 className="text-[9px] lg:text-[10px] font-black tracking-[0.2em] text-blue-500 uppercase">
+                    Multi-Cam Pro
+                  </h1>
+                  <div className="text-xs lg:text-sm font-black text-white uppercase flex items-center gap-2">
+                    Sheet{" "}
+                    {stones.length < 5 ? (
+                      <span className="text-yellow-500 text-[10px] bg-yellow-500/20 px-1.5 py-0.5 rounded">
+                        FGZ Active
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Violation Alert */}
+                {violationMsg && (
+                  <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 bg-red-600/90 text-white text-[10px] lg:text-xs font-bold px-3 py-1.5 rounded shadow-lg animate-pulse whitespace-nowrap z-50">
+                    {violationMsg}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className={`px-3 py-1.5 rounded text-[9px] font-bold border border-white/5 uppercase transition ${showSettings ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300"}`}
+                >
+                  {showSettings ? "Close" : "Setup"}
+                </button>
+              </div>
+
+              {/* Interactive Area */}
+              <div
+                className="flex-grow overflow-hidden relative cursor-crosshair flex justify-center no-select"
+                ref={mainViewRef}
+                onMouseMove={(e) => handleAim(e.clientX)}
+                onTouchMove={(e) => handleAim(e.touches[0].clientX)}
+              >
+                <div className="absolute inset-0 w-full h-full flex justify-center overflow-hidden">
+                  <SheetContent
+                    scale={scale}
+                    stones={stones}
+                    broomX={broomX}
+                    isSimulating={isSimulating}
+                    prediction={prediction}
+                  />
+                </div>
+              </div>
+
+              {/* Controls Panel */}
+              {!showSettings && (
+                <div className="p-3 lg:p-4 bg-slate-900 border-t border-white/10 space-y-3 shrink-0">
+                  <div className="flex gap-2 lg:gap-4">
+                    <div className="flex-1">
+                      <label className="text-[8px] lg:text-[9px] font-black text-slate-500 mb-1 block uppercase">
+                        Shot Weight
+                      </label>
+                      <select
+                        value={selectedWeight}
+                        onChange={(e) => setSelectedWeight(e.target.value)}
+                        className="w-full bg-slate-950 border border-white/10 p-2 rounded-lg text-[10px] lg:text-xs font-bold outline-none ring-blue-500/50 focus:ring-2"
+                      >
+                        {Object.keys(weights).map((k) => (
+                          <option key={k} value={k}>
+                            {k}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-[8px] lg:text-[9px] font-black text-slate-500 mb-1 block uppercase">
+                        Handle
+                      </label>
+                      <div className="flex bg-slate-950 p-1 rounded-lg border border-white/10">
+                        <button
+                          onClick={() => setRotation(1)}
+                          className={`flex-1 py-1.5 text-[9px] lg:text-[10px] rounded font-bold transition-colors ${rotation > 0 ? "bg-blue-600 shadow text-white" : "text-slate-500"}`}
+                        >
+                          IN
+                        </button>
+                        <button
+                          onClick={() => setRotation(-1)}
+                          className={`flex-1 py-1.5 text-[9px] lg:text-[10px] rounded font-bold transition-colors ${rotation < 0 ? "bg-blue-600 shadow text-white" : "text-slate-500"}`}
+                        >
+                          OUT
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSimulate}
+                      disabled={isSimulating}
+                      className="flex-1 py-2 lg:py-3 bg-slate-800 border border-white/10 rounded-xl font-black text-[9px] lg:text-[10px] uppercase text-blue-400 hover:bg-slate-700 transition-colors disabled:opacity-50"
+                    >
+                      Predict
+                    </button>
+                    <button
+                      onClick={handleDeliver}
+                      disabled={isSimulating}
+                      className={`flex-[2] py-2 lg:py-3 rounded-xl font-black text-[10px] lg:text-xs uppercase tracking-wider transition-all shadow-xl disabled:opacity-50 ${isSimulating ? "bg-slate-800 text-slate-500" : "bg-blue-600 hover:bg-blue-500 active:scale-95 text-white"}`}
+                    >
+                      Deliver Stone
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2 pt-1 lg:pt-2 border-t border-white/5">
+                    <button
+                      onClick={handleReset}
+                      disabled={!snapshotState || isSimulating}
+                      className="flex-1 py-1.5 bg-slate-800/50 rounded text-[8px] lg:text-[9px] font-bold text-slate-400 uppercase disabled:opacity-30 hover:bg-slate-800"
+                    >
+                      Reset State
+                    </button>
+                    <button
+                      onClick={clearStones}
+                      disabled={isSimulating}
+                      className="flex-1 py-1.5 bg-red-900/20 rounded text-[8px] lg:text-[9px] font-bold text-red-400 uppercase disabled:opacity-30 hover:bg-red-900/40"
+                    >
+                      Clear Sheet
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Settings Overlay */}
+              {showSettings && (
+                <div className="absolute inset-0 top-[60px] bg-slate-950 z-30 p-4 lg:p-6 flex flex-col space-y-4 settings-scroll overflow-y-auto pb-10">
+                  <div className="space-y-3">
+                    <h2 className="text-[10px] font-black text-blue-500 tracking-widest uppercase border-b border-white/10 pb-1">
+                      Physics Calibration
+                    </h2>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                      {Object.keys(phys).map((k) => (
+                        <div key={k}>
+                          <label className="text-[8px] text-slate-500 uppercase font-bold block mb-1">
+                            {k.replace("_", " ")}
+                          </label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={phys[k]}
+                            onChange={(e) =>
+                              setPhys({
+                                ...phys,
+                                [k]: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                            className="w-full bg-slate-900 border border-white/5 p-1.5 rounded text-[10px] font-mono focus:ring-1 ring-blue-500 outline-none"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h2 className="text-[10px] font-black text-blue-500 tracking-widest uppercase border-b border-white/10 pb-1">
+                      Weight Mapping
+                    </h2>
+                    <div className="grid grid-cols-3 gap-2">
+                      {Object.keys(weights).map((k) => (
+                        <div key={k}>
+                          <label className="text-[8px] text-slate-500 uppercase font-bold block mb-1 truncate">
+                            {k}
+                          </label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={weights[k]}
+                            onChange={(e) =>
+                              setWeights({
+                                ...weights,
+                                [k]: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                            className="w-full bg-slate-900 border border-white/5 p-1.5 rounded text-[10px] font-mono focus:ring-1 ring-blue-500 outline-none"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      localStorage.clear();
+                      location.reload();
+                    }}
+                    className="w-full py-3 mt-2 bg-red-900/10 text-red-500 border border-red-900/30 rounded-lg text-[9px] font-black uppercase hover:bg-red-900/20 transition"
+                  >
+                    Restore Factory Defaults
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
