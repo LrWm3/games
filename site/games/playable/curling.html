@@ -516,6 +516,7 @@
         broomTarget,
         isSimulating,
         prediction,
+        showNearHogLine = false,
       }) => {
         const width = RINK.WIDTH * scale;
         const height = RINK.LENGTH * scale;
@@ -556,6 +557,12 @@
               className="absolute w-full h-[4px] bg-red-600/50 border-y border-red-900/50"
               style={{ top: RINK.HOG_LINE * scale }}
             />
+            {showNearHogLine && (
+              <div
+                className="absolute w-full h-[4px] bg-red-600/50 border-y border-red-900/50"
+                style={{ top: (RINK.LENGTH - RINK.HOG_LINE) * scale }}
+              />
+            )}
 
             {/* Target House */}
             <div
@@ -1509,6 +1516,7 @@
                       broomTarget={broomTarget}
                       isSimulating={isSimulating}
                       prediction={prediction}
+                      showNearHogLine={true}
                     />
                   </div>
                 </div>
