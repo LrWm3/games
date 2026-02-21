@@ -108,6 +108,7 @@
       };
 
       const WEIGHT_LABEL_ORDER = ["Hack", "Board", "Control", "Normal", "Peel"];
+      const STONES_PER_TEAM = 8;
 
       // --- ENGINE CLASSES ---
       class Stone {
@@ -734,6 +735,9 @@
         const [prediction, setPrediction] = useState(null);
         const [snapshotState, setSnapshotState] = useState(null);
         const [violationMsg, setViolationMsg] = useState(null);
+        const [currentEnd, setCurrentEnd] = useState(1);
+        const [completedEnds, setCompletedEnds] = useState([]);
+        const [hammerTeam, setHammerTeam] = useState("red");
 
         const [scale, setScale] = useState(10);
         const mainViewRef = useRef(null);
@@ -861,11 +865,65 @@
           applyHistoryState(shotHistoryIndexRef.current + 1);
         };
 
+        const scoreEnd = useCallback((allStones) => {
+          const inHouse = allStones
+            .filter((s) => !s.removed)
+            .map((s) => ({
+              color: s.color,
+              dist:
+                Math.hypot(s.pos[0], s.pos[1] - RINK.FAR_TEE_Y) - s.outerRadius,
+            }))
+            .filter((s) => s.dist <= RINK.HOUSE_RADII[0])
+            .sort((a, b) => a.dist - b.dist);
+
+          if (!inHouse.length) return { red: 0, yellow: 0, scoringTeam: null };
+
+          const scoringColor = inHouse[0].color;
+          const oppColor = scoringColor * -1;
+          const closestOpp = inHouse.find((s) => s.color === oppColor);
+          const cutoff = closestOpp ? closestOpp.dist : Infinity;
+          const points = inHouse.filter(
+            (s) => s.color === scoringColor && s.dist < cutoff,
+          ).length;
+
+          if (scoringColor === -1) {
+            return { red: points, yellow: 0, scoringTeam: "red" };
+          }
+          return { red: 0, yellow: points, scoringTeam: "yellow" };
+        }, []);
+
+        const finalizeEndIfComplete = useCallback(() => {
+          const deliveries = engineRef.current.stones.length;
+          if (deliveries < STONES_PER_TEAM * 2) return;
+
+          const result = scoreEnd(engineRef.current.stones);
+          setCompletedEnds((prev) => [...prev, result]);
+          setCurrentEnd((e) => e + 1);
+
+          const nextHammer =
+            result.scoringTeam === "red"
+              ? "yellow"
+              : result.scoringTeam === "yellow"
+                ? "red"
+                : hammerTeam;
+          setHammerTeam(nextHammer);
+
+          engineRef.current.stones = [];
+          engineRef.current.nextColor = nextHammer === "red" ? 1 : -1;
+          setStones([]);
+          setPrediction(null);
+          setSnapshotState(null);
+          snapshotRef.current = null;
+          setViolationMsg(null);
+          resetHistoryWithCurrentState();
+        }, [hammerTeam, resetHistoryWithCurrentState, scoreEnd]);
+
         const runPhysics = useCallback((preThrowSnapshot) => {
           if (engineRef.current.update(preThrowSnapshot)) {
             setIsSimulating(false);
             setStones([...engineRef.current.stones]);
             recordShotState();
+            finalizeEndIfComplete();
             if (engineRef.current.lastViolation) {
               setViolationMsg(engineRef.current.lastViolation);
               setTimeout(() => setViolationMsg(null), 4000);
@@ -875,7 +933,7 @@
             setStones([...engineRef.current.stones]);
             requestAnimationFrame(() => runPhysics(preThrowSnapshot));
           }
-        }, [recordShotState]);
+        }, [finalizeEndIfComplete, recordShotState]);
 
         const handleSimulate = () => {
           const v = parseFloat(weights[selectedWeight]);
@@ -981,6 +1039,49 @@
             ? stones[stones.length - 1]
             : null;
         const chaseY = activeStone ? activeStone.pos[1] : RINK.HACK_Y;
+        const deliveriesThisEnd = stones.length;
+        const leadTeam = hammerTeam === "red" ? "yellow" : "red";
+        const redThrown =
+          leadTeam === "red"
+            ? Math.min(STONES_PER_TEAM, Math.ceil(deliveriesThisEnd / 2))
+            : Math.min(STONES_PER_TEAM, Math.floor(deliveriesThisEnd / 2));
+        const yellowThrown =
+          leadTeam === "yellow"
+            ? Math.min(STONES_PER_TEAM, Math.ceil(deliveriesThisEnd / 2))
+            : Math.min(STONES_PER_TEAM, Math.floor(deliveriesThisEnd / 2));
+        const redLeft = STONES_PER_TEAM - redThrown;
+        const yellowLeft = STONES_PER_TEAM - yellowThrown;
+        const nextTeam = engineRef.current.nextColor === -1 ? "red" : "yellow";
+        const totalRedScore = completedEnds.reduce((sum, e) => sum + e.red, 0);
+        const totalYellowScore = completedEnds.reduce(
+          (sum, e) => sum + e.yellow,
+          0,
+        );
+        const renderStonePips = (team, left) => (
+          <div className="flex items-center gap-1">
+            {nextTeam === team ? (
+              <span className="text-[8px] font-black text-blue-400">NEXT</span>
+            ) : null}
+            {Array.from({ length: STONES_PER_TEAM }).map((_, i) => (
+              <span
+                key={`${team}-pip-${i}`}
+                className={`inline-block w-2 h-2 rounded-full border border-black/30 ${
+                  nextTeam === team && left > 0 && i === left - 1
+                    ? "animate-pulse"
+                    : ""
+                }`}
+                style={{
+                  backgroundColor:
+                    i < left
+                      ? team === "red"
+                        ? "#ef4444"
+                        : "#eab308"
+                      : "rgba(148,163,184,0.25)",
+                }}
+              />
+            ))}
+          </div>
+        );
         const orderedWeightKeys = [...Object.keys(weights)].sort((a, b) => {
           const aNumMatch = a.match(/^(\d+(?:\.\d+)?)/);
           const bNumMatch = b.match(/^(\d+(?:\.\d+)?)/);
@@ -1015,13 +1116,39 @@
                 <h1 className="text-[9px] lg:text-[10px] font-black tracking-[0.2em] text-blue-500 uppercase">
                   Multi-Cam Pro
                 </h1>
-                <div className="text-xs lg:text-sm font-black text-white uppercase flex items-center gap-2">
-                  Sheet{" "}
+                <div className="text-[10px] lg:text-xs font-black text-white uppercase flex items-center gap-2 flex-wrap">
+                  <span>End {currentEnd}</span>
+                  <span className="text-slate-400">|</span>
+                  <span>Red {totalRedScore}</span>
+                  <span>Yellow {totalYellowScore}</span>
+                  <span className="text-slate-400">|</span>
+                  <span>
+                    Hammer:{" "}
+                    <span
+                      className={
+                        hammerTeam === "red" ? "text-red-400" : "text-yellow-400"
+                      }
+                    >
+                      {hammerTeam.toUpperCase()}
+                    </span>
+                  </span>
                   {stones.length < 5 ? (
                     <span className="text-yellow-500 text-[10px] bg-yellow-500/20 px-1.5 py-0.5 rounded">
                       FGZ Active
                     </span>
                   ) : null}
+                </div>
+                <div className="mt-1 text-[9px] lg:text-[10px] flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <span className="font-bold text-red-400 uppercase">Red</span>
+                    {renderStonePips("red", redLeft)}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="font-bold text-yellow-400 uppercase">
+                      Yellow
+                    </span>
+                    {renderStonePips("yellow", yellowLeft)}
+                  </div>
                 </div>
               </div>
 
