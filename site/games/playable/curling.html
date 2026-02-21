@@ -62,16 +62,16 @@
 
       // --- CALIBRATED DEFAULTS & CONSTANTS ---
       const DEFAULT_WEIGHTS = {
-        1: 2.05,
-        2: 2.1,
-        3: 2.15,
-        4: 2.2,
-        5: 2.25,
-        6: 2.28,
+        "1": 2.05,
+        "2": 2.1,
+        "3 (Guard)": 2.15,
+        "4": 2.2,
+        "5": 2.25,
+        "6": 2.28,
         "7 (Tee)": 2.315,
-        8: 2.325,
-        9: 2.335,
-        10: 2.35,
+        "8": 2.325,
+        "9": 2.335,
+        "10": 2.35,
         Hack: 2.5,
         Board: 2.7,
         Control: 3.1,
@@ -100,6 +100,8 @@
         FAR_TEE_Y: 5.487,
         COLORS: ["#2563eb", "#ffffff", "#dc2626", "#ffffff"],
       };
+
+      const WEIGHT_LABEL_ORDER = ["Hack", "Board", "Control", "Normal", "Peel"];
 
       // --- ENGINE CLASSES ---
       class Stone {
@@ -667,8 +669,8 @@
                 <div
                   className="relative rounded-full border border-amber-200/70 mb-1 shadow-md animate-pulse"
                   style={{
-                    width: `${Math.max(18, 0.24 * scale)}px`,
-                    height: `${Math.max(8, 0.1 * scale)}px`,
+                    width: `${Math.max(10.8, 0.144 * scale)}px`,
+                    height: `${Math.max(4.8, 0.06 * scale)}px`,
                     background:
                       "linear-gradient(180deg, #fde047 0%, #facc15 55%, #eab308 100%)",
                     transform: "rotate(90deg)",
@@ -722,6 +724,7 @@
         const [isSimulating, setIsSimulating] = useState(false);
         const [selectedWeight, setSelectedWeight] = useState("7 (Tee)");
         const [rotation, setRotation] = useState(1);
+        const [autoHandleDirection, setAutoHandleDirection] = useState(false);
         const [autoPredictOnPlace, setAutoPredictOnPlace] = useState(false);
         const [broomTarget, setBroomTarget] = useState({
           x: 0,
@@ -737,6 +740,7 @@
         const mainViewRef = useRef(null);
         const mainSheetRef = useRef(null);
         const houseCamSheetRef = useRef(null);
+        const prevBroomXRef = useRef(0);
 
         useEffect(() => {
           localStorage.setItem("curling_weights_adv", JSON.stringify(weights));
@@ -748,6 +752,19 @@
         useEffect(() => {
           setPrediction(null);
         }, [broomTarget, selectedWeight, rotation]);
+
+        useEffect(() => {
+          const prevX = prevBroomXRef.current;
+          const nextX = broomTarget.x;
+          if (autoHandleDirection) {
+            if (prevX >= 0 && nextX < 0) {
+              setRotation(1); // IN on left side
+            } else if (prevX <= 0 && nextX > 0) {
+              setRotation(-1); // OUT on right side
+            }
+          }
+          prevBroomXRef.current = nextX;
+        }, [broomTarget.x, autoHandleDirection]);
 
         useEffect(() => {
           if (!autoPredictOnPlace || isSimulating) return;
@@ -890,6 +907,31 @@
             ? stones[stones.length - 1]
             : null;
         const chaseY = activeStone ? activeStone.pos[1] : RINK.HACK_Y;
+        const orderedWeightKeys = [...Object.keys(weights)].sort((a, b) => {
+          const aNumMatch = a.match(/^(\d+(?:\.\d+)?)/);
+          const bNumMatch = b.match(/^(\d+(?:\.\d+)?)/);
+          const aNum = aNumMatch ? parseFloat(aNumMatch[1]) : null;
+          const bNum = bNumMatch ? parseFloat(bNumMatch[1]) : null;
+
+          if (aNum !== null && bNum !== null) {
+            if (aNum !== bNum) return aNum - bNum;
+            const aIsPlain = a === `${aNum}`;
+            const bIsPlain = b === `${bNum}`;
+            if (aIsPlain !== bIsPlain) return aIsPlain ? -1 : 1;
+            return a.localeCompare(b);
+          }
+          if (aNum !== null) return -1;
+          if (bNum !== null) return 1;
+
+          const aNamedIdx = WEIGHT_LABEL_ORDER.indexOf(a);
+          const bNamedIdx = WEIGHT_LABEL_ORDER.indexOf(b);
+          if (aNamedIdx !== -1 || bNamedIdx !== -1) {
+            if (aNamedIdx === -1) return 1;
+            if (bNamedIdx === -1) return -1;
+            return aNamedIdx - bNamedIdx;
+          }
+          return a.localeCompare(b);
+        });
 
         return (
           <div className="flex flex-col lg:flex-row h-screen w-full bg-slate-950 text-white overflow-hidden font-sans">
@@ -1052,7 +1094,7 @@
                         onChange={(e) => setSelectedWeight(e.target.value)}
                         className="w-full bg-slate-950 border border-white/10 p-2 rounded-lg text-[10px] lg:text-xs font-bold outline-none ring-blue-500/50 focus:ring-2"
                       >
-                        {Object.keys(weights).map((k) => (
+                        {orderedWeightKeys.map((k) => (
                           <option key={k} value={k}>
                             {k}
                           </option>
@@ -1063,7 +1105,7 @@
                       <label className="text-[8px] lg:text-[9px] font-black text-slate-500 mb-1 block uppercase">
                         Handle
                       </label>
-                      <div className="flex bg-slate-950 p-1 rounded-lg border border-white/10">
+                      <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-lg border border-white/10">
                         <button
                           onClick={() => setRotation(1)}
                           className={`flex-1 py-1.5 text-[9px] lg:text-[10px] rounded font-bold transition-colors ${rotation > 0 ? "bg-blue-600 shadow text-white" : "text-slate-500"}`}
@@ -1076,6 +1118,18 @@
                         >
                           OUT
                         </button>
+                        <label className="flex items-center gap-1 pr-1 text-[8px] lg:text-[9px] font-bold uppercase text-slate-300 whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            checked={autoHandleDirection}
+                            onChange={(e) =>
+                              setAutoHandleDirection(e.target.checked)
+                            }
+                            disabled={isSimulating}
+                            className="accent-blue-500"
+                          />
+                          Auto
+                        </label>
                       </div>
                     </div>
                   </div>
@@ -1165,7 +1219,7 @@
                       Weight Mapping
                     </h2>
                     <div className="grid grid-cols-3 gap-2">
-                      {Object.keys(weights).map((k) => (
+                      {orderedWeightKeys.map((k) => (
                         <div key={k}>
                           <label className="text-[8px] text-slate-500 uppercase font-bold block mb-1 truncate">
                             {k}
