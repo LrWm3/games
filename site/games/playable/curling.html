@@ -89,6 +89,12 @@
         stone_friction: 0.2,
       };
 
+      const DEFAULT_SIM_TIMING = {
+        pre_hog_dt: 0.2,
+        post_hog_dt: 0.1,
+        collision_dt: 0.05,
+      };
+
       const RINK = {
         WIDTH: 4.75,
         LENGTH: 45.72,
@@ -223,12 +229,12 @@
       }
 
       class CurlingEngine {
-        constructor(physics) {
+        constructor(physics, intervals = [0.3, 0.1, 0.05]) {
           this.stones = [];
           this.accuracy = 0;
           this.nextColor = -1; // -1 = Red, 1 = Yellow
           this.phys = physics;
-          this.intervals = [0.3, 0.1, 0.05];
+          this.intervals = [...intervals];
           this.rulesApplied = false;
           this.lastViolation = null;
         }
@@ -238,7 +244,7 @@
         }
 
         clone() {
-          const copy = new CurlingEngine(this.phys);
+          const copy = new CurlingEngine(this.phys, this.intervals);
           copy.stones = this.stones.map((s) => s.clone());
           copy.accuracy = this.accuracy;
           copy.nextColor = this.nextColor;
@@ -716,8 +722,18 @@
           const saved = localStorage.getItem("curling_phys_adv");
           return saved ? JSON.parse(saved) : DEFAULT_PHYSICS;
         });
+        const [simTiming, setSimTiming] = useState(() => {
+          const saved = localStorage.getItem("curling_sim_timing_adv");
+          return saved ? JSON.parse(saved) : DEFAULT_SIM_TIMING;
+        });
 
-        const engineRef = useRef(new CurlingEngine(phys));
+        const engineRef = useRef(
+          new CurlingEngine(phys, [
+            simTiming.pre_hog_dt,
+            simTiming.post_hog_dt,
+            simTiming.collision_dt,
+          ]),
+        );
         const snapshotRef = useRef(null);
 
         const [stones, setStones] = useState([]);
@@ -745,9 +761,18 @@
         useEffect(() => {
           localStorage.setItem("curling_weights_adv", JSON.stringify(weights));
           localStorage.setItem("curling_phys_adv", JSON.stringify(phys));
+          localStorage.setItem(
+            "curling_sim_timing_adv",
+            JSON.stringify(simTiming),
+          );
           engineRef.current.phys = phys;
+          engineRef.current.intervals = [
+            simTiming.pre_hog_dt,
+            simTiming.post_hog_dt,
+            simTiming.collision_dt,
+          ];
           setPrediction(null);
-        }, [weights, phys]);
+        }, [weights, phys, simTiming]);
 
         useEffect(() => {
           setPrediction(null);
@@ -934,12 +959,44 @@
         });
 
         return (
-          <div className="flex flex-col lg:flex-row h-screen w-full bg-slate-950 text-white overflow-hidden font-sans">
-            {/* --- CAMS PANEL (Top Row on Mobile, Left Column on Desktop) --- */}
-            <div className="flex flex-row lg:flex-col h-[28vh] lg:h-full lg:w-[320px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 z-20">
-              {/* HOUSE CAM */}
+          <div className="flex flex-col h-screen w-full bg-slate-950 text-white overflow-hidden font-sans">
+            {/* Header */}
+            <div className="p-3 lg:p-4 bg-slate-900 flex justify-between items-center border-b border-white/10 shrink-0 relative z-20">
+              <div>
+                <h1 className="text-[9px] lg:text-[10px] font-black tracking-[0.2em] text-blue-500 uppercase">
+                  Multi-Cam Pro
+                </h1>
+                <div className="text-xs lg:text-sm font-black text-white uppercase flex items-center gap-2">
+                  Sheet{" "}
+                  {stones.length < 5 ? (
+                    <span className="text-yellow-500 text-[10px] bg-yellow-500/20 px-1.5 py-0.5 rounded">
+                      FGZ Active
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Violation Alert */}
+              {violationMsg && (
+                <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 bg-red-600/90 text-white text-[10px] lg:text-xs font-bold px-3 py-1.5 rounded shadow-lg animate-pulse whitespace-nowrap z-50">
+                  {violationMsg}
+                </div>
+              )}
+
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className={`px-3 py-1.5 rounded text-[9px] font-bold border border-white/5 uppercase transition ${showSettings ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300"}`}
+              >
+                {showSettings ? "Close" : "Setup"}
+              </button>
+            </div>
+
+            {/* Center Views */}
+            <div className="flex-1 min-h-0 flex flex-row overflow-hidden">
+              {/* Main Camera View (House by default, Chase while simulating) */}
               <div
-                className="flex-1 lg:flex-[1] border-r lg:border-r-0 lg:border-b border-white/10 relative overflow-hidden bg-slate-900/80 shadow-inner cursor-crosshair"
+                className="flex-1 relative overflow-hidden bg-slate-900/80 shadow-inner cursor-crosshair no-select border-r border-white/10"
+                ref={mainViewRef}
                 onMouseDown={(e) => placeBroomFromHouseCam(e.clientX, e.clientY)}
                 onMouseMove={(e) => {
                   if (e.buttons === 1)
@@ -959,98 +1016,59 @@
                 }
               >
                 <div className="absolute top-2 left-2 z-20 bg-slate-950/80 px-2 py-1 rounded text-[9px] font-black text-blue-500 uppercase tracking-widest border border-white/5 shadow-lg">
-                  House Cam
+                  {isSimulating ? "Chase Cam" : "House Cam"}
                 </div>
-                <div
-                  className="absolute left-1/2 w-full origin-top"
-                  style={{
-                    transform: `translateX(-50%) scale(2.2) translateY(-${(RINK.FAR_TEE_Y - 3) * scale}px)`,
-                  }}
-                >
-                  <div className="flex justify-center w-full">
+                {!isSimulating ? (
+                  <div
+                    className="absolute left-1/2 w-full origin-top"
+                    style={{
+                      transform: `translateX(-50%) scale(2.2) translateY(-${(RINK.FAR_TEE_Y - 3) * scale}px)`,
+                    }}
+                  >
+                    <div className="flex justify-center w-full">
+                      <div
+                        ref={houseCamSheetRef}
+                        style={{
+                          width: RINK.WIDTH * scale,
+                          height: RINK.LENGTH * scale,
+                        }}
+                      >
+                        <SheetContent
+                          scale={scale}
+                          stones={stones}
+                          broomTarget={broomTarget}
+                          isSimulating={isSimulating}
+                          prediction={prediction}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="absolute top-0 left-1/2 w-full origin-top transform-gpu"
+                    style={{ transform: `translateX(-50%) scale(2.8)` }}
+                  >
                     <div
-                      ref={houseCamSheetRef}
+                      className="flex justify-center w-full chase-layer"
                       style={{
-                        width: RINK.WIDTH * scale,
-                        height: RINK.LENGTH * scale,
+                        transform: `translateY(calc(8vh - ${chaseY * scale}px))`,
                       }}
                     >
                       <SheetContent
                         scale={scale}
                         stones={stones}
-                        broomTarget={broomTarget}
+                        broomTarget={null}
                         isSimulating={isSimulating}
                         prediction={prediction}
                       />
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* CHASE CAM */}
-              <div className="flex-1 lg:flex-[1] relative overflow-hidden bg-slate-900/80 shadow-inner">
-                <div className="absolute top-2 left-2 z-20 bg-slate-950/80 px-2 py-1 rounded text-[9px] font-black text-blue-500 uppercase tracking-widest border border-white/5 shadow-lg">
-                  Chase Cam
-                </div>
-                <div
-                  className="absolute top-0 left-1/2 w-full origin-top transform-gpu"
-                  style={{ transform: `translateX(-50%) scale(2.8)` }}
-                >
-                  <div
-                    className="flex justify-center w-full chase-layer"
-                    style={{
-                      transform: `translateY(calc(8vh - ${chaseY * scale}px))`,
-                    }}
-                  >
-                    <SheetContent
-                      scale={scale}
-                      stones={stones}
-                      broomTarget={null}
-                      isSimulating={isSimulating}
-                      prediction={prediction}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* --- MAIN GAME VIEW (Bottom on Mobile, Right on Desktop) --- */}
-            <div className="flex-1 flex flex-col relative bg-slate-950 z-10 shadow-2xl min-w-0">
-              {/* Header */}
-              <div className="p-3 lg:p-4 bg-slate-900 flex justify-between items-center border-b border-white/10 shrink-0 relative">
-                <div>
-                  <h1 className="text-[9px] lg:text-[10px] font-black tracking-[0.2em] text-blue-500 uppercase">
-                    Multi-Cam Pro
-                  </h1>
-                  <div className="text-xs lg:text-sm font-black text-white uppercase flex items-center gap-2">
-                    Sheet{" "}
-                    {stones.length < 5 ? (
-                      <span className="text-yellow-500 text-[10px] bg-yellow-500/20 px-1.5 py-0.5 rounded">
-                        FGZ Active
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-
-                {/* Violation Alert */}
-                {violationMsg && (
-                  <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 bg-red-600/90 text-white text-[10px] lg:text-xs font-bold px-3 py-1.5 rounded shadow-lg animate-pulse whitespace-nowrap z-50">
-                    {violationMsg}
-                  </div>
                 )}
-
-                <button
-                  onClick={() => setShowSettings(!showSettings)}
-                  className={`px-3 py-1.5 rounded text-[9px] font-bold border border-white/5 uppercase transition ${showSettings ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300"}`}
-                >
-                  {showSettings ? "Close" : "Setup"}
-                </button>
               </div>
 
-              {/* Interactive Area */}
+              {/* Narrow Full Sheet View */}
               <div
-                className="flex-grow overflow-hidden relative cursor-crosshair flex justify-center no-select"
-                ref={mainViewRef}
+                className="w-[34vw] max-w-[260px] min-w-[150px] h-full overflow-hidden relative cursor-crosshair flex justify-center no-select bg-slate-950 z-10 shadow-2xl"
                 onMouseDown={(e) => placeBroom(e.clientX, e.clientY)}
                 onMouseMove={(e) => {
                   if (e.buttons === 1) placeBroom(e.clientX, e.clientY);
@@ -1062,6 +1080,9 @@
                   placeBroom(e.touches[0].clientX, e.touches[0].clientY)
                 }
               >
+                <div className="absolute top-2 left-2 z-20 bg-slate-950/80 px-2 py-1 rounded text-[9px] font-black text-blue-500 uppercase tracking-widest border border-white/5 shadow-lg">
+                  Full Sheet
+                </div>
                 <div className="absolute inset-0 w-full h-full flex justify-center overflow-hidden">
                   <div
                     ref={mainSheetRef}
@@ -1081,112 +1102,9 @@
                 </div>
               </div>
 
-              {/* Controls Panel */}
-              {!showSettings && (
-                <div className="p-3 lg:p-4 bg-slate-900 border-t border-white/10 space-y-3 shrink-0">
-                  <div className="flex gap-2 lg:gap-4">
-                    <div className="flex-1">
-                      <label className="text-[8px] lg:text-[9px] font-black text-slate-500 mb-1 block uppercase">
-                        Shot Weight
-                      </label>
-                      <select
-                        value={selectedWeight}
-                        onChange={(e) => setSelectedWeight(e.target.value)}
-                        className="w-full bg-slate-950 border border-white/10 p-2 rounded-lg text-[10px] lg:text-xs font-bold outline-none ring-blue-500/50 focus:ring-2"
-                      >
-                        {orderedWeightKeys.map((k) => (
-                          <option key={k} value={k}>
-                            {k}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-[8px] lg:text-[9px] font-black text-slate-500 mb-1 block uppercase">
-                        Handle
-                      </label>
-                      <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-lg border border-white/10">
-                        <button
-                          onClick={() => setRotation(1)}
-                          className={`flex-1 py-1.5 text-[9px] lg:text-[10px] rounded font-bold transition-colors ${rotation > 0 ? "bg-blue-600 shadow text-white" : "text-slate-500"}`}
-                        >
-                          IN
-                        </button>
-                        <button
-                          onClick={() => setRotation(-1)}
-                          className={`flex-1 py-1.5 text-[9px] lg:text-[10px] rounded font-bold transition-colors ${rotation < 0 ? "bg-blue-600 shadow text-white" : "text-slate-500"}`}
-                        >
-                          OUT
-                        </button>
-                        <label className="flex items-center gap-1 pr-1 text-[8px] lg:text-[9px] font-bold uppercase text-slate-300 whitespace-nowrap">
-                          <input
-                            type="checkbox"
-                            checked={autoHandleDirection}
-                            onChange={(e) =>
-                              setAutoHandleDirection(e.target.checked)
-                            }
-                            disabled={isSimulating}
-                            className="accent-blue-500"
-                          />
-                          Auto
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <div className="flex-1 flex items-center gap-2 rounded-xl border border-white/10 bg-slate-800 px-2 lg:px-3">
-                      <button
-                        onClick={handleSimulate}
-                        disabled={isSimulating}
-                        className="flex-1 py-2 lg:py-3 font-black text-[9px] lg:text-[10px] uppercase text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50"
-                      >
-                        Predict
-                      </button>
-                      <label className="flex items-center gap-1 text-[8px] lg:text-[9px] font-bold uppercase text-slate-300 whitespace-nowrap">
-                        <input
-                          type="checkbox"
-                          checked={autoPredictOnPlace}
-                          onChange={(e) =>
-                            setAutoPredictOnPlace(e.target.checked)
-                          }
-                          disabled={isSimulating}
-                          className="accent-blue-500"
-                        />
-                        Auto
-                      </label>
-                    </div>
-                    <button
-                      onClick={handleDeliver}
-                      disabled={isSimulating}
-                      className={`flex-[2] py-2 lg:py-3 rounded-xl font-black text-[10px] lg:text-xs uppercase tracking-wider transition-all shadow-xl disabled:opacity-50 ${isSimulating ? "bg-slate-800 text-slate-500" : "bg-blue-600 hover:bg-blue-500 active:scale-95 text-white"}`}
-                    >
-                      Deliver Stone
-                    </button>
-                  </div>
-
-                  <div className="flex gap-2 pt-1 lg:pt-2 border-t border-white/5">
-                    <button
-                      onClick={handleReset}
-                      disabled={!snapshotState || isSimulating}
-                      className="flex-1 py-1.5 bg-slate-800/50 rounded text-[8px] lg:text-[9px] font-bold text-slate-400 uppercase disabled:opacity-30 hover:bg-slate-800"
-                    >
-                      Reset State
-                    </button>
-                    <button
-                      onClick={clearStones}
-                      disabled={isSimulating}
-                      className="flex-1 py-1.5 bg-red-900/20 rounded text-[8px] lg:text-[9px] font-bold text-red-400 uppercase disabled:opacity-30 hover:bg-red-900/40"
-                    >
-                      Clear Sheet
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {/* Settings Overlay */}
               {showSettings && (
-                <div className="absolute inset-0 top-[60px] bg-slate-950 z-30 p-4 lg:p-6 flex flex-col space-y-4 settings-scroll overflow-y-auto pb-10">
+                <div className="absolute inset-0 bg-slate-950 z-30 p-4 lg:p-6 flex flex-col space-y-4 settings-scroll overflow-y-auto pb-10">
                   <div className="space-y-3">
                     <h2 className="text-[10px] font-black text-blue-500 tracking-widest uppercase border-b border-white/10 pb-1">
                       Physics Calibration
@@ -1241,6 +1159,36 @@
                     </div>
                   </div>
 
+                  <div className="space-y-3">
+                    <h2 className="text-[10px] font-black text-blue-500 tracking-widest uppercase border-b border-white/10 pb-1">
+                      Simulation Timing
+                    </h2>
+                    <div className="grid grid-cols-3 gap-2">
+                      {Object.keys(simTiming).map((k) => (
+                        <div key={k}>
+                          <label className="text-[8px] text-slate-500 uppercase font-bold block mb-1">
+                            {k.replaceAll("_", " ")}
+                          </label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={simTiming[k]}
+                            onChange={(e) =>
+                              setSimTiming({
+                                ...simTiming,
+                                [k]: Math.max(
+                                  0.001,
+                                  parseFloat(e.target.value) || simTiming[k],
+                                ),
+                              })
+                            }
+                            className="w-full bg-slate-900 border border-white/5 p-1.5 rounded text-[10px] font-mono focus:ring-1 ring-blue-500 outline-none"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <button
                     onClick={() => {
                       localStorage.clear();
@@ -1253,6 +1201,109 @@
                 </div>
               )}
             </div>
+
+            {/* Controls Footer */}
+            {!showSettings && (
+              <div className="p-3 lg:p-4 bg-slate-900 border-t border-white/10 space-y-3 shrink-0 z-20">
+                <div className="flex gap-2 lg:gap-4">
+                  <div className="flex-1">
+                    <label className="text-[8px] lg:text-[9px] font-black text-slate-500 mb-1 block uppercase">
+                      Shot Weight
+                    </label>
+                    <select
+                      value={selectedWeight}
+                      onChange={(e) => setSelectedWeight(e.target.value)}
+                      className="w-full bg-slate-950 border border-white/10 p-2 rounded-lg text-[10px] lg:text-xs font-bold outline-none ring-blue-500/50 focus:ring-2"
+                    >
+                      {orderedWeightKeys.map((k) => (
+                        <option key={k} value={k}>
+                          {k}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[8px] lg:text-[9px] font-black text-slate-500 mb-1 block uppercase">
+                      Handle
+                    </label>
+                    <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-lg border border-white/10">
+                      <button
+                        onClick={() => setRotation(1)}
+                        className={`flex-1 py-1.5 text-[9px] lg:text-[10px] rounded font-bold transition-colors ${rotation > 0 ? "bg-blue-600 shadow text-white" : "text-slate-500"}`}
+                      >
+                        IN
+                      </button>
+                      <button
+                        onClick={() => setRotation(-1)}
+                        className={`flex-1 py-1.5 text-[9px] lg:text-[10px] rounded font-bold transition-colors ${rotation < 0 ? "bg-blue-600 shadow text-white" : "text-slate-500"}`}
+                      >
+                        OUT
+                      </button>
+                      <label className="flex items-center gap-1 pr-1 text-[8px] lg:text-[9px] font-bold uppercase text-slate-300 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={autoHandleDirection}
+                          onChange={(e) =>
+                            setAutoHandleDirection(e.target.checked)
+                          }
+                          disabled={isSimulating}
+                          className="accent-blue-500"
+                        />
+                        Auto
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <div className="flex-1 flex items-center gap-2 rounded-xl border border-white/10 bg-slate-800 px-2 lg:px-3">
+                    <button
+                      onClick={handleSimulate}
+                      disabled={isSimulating}
+                      className="flex-1 py-2 lg:py-3 font-black text-[9px] lg:text-[10px] uppercase text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50"
+                    >
+                      Predict
+                    </button>
+                    <label className="flex items-center gap-1 text-[8px] lg:text-[9px] font-bold uppercase text-slate-300 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={autoPredictOnPlace}
+                        onChange={(e) =>
+                          setAutoPredictOnPlace(e.target.checked)
+                        }
+                        disabled={isSimulating}
+                        className="accent-blue-500"
+                      />
+                      Auto
+                    </label>
+                  </div>
+                  <button
+                    onClick={handleDeliver}
+                    disabled={isSimulating}
+                    className={`flex-[2] py-2 lg:py-3 rounded-xl font-black text-[10px] lg:text-xs uppercase tracking-wider transition-all shadow-xl disabled:opacity-50 ${isSimulating ? "bg-slate-800 text-slate-500" : "bg-blue-600 hover:bg-blue-500 active:scale-95 text-white"}`}
+                  >
+                    Deliver Stone
+                  </button>
+                </div>
+
+                <div className="flex gap-2 pt-1 lg:pt-2 border-t border-white/5">
+                  <button
+                    onClick={handleReset}
+                    disabled={!snapshotState || isSimulating}
+                    className="flex-1 py-1.5 bg-slate-800/50 rounded text-[8px] lg:text-[9px] font-bold text-slate-400 uppercase disabled:opacity-30 hover:bg-slate-800"
+                  >
+                    Reset State
+                  </button>
+                  <button
+                    onClick={clearStones}
+                    disabled={isSimulating}
+                    className="flex-1 py-1.5 bg-red-900/20 rounded text-[8px] lg:text-[9px] font-bold text-red-400 uppercase disabled:opacity-30 hover:bg-red-900/40"
+                  >
+                    Clear Sheet
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         );
       };
