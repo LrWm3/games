@@ -82,7 +82,7 @@
         A: 10.0,
         g: 9.81,
         eps: 1e-6,
-        spin_rate: 1.6,
+        spin_rate: 3.54,
         restitution: 0.55,
         stone_friction: 0.2,
       };
@@ -429,24 +429,66 @@
         predictPath(velocity, angle, spin, snapshotStones) {
           const sim = this.clone();
           sim.addStone(velocity, angle, spin);
-          const newStone = sim.stones[sim.stones.length - 1];
 
           // For accurate simulation, pass the virtual initial state
           const simSnapshot = sim.stones.map((s) => s.clone());
           simSnapshot.pop(); // Remove the newly added one to represent state before throw
 
-          const path = [];
+          const startStates = sim.stones.map((s) => ({
+            pos: [...s.pos],
+            removed: s.removed,
+          }));
+          const movedFlags = sim.stones.map(() => false);
+          const stonePaths = sim.stones.map((s) => (s.removed ? [] : [[...s.pos]]));
+
           let finished = false;
           let iters = 0;
 
           while (!finished && iters < 5000) {
             finished = sim.update(simSnapshot);
-            if (iters % 6 === 0 && !newStone.isStopped && !newStone.removed) {
-              path.push([...newStone.pos]);
+            for (let i = 0; i < sim.stones.length; i++) {
+              const s = sim.stones[i];
+              const start = startStates[i];
+              if (
+                Math.hypot(s.pos[0] - start.pos[0], s.pos[1] - start.pos[1]) >
+                  0.005 ||
+                s.removed !== start.removed
+              ) {
+                movedFlags[i] = true;
+              }
+            }
+
+            if (iters % 6 === 0) {
+              for (let i = 0; i < sim.stones.length; i++) {
+                const s = sim.stones[i];
+                if (s.removed) continue;
+                const path = stonePaths[i];
+                const last = path[path.length - 1];
+                if (
+                  !last ||
+                  Math.hypot(last[0] - s.pos[0], last[1] - s.pos[1]) > 0.001
+                ) {
+                  path.push([...s.pos]);
+                }
+              }
             }
             iters++;
           }
-          return { path, finalStones: sim.stones };
+
+          for (let i = 0; i < sim.stones.length; i++) {
+            const s = sim.stones[i];
+            if (s.removed) continue;
+            const path = stonePaths[i];
+            const last = path[path.length - 1];
+            if (
+              !last ||
+              Math.hypot(last[0] - s.pos[0], last[1] - s.pos[1]) > 0.001
+            ) {
+              path.push([...s.pos]);
+            }
+          }
+
+          return { stonePaths, movedFlags, finalStones: sim.stones };
         }
       }
 
@@ -454,7 +496,7 @@
       const SheetContent = ({
         scale,
         stones,
-        broomX,
+        broomTarget,
         isSimulating,
         prediction,
       }) => {
@@ -566,20 +608,31 @@
                 className="absolute inset-0 pointer-events-none z-10"
                 style={{ width, height }}
               >
-                <polyline
-                  points={prediction.path
-                    .map(
-                      (p) =>
-                        `${(RINK.WIDTH / 2 + p[0]) * scale},${p[1] * scale}`,
-                    )
-                    .join(" ")}
-                  fill="none"
-                  stroke="rgba(255,255,255,0.6)"
-                  strokeWidth="2"
-                  strokeDasharray="4 4"
-                />
+                {prediction.stonePaths.map((path, i) => {
+                  const stone = prediction.finalStones[i];
+                  if (!prediction.movedFlags[i] || path.length < 2) return null;
+                  return (
+                    <polyline
+                      key={`path-${i}`}
+                      points={path
+                        .map(
+                          (p) =>
+                            `${(RINK.WIDTH / 2 + p[0]) * scale},${p[1] * scale}`,
+                        )
+                        .join(" ")}
+                      fill="none"
+                      stroke={
+                        stone.color === -1
+                          ? "rgba(239,68,68,0.8)"
+                          : "rgba(250,204,21,0.8)"
+                      }
+                      strokeWidth="2"
+                      strokeDasharray="4 4"
+                    />
+                  );
+                })}
                 {prediction.finalStones
-                  .filter((s) => !s.removed)
+                  .filter((s, i) => !s.removed && prediction.movedFlags[i])
                   .map((s, i) => (
                     <circle
                       key={`ghost-${i}`}
@@ -600,17 +653,29 @@
             )}
 
             {/* Broom */}
-            {!isSimulating && typeof broomX === "number" && (
+            {!isSimulating && broomTarget && (
               <div
-                className="absolute pointer-events-none flex flex-col items-center z-10"
+                className="absolute pointer-events-none flex items-center justify-center z-10"
                 style={{
-                  left: `calc(50% + ${broomX * scale}px)`,
-                  top: RINK.FAR_TEE_Y * scale,
-                  transform: "translate(-50%, -100%)",
+                  left: `calc(50% + ${broomTarget.x * scale}px)`,
+                  top: broomTarget.y * scale,
+                  transform: "translate(-50%, -50%)",
                 }}
               >
-                <div className="w-4 h-4 rounded-full border-[3px] border-slate-900 mb-1 animate-pulse" />
-                <div className="w-[2px] h-24 bg-slate-900/40" />
+                <div
+                  className="relative rounded-full border border-amber-200/70 mb-1 shadow-md animate-pulse"
+                  style={{
+                    width: `${Math.max(18, 0.24 * scale)}px`,
+                    height: `${Math.max(8, 0.1 * scale)}px`,
+                    background:
+                      "linear-gradient(180deg, #fde047 0%, #facc15 55%, #eab308 100%)",
+                    transform: "rotate(90deg)",
+                  }}
+                >
+                  <div
+                    className="absolute inset-y-[15%] left-[12%] right-[12%] rounded-full bg-white/30"
+                  />
+                </div>
               </div>
             )}
 
@@ -655,7 +720,11 @@
         const [isSimulating, setIsSimulating] = useState(false);
         const [selectedWeight, setSelectedWeight] = useState("7 (Tee)");
         const [rotation, setRotation] = useState(1);
-        const [broomX, setBroomX] = useState(0);
+        const [autoPredictOnPlace, setAutoPredictOnPlace] = useState(false);
+        const [broomTarget, setBroomTarget] = useState({
+          x: 0,
+          y: RINK.FAR_TEE_Y,
+        });
 
         const [showSettings, setShowSettings] = useState(false);
         const [prediction, setPrediction] = useState(null);
@@ -664,6 +733,8 @@
 
         const [scale, setScale] = useState(10);
         const mainViewRef = useRef(null);
+        const mainSheetRef = useRef(null);
+        const houseCamSheetRef = useRef(null);
 
         useEffect(() => {
           localStorage.setItem("curling_weights_adv", JSON.stringify(weights));
@@ -674,7 +745,20 @@
 
         useEffect(() => {
           setPrediction(null);
-        }, [broomX, selectedWeight, rotation]);
+        }, [broomTarget, selectedWeight, rotation]);
+
+        useEffect(() => {
+          if (!autoPredictOnPlace || isSimulating) return;
+          handleSimulate();
+        }, [
+          broomTarget,
+          selectedWeight,
+          autoPredictOnPlace,
+          isSimulating,
+          rotation,
+          phys.spin_rate,
+          weights,
+        ]);
 
         useEffect(() => {
           const updateScale = () => {
@@ -705,7 +789,10 @@
         const handleSimulate = () => {
           const v = parseFloat(weights[selectedWeight]);
           const spin = rotation * phys.spin_rate;
-          const angle = Math.atan2(broomX, -(RINK.FAR_TEE_Y - RINK.HACK_Y));
+          const angle = Math.atan2(
+            broomTarget.x,
+            -(broomTarget.y - RINK.HACK_Y),
+          );
           const currentSnapshot = engineRef.current.stones.map((s) =>
             s.clone(),
           );
@@ -726,7 +813,10 @@
 
           const v = parseFloat(weights[selectedWeight]);
           const spin = rotation * phys.spin_rate;
-          const angle = Math.atan2(broomX, -(RINK.FAR_TEE_Y - RINK.HACK_Y));
+          const angle = Math.atan2(
+            broomTarget.x,
+            -(broomTarget.y - RINK.HACK_Y),
+          );
 
           engineRef.current.addStone(v, angle, spin);
           setIsSimulating(true);
@@ -756,11 +846,40 @@
           setViolationMsg(null);
         };
 
-        const handleAim = (clientX) => {
-          if (isSimulating || !mainViewRef.current) return;
-          const rect = mainViewRef.current.getBoundingClientRect();
-          const center = rect.left + rect.width / 2;
-          setBroomX((clientX - center) / scale);
+        const clampBroomToScoringZone = (x, y) => {
+          const clampedX = Math.max(-RINK.WIDTH / 2, Math.min(RINK.WIDTH / 2, x));
+          const clampedY = Math.max(RINK.BACK_LINE, Math.min(RINK.HOG_LINE, y));
+          return { x: clampedX, y: clampedY };
+        };
+
+        const placeBroomFromRect = (clientX, clientY, rect) => {
+          const localX = clientX - rect.left;
+          const localY = clientY - rect.top;
+          const width = RINK.WIDTH * scale;
+          const height = RINK.LENGTH * scale;
+          const sheetX = (localX / rect.width) * width;
+          const sheetY = (localY / rect.height) * height;
+          const x = (sheetX - width / 2) / scale;
+          const y = sheetY / scale;
+          setBroomTarget(clampBroomToScoringZone(x, y));
+        };
+
+        const placeBroom = (clientX, clientY) => {
+          if (isSimulating || !mainSheetRef.current) return;
+          placeBroomFromRect(
+            clientX,
+            clientY,
+            mainSheetRef.current.getBoundingClientRect(),
+          );
+        };
+
+        const placeBroomFromHouseCam = (clientX, clientY) => {
+          if (isSimulating || !houseCamSheetRef.current) return;
+          placeBroomFromRect(
+            clientX,
+            clientY,
+            houseCamSheetRef.current.getBoundingClientRect(),
+          );
         };
 
         const activeStone = isSimulating
@@ -775,7 +894,26 @@
             {/* --- CAMS PANEL (Top Row on Mobile, Left Column on Desktop) --- */}
             <div className="flex flex-row lg:flex-col h-[28vh] lg:h-full lg:w-[320px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 z-20">
               {/* HOUSE CAM */}
-              <div className="flex-1 lg:flex-[1] border-r lg:border-r-0 lg:border-b border-white/10 relative overflow-hidden bg-slate-900/80 shadow-inner">
+              <div
+                className="flex-1 lg:flex-[1] border-r lg:border-r-0 lg:border-b border-white/10 relative overflow-hidden bg-slate-900/80 shadow-inner cursor-crosshair"
+                onMouseDown={(e) => placeBroomFromHouseCam(e.clientX, e.clientY)}
+                onMouseMove={(e) => {
+                  if (e.buttons === 1)
+                    placeBroomFromHouseCam(e.clientX, e.clientY);
+                }}
+                onTouchStart={(e) =>
+                  placeBroomFromHouseCam(
+                    e.touches[0].clientX,
+                    e.touches[0].clientY,
+                  )
+                }
+                onTouchMove={(e) =>
+                  placeBroomFromHouseCam(
+                    e.touches[0].clientX,
+                    e.touches[0].clientY,
+                  )
+                }
+              >
                 <div className="absolute top-2 left-2 z-20 bg-slate-950/80 px-2 py-1 rounded text-[9px] font-black text-blue-500 uppercase tracking-widest border border-white/5 shadow-lg">
                   House Cam
                 </div>
@@ -786,13 +924,21 @@
                   }}
                 >
                   <div className="flex justify-center w-full">
-                    <SheetContent
-                      scale={scale}
-                      stones={stones}
-                      broomX={null}
-                      isSimulating={isSimulating}
-                      prediction={prediction}
-                    />
+                    <div
+                      ref={houseCamSheetRef}
+                      style={{
+                        width: RINK.WIDTH * scale,
+                        height: RINK.LENGTH * scale,
+                      }}
+                    >
+                      <SheetContent
+                        scale={scale}
+                        stones={stones}
+                        broomTarget={broomTarget}
+                        isSimulating={isSimulating}
+                        prediction={prediction}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -815,7 +961,7 @@
                     <SheetContent
                       scale={scale}
                       stones={stones}
-                      broomX={null}
+                      broomTarget={null}
                       isSimulating={isSimulating}
                       prediction={prediction}
                     />
@@ -861,17 +1007,33 @@
               <div
                 className="flex-grow overflow-hidden relative cursor-crosshair flex justify-center no-select"
                 ref={mainViewRef}
-                onMouseMove={(e) => handleAim(e.clientX)}
-                onTouchMove={(e) => handleAim(e.touches[0].clientX)}
+                onMouseDown={(e) => placeBroom(e.clientX, e.clientY)}
+                onMouseMove={(e) => {
+                  if (e.buttons === 1) placeBroom(e.clientX, e.clientY);
+                }}
+                onTouchStart={(e) =>
+                  placeBroom(e.touches[0].clientX, e.touches[0].clientY)
+                }
+                onTouchMove={(e) =>
+                  placeBroom(e.touches[0].clientX, e.touches[0].clientY)
+                }
               >
                 <div className="absolute inset-0 w-full h-full flex justify-center overflow-hidden">
-                  <SheetContent
-                    scale={scale}
-                    stones={stones}
-                    broomX={broomX}
-                    isSimulating={isSimulating}
-                    prediction={prediction}
-                  />
+                  <div
+                    ref={mainSheetRef}
+                    style={{
+                      width: RINK.WIDTH * scale,
+                      height: RINK.LENGTH * scale,
+                    }}
+                  >
+                    <SheetContent
+                      scale={scale}
+                      stones={stones}
+                      broomTarget={broomTarget}
+                      isSimulating={isSimulating}
+                      prediction={prediction}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -917,13 +1079,27 @@
                   </div>
 
                   <div className="flex gap-2">
-                    <button
-                      onClick={handleSimulate}
-                      disabled={isSimulating}
-                      className="flex-1 py-2 lg:py-3 bg-slate-800 border border-white/10 rounded-xl font-black text-[9px] lg:text-[10px] uppercase text-blue-400 hover:bg-slate-700 transition-colors disabled:opacity-50"
-                    >
-                      Predict
-                    </button>
+                    <div className="flex-1 flex items-center gap-2 rounded-xl border border-white/10 bg-slate-800 px-2 lg:px-3">
+                      <button
+                        onClick={handleSimulate}
+                        disabled={isSimulating}
+                        className="flex-1 py-2 lg:py-3 font-black text-[9px] lg:text-[10px] uppercase text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50"
+                      >
+                        Predict
+                      </button>
+                      <label className="flex items-center gap-1 text-[8px] lg:text-[9px] font-bold uppercase text-slate-300 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={autoPredictOnPlace}
+                          onChange={(e) =>
+                            setAutoPredictOnPlace(e.target.checked)
+                          }
+                          disabled={isSimulating}
+                          className="accent-blue-500"
+                        />
+                        Auto
+                      </label>
+                    </div>
                     <button
                       onClick={handleDeliver}
                       disabled={isSimulating}
