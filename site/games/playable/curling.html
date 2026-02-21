@@ -62,10 +62,10 @@
 
       // --- CALIBRATED DEFAULTS & CONSTANTS ---
       const DEFAULT_WEIGHTS = {
-        "1": 2.05,
-        "2": 2.1,
-        "3 (Guard)": 2.15,
-        "4": 2.2,
+        "1": 2.17,
+        "2": 2.19,
+        "3 (Guard)": 2.20,
+        "4": 2.23,
         "5": 2.25,
         "6": 2.28,
         "7 (Tee)": 2.315,
@@ -537,36 +537,18 @@
               className="absolute w-full h-[2px] bg-slate-800/60"
               style={{ top: RINK.BACK_LINE * scale }}
             />
-            <span
-              className="absolute left-2 text-[6px] text-slate-700 font-bold uppercase"
-              style={{ top: RINK.BACK_LINE * scale - 10 }}
-            >
-              Back
-            </span>
 
             {/* Tee Line */}
             <div
               className="absolute w-full h-[1px] bg-slate-800/30"
               style={{ top: RINK.TEE_LINE * scale }}
             />
-            <span
-              className="absolute left-2 text-[6px] text-slate-600 font-bold uppercase"
-              style={{ top: RINK.TEE_LINE * scale - 10 }}
-            >
-              Tee
-            </span>
 
             {/* Hog Line */}
             <div
               className="absolute w-full h-[4px] bg-red-600/50 border-y border-red-900/50"
               style={{ top: RINK.HOG_LINE * scale }}
             />
-            <span
-              className="absolute left-2 text-[6px] text-red-700 font-bold uppercase"
-              style={{ top: RINK.HOG_LINE * scale - 10 }}
-            >
-              Hog
-            </span>
 
             {/* Target House */}
             <div
@@ -673,19 +655,15 @@
                 }}
               >
                 <div
-                  className="relative rounded-full border border-amber-200/70 mb-1 shadow-md animate-pulse"
+                  className="relative rounded-full border border-amber-200/70 shadow-md animate-pulse"
                   style={{
-                    width: `${Math.max(10.8, 0.144 * scale)}px`,
-                    height: `${Math.max(4.8, 0.06 * scale)}px`,
-                    background:
-                      "linear-gradient(180deg, #fde047 0%, #facc15 55%, #eab308 100%)",
+                    width: `${Math.max(4.212, 0.05616 * scale)}px`,
+                    height: `${Math.max(1.44, 0.018 * scale)}px`,
+                    background: "#facc15",
                     transform: "rotate(90deg)",
+                    transformOrigin: "center",
                   }}
-                >
-                  <div
-                    className="absolute inset-y-[15%] left-[12%] right-[12%] rounded-full bg-white/30"
-                  />
-                </div>
+                />
               </div>
             )}
 
@@ -726,6 +704,11 @@
           const saved = localStorage.getItem("curling_sim_timing_adv");
           return saved ? JSON.parse(saved) : DEFAULT_SIM_TIMING;
         });
+        const [houseCamZoom, setHouseCamZoom] = useState(() => {
+          const saved = localStorage.getItem("curling_house_cam_zoom_adv");
+          const parsed = saved ? parseFloat(saved) : 2.2;
+          return Number.isFinite(parsed) ? Math.max(1.2, Math.min(6, parsed)) : 2.2;
+        });
 
         const engineRef = useRef(
           new CurlingEngine(phys, [
@@ -740,8 +723,8 @@
         const [isSimulating, setIsSimulating] = useState(false);
         const [selectedWeight, setSelectedWeight] = useState("7 (Tee)");
         const [rotation, setRotation] = useState(1);
-        const [autoHandleDirection, setAutoHandleDirection] = useState(false);
-        const [autoPredictOnPlace, setAutoPredictOnPlace] = useState(false);
+        const [autoHandleDirection, setAutoHandleDirection] = useState(true);
+        const [autoPredictOnPlace, setAutoPredictOnPlace] = useState(true);
         const [broomTarget, setBroomTarget] = useState({
           x: 0,
           y: RINK.FAR_TEE_Y,
@@ -773,6 +756,13 @@
           ];
           setPrediction(null);
         }, [weights, phys, simTiming]);
+
+        useEffect(() => {
+          localStorage.setItem(
+            "curling_house_cam_zoom_adv",
+            String(houseCamZoom),
+          );
+        }, [houseCamZoom]);
 
         useEffect(() => {
           setPrediction(null);
@@ -1018,11 +1008,44 @@
                 <div className="absolute top-2 left-2 z-20 bg-slate-950/80 px-2 py-1 rounded text-[9px] font-black text-blue-500 uppercase tracking-widest border border-white/5 shadow-lg">
                   {isSimulating ? "Chase Cam" : "House Cam"}
                 </div>
+                {!isSimulating && (
+                  <div className="absolute top-2 right-2 z-20 flex items-center gap-2 bg-slate-950/80 px-2 py-1 rounded border border-white/10">
+                    <button
+                      onClick={() =>
+                        setHouseCamZoom((z) =>
+                          Math.max(1.2, Math.round((z - 0.1) * 10) / 10),
+                        )
+                      }
+                      className="w-5 h-5 rounded bg-slate-800 text-slate-200 text-xs font-black"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="range"
+                      min="1.2"
+                      max="6"
+                      step="0.1"
+                      value={houseCamZoom}
+                      onChange={(e) => setHouseCamZoom(parseFloat(e.target.value))}
+                      className="w-24 accent-blue-500"
+                    />
+                    <button
+                      onClick={() =>
+                        setHouseCamZoom((z) =>
+                          Math.min(6, Math.round((z + 0.1) * 10) / 10),
+                        )
+                      }
+                      className="w-5 h-5 rounded bg-slate-800 text-slate-200 text-xs font-black"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
                 {!isSimulating ? (
                   <div
                     className="absolute left-1/2 w-full origin-top"
                     style={{
-                      transform: `translateX(-50%) scale(2.2) translateY(-${(RINK.FAR_TEE_Y - 3) * scale}px)`,
+                      transform: `translateX(-50%) scale(${houseCamZoom}) translateY(-${(RINK.FAR_TEE_Y - 3) * scale}px)`,
                     }}
                   >
                     <div className="flex justify-center w-full">
@@ -1105,6 +1128,14 @@
               {/* Settings Overlay */}
               {showSettings && (
                 <div className="absolute inset-0 bg-slate-950 z-30 p-4 lg:p-6 flex flex-col space-y-4 settings-scroll overflow-y-auto pb-10">
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => setShowSettings(false)}
+                      className="px-3 py-1.5 rounded text-[9px] font-bold border border-white/10 uppercase bg-slate-800 text-slate-200 hover:bg-slate-700"
+                    >
+                      Close Settings
+                    </button>
+                  </div>
                   <div className="space-y-3">
                     <h2 className="text-[10px] font-black text-blue-500 tracking-widest uppercase border-b border-white/10 pb-1">
                       Physics Calibration
