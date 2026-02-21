@@ -813,7 +813,7 @@
         const [violationMsg, setViolationMsg] = useState(null);
         const [currentEnd, setCurrentEnd] = useState(1);
         const [completedEnds, setCompletedEnds] = useState([]);
-        const [hammerTeam, setHammerTeam] = useState("red");
+        const [hammerTeam, setHammerTeam] = useState("yellow");
 
         const [scale, setScale] = useState(10);
         const mainViewRef = useRef(null);
@@ -846,6 +846,16 @@
             String(houseCamZoom),
           );
         }, [houseCamZoom]);
+
+        useEffect(() => {
+          // At start of an end, lead team is opposite the hammer team.
+          if (engineRef.current.stones.length > 0) return;
+          const expectedNextColor = hammerTeam === "red" ? 1 : -1;
+          if (engineRef.current.nextColor !== expectedNextColor) {
+            engineRef.current.nextColor = expectedNextColor;
+            setHistoryTick((v) => v + 1);
+          }
+        }, [hammerTeam]);
 
         useEffect(() => {
           setPrediction(null);
@@ -1063,7 +1073,7 @@
 
         const clearStones = () => {
           engineRef.current.stones = [];
-          engineRef.current.nextColor = -1;
+          engineRef.current.nextColor = hammerTeam === "red" ? 1 : -1;
           setStones([]);
           setSnapshotState(null);
           snapshotRef.current = null;
@@ -1115,16 +1125,14 @@
             ? stones[stones.length - 1]
             : null;
         const chaseY = activeStone ? activeStone.pos[1] : RINK.HACK_Y;
-        const deliveriesThisEnd = stones.length;
-        const leadTeam = hammerTeam === "red" ? "yellow" : "red";
-        const redThrown =
-          leadTeam === "red"
-            ? Math.min(STONES_PER_TEAM, Math.ceil(deliveriesThisEnd / 2))
-            : Math.min(STONES_PER_TEAM, Math.floor(deliveriesThisEnd / 2));
-        const yellowThrown =
-          leadTeam === "yellow"
-            ? Math.min(STONES_PER_TEAM, Math.ceil(deliveriesThisEnd / 2))
-            : Math.min(STONES_PER_TEAM, Math.floor(deliveriesThisEnd / 2));
+        const redThrown = Math.min(
+          STONES_PER_TEAM,
+          stones.filter((s) => s.color === -1).length,
+        );
+        const yellowThrown = Math.min(
+          STONES_PER_TEAM,
+          stones.filter((s) => s.color === 1).length,
+        );
         const redLeft = STONES_PER_TEAM - redThrown;
         const yellowLeft = STONES_PER_TEAM - yellowThrown;
         const nextTeam = engineRef.current.nextColor === -1 ? "red" : "yellow";
