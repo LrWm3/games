@@ -77,25 +77,25 @@
 
       // --- CALIBRATED DEFAULTS & CONSTANTS ---
       const DEFAULT_WEIGHTS = {
-        "1": 2.15,
-        "2": 2.19,
-        "3 (Guard)": 2.223,
-        "4": 2.257,
-        "5": 2.274,
-        "6": 2.286,
-        "7 (Tee)": 2.293,
-        "8": 2.304,
-        "9": 2.315,
-        "10": 2.33,
-        Hack: 2.36,
-        Board: 2.45,
-        Control: 2.6,
-        Normal: 2.9,
-        Peel: 3.6,
+        "1": 2.48,
+        "2": 2.52,
+        "3 (Guard)": 2.56,
+        "4": 2.595,
+        "5": 2.612,
+        "6": 2.625,
+        "7 (Tee)": 2.635,
+        "8": 2.646,
+        "9": 2.66,
+        "10": 2.677,
+        Hack: 2.7,
+        Board: 2.72,
+        Control: 2.78,
+        Normal: 2.83,
+        Peel: 2.95,
       };
 
       const DEFAULT_PHYSICS = {
-        mu_0: 0.0085,
+        mu_0: 0.012,
         A: 10.0,
         g: 9.81,
         eps: 1e-6,
@@ -105,7 +105,7 @@
       };
 
       const DEFAULT_SIM_TIMING = {
-        pre_hog_dt: 0.1,
+        pre_hog_dt: 0.33,
         post_hog_dt: 0.1,
         collision_dt: 0.05,
       };
@@ -129,9 +129,9 @@
       const HANDLE_START_OFFSET_RAD = Math.PI / 3; // 2 o'clock / 10 o'clock
       const NEAR_HOG_RELEASE_Y = RINK.LENGTH - RINK.HOG_LINE;
       const DEFAULT_PLAYBACK_SPEED = {
-        pre_hog: 5,
-        post_hog: 5,
-        post_far_hog_line: 5,
+        pre_hog: 4,
+        post_hog: 4,
+        post_far_hog_line: 4,
       };
 
       // --- ENGINE CLASSES ---
