@@ -131,6 +131,7 @@
       const DEFAULT_PLAYBACK_SPEED = {
         pre_hog: 5,
         post_hog: 5,
+        post_far_hog_line: 5,
       };
 
       // --- ENGINE CLASSES ---
@@ -846,7 +847,8 @@
         });
         const [playbackSpeed, setPlaybackSpeed] = useState(() => {
           const saved = localStorage.getItem("curling_playback_speed_adv");
-          return saved ? JSON.parse(saved) : DEFAULT_PLAYBACK_SPEED;
+          const base = saved ? JSON.parse(saved) : DEFAULT_PLAYBACK_SPEED;
+          return { ...DEFAULT_PLAYBACK_SPEED, ...base };
         });
         const [houseCamZoom, setHouseCamZoom] = useState(() => {
           const saved = localStorage.getItem("curling_house_cam_zoom_adv");
@@ -1233,12 +1235,15 @@
               tracker.elapsed += dt;
               const trackedForTiming =
                 engineRef.current.stones[tracker.stoneIndex];
-              const isPreHogPhase = trackedForTiming
-                ? trackedForTiming.pos[1] > nearHogY
-                : false;
-              const speedMultiplier = isPreHogPhase
-                ? playbackSpeed.pre_hog
-                : playbackSpeed.post_hog;
+              let speedMultiplier = playbackSpeed.post_hog;
+              if (trackedForTiming) {
+                const y = trackedForTiming.pos[1];
+                if (y > nearHogY) {
+                  speedMultiplier = playbackSpeed.pre_hog;
+                } else if (y <= farHogY) {
+                  speedMultiplier = playbackSpeed.post_far_hog_line;
+                }
+              }
               simTime += dt / Math.max(0.01, speedMultiplier);
               frames.push({
                 t: simTime,
