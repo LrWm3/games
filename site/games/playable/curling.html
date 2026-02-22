@@ -100,8 +100,8 @@
         g: 9.81,
         eps: 1e-6,
         spin_rate: 1.0,
-        restitution: 0.55,
-        stone_friction: 0.2,
+        restitution: 0.70,
+        stone_friction: 0.15,
       };
 
       const DEFAULT_SIM_TIMING = {
@@ -126,6 +126,7 @@
       const STONES_PER_TEAM = 8;
       const GUIDE_DOT_COUNT = 3;
       const SPIN_SCALE_FACTOR = 3.57;
+      const HANDLE_START_OFFSET_RAD = Math.PI / 3; // 2 o'clock / 10 o'clock
       const NEAR_HOG_RELEASE_Y = RINK.LENGTH - RINK.HOG_LINE;
 
       // --- ENGINE CLASSES ---
@@ -143,6 +144,12 @@
           this.vel = [Math.sin(angle) * velocity, -Math.cos(angle) * velocity];
           this.acc = [0, 0];
           this.angularPos = 0;
+          this.handleVisualOffset =
+            spin > 0
+              ? HANDLE_START_OFFSET_RAD
+              : spin < 0
+                ? -HANDLE_START_OFFSET_RAD
+                : 0;
           this.pendingSpin = spin;
           this.angularVel = 0;
           this.spinReleased = false;
@@ -167,6 +174,7 @@
           copy.pendingSpin = this.pendingSpin;
           copy.angularVel = this.angularVel;
           copy.angularPos = this.angularPos;
+          copy.handleVisualOffset = this.handleVisualOffset;
           copy.spinReleased = this.spinReleased;
           copy.releaseY = this.releaseY;
           copy.isStopped = this.isStopped;
@@ -793,7 +801,7 @@
                     left: `calc(50% + ${s.pos[0] * scale}px)`,
                     top: s.pos[1] * scale,
                     backgroundColor: s.color === -1 ? "#ef4444" : "#eab308",
-                    transform: `translate(-50%, -50%) rotate(${s.angularPos / SPIN_SCALE_FACTOR}rad)`,
+                    transform: `translate(-50%, -50%) rotate(${(s.angularPos / SPIN_SCALE_FACTOR) + (s.handleVisualOffset || 0)}rad)`,
                   }}
                 >
                   <div className="w-full h-[20%] bg-black/30" />
@@ -1004,13 +1012,14 @@
 
         useEffect(() => {
           targetStonesRef.current = stones.map(cloneStoneForRender);
-        }, [stones, cloneStoneForRender]);
-
-        useEffect(() => {
+          // Keep both cameras in sync for non-sim states (undo/redo/reset/end transitions).
           if (!isSimulating) {
             setDisplayStones(targetStonesRef.current.map(cloneStoneForRender));
-            return;
           }
+        }, [stones, isSimulating, cloneStoneForRender]);
+
+        useEffect(() => {
+          if (!isSimulating) return;
 
           let rafId = null;
           const tick = () => {
