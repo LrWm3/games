@@ -260,14 +260,20 @@
             let mu =
               this.phys.mu_0 *
               frontBackFriction *
-              (1.0 -
-                rotationalInfluence *
-                  asymmetryScaling *
-                  Math.sign(this.angularVel));
+              Math.max(
+                0,
+                1.0 -
+                  rotationalInfluence *
+                    asymmetryScaling *
+                    Math.sign(this.angularVel),
+              );
 
             if (pointSpeed > 1e-7) {
               const normalForcePerPoint = this.weight / numPoints;
-              const fMag = normalForcePerPoint * mu;
+              const fMag = Math.min(
+                normalForcePerPoint * mu,
+                (pointSpeed * (this.mass / numPoints)) / dt,
+              );
               const fDir = math.divide(pointVel, -pointSpeed);
               const fVec = math.multiply(fMag, fDir);
               netForce = math.add(netForce, fVec);
