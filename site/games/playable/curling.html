@@ -165,6 +165,18 @@
           this.touchedInPlay = false; // Tracks if it hit a legal stone
         }
 
+        static fromJSON(data, phys) {
+          const s = new Stone(data.color, data.pos, 0, 0, 0, phys);
+          Object.assign(s, data);
+          s.phys = phys;
+          return s;
+        }
+
+        toJSON() {
+          const { phys, ...rest } = this;
+          return rest;
+        }
+
         clone() {
           const copy = new Stone(
             this.color,
@@ -856,35 +868,80 @@
           return Number.isFinite(parsed) ? Math.max(1.2, Math.min(7.8, parsed)) : 2.2;
         });
 
-        const engineRef = useRef(
-          new CurlingEngine(phys, [
+        const engineRef = useRef(null);
+        if (!engineRef.current) {
+          engineRef.current = new CurlingEngine(phys, [
             simTiming.pre_hog_dt,
             simTiming.post_hog_dt,
             simTiming.collision_dt,
-          ]),
-        );
+          ]);
+          const savedStones = localStorage.getItem("curling_stones");
+          if (savedStones) {
+            try {
+              const parsed = JSON.parse(savedStones);
+              engineRef.current.stones = parsed.map((s) => Stone.fromJSON(s, phys));
+            } catch (e) {}
+          }
+          const savedNextColor = localStorage.getItem("curling_next_color");
+          if (savedNextColor) engineRef.current.nextColor = parseInt(savedNextColor);
+        }
         const snapshotRef = useRef(null);
 
-        const [stones, setStones] = useState([]);
-        const [isSimulating, setIsSimulating] = useState(false);
-        const [selectedWeight, setSelectedWeight] = useState("7 (Tee)");
-        const [rotation, setRotation] = useState(1);
-        const [autoHandleDirection, setAutoHandleDirection] = useState(true);
-        const [autoPredictOnPlace, setAutoPredictOnPlace] = useState(true);
-        const [broomTarget, setBroomTarget] = useState({
-          x: 0,
-          y: RINK.FAR_TEE_Y,
+        const [stones, setStones] = useState(() => {
+          return engineRef.current ? [...engineRef.current.stones] : [];
         });
-        const [showFineControls, setShowFineControls] = useState(() => localStorage.getItem("curling_show_fine_controls") === "true");
+        const [isSimulating, setIsSimulating] = useState(false);
+        const [selectedWeight, setSelectedWeight] = useState(
+          () => localStorage.getItem("curling_selected_weight") || "7 (Tee)",
+        );
+        const [rotation, setRotation] = useState(() => {
+          const saved = localStorage.getItem("curling_rotation");
+          return saved ? parseInt(saved) : 1;
+        });
+        const [autoHandleDirection, setAutoHandleDirection] = useState(() => {
+          const saved = localStorage.getItem("curling_auto_handle");
+          return saved === null ? true : saved === "true";
+        });
+        const [autoPredictOnPlace, setAutoPredictOnPlace] = useState(() => {
+          const saved = localStorage.getItem("curling_auto_predict");
+          return saved === null ? true : saved === "true";
+        });
+        const [broomTarget, setBroomTarget] = useState(() => {
+          const saved = localStorage.getItem("curling_broom_target");
+          return saved ? JSON.parse(saved) : { x: 0, y: RINK.FAR_TEE_Y };
+        });
+        const [showFineControls, setShowFineControls] = useState(
+          () => localStorage.getItem("curling_show_fine_controls") === "true",
+        );
         const [dpadSide, setDpadSide] = useState("left");
 
         const [showSettings, setShowSettings] = useState(false);
         const [prediction, setPrediction] = useState(null);
-        const [snapshotState, setSnapshotState] = useState(null);
+        const [snapshotState, setSnapshotState] = useState(() => {
+          const saved = localStorage.getItem("curling_snapshot_state");
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              return {
+                nextColor: parsed.nextColor,
+                stones: parsed.stones.map((s) => Stone.fromJSON(s, phys)),
+              };
+            } catch (e) {}
+          }
+          return null;
+        });
         const [violationMsg, setViolationMsg] = useState(null);
-        const [currentEnd, setCurrentEnd] = useState(1);
-        const [completedEnds, setCompletedEnds] = useState([]);
-        const [hammerTeam, setHammerTeam] = useState("yellow");
+        const [currentEnd, setCurrentEnd] = useState(() => {
+          const saved = localStorage.getItem("curling_current_end");
+          return saved ? parseInt(saved) : 1;
+        });
+        const [completedEnds, setCompletedEnds] = useState(() => {
+          const saved = localStorage.getItem("curling_completed_ends");
+          return saved ? JSON.parse(saved) : [];
+        });
+        const [hammerTeam, setHammerTeam] = useState(
+          () => localStorage.getItem("curling_hammer_team") || "yellow",
+        );
         const [lastShotDebug, setLastShotDebug] = useState(null);
         const [displayStones, setDisplayStones] = useState([]);
         const [chaseCamY, setChaseCamY] = useState(RINK.HACK_Y);
@@ -900,9 +957,27 @@
           duration: 0,
           startTimeMs: 0,
         });
-        const shotHistoryRef = useRef([{ stones: [], nextColor: -1 }]);
+        const shotHistoryRef = useRef(null);
         const shotHistoryIndexRef = useRef(0);
-        const [, setHistoryTick] = useState(0);
+        if (!shotHistoryRef.current) {
+          const savedHistory = localStorage.getItem("curling_shot_history");
+          const savedIndex = localStorage.getItem("curling_shot_history_index");
+          if (savedHistory && savedIndex !== null) {
+            try {
+              const parsed = JSON.parse(savedHistory);
+              shotHistoryRef.current = parsed.map((entry) => ({
+                nextColor: entry.nextColor,
+                stones: entry.stones.map((s) => Stone.fromJSON(s, phys)),
+              }));
+              shotHistoryIndexRef.current = parseInt(savedIndex);
+            } catch (e) {
+              shotHistoryRef.current = [{ stones: [], nextColor: -1 }];
+            }
+          } else {
+            shotHistoryRef.current = [{ stones: [], nextColor: -1 }];
+          }
+        }
+        const [historyTick, setHistoryTick] = useState(0);
         const chaseTargetYRef = useRef(RINK.HACK_Y);
 
         useEffect(() => {
@@ -1000,6 +1075,54 @@
         useEffect(() => {
           localStorage.setItem("curling_show_fine_controls", String(showFineControls));
         }, [showFineControls]);
+
+        useEffect(() => {
+          localStorage.setItem("curling_selected_weight", selectedWeight);
+        }, [selectedWeight]);
+
+        useEffect(() => {
+          localStorage.setItem("curling_rotation", String(rotation));
+        }, [rotation]);
+
+        useEffect(() => {
+          localStorage.setItem("curling_auto_handle", String(autoHandleDirection));
+        }, [autoHandleDirection]);
+
+        useEffect(() => {
+          localStorage.setItem("curling_auto_predict", String(autoPredictOnPlace));
+        }, [autoPredictOnPlace]);
+
+        useEffect(() => {
+          localStorage.setItem("curling_broom_target", JSON.stringify(broomTarget));
+        }, [broomTarget]);
+
+        useEffect(() => {
+          localStorage.setItem("curling_snapshot_state", JSON.stringify(snapshotState));
+        }, [snapshotState]);
+
+        useEffect(() => {
+          localStorage.setItem("curling_current_end", String(currentEnd));
+        }, [currentEnd]);
+
+        useEffect(() => {
+          localStorage.setItem("curling_completed_ends", JSON.stringify(completedEnds));
+        }, [completedEnds]);
+
+        useEffect(() => {
+          localStorage.setItem("curling_hammer_team", hammerTeam);
+        }, [hammerTeam]);
+
+        useEffect(() => {
+          if (!isSimulating) {
+            localStorage.setItem("curling_stones", JSON.stringify(engineRef.current.stones));
+            localStorage.setItem("curling_next_color", String(engineRef.current.nextColor));
+          }
+        }, [stones, isSimulating]);
+
+        useEffect(() => {
+          localStorage.setItem("curling_shot_history", JSON.stringify(shotHistoryRef.current));
+          localStorage.setItem("curling_shot_history_index", String(shotHistoryIndexRef.current));
+        }, [historyTick]);
 
         useEffect(() => {
           const percentWidth = (broomTarget.x + RINK.WIDTH / 2) / RINK.WIDTH;
