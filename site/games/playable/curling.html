@@ -802,10 +802,12 @@
                   style={{
                     width: s.outerRadius * 2 * scale,
                     height: s.outerRadius * 2 * scale,
-                    left: `calc(50% + ${s.pos[0] * scale}px)`,
-                    top: s.pos[1] * scale,
+                    left: "50%",
+                    top: 0,
                     backgroundColor: s.color === -1 ? "#ef4444" : "#eab308",
-                    transform: `translate(-50%, -50%) rotate(${(s.angularPos / SPIN_SCALE_FACTOR) + (s.handleVisualOffset || 0)}rad)`,
+                    transform: `translate3d(${s.pos[0] * scale}px, ${s.pos[1] * scale}px, 0) translate(-50%, -50%) rotate(${(s.angularPos / SPIN_SCALE_FACTOR) + (s.handleVisualOffset || 0)}rad)`,
+                    willChange: "transform",
+                    backfaceVisibility: "hidden",
                   }}
                 >
                   <div className="w-full h-[20%] bg-black/30" />
