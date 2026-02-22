@@ -128,6 +128,10 @@
       const SPIN_SCALE_FACTOR = 3.57;
       const HANDLE_START_OFFSET_RAD = Math.PI / 3; // 2 o'clock / 10 o'clock
       const NEAR_HOG_RELEASE_Y = RINK.LENGTH - RINK.HOG_LINE;
+      const DEFAULT_PLAYBACK_SPEED = {
+        pre_hog: 5,
+        post_hog: 5,
+      };
 
       // --- ENGINE CLASSES ---
       class Stone {
@@ -825,6 +829,10 @@
           const saved = localStorage.getItem("curling_sim_timing_adv");
           return saved ? JSON.parse(saved) : DEFAULT_SIM_TIMING;
         });
+        const [playbackSpeed, setPlaybackSpeed] = useState(() => {
+          const saved = localStorage.getItem("curling_playback_speed_adv");
+          return saved ? JSON.parse(saved) : DEFAULT_PLAYBACK_SPEED;
+        });
         const [houseCamZoom, setHouseCamZoom] = useState(() => {
           const saved = localStorage.getItem("curling_house_cam_zoom_adv");
           const parsed = saved ? parseFloat(saved) : 2.2;
@@ -867,11 +875,15 @@
         const mainSheetRef = useRef(null);
         const houseCamSheetRef = useRef(null);
         const prevBroomXRef = useRef(0);
-        const activeShotDebugRef = useRef(null);
+        const playbackRef = useRef({
+          rafId: null,
+          frames: [],
+          duration: 0,
+          startTimeMs: 0,
+        });
         const shotHistoryRef = useRef([{ stones: [], nextColor: -1 }]);
         const shotHistoryIndexRef = useRef(0);
         const [, setHistoryTick] = useState(0);
-        const targetStonesRef = useRef([]);
         const chaseTargetYRef = useRef(RINK.HACK_Y);
 
         useEffect(() => {
@@ -910,29 +922,29 @@
           };
         }, []);
 
-        const interpolateDisplayStones = useCallback(
-          (prevStones, targetStones) => {
-            const alpha = 0.35;
-            return targetStones.map((targetStone, i) => {
-              const prevStone = prevStones[i];
-              if (!prevStone || prevStone.color !== targetStone.color) {
-                return cloneStoneForRender(targetStone);
-              }
-              if (targetStone.removed) {
-                return cloneStoneForRender(targetStone);
+        const interpolateFrameStones = useCallback(
+          (fromStones, toStones, alpha) =>
+            toStones.map((toStone, i) => {
+              const fromStone = fromStones[i];
+              if (
+                !fromStone ||
+                fromStone.color !== toStone.color ||
+                fromStone.removed ||
+                toStone.removed
+              ) {
+                return cloneStoneForRender(toStone);
               }
               return {
-                ...targetStone,
+                ...toStone,
                 pos: [
-                  prevStone.pos[0] + (targetStone.pos[0] - prevStone.pos[0]) * alpha,
-                  prevStone.pos[1] + (targetStone.pos[1] - prevStone.pos[1]) * alpha,
+                  fromStone.pos[0] + (toStone.pos[0] - fromStone.pos[0]) * alpha,
+                  fromStone.pos[1] + (toStone.pos[1] - fromStone.pos[1]) * alpha,
                 ],
                 angularPos:
-                  prevStone.angularPos +
-                  (targetStone.angularPos - prevStone.angularPos) * alpha,
+                  fromStone.angularPos +
+                  (toStone.angularPos - fromStone.angularPos) * alpha,
               };
-            });
-          },
+            }),
           [cloneStoneForRender],
         );
 
@@ -958,6 +970,13 @@
             String(houseCamZoom),
           );
         }, [houseCamZoom]);
+
+        useEffect(() => {
+          localStorage.setItem(
+            "curling_playback_speed_adv",
+            JSON.stringify(playbackSpeed),
+          );
+        }, [playbackSpeed]);
 
         useEffect(() => {
           // At start of an end, lead team is opposite the hammer team.
@@ -1011,29 +1030,20 @@
         }, []);
 
         useEffect(() => {
-          targetStonesRef.current = stones.map(cloneStoneForRender);
-          // Keep both cameras in sync for non-sim states (undo/redo/reset/end transitions).
           if (!isSimulating) {
-            setDisplayStones(targetStonesRef.current.map(cloneStoneForRender));
+            setDisplayStones(stones.map(cloneStoneForRender));
           }
         }, [stones, isSimulating, cloneStoneForRender]);
 
-        useEffect(() => {
-          if (!isSimulating) return;
-
-          let rafId = null;
-          const tick = () => {
-            setDisplayStones((prev) =>
-              interpolateDisplayStones(prev, targetStonesRef.current),
-            );
-            rafId = requestAnimationFrame(tick);
-          };
-          rafId = requestAnimationFrame(tick);
-
-          return () => {
-            if (rafId) cancelAnimationFrame(rafId);
-          };
-        }, [isSimulating, cloneStoneForRender, interpolateDisplayStones]);
+        useEffect(
+          () => () => {
+            if (playbackRef.current.rafId) {
+              cancelAnimationFrame(playbackRef.current.rafId);
+              playbackRef.current.rafId = null;
+            }
+          },
+          [],
+        );
 
         const resetHistoryWithCurrentState = useCallback(() => {
           shotHistoryRef.current = [
@@ -1141,77 +1151,168 @@
           resetHistoryWithCurrentState();
         }, [hammerTeam, resetHistoryWithCurrentState, scoreEnd]);
 
-        const runPhysics = useCallback((preThrowSnapshot) => {
-          const stepDt = engineRef.current.dt;
-          const tracker = activeShotDebugRef.current;
-          const trackedStoneBefore =
-            tracker && engineRef.current.stones[tracker.stoneIndex]
-              ? engineRef.current.stones[tracker.stoneIndex]
-              : null;
-          const nearHogY = RINK.LENGTH - RINK.HOG_LINE;
-          const farHogY = RINK.HOG_LINE;
-          const finished = engineRef.current.update(preThrowSnapshot);
+        const simulateShotFrames = useCallback(
+          (preThrowSnapshot, stoneIndex, startAngularPos, startY) => {
+            const frames = [
+              {
+                t: 0,
+                stones: engineRef.current.stones.map((s) => s.clone()),
+              },
+            ];
+            const tracker = {
+              stoneIndex,
+              startAngularPos,
+              prevY: startY,
+              elapsed: 0,
+              nearHogTime: null,
+              farHogTime: null,
+            };
+            const nearHogY = RINK.LENGTH - RINK.HOG_LINE;
+            const farHogY = RINK.HOG_LINE;
+            const maxSteps = 30000;
+            let simTime = 0;
+            let finished = false;
 
-          if (tracker && trackedStoneBefore) {
-            const trackedStoneAfter = engineRef.current.stones[tracker.stoneIndex];
-            if (trackedStoneAfter) {
-              const prevY = tracker.prevY;
-              const currentY = trackedStoneAfter.pos[1];
-              const markCrossing = (targetY, key) => {
-                if (tracker[key] !== null) return;
-                if (prevY > targetY && currentY <= targetY) {
-                  const denom = prevY - currentY;
-                  const frac =
-                    denom > 1e-9
-                      ? Math.max(0, Math.min(1, (prevY - targetY) / denom))
-                      : 0;
-                  tracker[key] = tracker.elapsed + stepDt * frac;
+            for (let i = 0; i < maxSteps && !finished; i++) {
+              const dt = engineRef.current.dt;
+              const trackedBefore = engineRef.current.stones[tracker.stoneIndex];
+              finished = engineRef.current.update(preThrowSnapshot);
+
+              if (trackedBefore) {
+                const trackedAfter = engineRef.current.stones[tracker.stoneIndex];
+                if (trackedAfter) {
+                  const prevY = tracker.prevY;
+                  const currentY = trackedAfter.pos[1];
+                  const markCrossing = (targetY, key) => {
+                    if (tracker[key] !== null) return;
+                    if (prevY > targetY && currentY <= targetY) {
+                      const denom = prevY - currentY;
+                      const frac =
+                        denom > 1e-9
+                          ? Math.max(0, Math.min(1, (prevY - targetY) / denom))
+                          : 0;
+                      tracker[key] = tracker.elapsed + dt * frac;
+                    }
+                  };
+                  markCrossing(nearHogY, "nearHogTime");
+                  markCrossing(farHogY, "farHogTime");
+                  tracker.prevY = currentY;
                 }
-              };
-              markCrossing(nearHogY, "nearHogTime");
-              markCrossing(farHogY, "farHogTime");
-              tracker.prevY = currentY;
-            }
-            tracker.elapsed += stepDt;
-          }
+              }
 
-          if (finished) {
-            setIsSimulating(false);
-            setStones([...engineRef.current.stones]);
-            recordShotState();
-            finalizeEndIfComplete();
-            if (tracker) {
-              const trackedStone = engineRef.current.stones[tracker.stoneIndex];
-              const rotations = trackedStone
-                ? Math.abs(
-                    (trackedStone.angularPos - tracker.startAngularPos) /
-                      (2 * Math.PI * SPIN_SCALE_FACTOR),
-                  )
-                : null;
-              const hogToHog =
-                tracker.nearHogTime !== null && tracker.farHogTime !== null
-                  ? tracker.farHogTime - tracker.nearHogTime
-                  : null;
-              setLastShotDebug({
-                rotations,
-                toNearHog: tracker.nearHogTime,
-                hogToHog,
-                totalTime: tracker.elapsed,
-                reachedNearHog: tracker.nearHogTime !== null,
-                reachedFarHog: tracker.farHogTime !== null,
+              tracker.elapsed += dt;
+              const trackedForTiming =
+                engineRef.current.stones[tracker.stoneIndex];
+              const isPreHogPhase = trackedForTiming
+                ? trackedForTiming.pos[1] > nearHogY
+                : false;
+              const speedMultiplier = isPreHogPhase
+                ? playbackSpeed.pre_hog
+                : playbackSpeed.post_hog;
+              simTime += dt / Math.max(0.01, speedMultiplier);
+              frames.push({
+                t: simTime,
+                stones: engineRef.current.stones.map((s) => s.clone()),
               });
-              activeShotDebugRef.current = null;
             }
-            if (engineRef.current.lastViolation) {
-              setViolationMsg(engineRef.current.lastViolation);
-              setTimeout(() => setViolationMsg(null), 4000);
-              engineRef.current.lastViolation = null;
+
+            const trackedStone = engineRef.current.stones[tracker.stoneIndex];
+            const rotations = trackedStone
+              ? Math.abs(
+                  (trackedStone.angularPos - tracker.startAngularPos) /
+                    (2 * Math.PI * SPIN_SCALE_FACTOR),
+                )
+              : null;
+            const hogToHog =
+              tracker.nearHogTime !== null && tracker.farHogTime !== null
+                ? tracker.farHogTime - tracker.nearHogTime
+                : null;
+
+            const debug = {
+              rotations,
+              toNearHog: tracker.nearHogTime,
+              hogToHog,
+              totalTime: tracker.elapsed,
+              reachedNearHog: tracker.nearHogTime !== null,
+              reachedFarHog: tracker.farHogTime !== null,
+            };
+            const violationText = engineRef.current.lastViolation;
+            engineRef.current.lastViolation = null;
+            return { frames, debug, violationText };
+          },
+          [playbackSpeed],
+        );
+
+        const startShotPlayback = useCallback(
+          ({ frames, debug, violationText }) => {
+            if (!frames || frames.length === 0) return;
+            if (playbackRef.current.rafId) {
+              cancelAnimationFrame(playbackRef.current.rafId);
             }
-          } else {
-            setStones([...engineRef.current.stones]);
-            requestAnimationFrame(() => runPhysics(preThrowSnapshot));
-          }
-        }, [finalizeEndIfComplete, recordShotState]);
+
+            const duration = frames[frames.length - 1].t;
+            playbackRef.current = {
+              rafId: null,
+              frames,
+              duration,
+              startTimeMs: performance.now(),
+            };
+            setDisplayStones(frames[0].stones.map(cloneStoneForRender));
+            setIsSimulating(true);
+
+            const finishPlayback = () => {
+              setDisplayStones(
+                frames[frames.length - 1].stones.map(cloneStoneForRender),
+              );
+              setIsSimulating(false);
+              setStones([...engineRef.current.stones]);
+              setLastShotDebug(debug);
+              recordShotState();
+              finalizeEndIfComplete();
+              if (violationText) {
+                setViolationMsg(violationText);
+                setTimeout(() => setViolationMsg(null), 4000);
+              }
+              playbackRef.current.rafId = null;
+            };
+
+            const tick = (nowMs) => {
+              const elapsed = (nowMs - playbackRef.current.startTimeMs) / 1000;
+              if (elapsed >= playbackRef.current.duration || frames.length === 1) {
+                finishPlayback();
+                return;
+              }
+
+              let nextIdx = 1;
+              while (
+                nextIdx < frames.length &&
+                frames[nextIdx].t < elapsed
+              ) {
+                nextIdx += 1;
+              }
+              const prevFrame = frames[nextIdx - 1];
+              const nextFrame = frames[Math.min(nextIdx, frames.length - 1)];
+              const frameDelta = nextFrame.t - prevFrame.t;
+              const alpha =
+                frameDelta > 1e-9 ? (elapsed - prevFrame.t) / frameDelta : 1;
+              const blended = interpolateFrameStones(
+                prevFrame.stones,
+                nextFrame.stones,
+                Math.max(0, Math.min(1, alpha)),
+              );
+              setDisplayStones(blended.map(cloneStoneForRender));
+              playbackRef.current.rafId = requestAnimationFrame(tick);
+            };
+
+            playbackRef.current.rafId = requestAnimationFrame(tick);
+          },
+          [
+            cloneStoneForRender,
+            finalizeEndIfComplete,
+            interpolateFrameStones,
+            recordShotState,
+          ],
+        );
 
         const handleSimulate = () => {
           const v = parseFloat(weights[selectedWeight]);
@@ -1249,16 +1350,15 @@
           engineRef.current.addStone(v, angle, spin);
           const shotStoneIndex = engineRef.current.stones.length - 1;
           const shotStone = engineRef.current.stones[shotStoneIndex];
-          activeShotDebugRef.current = {
-            stoneIndex: shotStoneIndex,
-            startAngularPos: shotStone ? shotStone.angularPos : 0,
-            prevY: shotStone ? shotStone.pos[1] : RINK.HACK_Y,
-            elapsed: 0,
-            nearHogTime: null,
-            farHogTime: null,
-          };
-          setIsSimulating(true);
-          runPhysics(snapshotRef.current);
+          setStones([...engineRef.current.stones]);
+
+          const playbackData = simulateShotFrames(
+            snapshotRef.current,
+            shotStoneIndex,
+            shotStone ? shotStone.angularPos : 0,
+            shotStone ? shotStone.pos[1] : RINK.HACK_Y,
+          );
+          startShotPlayback(playbackData);
         };
 
         const handleReset = () => {
@@ -1778,6 +1878,37 @@
                                 [k]: Math.max(
                                   0.001,
                                   parseFloat(e.target.value) || simTiming[k],
+                                ),
+                              })
+                            }
+                            className="w-full bg-slate-900 border border-white/5 p-1.5 rounded text-[10px] font-mono focus:ring-1 ring-blue-500 outline-none"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h2 className="text-[10px] font-black text-blue-500 tracking-widest uppercase border-b border-white/10 pb-1">
+                      Playback Speed
+                    </h2>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.keys(playbackSpeed).map((k) => (
+                        <div key={k}>
+                          <label className="text-[8px] text-slate-500 uppercase font-bold block mb-1">
+                            {k.replaceAll("_", " ")}
+                          </label>
+                          <input
+                            type="number"
+                            step="0.05"
+                            min="0.1"
+                            value={playbackSpeed[k]}
+                            onChange={(e) =>
+                              setPlaybackSpeed({
+                                ...playbackSpeed,
+                                [k]: Math.max(
+                                  0.1,
+                                  parseFloat(e.target.value) || playbackSpeed[k],
                                 ),
                               })
                             }
