@@ -1746,7 +1746,13 @@
                   </div>
                 )}
                 {showFineControls && !isSimulating && (
-                  <div className={`absolute bottom-4 ${dpadSide === "left" ? "left-4" : "right-4"} grid grid-cols-3 gap-1 z-30`}>
+                  <div
+                    className={`absolute bottom-4 ${dpadSide === "left" ? "left-4" : "right-4"} grid grid-cols-3 gap-1 z-30`}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onMouseMove={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchMove={(e) => e.stopPropagation()}
+                  >
                     <div />
                     <button onClick={(e) => { e.stopPropagation(); moveBroom(0, -1); }} className="w-10 h-10 bg-slate-800/80 rounded flex items-center justify-center border border-white/10 hover:bg-slate-700 text-white shadow-lg"><i className="fa-solid fa-chevron-up"></i></button>
                     <div />
