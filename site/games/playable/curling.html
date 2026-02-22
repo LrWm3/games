@@ -95,13 +95,17 @@
       };
 
       const DEFAULT_PHYSICS = {
-        mu_0: 0.0085,
-        A: 10.0,
+        mu_0: 0.012, // Base ice friction
+        A: 2.5, // Base curl strength
         g: 9.81,
         eps: 1e-6,
-        spin_rate: 1.25,
-        restitution: 0.92,
-        stone_friction: 0.07,
+        spin_rate: 2.2, // ~3-4 rotations
+        restitution: 0.55,
+        stone_friction: 0.2,
+        // --- NEW TUNING KNOBS ---
+        curl_decay: 0.8, // Higher = less curl at high speeds (the "late dive")
+        pivot_bias: 0.06, // Front-to-back friction difference (0.01 - 0.10)
+        lateral_mult: 1.2, // Multiplier for rotational influence
       };
 
       const DEFAULT_SIM_TIMING = {
@@ -197,13 +201,12 @@
         }
 
         step(dt) {
-          const speed = math.norm(this.vel);
-
           if (!this.spinReleased && this.pos[1] <= this.releaseY) {
             this.spinReleased = true;
             this.angularVel = this.pendingSpin;
           }
 
+          const speed = math.norm(this.vel);
           const spinMag = Math.abs(this.angularVel);
 
           if (speed < this.phys.eps && spinMag < 0.05) {
@@ -213,22 +216,17 @@
             return true;
           }
 
-          const wanderIntensity = this.spinReleased
-            ? 0.006 * Math.exp(-3.5 * spinMag) * Math.min(speed, 1.0)
-            : 0;
-          const wanderForce = [
-            (Math.random() - 0.5) * wanderIntensity,
-            (Math.random() - 0.5) * wanderIntensity,
-          ];
-
-          let netForce = [...wanderForce];
+          let netForce = [0, 0];
           let totalTorque = 0;
           const numPoints = 20;
           const dTheta = (2 * Math.PI) / numPoints;
-          const effectiveA = this.phys.A * (spinMag * 2.0);
-          const k = effectiveA / (effectiveA + 1);
-          const normalForcePerPoint = this.weight / numPoints;
           const motionAngle = Math.atan2(this.vel[0], -this.vel[1]);
+
+          // 1. Calculate Velocity Gradient
+          // This is what makes draws curl more than takeouts.
+          // As speed goes up, the asymmetry factor effectively shrinks.
+          const asymmetryScaling =
+            1.0 / (1.0 + Math.pow(speed, this.phys.curl_decay));
 
           for (let i = 0; i < numPoints; i++) {
             const theta = i * dTheta;
@@ -244,16 +242,32 @@
             const pointVel = math.add(this.vel, rotVel);
             const pointSpeed = math.norm(pointVel);
 
+            // Angle relative to motion (phi)
+            // cos(phi) is positive at the leading edge (front)
             const phi = theta - motionAngle;
-            const mu =
-              (this.phys.mu_0 / Math.sqrt(Math.max(pointSpeed, 1e-4))) *
-              (1 - k * Math.cos(phi));
+
+            // 2. Front-Back Pivot (Pivot Bias)
+            // Simulates the stone "biting" into the pebble at the front.
+            const frontBackFriction =
+              1.0 + this.phys.pivot_bias * Math.cos(phi);
+
+            // 3. Rotational Asymmetry (Lateral Influence)
+            // sin(phi) captures the 'sides' where the spin works against/with translational velocity.
+            const rotationalInfluence =
+              this.phys.A * spinMag * this.phys.lateral_mult * Math.sin(phi);
+
+            // Combine local mu: Base * (Front/Back) * (Lateral/Spin)
+            let mu =
+              this.phys.mu_0 *
+              frontBackFriction *
+              (1.0 -
+                rotationalInfluence *
+                  asymmetryScaling *
+                  Math.sign(this.angularVel));
 
             if (pointSpeed > 1e-7) {
-              let fMag = Math.min(
-                normalForcePerPoint * Math.max(mu, 0),
-                (pointSpeed * (this.mass / numPoints)) / dt,
-              );
+              const normalForcePerPoint = this.weight / numPoints;
+              const fMag = normalForcePerPoint * mu;
               const fDir = math.divide(pointVel, -pointSpeed);
               const fVec = math.multiply(fMag, fDir);
               netForce = math.add(netForce, fVec);
@@ -261,6 +275,7 @@
             }
           }
 
+          // Integration
           this.angularAcc = totalTorque / this.inertia;
           this.angularVel += this.angularAcc * dt;
           this.angularPos += this.angularVel * dt;
@@ -839,7 +854,8 @@
         });
         const [phys, setPhys] = useState(() => {
           const saved = localStorage.getItem("curling_phys_adv");
-          return saved ? JSON.parse(saved) : DEFAULT_PHYSICS;
+          const base = saved ? JSON.parse(saved) : DEFAULT_PHYSICS;
+          return { ...DEFAULT_PHYSICS, ...base };
         });
         const [simTiming, setSimTiming] = useState(() => {
           const saved = localStorage.getItem("curling_sim_timing_adv");
