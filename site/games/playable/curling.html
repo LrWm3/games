@@ -816,11 +816,12 @@
                       transform: `rotate(${(s.angularPos / SPIN_SCALE_FACTOR) + (s.handleVisualOffset || 0)}rad)`,
                       transformOrigin: "50% 50%",
                       willChange: "transform",
+                      boxSizing: "border-box",
                     }}
                   >
                     <div
                       className="absolute left-0 h-[20%] w-[72%] rounded-r-full bg-black/35"
-                      style={{ top: "50%", transform: "translateY(-50%)" }}
+                      
                     />
                   </div>
                 </div>
