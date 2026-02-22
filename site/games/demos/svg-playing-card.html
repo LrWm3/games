@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flippable SVG Playing Card</title>
+    <meta name="game-description" content="A weird looking card that flips on mouse over. thats it.">
+    <meta name="game-tags" content="demo, card, nothing">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --card-width: 200px;
+            --card-height: 300px;
+            --flip-speed: 0.7s;
+        }
+
+        body {
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            perspective: 1500px;
+        }
+
+        /* The main interaction area */
+        .scene {
+            width: var(--card-width);
+            height: var(--card-height);
+            position: relative;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        /* Container 1: Handles the idle floating/tilting animation */
+        .float-container {
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            animation: floating 4s ease-in-out infinite;
+            transform-origin: bottom center;
+        }
+
+        /* Container 2: Handles the hover flip transition */
+        .flip-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform var(--flip-speed) cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            /* Initial state: Face down (180deg) */
+            transform: rotateY(180deg);
+        }
+
+        /* Flip logic */
+        .scene:hover .flip-container {
+            transform: rotateY(0deg);
+        }
+
+        /* Common card face styling */
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .card-front {
+            background: white;
+            z-index: 2;
+            transform: rotateY(0deg);
+        }
+
+        .card-back {
+            background: #1e293b;
+            transform: rotateY(180deg);
+        }
+
+        /* Shadow implementation */
+        .shadow {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            width: 120px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 50%;
+            transform: translateX(-50%) rotateX(90deg);
+            filter: blur(10px);
+            animation: shadow-sync 4s ease-in-out infinite;
+            transition: opacity 0.5s ease;
+        }
+
+        .scene:hover .shadow {
+            opacity: 0.5;
+        }
+
+        /* Animations */
+        @keyframes floating {
+            0%, 100% { transform: translateY(0) rotateX(-15deg) rotateZ(0deg); }
+            50% { transform: translateY(-15px) rotateX(-20deg) rotateZ(2deg); }
+        }
+
+        @keyframes shadow-sync {
+            0%, 100% { transform: translateX(-50%) rotateX(90deg) scale(1); opacity: 0.8; }
+            50% { transform: translateX(-50%) rotateX(90deg) scale(1.1); opacity: 0.4; }
+        }
+
+        /* SVG Inner elements */
+        .card-svg { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+
+    <div class="scene">
+        <!-- The Shadow moves with the float -->
+        <div class="shadow"></div>
+
+        <div class="float-container">
+            <div class="flip-container">
+                
+                <!-- FRONT FACE -->
+                <div class="card-face card-front">
+                    <svg class="card-svg" viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="200" height="300" fill="white" />
+                        <g fill="black">
+                            <text x="20" y="35" font-family="serif" font-size="28" font-weight="bold">A</text>
+                            <!-- Spade Path -->
+                            <path d="M20 55 Q20 45 12 45 Q5 45 5 52 Q5 60 20 75 Q35 60 35 52 Q35 45 28 45 Q20 45 20 55 M17 72 L23 72 L20 78 Z" transform="scale(0.8) translate(10, 20)"/>
+                            
+                            <g transform="rotate(180, 100, 150)">
+                                <text x="20" y="35" font-family="serif" font-size="28" font-weight="bold">A</text>
+                                <path d="M20 55 Q20 45 12 45 Q5 45 5 52 Q5 60 20 75 Q35 60 35 52 Q35 45 28 45 Q20 45 20 55 M17 72 L23 72 L20 78 Z" transform="scale(0.8) translate(10, 20)"/>
+                            </g>
+                        </g>
+                        <!-- Large Center Spade -->
+                        <path d="M100 110 Q100 70 65 70 Q35 70 35 100 Q35 130 100 190 Q165 130 165 100 Q165 70 135 70 Q100 70 100 110 M85 180 L115 180 L100 210 Z" fill="black" />
+                    </svg>
+                </div>
+
+                <!-- BACK FACE -->
+                <div class="card-face card-back">
+                    <svg class="card-svg" viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="200" height="300" fill="#1e293b" />
+                        <rect x="10" y="10" width="180" height="280" rx="8" fill="none" stroke="white" stroke-width="4" opacity="0.6"/>
+                        
+                        <!-- Geometric Pattern -->
+                        <defs>
+                            <pattern id="backPattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                                <circle cx="10" cy="10" r="1.5" fill="white" opacity="0.2"/>
+                                <path d="M0 10 L20 10 M10 0 L10 20" stroke="white" stroke-width="0.5" opacity="0.1"/>
+                            </pattern>
+                        </defs>
+                        <rect x="10" y="10" width="180" height="280" rx="8" fill="url(#backPattern)" />
+                        
+                        <circle cx="100" cy="150" r="45" fill="none" stroke="white" stroke-width="2" opacity="0.3"/>
+                        <path d="M100 120 L100 180 M70 150 L130 150" stroke="white" stroke-width="2" opacity="0.2"/>
+                    </svg>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="absolute bottom-10 text-white text-center font-sans pointer-events-none w-full">
+        <p class="text-sm uppercase tracking-widest opacity-40">Hover to flip face-up</p>
+    </div>
+
+</body>
+</html>
