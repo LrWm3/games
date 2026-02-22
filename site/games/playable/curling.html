@@ -873,6 +873,8 @@
           x: 0,
           y: RINK.FAR_TEE_Y,
         });
+        const [showFineControls, setShowFineControls] = useState(() => localStorage.getItem("curling_show_fine_controls") === "true");
+        const [dpadSide, setDpadSide] = useState("left");
 
         const [showSettings, setShowSettings] = useState(false);
         const [prediction, setPrediction] = useState(null);
@@ -992,6 +994,19 @@
             JSON.stringify(playbackSpeed),
           );
         }, [playbackSpeed]);
+
+        useEffect(() => {
+          localStorage.setItem("curling_show_fine_controls", String(showFineControls));
+        }, [showFineControls]);
+
+        useEffect(() => {
+          const percentWidth = (broomTarget.x + RINK.WIDTH / 2) / RINK.WIDTH;
+          if (percentWidth <= 0.4) {
+            setDpadSide("right");
+          } else if (percentWidth >= 0.6) {
+            setDpadSide("left");
+          }
+        }, [broomTarget.x]);
 
         useEffect(() => {
           // At start of an end, lead team is opposite the hammer team.
@@ -1437,6 +1452,14 @@
           );
         };
 
+        const moveBroom = (dx, dy) => {
+          if (isSimulating) return;
+          const step = 1 / (scale * houseCamZoom);
+          const newX = broomTarget.x + dx * step;
+          const newY = broomTarget.y + dy * step;
+          setBroomTarget(clampBroomToScoringZone(newX, newY));
+        };
+
         const activeStone = isSimulating
           ? displayStones.find((s) => !s.isStopped) ||
             displayStones[displayStones.length - 1]
@@ -1720,6 +1743,22 @@
                     >
                       +
                     </button>
+                  </div>
+                )}
+                {showFineControls && !isSimulating && (
+                  <div
+                    className={`absolute bottom-4 ${dpadSide === "left" ? "left-4" : "right-4"} grid grid-cols-3 gap-1 z-30`}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onMouseMove={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchMove={(e) => e.stopPropagation()}
+                  >
+                    <div />
+                    <button onClick={(e) => { e.stopPropagation(); moveBroom(0, -1); }} className="w-10 h-10 bg-slate-800/80 rounded flex items-center justify-center border border-white/10 hover:bg-slate-700 text-white shadow-lg"><i className="fa-solid fa-chevron-up"></i></button>
+                    <div />
+                    <button onClick={(e) => { e.stopPropagation(); moveBroom(-1, 0); }} className="w-10 h-10 bg-slate-800/80 rounded flex items-center justify-center border border-white/10 hover:bg-slate-700 text-white shadow-lg"><i className="fa-solid fa-chevron-left"></i></button>
+                    <button onClick={(e) => { e.stopPropagation(); moveBroom(0, 1); }} className="w-10 h-10 bg-slate-800/80 rounded flex items-center justify-center border border-white/10 hover:bg-slate-700 text-white shadow-lg"><i className="fa-solid fa-chevron-down"></i></button>
+                    <button onClick={(e) => { e.stopPropagation(); moveBroom(1, 0); }} className="w-10 h-10 bg-slate-800/80 rounded flex items-center justify-center border border-white/10 hover:bg-slate-700 text-white shadow-lg"><i className="fa-solid fa-chevron-right"></i></button>
                   </div>
                 )}
                 {!isSimulating ? (
@@ -2044,6 +2083,13 @@
                       Auto
                     </label>
                   </div>
+                  <button
+                    onClick={() => setShowFineControls(!showFineControls)}
+                    className={`p-2 lg:p-3 rounded-xl border border-white/10 transition-colors ${showFineControls ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}
+                    title="Toggle Fine Controls"
+                  >
+                    <i className="fa-solid fa-crosshairs"></i>
+                  </button>
                   <button
                     onClick={handleDeliver}
                     disabled={isSimulating}
