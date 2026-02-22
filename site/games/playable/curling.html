@@ -2037,13 +2037,13 @@
                         onClick={() => setRotation(1)}
                         className={`flex-1 py-1.5 text-[9px] lg:text-[10px] rounded font-bold transition-colors ${rotation > 0 ? "bg-blue-600 shadow text-white" : "text-slate-500"}`}
                       >
-                        IN
+                        <i className="fa-solid fa-rotate-right"></i>
                       </button>
                       <button
                         onClick={() => setRotation(-1)}
                         className={`flex-1 py-1.5 text-[9px] lg:text-[10px] rounded font-bold transition-colors ${rotation < 0 ? "bg-blue-600 shadow text-white" : "text-slate-500"}`}
                       >
-                        OUT
+                        <i className="fa-solid fa-rotate-left"></i>
                       </button>
                       <label className="flex items-center gap-1 pr-1 text-[8px] lg:text-[9px] font-bold uppercase text-slate-300 whitespace-nowrap">
                         <input
