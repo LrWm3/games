@@ -84,7 +84,7 @@
         A: 10.0,
         g: 9.81,
         eps: 1e-6,
-        spin_rate: 3.54,
+        spin_rate: 1.0,
         restitution: 0.55,
         stone_friction: 0.2,
       };
@@ -110,6 +110,8 @@
       const WEIGHT_LABEL_ORDER = ["Hack", "Board", "Control", "Normal", "Peel"];
       const STONES_PER_TEAM = 8;
       const GUIDE_DOT_COUNT = 3;
+      const SPIN_SCALE_FACTOR = 3.57;
+      const NEAR_HOG_RELEASE_Y = RINK.LENGTH - RINK.HOG_LINE;
 
       // --- ENGINE CLASSES ---
       class Stone {
@@ -126,7 +128,10 @@
           this.vel = [Math.sin(angle) * velocity, -Math.cos(angle) * velocity];
           this.acc = [0, 0];
           this.angularPos = 0;
-          this.angularVel = spin;
+          this.pendingSpin = spin;
+          this.angularVel = 0;
+          this.spinReleased = false;
+          this.releaseY = NEAR_HOG_RELEASE_Y;
           this.angularAcc = 0;
           this.isStopped = false;
           this.removed = false;
@@ -144,8 +149,11 @@
           );
           copy.vel = [...this.vel];
           copy.acc = [...this.acc];
+          copy.pendingSpin = this.pendingSpin;
           copy.angularVel = this.angularVel;
           copy.angularPos = this.angularPos;
+          copy.spinReleased = this.spinReleased;
+          copy.releaseY = this.releaseY;
           copy.isStopped = this.isStopped;
           copy.removed = this.removed;
           copy.touchedInPlay = this.touchedInPlay;
@@ -162,6 +170,12 @@
 
         step(dt) {
           const speed = math.norm(this.vel);
+
+          if (!this.spinReleased && this.pos[1] <= this.releaseY) {
+            this.spinReleased = true;
+            this.angularVel = this.pendingSpin;
+          }
+
           const spinMag = Math.abs(this.angularVel);
 
           if (speed < this.phys.eps && spinMag < 0.05) {
@@ -171,9 +185,9 @@
             return true;
           }
 
-          const curlFactor = (2 * spinMag) / (1 + Math.pow(spinMag, 1.5));
-          const wanderIntensity =
-            0.02 * Math.exp(-3 * spinMag) * Math.min(speed, 1.0);
+          const wanderIntensity = this.spinReleased
+            ? 0.006 * Math.exp(-3.5 * spinMag) * Math.min(speed, 1.0)
+            : 0;
           const wanderForce = [
             (Math.random() - 0.5) * wanderIntensity,
             (Math.random() - 0.5) * wanderIntensity,
@@ -183,7 +197,7 @@
           let totalTorque = 0;
           const numPoints = 20;
           const dTheta = (2 * Math.PI) / numPoints;
-          const effectiveA = this.phys.A * curlFactor;
+          const effectiveA = this.phys.A * (spinMag * 2.0);
           const k = effectiveA / (effectiveA + 1);
           const normalForcePerPoint = this.weight / numPoints;
           const motionAngle = Math.atan2(this.vel[0], -this.vel[1]);
@@ -764,7 +778,7 @@
                     left: `calc(50% + ${s.pos[0] * scale}px)`,
                     top: s.pos[1] * scale,
                     backgroundColor: s.color === -1 ? "#ef4444" : "#eab308",
-                    transform: `translate(-50%, -50%) rotate(${s.angularPos}rad)`,
+                    transform: `translate(-50%, -50%) rotate(${s.angularPos / SPIN_SCALE_FACTOR}rad)`,
                   }}
                 >
                   <div className="w-full h-[20%] bg-black/30" />
@@ -1057,7 +1071,7 @@
               const rotations = trackedStone
                 ? Math.abs(
                     (trackedStone.angularPos - tracker.startAngularPos) /
-                      (2 * Math.PI),
+                      (2 * Math.PI * SPIN_SCALE_FACTOR),
                   )
                 : null;
               const hogToHog =
@@ -1087,7 +1101,7 @@
 
         const handleSimulate = () => {
           const v = parseFloat(weights[selectedWeight]);
-          const spin = rotation * phys.spin_rate;
+          const spin = rotation * phys.spin_rate * SPIN_SCALE_FACTOR;
           const angle = Math.atan2(
             broomTarget.x,
             -(broomTarget.y - RINK.HACK_Y),
@@ -1112,7 +1126,7 @@
           setPrediction(null);
 
           const v = parseFloat(weights[selectedWeight]);
-          const spin = rotation * phys.spin_rate;
+          const spin = rotation * phys.spin_rate * SPIN_SCALE_FACTOR;
           const angle = Math.atan2(
             broomTarget.x,
             -(broomTarget.y - RINK.HACK_Y),
@@ -1465,7 +1479,7 @@
                 ) : (
                   <div
                     className="absolute top-0 left-1/2 w-full origin-top transform-gpu"
-                    style={{ transform: `translateX(-50%) scale(2.8)` }}
+                    style={{ transform: `translateX(-50%) scale(${houseCamZoom})` }}
                   >
                     <div
                       className="flex justify-center w-full chase-layer"
@@ -1479,6 +1493,7 @@
                         broomTarget={null}
                         isSimulating={isSimulating}
                         prediction={prediction}
+                        showNearHogLine={true}
                       />
                     </div>
                   </div>
