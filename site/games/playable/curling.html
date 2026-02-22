@@ -249,7 +249,7 @@
             // 2. Front-Back Pivot (Pivot Bias)
             // Simulates the stone "biting" into the pebble at the front.
             const frontBackFriction =
-              1.0 + this.phys.pivot_bias * Math.cos(phi);
+              1.0 - this.phys.pivot_bias * Math.cos(phi);
 
             // 3. Rotational Asymmetry (Lateral Influence)
             // sin(phi) captures the 'sides' where the spin works against/with translational velocity.
