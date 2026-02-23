@@ -571,6 +571,7 @@
         isSimulating,
         prediction,
         showNearHogLine = false,
+        placingStone,
       }) => {
         const width = RINK.WIDTH * scale;
         const height = RINK.LENGTH * scale;
@@ -839,6 +840,30 @@
                   </div>
                 </div>
               ))}
+
+            {/* Placing Stone Ghost */}
+            {placingStone && (
+              <div
+                className="absolute z-30 opacity-60 pointer-events-none"
+                style={{
+                  width: 0.145 * 2 * scale,
+                  height: 0.145 * 2 * scale,
+                  left: "50%",
+                  top: 0,
+                  transform: `translate3d(${placingStone.pos[0] * scale}px, ${placingStone.pos[1] * scale}px, 0) translate(-50%, -50%)`,
+                  willChange: "transform",
+                }}
+              >
+                <div
+                  className="relative w-full h-full rounded-full shadow-xl flex items-center justify-center border border-black/40"
+                  style={{
+                    backgroundColor: placingStone.color === -1 ? "#ef4444" : "#eab308",
+                  }}
+                >
+                  <div className="absolute left-0 h-[20%] w-[72%] rounded-r-full bg-black/35" />
+                </div>
+              </div>
+            )}
           </div>
         );
       };
@@ -945,6 +970,9 @@
         const [lastShotDebug, setLastShotDebug] = useState(null);
         const [displayStones, setDisplayStones] = useState([]);
         const [chaseCamY, setChaseCamY] = useState(RINK.HACK_Y);
+
+        const [isPlacementMode, setIsPlacementMode] = useState(false);
+        const [placingStone, setPlacingStone] = useState(null);
 
         const [scale, setScale] = useState(10);
         const mainViewRef = useRef(null);
@@ -1598,6 +1626,12 @@
           return { x: clampedX, y: clampedY };
         };
 
+        const clampStoneToRink = (x, y) => {
+          const clampedX = Math.max(-RINK.WIDTH / 2, Math.min(RINK.WIDTH / 2, x));
+          const clampedY = Math.max(0, Math.min(RINK.LENGTH, y));
+          return { x: clampedX, y: clampedY };
+        };
+
         const placeBroomFromRect = (clientX, clientY, rect) => {
           const localX = clientX - rect.left;
           const localY = clientY - rect.top;
@@ -1607,7 +1641,12 @@
           const sheetY = (localY / rect.height) * height;
           const x = (sheetX - width / 2) / scale;
           const y = sheetY / scale;
-          setBroomTarget(clampBroomToScoringZone(x, y));
+          if (isPlacementMode) {
+            const clamped = clampStoneToRink(x, y);
+            setPlacingStone({ pos: [clamped.x, clamped.y], color: engineRef.current.nextColor });
+          } else {
+            setBroomTarget(clampBroomToScoringZone(x, y));
+          }
         };
 
         const placeBroom = (clientX, clientY) => {
@@ -1631,9 +1670,34 @@
         const moveBroom = (dx, dy) => {
           if (isSimulating) return;
           const step = 1 / (scale * houseCamZoom);
-          const newX = broomTarget.x + dx * step;
-          const newY = broomTarget.y + dy * step;
-          setBroomTarget(clampBroomToScoringZone(newX, newY));
+          if (isPlacementMode && placingStone) {
+            const newX = placingStone.pos[0] + dx * step;
+            const newY = placingStone.pos[1] + dy * step;
+            const clamped = clampStoneToRink(newX, newY);
+            setPlacingStone({ ...placingStone, pos: [clamped.x, clamped.y] });
+          } else if (!isPlacementMode) {
+            const newX = broomTarget.x + dx * step;
+            const newY = broomTarget.y + dy * step;
+            setBroomTarget(clampBroomToScoringZone(newX, newY));
+          }
+        };
+
+        const handleConfirmPlacement = () => {
+          if (isSimulating || !placingStone) return;
+          const newStone = new Stone(
+            placingStone.color,
+            [...placingStone.pos],
+            0,
+            0,
+            0,
+            phys,
+          );
+          newStone.isStopped = true;
+          engineRef.current.stones.push(newStone);
+          engineRef.current.nextColor = placingStone.color * -1;
+          setStones([...engineRef.current.stones]);
+          recordShotState();
+          setPlacingStone(null);
         };
 
         const activeStone = isSimulating
@@ -1671,6 +1735,36 @@
             setChaseCamY(chaseY);
           }
         }, [isSimulating, chaseY]);
+
+        useEffect(() => {
+          const handleKeyDown = (e) => {
+            if (isSimulating || !isPlacementMode) return;
+            if (e.key === "Enter") {
+              handleConfirmPlacement();
+              return;
+            }
+            if (e.key === "Escape") {
+              setPlacingStone(null);
+              return;
+            }
+            if (!placingStone) return;
+            const step = 1 / (scale * houseCamZoom);
+            let dx = 0, dy = 0;
+            if (e.key === "ArrowLeft") dx = -1;
+            else if (e.key === "ArrowRight") dx = 1;
+            else if (e.key === "ArrowUp") dy = -1;
+            else if (e.key === "ArrowDown") dy = 1;
+            if (dx !== 0 || dy !== 0) {
+              e.preventDefault();
+              const newX = placingStone.pos[0] + dx * step;
+              const newY = placingStone.pos[1] + dy * step;
+              const clamped = clampStoneToRink(newX, newY);
+              setPlacingStone({ ...placingStone, pos: [clamped.x, clamped.y] });
+            }
+          };
+          window.addEventListener("keydown", handleKeyDown);
+          return () => window.removeEventListener("keydown", handleKeyDown);
+        }, [isSimulating, isPlacementMode, placingStone, scale, houseCamZoom]);
 
         const redThrown = Math.min(
           STONES_PER_TEAM,
@@ -1958,6 +2052,7 @@
                           broomTarget={broomTarget}
                           isSimulating={isSimulating}
                           prediction={prediction}
+                          placingStone={placingStone}
                         />
                       </div>
                     </div>
@@ -1980,6 +2075,7 @@
                         isSimulating={isSimulating}
                         prediction={prediction}
                         showNearHogLine={true}
+                        placingStone={placingStone}
                       />
                     </div>
                   </div>
@@ -2018,6 +2114,7 @@
                       isSimulating={isSimulating}
                       prediction={prediction}
                       showNearHogLine={true}
+                      placingStone={placingStone}
                     />
                   </div>
                 </div>
@@ -2238,27 +2335,46 @@
                 </div>
 
                 <div className="flex gap-2">
-                  <div className="flex-1 flex items-center gap-2 rounded-xl border border-white/10 bg-slate-800 px-2 lg:px-3">
-                    <button
-                      onClick={handleSimulate}
-                      disabled={isSimulating}
-                      className="flex-1 py-2 lg:py-3 font-black text-[9px] lg:text-[10px] uppercase text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50"
-                    >
-                      Predict
-                    </button>
-                    <label className="flex items-center gap-1 text-[8px] lg:text-[9px] font-bold uppercase text-slate-300 whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={autoPredictOnPlace}
-                        onChange={(e) =>
-                          setAutoPredictOnPlace(e.target.checked)
-                        }
+                  {!isPlacementMode ? (
+                    <div className="flex-1 flex items-center gap-2 rounded-xl border border-white/10 bg-slate-800 px-2 lg:px-3">
+                      <button
+                        onClick={handleSimulate}
                         disabled={isSimulating}
-                        className="accent-blue-500"
-                      />
-                      Auto
-                    </label>
-                  </div>
+                        className="flex-1 py-2 lg:py-3 font-black text-[9px] lg:text-[10px] uppercase text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50"
+                      >
+                        Predict
+                      </button>
+                      <label className="flex items-center gap-1 text-[8px] lg:text-[9px] font-bold uppercase text-slate-300 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={autoPredictOnPlace}
+                          onChange={(e) =>
+                            setAutoPredictOnPlace(e.target.checked)
+                          }
+                          disabled={isSimulating}
+                          className="accent-blue-500"
+                        />
+                        Auto
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center rounded-xl border border-white/10 bg-slate-800 px-2 lg:px-3">
+                      <span className="text-[9px] lg:text-[10px] font-black uppercase text-amber-500">
+                        Placement Mode
+                      </span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (isPlacementMode) setPlacingStone(null);
+                      setIsPlacementMode(!isPlacementMode);
+                    }}
+                    disabled={isSimulating}
+                    className={`p-2 lg:p-3 rounded-xl border border-white/10 transition-colors ${isPlacementMode ? "bg-amber-600 text-white" : "bg-slate-800 text-slate-400"} disabled:opacity-50`}
+                    title="Toggle Placement Mode"
+                  >
+                    <i className="fa-solid fa-plus"></i>
+                  </button>
                   <button
                     onClick={() => setShowFineControls(!showFineControls)}
                     className={`p-2 lg:p-3 rounded-xl border border-white/10 transition-colors ${showFineControls ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}
@@ -2266,13 +2382,23 @@
                   >
                     <i className="fa-solid fa-crosshairs"></i>
                   </button>
-                  <button
-                    onClick={handleDeliver}
-                    disabled={isSimulating}
-                    className={`flex-[2] py-2 lg:py-3 rounded-xl font-black text-[10px] lg:text-xs uppercase tracking-wider transition-all shadow-xl disabled:opacity-50 ${isSimulating ? "bg-slate-800 text-slate-500" : "bg-blue-600 hover:bg-blue-500 active:scale-95 text-white"}`}
-                  >
-                    Deliver Stone
-                  </button>
+                  {isPlacementMode ? (
+                    <button
+                      onClick={handleConfirmPlacement}
+                      disabled={isSimulating || !placingStone}
+                      className={`flex-[2] py-2 lg:py-3 rounded-xl font-black text-[10px] lg:text-xs uppercase tracking-wider transition-all shadow-xl disabled:opacity-50 ${isSimulating || !placingStone ? "bg-slate-800 text-slate-500" : "bg-amber-600 hover:bg-amber-500 active:scale-95 text-white"}`}
+                    >
+                      Confirm Stone
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleDeliver}
+                      disabled={isSimulating}
+                      className={`flex-[2] py-2 lg:py-3 rounded-xl font-black text-[10px] lg:text-xs uppercase tracking-wider transition-all shadow-xl disabled:opacity-50 ${isSimulating ? "bg-slate-800 text-slate-500" : "bg-blue-600 hover:bg-blue-500 active:scale-95 text-white"}`}
+                    >
+                      Deliver Stone
+                    </button>
+                  )}
                 </div>
               </div>
             )}
