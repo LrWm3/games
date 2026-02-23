@@ -968,13 +968,32 @@
               shotHistoryRef.current = parsed.map((entry) => ({
                 nextColor: entry.nextColor,
                 stones: entry.stones.map((s) => Stone.fromJSON(s, phys)),
+                currentEnd: entry.currentEnd,
+                completedEnds: entry.completedEnds,
+                hammerTeam: entry.hammerTeam,
               }));
               shotHistoryIndexRef.current = parseInt(savedIndex);
             } catch (e) {
-              shotHistoryRef.current = [{ stones: [], nextColor: -1 }];
+              shotHistoryRef.current = [
+                {
+                  stones: [],
+                  nextColor: -1,
+                  currentEnd,
+                  completedEnds,
+                  hammerTeam,
+                },
+              ];
             }
           } else {
-            shotHistoryRef.current = [{ stones: [], nextColor: -1 }];
+            shotHistoryRef.current = [
+              {
+                stones: [],
+                nextColor: -1,
+                currentEnd,
+                completedEnds,
+                hammerTeam,
+              },
+            ];
           }
         }
         const [historyTick, setHistoryTick] = useState(0);
@@ -1205,11 +1224,14 @@
             {
               stones: engineRef.current.stones.map((s) => s.clone()),
               nextColor: engineRef.current.nextColor,
+              currentEnd,
+              completedEnds,
+              hammerTeam,
             },
           ];
           shotHistoryIndexRef.current = 0;
           setHistoryTick((v) => v + 1);
-        }, []);
+        }, [currentEnd, completedEnds, hammerTeam]);
 
         const recordShotState = useCallback(() => {
           const truncated = shotHistoryRef.current.slice(
@@ -1219,11 +1241,14 @@
           truncated.push({
             stones: engineRef.current.stones.map((s) => s.clone()),
             nextColor: engineRef.current.nextColor,
+            currentEnd,
+            completedEnds,
+            hammerTeam,
           });
           shotHistoryRef.current = truncated;
           shotHistoryIndexRef.current = truncated.length - 1;
           setHistoryTick((v) => v + 1);
-        }, []);
+        }, [currentEnd, completedEnds, hammerTeam]);
 
         const applyHistoryState = useCallback((targetIndex) => {
           const entry = shotHistoryRef.current[targetIndex];
@@ -1231,6 +1256,11 @@
           engineRef.current.stones = entry.stones.map((s) => s.clone());
           engineRef.current.nextColor = entry.nextColor;
           setStones([...engineRef.current.stones]);
+
+          if (entry.currentEnd !== undefined) setCurrentEnd(entry.currentEnd);
+          if (entry.completedEnds !== undefined) setCompletedEnds(entry.completedEnds);
+          if (entry.hammerTeam !== undefined) setHammerTeam(entry.hammerTeam);
+
           setPrediction(null);
           setViolationMsg(null);
           setSnapshotState(null);
@@ -1285,8 +1315,11 @@
           if (deliveries < STONES_PER_TEAM * 2) return;
 
           const result = scoreEnd(engineRef.current.stones);
-          setCompletedEnds((prev) => [...prev, result]);
-          setCurrentEnd((e) => e + 1);
+          const newCompletedEnds = [...completedEnds, result];
+          const newCurrentEnd = currentEnd + 1;
+
+          setCompletedEnds(newCompletedEnds);
+          setCurrentEnd(newCurrentEnd);
 
           const nextHammer =
             result.scoringTeam === "red"
@@ -1297,14 +1330,29 @@
           setHammerTeam(nextHammer);
 
           engineRef.current.stones = [];
-          engineRef.current.nextColor = nextHammer === "red" ? 1 : -1;
+          const nextNextColor = nextHammer === "red" ? 1 : -1;
+          engineRef.current.nextColor = nextNextColor;
           setStones([]);
           setPrediction(null);
           setSnapshotState(null);
           snapshotRef.current = null;
           setViolationMsg(null);
-          resetHistoryWithCurrentState();
-        }, [hammerTeam, resetHistoryWithCurrentState, scoreEnd]);
+
+          const truncated = shotHistoryRef.current.slice(
+            0,
+            shotHistoryIndexRef.current + 1,
+          );
+          truncated.push({
+            stones: [],
+            nextColor: nextNextColor,
+            currentEnd: newCurrentEnd,
+            completedEnds: newCompletedEnds,
+            hammerTeam: nextHammer,
+          });
+          shotHistoryRef.current = truncated;
+          shotHistoryIndexRef.current = truncated.length - 1;
+          setHistoryTick((v) => v + 1);
+        }, [hammerTeam, currentEnd, completedEnds, scoreEnd]);
 
         const simulateShotFrames = useCallback(
           (preThrowSnapshot, stoneIndex, startAngularPos, startY) => {
