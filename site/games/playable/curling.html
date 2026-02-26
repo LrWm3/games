@@ -1173,9 +1173,9 @@
 
         useEffect(() => {
           const percentWidth = (broomTarget.x + RINK.WIDTH / 2) / RINK.WIDTH;
-          if (percentWidth <= 0.4) {
+          if (percentWidth <= 0.3) {
             setDpadSide("right");
-          } else if (percentWidth >= 0.6) {
+          } else if (percentWidth >= 0.7) {
             setDpadSide("left");
           }
         }, [broomTarget.x]);
@@ -1632,6 +1632,36 @@
           return { x: clampedX, y: clampedY };
         };
 
+        const resolveStoneOverlap = (x, y, existingStones) => {
+          const R = 0.145;
+          const minRestDist = 2 * R;
+          let currentX = x;
+          let currentY = y;
+
+          // Up to 5 iterations to resolve multiple overlaps
+          for (let iter = 0; iter < 5; iter++) {
+            let moved = false;
+            for (const stone of existingStones) {
+              if (stone.removed) continue;
+              const dx = currentX - stone.pos[0];
+              const dy = currentY - stone.pos[1];
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist < minRestDist - 0.0001) {
+                moved = true;
+                if (dist < 1e-6) {
+                  currentY += minRestDist;
+                } else {
+                  const factor = minRestDist / dist;
+                  currentX = stone.pos[0] + dx * factor;
+                  currentY = stone.pos[1] + dy * factor;
+                }
+              }
+            }
+            if (!moved) break;
+          }
+          return { x: currentX, y: currentY };
+        };
+
         const placeBroomFromRect = (clientX, clientY, rect) => {
           const localX = clientX - rect.left;
           const localY = clientY - rect.top;
@@ -1643,7 +1673,8 @@
           const y = sheetY / scale;
           if (isPlacementMode) {
             const clamped = clampStoneToRink(x, y);
-            setPlacingStone({ pos: [clamped.x, clamped.y], color: engineRef.current.nextColor });
+            const resolved = resolveStoneOverlap(clamped.x, clamped.y, engineRef.current.stones);
+            setPlacingStone({ pos: [resolved.x, resolved.y], color: engineRef.current.nextColor });
           } else {
             setBroomTarget(clampBroomToScoringZone(x, y));
           }
@@ -1674,7 +1705,8 @@
             const newX = placingStone.pos[0] + dx * step;
             const newY = placingStone.pos[1] + dy * step;
             const clamped = clampStoneToRink(newX, newY);
-            setPlacingStone({ ...placingStone, pos: [clamped.x, clamped.y] });
+            const resolved = resolveStoneOverlap(clamped.x, clamped.y, engineRef.current.stones);
+            setPlacingStone({ ...placingStone, pos: [resolved.x, resolved.y] });
           } else if (!isPlacementMode) {
             const newX = broomTarget.x + dx * step;
             const newY = broomTarget.y + dy * step;
@@ -1759,7 +1791,8 @@
               const newX = placingStone.pos[0] + dx * step;
               const newY = placingStone.pos[1] + dy * step;
               const clamped = clampStoneToRink(newX, newY);
-              setPlacingStone({ ...placingStone, pos: [clamped.x, clamped.y] });
+              const resolved = resolveStoneOverlap(clamped.x, clamped.y, engineRef.current.stones);
+              setPlacingStone({ ...placingStone, pos: [resolved.x, resolved.y] });
             }
           };
           window.addEventListener("keydown", handleKeyDown);
@@ -2017,7 +2050,7 @@
                 )}
                 {showFineControls && !isSimulating && (
                   <div
-                    className={`absolute bottom-4 ${dpadSide === "left" ? "left-4" : "right-4"} grid grid-cols-3 gap-1 z-30`}
+                    className={`absolute bottom-4 ${dpadSide === "left" ? "left-4" : "right-4"} grid grid-cols-3 gap-1 z-30 bg-slate-950/50 p-1.5 rounded-xl backdrop-blur-sm`}
                     onMouseDown={(e) => e.stopPropagation()}
                     onMouseMove={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
