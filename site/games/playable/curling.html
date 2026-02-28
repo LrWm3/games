@@ -324,31 +324,32 @@
         }
 
         update(snapshotStones) {
-          let finished = true;
           const dt = this.dt;
 
           for (let stone of this.stones) {
             if (!stone.isStopped) {
-              if (!stone.step(dt)) finished = false;
+              stone.step(dt);
               if (stone.pos[1] < RINK.HOG_LINE)
                 this.accuracy = Math.max(this.accuracy, 1);
             }
           }
 
-          this.stones.forEach((s) => {
+          this.handleCollisions(dt);
+
+          let finished = true;
+          for (let s of this.stones) {
             if (!s.removed && !s.isStopped) {
-              // Standard out of bounds
               if (
                 Math.abs(s.pos[0]) > RINK.WIDTH / 2 ||
                 s.pos[1] < RINK.BACK_LINE - s.outerRadius
               ) {
                 s.removed = true;
                 s.isStopped = true;
+              } else {
+                finished = false;
               }
             }
-          });
-
-          this.handleCollisions(dt);
+          }
 
           if (finished && snapshotStones && !this.rulesApplied) {
             this.applyRules(snapshotStones);
@@ -1733,12 +1734,15 @@
         };
 
         const activeStone = isSimulating
-          ? displayStones.find((s) => !s.isStopped) ||
+          ? displayStones.find((s) => !s.isStopped && !s.removed) ||
+            displayStones.find((s) => !s.removed) ||
             displayStones[displayStones.length - 1]
           : displayStones.length > 0
             ? displayStones[displayStones.length - 1]
             : null;
-        const chaseY = activeStone ? activeStone.pos[1] : RINK.HACK_Y;
+        const chaseY = activeStone
+          ? Math.max(RINK.BACK_LINE, activeStone.pos[1])
+          : RINK.HACK_Y;
 
         useEffect(() => {
           chaseTargetYRef.current = chaseY;
