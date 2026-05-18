@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Code Swipe Prototype</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Highlight.js CSS (VS2015 Dark Theme) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for in-browser JSX parsing -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Highlight.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Highlight.js Extra Languages -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/rust.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/kotlin.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/c.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cpp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/csharp.min.js"></script>
+
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .hljs { background: transparent !important; padding: 0 !important; font-size: 0.875rem; line-height: 1.5; }
+        /* Smooth scrolling for the code block */
+        .no-swipe::-webkit-scrollbar, .modal-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+        .no-swipe::-webkit-scrollbar-track, .modal-scroll::-webkit-scrollbar-track { background: #1E1E1E; border-radius: 4px; }
+        .no-swipe::-webkit-scrollbar-thumb, .modal-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        
+        /* Modal specific body scrolling */
+        .modal-body-scroll::-webkit-scrollbar { width: 6px; }
+        .modal-body-scroll::-webkit-scrollbar-track { background: transparent; }
+        .modal-body-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased overflow-hidden selection:bg-blue-200">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        const { useState, useRef, useEffect } = React;
+
+        // --- GEMINI API CONFIGURATION ---
+        const apiKey = ""; // Execution environment injects the key at runtime
+
+        const fetchWithRetry = async (url, options, retries = 5) => {
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return await response.json();
+                } catch (error) {
+                    if (i === retries - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, delays[i]));
+                }
+            }
+        };
+
+        // --- MOCK DATA ---
+        const INITIAL_FUNCTIONS = [
+          {
+            name: 'merge_and_sort',
+            docstring: 'Merges two lists and returns a new sorted list.',
+            variants: [
+              {
+                id: 'ms_1',
+                is_correct: true,
+                code: 'def merge_and_sort(a, b):\n    return sorted(a + b)',
+                explanation: 'Correct. Concatenating the lists creates a new list, and sorted() returns a new sorted version.'
+              },
+              {
+                id: 'ms_2',
+                is_correct: false,
+                code: 'def merge_and_sort(a, b):\n    return a.append(b).sort()',
+                explanation: 'Buggy. a.append(b) modifies `a` in place and returns None. Calling .sort() on None raises an AttributeError. Also, append adds `b` as a single element (a nested list) rather than extending it.'
+              }
+            ]
+          },
+          {
+            name: 'count_vowels',
+            docstring: 'Counts the number of vowels (a, e, i, o, u) in a string, case-insensitive.',
+            variants: [
+              {
+                id: 'cv_1',
+                is_correct: true,
+                code: 'def count_vowels(text):\n    return sum(1 for c in text.lower() if c in "aeiou")',
+                explanation: 'Correct. It converts the text to lowercase and sums a generator expression that checks for vowels.'
+              },
+              {
+                id: 'cv_2',
+                is_correct: false,
+                code: 'def count_vowels(text):\n    return sum(1 for c in text if c in "aeiou")',
+                explanation: 'Buggy. It does not convert the text to lowercase, so uppercase vowels like "A" or "E" will be ignored.'
+              },
+              {
+                id: 'cv_3',
+                is_correct: true,
+                code: 'def count_vowels(text):\n    return len([v for v in text if v in "aeiouAEIOU"])',
+                explanation: 'Correct. A slightly different approach that checks against both upper and lowercase vowels and gets the length of the resulting list.'
+              }
+            ]
+          }
+        ];
+
+        // --- HELPER: Highlight.js Language Class Mapper ---
+        const getLanguageTag = (langName) => {
+          const map = {
+            'Python': 'python',
+            'JavaScript': 'javascript',
+            'Rust': 'rust',
+            'Java': 'java',
+            'Kotlin': 'kotlin',
+            'Deno': 'typescript', 
+            'C': 'c',
+            'C++': 'cpp',
+            'C#': 'csharp'
+          };
+          return map[langName] || 'plaintext';
+        };
+
+        // --- MAIN APP ---
+        function App() {
+          const [view, setView] = useState('swipe'); // 'swipe', 'settings', 'generate'
+          
+          const initialDeck = INITIAL_FUNCTIONS.flatMap(func => 
+            func.variants.map(variant => ({ ...variant, funcName: func.name, docstring: func.docstring }))
+          ).sort(() => Math.random() - 0.5); 
+
+          const [deck, setDeck] = useState(initialDeck);
+          const [lastAction, setLastAction] = useState(null); 
+          const [showModal, setShowModal] = useState(false);
+
+          // Settings State
+          const [difficulty] = useState(['1']);
+          const [errorTypes] = useState(['Logic']); 
+          const [language, setLanguage] = useState('Python'); 
+
+          // Swipe Action
+          const handleSwipe = (direction) => {
+            if (deck.length === 0) return;
+            
+            const currentCard = deck[0];
+            const userSaidCorrect = direction === 'right';
+            const userGuessedCorrectly = userSaidCorrect === currentCard.is_correct;
+
+            setLastAction({
+              card: currentCard,
+              userGuessedCorrectly,
+              userSaidCorrect
+            });
+            
+            setDeck(deck.slice(1));
+          };
+
+          return (
+            <div className="h-screen flex flex-col relative">
+              {/* HEADER */}
+              <header className="bg-white border-b border-slate-200 p-4 flex justify-between items-center z-50 shrink-0">
+                <h1 className="text-xl font-black bg-gradient-to-r from-rose-500 to-orange-500 bg-clip-text text-transparent flex items-center gap-2">
+                  <svg className="w-6 h-6 text-rose-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                  CodeSwipe
+                </h1>
+                <nav className="flex gap-2">
+                  <button onClick={() => setView('generate')} className={`p-2 rounded-full transition-colors ${view === 'generate' ? 'bg-slate-200' : 'hover:bg-slate-100'}`} title="AI Generator">
+                    <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                  </button>
+                  <button onClick={() => setView('settings')} className={`p-2 rounded-full transition-colors ${view === 'settings' ? 'bg-slate-200' : 'hover:bg-slate-100'}`} title="Settings">
+                    <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                  </button>
+                  <button onClick={() => setView('swipe')} className={`p-2 rounded-full transition-colors ${view === 'swipe' ? 'bg-slate-200' : 'hover:bg-slate-100'}`} title="Swipe">
+                    <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                  </button>
+                </nav>
+              </header>
+
+              {/* MAIN CONTENT AREA */}
+              <main className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden max-w-md mx-auto w-full relative">
+                {view === 'swipe' && (
+                  <SwipeView 
+                    deck={deck} 
+                    onSwipe={handleSwipe} 
+                    lastAction={lastAction} 
+                    onShowModal={() => setShowModal(true)} 
+                    language={language}
+                  />
+                )}
+                {view === 'settings' && (
+                  <SettingsView language={language} setLanguage={setLanguage} />
+                )}
+                {view === 'generate' && (
+                  <AIGeneratorView 
+                    language={language} 
+                    difficulty={difficulty[0]} 
+                    errorType={errorTypes[0]} 
+                    setDeck={setDeck}
+                    setView={setView}
+                  />
+                )}
+              </main>
+
+              {/* EXPLANATION SCROLLABLE MODAL */}
+              {showModal && lastAction && (
+                <ReviewModal 
+                  action={lastAction} 
+                  language={language} 
+                  onClose={() => setShowModal(false)} 
+                />
+              )}
+            </div>
+          );
+        }
+
+        // --- SWIPE VIEW COMPONENT ---
+        function SwipeView({ deck, onSwipe, lastAction, onShowModal, language }) {
+          const currentCard = deck[0];
+          const codeRef = useRef(null);
+          
+          const [startX, setStartX] = useState(0);
+          const [offsetX, setOffsetX] = useState(0);
+          const [isDragging, setIsDragging] = useState(false);
+
+          useEffect(() => {
+            if (codeRef.current && currentCard) {
+              delete codeRef.current.dataset.highlighted;
+              hljs.highlightElement(codeRef.current);
+            }
+          }, [currentCard, language]);
+
+          const handleDragStart = (e) => {
+            if (e.target.closest('.no-swipe')) {
+               return; 
+            }
+            setStartX(e.type.includes('mouse') ? e.clientX : e.touches[0].clientX);
+            setIsDragging(true);
+          };
+
+          const handleDragMove = (e) => {
+            if (!isDragging) return;
+            const currentX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            setOffsetX(currentX - startX);
+          };
+
+          const handleDragEnd = () => {
+            if (!isDragging) return;
+            setIsDragging(false);
+            const threshold = 100;
+            if (offsetX > threshold) {
+              onSwipe('right');
+            } else if (offsetX < -threshold) {
+              onSwipe('left');
+            }
+            setOffsetX(0); 
+          };
+
+          const rotate = offsetX * 0.05;
+          const opacity = 1 - Math.abs(offsetX) / 500;
+          const cardStyle = isDragging ? {
+            transform: `translate3d(${offsetX}px, 0, 0) rotate(${rotate}deg)`,
+            opacity: opacity,
+            transition: 'none',
+            cursor: 'grabbing'
+          } : {
+            transform: 'translate3d(0, 0, 0) rotate(0deg)',
+            transition: 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
+          };
+
+          return (
+            <div className="flex-1 flex flex-col justify-between p-4 pb-6 overflow-hidden relative">
+              
+              {/* CENTER: Card Stack */}
+              <div className="flex-1 relative w-full flex items-center justify-center mt-2 mb-4">
+                {deck.length > 0 ? (
+                  <div 
+                    className="absolute inset-0 bg-white rounded-3xl shadow-xl border border-slate-200 flex flex-col overflow-hidden will-change-transform select-none touch-none"
+                    style={cardStyle}
+                    onMouseDown={handleDragStart}
+                    onMouseMove={handleDragMove}
+                    onMouseUp={handleDragEnd}
+                    onMouseLeave={handleDragEnd}
+                    onTouchStart={handleDragStart}
+                    onTouchMove={handleDragMove}
+                    onTouchEnd={handleDragEnd}
+                  >
+                    {/* Stamp Overlay */}
+                    {offsetX > 50 && <div className="absolute top-8 left-8 border-4 border-green-500 text-green-500 font-black text-3xl p-2 rounded-lg rotate-[-15deg] opacity-80 pointer-events-none z-10">CORRECT</div>}
+                    {offsetX < -50 && <div className="absolute top-8 right-8 border-4 border-red-500 text-red-500 font-black text-3xl p-2 rounded-lg rotate-[15deg] opacity-80 pointer-events-none z-10">BUGGY</div>}
+
+                    <div className="p-5 border-b border-slate-100 bg-slate-50 shrink-0">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Function</span>
+                      <h2 className="text-lg font-bold text-slate-800">{currentCard.funcName}()</h2>
+                      <p className="text-sm text-slate-600 mt-2 leading-relaxed">"{currentCard.docstring}"</p>
+                    </div>
+                    
+                    <div className="flex-1 overflow-auto bg-[#1E1E1E] p-5 no-swipe cursor-text">
+                       <pre className="m-0"><code ref={codeRef} className={`language-${getLanguageTag(language)} font-mono`}>{currentCard.code}</code></pre>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center text-slate-400 space-y-4">
+                    <div className="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">🎉</div>
+                    <h3 className="font-bold text-xl text-slate-700">You've cleared the deck!</h3>
+                    <p className="text-sm">Go to the ✨ AI Generator tab to generate more challenges.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* BOTTOM: Feedback & Action Buttons */}
+              <div className="flex flex-col justify-end items-center pb-2 w-full max-w-xs mx-auto shrink-0">
+                
+                {/* Unobtrusive Feedback Pill */}
+                <div className="h-8 flex items-center justify-center mb-2">
+                  {lastAction && (
+                     <span className={`text-xs font-bold px-3 py-1 rounded-full shadow-sm ${lastAction.userGuessedCorrectly ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+                        {lastAction.userGuessedCorrectly ? '✅ Correct!' : '❌ Incorrect!'}
+                     </span>
+                  )}
+                </div>
+
+                <div className="flex justify-center items-center relative w-full">
+                  <div className="flex gap-6 z-10">
+                      <button 
+                        onClick={() => onSwipe('left')}
+                        disabled={deck.length === 0}
+                        className="w-16 h-16 rounded-full bg-white border-2 border-red-100 flex items-center justify-center shadow-lg text-red-500 hover:bg-red-50 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                      >
+                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                      </button>
+                      
+                      <button 
+                        onClick={() => onSwipe('right')}
+                        disabled={deck.length === 0}
+                        className="w-16 h-16 rounded-full bg-white border-2 border-green-100 flex items-center justify-center shadow-lg text-green-500 hover:bg-green-50 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                      >
+                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                      </button>
+                  </div>
+
+                  {/* Thinking Emoji: Review Last Action */}
+                  {lastAction && (
+                    <button 
+                      onClick={onShowModal}
+                      title="Review last swipe"
+                      className="absolute right-0 text-3xl hover:scale-110 active:scale-95 transition-transform drop-shadow-md z-20 pr-2"
+                    >
+                      🤔
+                    </button>
+                  )}
+                </div>
+                
+                <div className="text-center mt-4 text-[10px] text-slate-400 font-medium uppercase tracking-widest">
+                  Swipe Left for Buggy • Swipe Right for Correct
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // --- REVIEW MODAL COMPONENT (WITH AI TUTOR) ---
+        function ReviewModal({ action, onClose, language }) {
+          const codeRef = useRef(null);
+          const [tutorResponse, setTutorResponse] = useState(null);
+          const [isLoadingTutor, setIsLoadingTutor] = useState(false);
+
+          useEffect(() => {
+            if (codeRef.current && action.card) {
+              delete codeRef.current.dataset.highlighted;
+              hljs.highlightElement(codeRef.current);
+            }
+          }, [action, language]);
+
+          const askTutor = async () => {
+            setIsLoadingTutor(true);
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            const prompt = `As a friendly AI tutor, explain exactly why the following ${language} code is ${action.card.is_correct ? 'correct' : 'buggy'} in simple terms.
+Function Goal: ${action.card.docstring}
+Code:
+${action.card.code}
+Explain step-by-step.`;
+
+            try {
+              const data = await fetchWithRetry(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }]
+                })
+              });
+              setTutorResponse(data.candidates[0].content.parts[0].text);
+            } catch (error) {
+              setTutorResponse("Sorry, the AI Tutor is currently unavailable. Please try again later.");
+            } finally {
+              setIsLoadingTutor(false);
+            }
+          };
+
+          return (
+            <div className="absolute inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
+              <div className="bg-white rounded-2xl w-full max-w-sm max-h-[90vh] flex flex-col shadow-2xl animate-[pulse_0.2s_ease-out]">
+                
+                {/* Header (Fixed) */}
+                <div className={`p-4 text-center font-bold text-white shrink-0 flex justify-between items-center ${action.userGuessedCorrectly ? 'bg-green-500' : 'bg-red-500'}`}>
+                  <span>{action.userGuessedCorrectly ? 'Good catch!' : 'Oops, you missed that!'}</span>
+                  <button onClick={onClose} className="text-white hover:text-white/80 p-1">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+                
+                {/* Scrollable Content Body */}
+                <div className="p-5 overflow-y-auto space-y-5 flex-1 modal-body-scroll">
+                  <p className="text-sm">
+                    You swiped <strong>{action.userSaidCorrect ? 'Right (Correct)' : 'Left (Buggy)'}</strong>. 
+                    This code is actually <strong className={action.card.is_correct ? 'text-green-600' : 'text-red-600'}>
+                      {action.card.is_correct ? 'Correct' : 'Buggy'}
+                    </strong>.
+                  </p>
+
+                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                    <div className="p-3 bg-slate-50 border-b border-slate-200">
+                      <h3 className="font-bold text-slate-800 text-sm">{action.card.funcName}()</h3>
+                      <p className="text-xs text-slate-600 mt-1">"{action.card.docstring}"</p>
+                    </div>
+                    <div className="bg-[#1E1E1E] p-3 overflow-x-auto modal-scroll">
+                      <pre className="m-0"><code ref={codeRef} className={`language-${getLanguageTag(language)} font-mono text-xs leading-relaxed`}>{action.card.code}</code></pre>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-100 p-4 rounded-xl text-sm border border-slate-200">
+                    <span className="font-bold text-[10px] uppercase text-slate-500 tracking-wider flex items-center gap-2 mb-2">
+                       <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                       Explanation
+                    </span>
+                    <p className="text-slate-700 leading-relaxed">{action.card.explanation}</p>
+                  </div>
+
+                  {/* AI Tutor Feature */}
+                  <div className="pt-2">
+                      {!tutorResponse && !isLoadingTutor && (
+                          <button onClick={askTutor} className="w-full py-2.5 bg-blue-50 text-blue-600 font-bold border border-blue-200 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-100 transition">
+                              ✨ Ask AI Tutor for Details
+                          </button>
+                      )}
+                      
+                      {isLoadingTutor && (
+                          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex justify-center text-slate-500">
+                              <span className="animate-pulse flex items-center gap-2">✨ Asking Gemini...</span>
+                          </div>
+                      )}
+
+                      {tutorResponse && (
+                          <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 shadow-sm animate-in fade-in">
+                              <h4 className="text-blue-800 font-bold text-xs uppercase mb-2 flex items-center gap-1">✨ AI Tutor Output</h4>
+                              <p className="text-sm text-slate-700 whitespace-pre-wrap">{tutorResponse}</p>
+                          </div>
+                      )}
+                  </div>
+                </div>
+
+                {/* Footer / Button (Fixed) */}
+                <div className="p-4 border-t border-slate-100 shrink-0">
+                  <button onClick={onClose} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">
+                    Got it
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // --- SETTINGS VIEW COMPONENT ---
+        function SettingsView({ language, setLanguage }) {
+          return (
+            <div className="p-6 space-y-8">
+              <div>
+                <h2 className="text-2xl font-black text-slate-800">Generation Settings</h2>
+                <p className="text-sm text-slate-500 mt-1">Configure criteria for new AI-generated swipe cards.</p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Language</label>
+                  <select 
+                    value={language} 
+                    onChange={(e) => setLanguage(e.target.value)} 
+                    className="w-full p-3 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value="Python">Python</option>
+                    <option value="JavaScript">JavaScript</option>
+                    <option value="Rust">Rust</option>
+                    <option value="Java">Java</option>
+                    <option value="Kotlin">Kotlin</option>
+                    <option value="Deno">Deno</option>
+                    <option value="C">C</option>
+                    <option value="C++">C++</option>
+                    <option value="C#">C#</option>
+                  </select>
+                </div>
+                <div className="space-y-3">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Difficulty Level (Multi-Select)</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-3 bg-blue-50 border-2 border-blue-500 rounded-xl text-sm font-bold text-blue-700 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-bl-lg">Active</div>
+                      Level 1: Basic
+                      <span className="block text-xs font-normal mt-1 opacity-70">Loops, conditionals.</span>
+                    </div>
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-400 opacity-50">Level 2: Int.</div>
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-400 opacity-50">Level 3: Adv.</div>
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-400 opacity-50">Level 4: Exp.</div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Error Types (Multi-Select)</label>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl cursor-pointer">
+                      <input type="checkbox" checked readOnly className="w-5 h-5 accent-blue-500 rounded" />
+                      <div>
+                        <span className="text-sm font-bold text-blue-800 block">Logic Errors</span>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl opacity-50">
+                      <input type="checkbox" disabled className="w-5 h-5" />
+                      <div><span className="text-sm font-bold text-slate-500 block">Security Vulns</span></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // --- AI GENERATOR VIEW COMPONENT ---
+        function AIGeneratorView({ language, difficulty, errorType, setDeck, setView }) {
+          const [isGenerating, setIsGenerating] = useState(false);
+
+          const generateCards = async () => {
+            setIsGenerating(true);
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            const prompt = `You are an expert ${language} code evaluator for a swipe-based code review app. Generate exactly 2 distinct, simple programming problem concepts suitable for difficulty level ${difficulty}. Focus on concepts where ${errorType} errors are common.
+For each problem, generate 1 entirely correct implementation and 1 subtly buggy implementation containing a ${errorType} error. 
+DO NOT put bug hints inside the code comments. Ensure valid ${language} syntax.`;
+
+            const schema = {
+                type: "ARRAY",
+                items: {
+                    type: "OBJECT",
+                    properties: {
+                        name: { type: "STRING", description: "Snake case or camel case function name" },
+                        docstring: { type: "STRING", description: "1-sentence description" },
+                        variants: {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    id: { type: "STRING", description: "unique string id" },
+                                    is_correct: { type: "BOOLEAN" },
+                                    code: { type: "STRING", description: `Full ${language} function code` },
+                                    explanation: { type: "STRING", description: "Explanation of why correct or exactly what the bug is." }
+                                },
+                                required: ["id", "is_correct", "code", "explanation"]
+                            }
+                        }
+                    },
+                    required: ["name", "docstring", "variants"]
+                }
+            };
+
+            try {
+              const data = await fetchWithRetry(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }],
+                  generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: schema
+                  }
+                })
+              });
+              
+              const text = data.candidates[0].content.parts[0].text;
+              const generatedFunctions = JSON.parse(text);
+              
+              const newCards = generatedFunctions.flatMap(func => 
+                func.variants.map(variant => ({ ...variant, funcName: func.name, docstring: func.docstring }))
+              ).sort(() => Math.random() - 0.5);
+
+              setDeck(prevDeck => [...newCards, ...prevDeck]);
+              setView('swipe');
+            } catch (error) {
+              console.error(error);
+              alert("Failed to generate AI cards. Please try again.");
+            } finally {
+              setIsGenerating(false);
+            }
+          };
+
+          return (
+            <div className="p-6 space-y-6 pb-12 animate-in fade-in">
+              <div>
+                <h2 className="text-2xl font-black text-slate-800">✨ AI Generator</h2>
+                <p className="text-sm text-slate-500 mt-1">Generate brand new swipe cards instantly using Gemini.</p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 shadow-sm">
+                 <p className="text-sm text-blue-800 font-medium mb-4">
+                     Clicking the button below will use Gemini to create <strong>2 new problems</strong> (with 4 code variations) formatted for <strong>{language}</strong> at <strong>Level {difficulty}</strong>.
+                 </p>
+                 
+                 <button 
+                    onClick={generateCards}
+                    disabled={isGenerating}
+                    className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+                 >
+                    {isGenerating ? (
+                        <>
+                           <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                           Synthesizing Code...
+                        </>
+                    ) : (
+                        "✨ Generate 4 New Swipe Cards"
+                    )}
+                 </button>
+              </div>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
