@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enhancement Talent: The Art of the L</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  
+  <!-- Retro / Synthwave Typography and Styles -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Space Grotesk', 'sans-serif'],
+            display: ['Syne', 'sans-serif'],
+          },
+          colors: {
+            ringPurple: '#a855f7',
+            ringPink: '#ec4899',
+            ringGold: '#eab308',
+            deepDark: '#030712',
+          },
+          boxShadow: {
+            'neon-pink': '0 0 15px rgba(236, 72, 153, 0.5)',
+            'neon-purple': '0 0 15px rgba(168, 85, 247, 0.5)',
+            'neon-gold': '0 0 15px rgba(234, 179, 8, 0.4)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #030712;
+      color: #f3f4f6;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+    }
+    
+    /* Neon Text Glow */
+    .neon-text-pink {
+      text-shadow: 0 0 10px rgba(236, 72, 153, 0.8), 0 0 20px rgba(236, 72, 153, 0.4);
+    }
+    .neon-text-purple {
+      text-shadow: 0 0 10px rgba(168, 85, 247, 0.8), 0 0 20px rgba(168, 85, 247, 0.4);
+    }
+    .neon-text-gold {
+      text-shadow: 0 0 10px rgba(234, 179, 8, 0.8), 0 0 20px rgba(234, 179, 8, 0.4);
+    }
+
+    /* Custom Animations for Ring Action */
+    @keyframes ropeBounce {
+      0%, 100% { transform: scaleY(1); }
+      50% { transform: scaleY(1.08); }
+    }
+    .rope-bounce {
+      animation: ropeBounce 0.4s ease-in-out;
+    }
+
+    @keyframes sellFlip {
+      0% { transform: rotate(0deg) translateY(0); }
+      50% { transform: rotate(180deg) translateY(-80px); }
+      100% { transform: rotate(360deg) translateY(0); }
+    }
+    .sell-flip {
+      animation: sellFlip 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    @keyframes safeSlide {
+      0% { transform: translateX(0); }
+      50% { transform: translateY(15px) scaleX(1.1); }
+      100% { transform: translateX(0); }
+    }
+    .safe-slide {
+      animation: safeSlide 0.5s ease;
+    }
+
+    @keyframes sandbagStubborn {
+      0%, 100% { transform: translate(0, 0); }
+      20%, 60% { transform: translate(-10px, 0); }
+      40%, 80% { transform: translate(10px, 0); }
+    }
+    .sandbag-stubborn {
+      animation: sandbagStubborn 0.6s ease-in-out;
+    }
+
+    @keyframes ringShake {
+      0%, 100% { transform: translate(0, 0); }
+      10%, 30%, 50%, 70%, 90% { transform: translate(-4px, -4px); }
+      20%, 40%, 60%, 80% { transform: translate(4px, 4px); }
+    }
+    .ring-shake {
+      animation: ringShake 0.5s ease-out;
+    }
+
+    /* Hide scrollbar utility */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="font-sans min-h-screen flex flex-col justify-between max-w-md mx-auto relative border-x border-slate-900/60 shadow-2xl">
+
+  <!-- ==================== BACKSTAGE AUDIO MANAGER ==================== -->
+  <script>
+    // Robust Sound FX Synthesis via Web Audio API
+    class SoundFX {
+      constructor() {
+        this.ctx = null;
+      }
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      }
+      playClick() {
+        this.init();
+        if (!this.ctx) return;
+        let osc = this.ctx.createOscillator();
+        let gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+      }
+      playBell() {
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const playDing = (delay) => {
+          let osc1 = this.ctx.createOscillator();
+          let osc2 = this.ctx.createOscillator();
+          let gain = this.ctx.createGain();
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc1.type = 'sine';
+          osc2.type = 'triangle';
+          osc1.frequency.setValueAtTime(880, now + delay);
+          osc2.frequency.setValueAtTime(1200, now + delay);
+          gain.gain.setValueAtTime(0, now + delay);
+          gain.gain.linearRampToValueAtTime(0.3, now + delay + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 1.2);
+          osc1.start(now + delay);
+          osc2.start(now + delay);
+          osc1.stop(now + delay + 1.3);
+          osc2.stop(now + delay + 1.3);
+        };
+        playDing(0);
+        playDing(0.2);
+        playDing(0.4);
+      }
+      playBump() {
+        this.init();
+        if (!this.ctx) return;
+        // Heavy ring landing sound
+        const now = this.ctx.currentTime;
+        let osc = this.ctx.createOscillator();
+        let gain = this.ctx.createGain();
+        
+        // Low impact rumble
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(70, now);
+        osc.frequency.linearRampToValueAtTime(20, now + 0.4);
+        
+        // Noise synthesis for canvas rustle
+        let bufferSize = this.ctx.sampleRate * 0.4;
+        let buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        let data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        let noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        
+        let noiseFilter = this.ctx.createBiquadFilter();
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.setValueAtTime(150, now);
+        
+        let noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.2, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(this.ctx.destination);
+        
+        osc.start(now);
+        noise.start(now);
+        osc.stop(now + 0.4);
+        noise.stop(now + 0.4);
+      }
+      playCrowd(isHappy) {
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        let bufferSize = this.ctx.sampleRate * 1.5;
+        let buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        let data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        let noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        
+        let filter = this.ctx.createBiquadFilter();
+        filter.type = 'peaking';
+        filter.frequency.setValueAtTime(isHappy ? 350 : 200, now);
+        filter.Q.setValueAtTime(1.0, now);
+        
+        let gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.25, now + 0.3);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 1.4);
+        
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        
+        noise.start(now);
+        noise.stop(now + 1.5);
+      }
+      playFanfare() {
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = [261.63, 329.63, 392.00, 523.25]; // C major chord arpeggio
+        notes.forEach((freq, idx) => {
+          let osc = this.ctx.createOscillator();
+          let gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.15);
+          gain.gain.setValueAtTime(0.15, now + idx * 0.15);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.15 + 0.4);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.15);
+          osc.stop(now + idx * 0.15 + 0.45);
+        });
+      }
+    }
+    const audio = new SoundFX();
+  </script>
+
+  <!-- ==================== HEADER BAR ==================== -->
+  <header class="bg-slate-900 border-b border-purple-500/30 px-4 py-3 flex justify-between items-center z-10 sticky top-0">
+    <div class="flex items-center gap-2">
+      <span class="material-icons text-pink-500 animate-pulse text-2xl">sports_kabaddi</span>
+      <div>
+        <h1 class="text-sm font-extrabold font-display uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-400">
+          Enhancement Talent
+        </h1>
+        <p class="text-[9px] font-semibold text-slate-400 tracking-wider uppercase">The Art of the L</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-full">
+      <span class="material-icons text-yellow-400 text-sm">schedule</span>
+      <span id="header-year" class="text-xs font-bold font-display text-yellow-400">Year 1 / 15</span>
+    </div>
+  </header>
+
+  <!-- ==================== STATS METER BAR ==================== -->
+  <section id="global-stats-bar" class="hidden bg-slate-900/90 border-b border-slate-800 px-3 py-2 grid grid-cols-5 gap-1.5 text-center">
+    <!-- Booker Trust -->
+    <div class="bg-slate-950 p-1.5 rounded border border-slate-800 flex flex-col justify-between">
+      <div class="flex justify-center items-center gap-0.5 text-indigo-400">
+        <span class="material-icons text-[14px]">gavel</span>
+        <span class="text-[9px] font-bold uppercase tracking-wider">Booker</span>
+      </div>
+      <div class="text-xs font-black text-indigo-300 mt-0.5" id="val-booker">50%</div>
+      <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-1">
+        <div id="bar-booker" class="bg-indigo-500 h-full transition-all duration-300" style="width: 50%"></div>
+      </div>
+    </div>
+
+    <!-- Body Integrity -->
+    <div class="bg-slate-950 p-1.5 rounded border border-slate-800 flex flex-col justify-between">
+      <div class="flex justify-center items-center gap-0.5 text-emerald-400">
+        <span class="material-icons text-[14px]">favorite</span>
+        <span class="text-[9px] font-bold uppercase tracking-wider">Body</span>
+      </div>
+      <div class="text-xs font-black text-emerald-300 mt-0.5" id="val-body">100%</div>
+      <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-1">
+        <div id="bar-body" class="bg-emerald-500 h-full transition-all duration-300" style="width: 100%"></div>
+      </div>
+    </div>
+
+    <!-- Locker Room Respect -->
+    <div class="bg-slate-950 p-1.5 rounded border border-slate-800 flex flex-col justify-between">
+      <div class="flex justify-center items-center gap-0.5 text-pink-400">
+        <span class="material-icons text-[14px]">handshake</span>
+        <span class="text-[9px] font-bold uppercase tracking-wider">Respect</span>
+      </div>
+      <div class="text-xs font-black text-pink-300 mt-0.5" id="val-respect">40%</div>
+      <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-1">
+        <div id="bar-respect" class="bg-pink-500 h-full transition-all duration-300" style="width: 40%"></div>
+      </div>
+    </div>
+
+    <!-- Smark Cred -->
+    <div class="bg-slate-950 p-1.5 rounded border border-slate-800 flex flex-col justify-between">
+      <div class="flex justify-center items-center gap-0.5 text-cyan-400">
+        <span class="material-icons text-[14px]">star</span>
+        <span class="text-[9px] font-bold uppercase tracking-wider">Smarks</span>
+      </div>
+      <div class="text-xs font-black text-cyan-300 mt-0.5" id="val-smarks">20%</div>
+      <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-1">
+        <div id="bar-smarks" class="bg-cyan-500 h-full transition-all duration-300" style="width: 20%"></div>
+      </div>
+    </div>
+
+    <!-- Cash -->
+    <div class="bg-slate-950 p-1.5 rounded border border-slate-800 flex flex-col justify-between items-center justify-center">
+      <div class="flex justify-center items-center gap-0.5 text-yellow-400">
+        <span class="material-icons text-[14px]">monetization_on</span>
+        <span class="text-[9px] font-bold uppercase tracking-wider">Cash</span>
+      </div>
+      <div class="text-[11px] font-black text-yellow-300 mt-0.5" id="val-cash">$200</div>
+    </div>
+  </section>
+
+  <!-- ==================== MAIN CONTENT AREA ==================== -->
+  <main class="flex-grow flex flex-col justify-center px-4 py-5 overflow-y-auto no-scrollbar relative">
+
+    <!-- SCREEN 1: WELCOME / CHARACTER CUSTOMIZER -->
+    <section id="screen-welcome" class="space-y-6 flex flex-col justify-center py-4">
+      <div class="text-center space-y-3">
+        <div class="inline-block px-3 py-1 bg-pink-500/10 border border-pink-500/30 rounded-full text-pink-500 text-xs font-bold tracking-widest uppercase">
+          New Wrestling RPG
+        </div>
+        <h2 class="text-4xl font-black font-display tracking-tight neon-text-pink leading-none">
+          THE ART <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-400">OF THE L</span>
+        </h2>
+        <p class="text-xs text-slate-400 max-w-xs mx-auto">
+          You aren't booked to win. You are booked to make superstars look like gods, entertain the marks, protect your neck, and survive 15 years on the card.
+        </p>
+      </div>
+
+      <!-- Character creation -->
+      <div class="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl space-y-4 shadow-xl">
+        <h3 class="text-sm font-black font-display tracking-wide uppercase text-purple-400 border-b border-slate-800 pb-2 flex items-center gap-1.5">
+          <span class="material-icons text-sm">badge</span> Craft Your Jobber Profile
+        </h3>
+        
+        <div class="space-y-1">
+          <label class="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Ring Name</label>
+          <input id="input-name" type="text" value="Andrew Newman" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pink-500 text-slate-100 font-semibold">
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Jobbing Specialty</label>
+          <select id="input-style" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pink-500 text-slate-100 font-semibold">
+            <option value="overseller">Dramatic Overseller (+15% Smark gains)</option>
+            <option value="sturdy">Indestructible Neck (+15% Health Protection)</option>
+            <option value="polite">Backstage Diplomat (+15% Locker Room Respect)</option>
+          </select>
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Signature Sell Pose</label>
+          <select id="input-pose" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pink-500 text-slate-100 font-semibold">
+            <option value="🤸">🤸 The Airborne Helix (Full Flip)</option>
+            <option value="💀">💀 The Ragdoll Plunge (Deadweight Sell)</option>
+            <option value="🦂">🦂 The Scorpion Fold (Spine Cruncher)</option>
+          </select>
+        </div>
+      </div>
+
+      <button onclick="startGame()" class="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 py-3 rounded-xl font-black font-display uppercase tracking-wider text-sm shadow-neon-pink transition transform active:scale-95 flex justify-center items-center gap-2">
+        <span>Sign the Contract</span> <span class="material-icons text-sm">trending_flat</span>
+      </button>
+
+      <!-- Credits or quote -->
+      <p class="text-[10px] text-center text-slate-500 italic">
+        "Winning is easy. Losing elegantly is where the art lives." — Legendary Ring Custodian
+      </p>
+    </section>
+
+    <!-- SCREEN 2: LOCKER ROOM / HUB -->
+    <section id="screen-hub" class="hidden space-y-5">
+      <div class="flex justify-between items-center">
+        <div>
+          <h2 class="text-xl font-black font-display uppercase tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-indigo-400">Locker Room Backstage</h2>
+          <p class="text-[11px] text-slate-400">Prep for your next televised defeat.</p>
+        </div>
+        <div class="bg-purple-950/40 border border-purple-800/40 px-3 py-1.5 rounded-xl text-right">
+          <div class="text-[9px] uppercase font-black text-purple-400 tracking-wider">Your Style</div>
+          <div id="hub-style-badge" class="text-xs font-extrabold text-pink-300">Dramatic Overseller</div>
+        </div>
+      </div>
+
+      <!-- Quick Backstage Gimmick Alert -->
+      <div id="gimmick-pitch-card" class="bg-gradient-to-r from-purple-950/40 to-pink-950/40 border border-pink-500/30 p-4 rounded-xl flex items-start gap-3">
+        <span class="material-icons text-pink-400 text-2xl animate-bounce">assignment_turned_in</span>
+        <div class="flex-1 space-y-1">
+          <h4 class="text-xs font-black uppercase text-pink-400 tracking-wider">Booker's Pitch Gimmick</h4>
+          <p id="gimmick-description" class="text-xs text-slate-300">"We want you to wear a giant chicken suit and call yourself 'The Clucker Prime' on live TV."</p>
+          <div class="flex gap-2 pt-2">
+            <button onclick="acceptGimmick()" class="bg-pink-600 hover:bg-pink-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase text-white transition active:scale-95">Accept (+$100, -Smark)</button>
+            <button onclick="declineGimmick()" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase text-slate-300 transition">Refuse</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upgrades / Shop Tab -->
+      <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3">
+        <h3 class="text-xs font-black font-display uppercase tracking-widest text-slate-400 flex items-center gap-1.5 border-b border-slate-800 pb-2">
+          <span class="material-icons text-xs text-yellow-400">shopping_cart</span> Backstage Services & Gear
+        </h3>
+        
+        <div class="grid grid-cols-1 gap-2 text-xs">
+          <!-- Chiropractor -->
+          <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-850 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+              <span class="material-icons text-emerald-400 text-lg">airline_seat_flat</span>
+              <div>
+                <p class="font-bold text-slate-200">Chirp Chiropractor</p>
+                <p class="text-[10px] text-slate-400">+25 Body Integrity</p>
+              </div>
+            </div>
+            <button onclick="buyUpgrade('chiropractor', 150)" class="bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white px-2.5 py-1.5 rounded-lg font-black transition active:scale-95">$150</button>
+          </div>
+
+          <!-- Backstage Donuts -->
+          <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-850 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+              <span class="material-icons text-pink-400 text-lg">donut_large</span>
+              <div>
+                <p class="font-bold text-slate-200">Locker Room Donuts</p>
+                <p class="text-[10px] text-slate-400">+20 Locker Room Respect</p>
+              </div>
+            </div>
+            <button onclick="buyUpgrade('donuts', 100)" class="bg-pink-600/20 text-pink-400 hover:bg-pink-600 hover:text-white px-2.5 py-1.5 rounded-lg font-black transition active:scale-95">$100</button>
+          </div>
+
+          <!-- Ring Gear Upgrade -->
+          <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-850 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+              <span class="material-icons text-cyan-400 text-lg">checkroom</span>
+              <div>
+                <p class="font-bold text-slate-200">Polished Spandex Tights</p>
+                <p class="text-[10px] text-slate-400">+25 Smark Cred</p>
+              </div>
+            </div>
+            <button onclick="buyUpgrade('tights', 200)" class="bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600 hover:text-white px-2.5 py-1.5 rounded-lg font-black transition active:scale-95">$200</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Select Your Opponent (Wrestling booking card) -->
+      <div class="space-y-2">
+        <h3 class="text-xs font-black font-display uppercase tracking-widest text-pink-400 flex items-center gap-1.5">
+          <span class="material-icons text-xs">sports_mma</span> Choose Today's Opponent
+        </h3>
+        
+        <div class="grid grid-cols-1 gap-3" id="opponents-list">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 3: THE MATCH WORK (IN-RING SIMULATOR) -->
+    <section id="screen-match" class="hidden space-y-4">
+      
+      <!-- Opponent versus title card -->
+      <div class="bg-slate-900 border border-purple-500/20 p-3 rounded-xl flex justify-between items-center">
+        <div>
+          <div class="text-[9px] uppercase font-black text-pink-500 tracking-wider">Tonight's Bout</div>
+          <h3 class="text-sm font-black text-slate-100" id="match-opponent-name">Vlad the Impaler</h3>
+          <p id="match-opponent-desc" class="text-[10px] text-slate-400">Takes stiff shots. Demands maximum selling action.</p>
+        </div>
+        <div class="text-right">
+          <div class="text-[9px] uppercase font-black text-cyan-400 tracking-wider">Meltz-o-Meter Rating</div>
+          <div id="match-stars" class="text-sm font-black text-cyan-300 flex items-center justify-end gap-1">
+            <span>☆☆☆☆☆</span> <span class="text-xs font-bold text-slate-400">(0.0)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Wrestling Ring Area -->
+      <div class="relative bg-slate-950 border-4 border-double border-pink-500/40 rounded-2xl h-44 flex flex-col justify-between p-3 overflow-hidden shadow-neon-pink" id="wrestling-ring">
+        
+        <!-- Background crowd flashes -->
+        <div class="absolute inset-0 bg-gradient-to-t from-transparent to-pink-950/10 pointer-events-none"></div>
+
+        <!-- The Rope System (Drawn top and sides) -->
+        <div class="absolute inset-x-2 top-4 h-1 bg-red-600 border-y border-red-800 pointer-events-none shadow"></div>
+        <div class="absolute inset-y-2 left-4 w-1 bg-blue-600 border-x border-blue-800 pointer-events-none shadow"></div>
+        <div class="absolute inset-y-2 right-4 w-1 bg-blue-600 border-x border-blue-800 pointer-events-none shadow"></div>
+        <div class="absolute inset-x-2 bottom-4 h-1 bg-red-600 border-y border-red-800 pointer-events-none shadow"></div>
+
+        <!-- Turnbuckles -->
+        <span class="absolute top-2 left-2 w-3.5 h-3.5 bg-slate-100 border border-slate-400 rounded-full"></span>
+        <span class="absolute top-2 right-2 w-3.5 h-3.5 bg-slate-100 border border-slate-400 rounded-full"></span>
+        <span class="absolute bottom-2 left-2 w-3.5 h-3.5 bg-slate-100 border border-slate-400 rounded-full"></span>
+        <span class="absolute bottom-2 right-2 w-3.5 h-3.5 bg-slate-100 border border-slate-400 rounded-full"></span>
+
+        <!-- Ring Status Banner -->
+        <div class="z-10 flex justify-between items-center w-full">
+          <span class="text-[9px] font-black bg-purple-600/30 border border-purple-500/50 text-purple-300 px-2 py-0.5 rounded-full uppercase" id="match-round-title">Round 1: The Lockup</span>
+          <span class="text-[10px] font-extrabold text-pink-400 flex items-center gap-1" id="ring-commentary-ticker">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-pink-500 animate-ping"></span> Live TV Match
+          </span>
+        </div>
+
+        <!-- Wrestling Figures (CSS/Emoji Based Animators) -->
+        <div class="relative w-full h-24 flex justify-around items-center px-6">
+          
+          <!-- Your Character Avatar -->
+          <div id="player-avatar" class="flex flex-col items-center transition-all duration-300 relative">
+            <span id="player-avatar-pose" class="text-5xl drop-shadow-lg filter scale-x-[-1]">🤸</span>
+            <span class="text-[9px] font-bold bg-slate-900 border border-pink-500/50 text-pink-400 px-1.5 rounded mt-1 shadow" id="ring-player-name">Andrew</span>
+            <!-- Floating action tags -->
+            <div id="player-status-bubble" class="absolute -top-6 bg-yellow-400 text-slate-900 text-[9px] font-black uppercase px-1 rounded hidden">Oversell!</div>
+          </div>
+
+          <!-- Versus Burst -->
+          <div class="text-slate-700 font-extrabold tracking-widest text-xs pointer-events-none">VS</div>
+
+          <!-- Opponent Avatar -->
+          <div id="opponent-avatar" class="flex flex-col items-center transition-all duration-300 relative">
+            <span id="opponent-avatar-emoji" class="text-5xl drop-shadow-lg">👹</span>
+            <span class="text-[9px] font-bold bg-slate-900 border border-purple-500/50 text-purple-400 px-1.5 rounded mt-1 shadow" id="ring-opponent-name">Vlad</span>
+          </div>
+
+        </div>
+
+        <!-- Match Commentary Ticker -->
+        <div class="bg-slate-950/90 border border-slate-900 px-2.5 py-1 rounded text-[10px] text-center text-slate-400 italic z-10 font-medium tracking-wide shadow-inner overflow-hidden whitespace-nowrap overflow-ellipsis" id="live-match-log">
+          "The bell rings! Both superstars lock eyes."
+        </div>
+      </div>
+
+      <!-- Action Choice Window -->
+      <div class="space-y-3" id="match-choice-container">
+        <h4 class="text-xs font-black uppercase tracking-wider text-slate-400 border-b border-slate-900 pb-1 flex items-center gap-1">
+          <span class="material-icons text-xs text-yellow-400">flash_on</span> Execute Spot
+        </h4>
+
+        <div class="grid grid-cols-1 gap-2.5" id="match-choices-list">
+          <!-- Interactive cards go here -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- SCREEN 4: POST-MATCH REPORT -->
+    <section id="screen-report" class="hidden space-y-5">
+      <div class="text-center space-y-1.5">
+        <span class="material-icons text-yellow-400 text-4xl animate-bounce">emoji_events</span>
+        <h2 class="text-2xl font-black font-display uppercase tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-yellow-300">Match Report Card</h2>
+        <p class="text-xs text-slate-400">How did management and the fanbase digest that loss?</p>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-4 shadow-lg">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+          <span class="text-xs font-bold text-slate-400">Match Star Rating</span>
+          <span id="report-star-display" class="text-lg font-black text-cyan-400 flex items-center gap-1">★★★★☆</span>
+        </div>
+
+        <div class="space-y-2.5">
+          <h4 class="text-[10px] uppercase font-black tracking-widest text-slate-400">Stat Modifications</h4>
+          
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-905 flex justify-between items-center">
+              <span class="text-indigo-400 font-semibold flex items-center gap-1">
+                <span class="material-icons text-sm">gavel</span> Booker Trust
+              </span>
+              <span id="mod-booker" class="font-extrabold text-slate-200">+10</span>
+            </div>
+            
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-905 flex justify-between items-center">
+              <span class="text-emerald-400 font-semibold flex items-center gap-1">
+                <span class="material-icons text-sm">favorite</span> Body Health
+              </span>
+              <span id="mod-body" class="font-extrabold text-slate-200">-15</span>
+            </div>
+
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-905 flex justify-between items-center">
+              <span class="text-pink-400 font-semibold flex items-center gap-1">
+                <span class="material-icons text-sm">handshake</span> Locker Respect
+              </span>
+              <span id="mod-respect" class="font-extrabold text-slate-200">+5</span>
+            </div>
+
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-905 flex justify-between items-center">
+              <span class="text-cyan-400 font-semibold flex items-center gap-1">
+                <span class="material-icons text-sm">star</span> Smark Cred
+              </span>
+              <span id="mod-smarks" class="font-extrabold text-slate-200">+20</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payout breakdown -->
+        <div class="bg-slate-950 p-3 rounded-xl border border-slate-850 flex justify-between items-center">
+          <div>
+            <div class="text-[9px] uppercase font-black text-yellow-500 tracking-wider">Promoter's Payday</div>
+            <div id="report-payout-explanation" class="text-xs text-slate-400">Regular scale flat fee</div>
+          </div>
+          <div class="text-xl font-black text-yellow-300" id="report-cash">+$150</div>
+        </div>
+
+        <!-- Smark Reviews -->
+        <div class="space-y-2">
+          <h4 class="text-[10px] uppercase font-black tracking-widest text-slate-400">Underground Fan Review Forum</h4>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-850 text-[11px] text-slate-300 space-y-2 italic shadow-inner">
+            <p id="report-fan-comment-1">"Seriously, nobody sells a DDT better than Andrew. He folded up like an absolute accordion! 5/5 stars."</p>
+            <p id="report-fan-comment-2" class="text-slate-500 text-[10px] border-t border-slate-900 pt-1.5">"Too obvious. Clearly doing jobber gymnastics. Still, respect for preserving his neck."</p>
+          </div>
+        </div>
+      </div>
+
+      <button onclick="nextYear()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 py-3 rounded-xl font-black font-display uppercase tracking-wider text-sm shadow-neon-purple transition transform active:scale-95 flex justify-center items-center gap-2">
+        <span>Head Back to Locker Room</span> <span class="material-icons text-sm">house</span>
+      </button>
+    </section>
+
+    <!-- SCREEN 5: GAME OVER / CAREER ENDINGS -->
+    <section id="screen-gameover" class="hidden space-y-6 text-center py-5">
+      <div class="space-y-2">
+        <div class="inline-block px-3 py-1 bg-red-500/10 border border-red-500/30 rounded-full text-red-500 text-xs font-bold tracking-widest uppercase">
+          Career Finished
+        </div>
+        <h2 class="text-3xl font-black font-display tracking-tight text-white uppercase" id="gameover-title">Locker Room Legend</h2>
+        <p class="text-xs text-slate-400 max-w-xs mx-auto" id="gameover-subtitle">After 15 years, you hung up the boots. Let's see your legacy.</p>
+      </div>
+
+      <!-- Ending Card Frame -->
+      <div class="bg-slate-900 border-2 border-double border-pink-500 p-5 rounded-2xl space-y-4 shadow-neon-pink">
+        
+        <!-- Trophy Banner -->
+        <div class="flex justify-center">
+          <span class="material-icons text-6xl text-yellow-400 animate-pulse" id="ending-trophy-icon">workspace_premium</span>
+        </div>
+
+        <h3 class="text-xl font-black font-display text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-400 to-yellow-300 uppercase tracking-tight" id="ending-name">
+          The Retro Action Figure Legend
+        </h3>
+
+        <p class="text-xs text-slate-300 leading-relaxed italic" id="ending-description">
+          "You spent 15 years staring at the rafters, but your dedication won the locker room. Years later, fans campaigned, and you finally got your own retro action figure!"
+        </p>
+
+        <!-- Final Stats Recap -->
+        <div class="border-t border-slate-800 pt-3.5 space-y-2.5">
+          <h4 class="text-[10px] uppercase font-black tracking-widest text-slate-500">Career Footprint</h4>
+          
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-850">
+              <span class="text-slate-400 block text-[9px] uppercase font-bold">Years Active</span>
+              <span id="final-years" class="font-extrabold text-slate-200">15 Years</span>
+            </div>
+            
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-850">
+              <span class="text-slate-400 block text-[9px] uppercase font-bold">Total Cash Earned</span>
+              <span id="final-cash" class="font-extrabold text-yellow-400">$3,420</span>
+            </div>
+
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-850">
+              <span class="text-slate-400 block text-[9px] uppercase font-bold">Smark Cult Status</span>
+              <span id="final-smarks" class="font-extrabold text-cyan-400">92%</span>
+            </div>
+
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-850">
+              <span class="text-slate-400 block text-[9px] uppercase font-bold">Respect Level</span>
+              <span id="final-respect" class="font-extrabold text-pink-400">85%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button onclick="resetGame()" class="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 py-3 rounded-xl font-black font-display uppercase tracking-wider text-sm transition transform active:scale-95 flex justify-center items-center gap-2">
+        <span class="material-icons text-sm">autorenew</span> <span>Start New Career</span>
+      </button>
+    </section>
+
+  </main>
+
+  <!-- ==================== DIALOG MODALS ==================== -->
+  <div id="custom-alert" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+    <div class="bg-slate-900 border border-pink-500/30 w-full max-w-xs rounded-2xl p-5 space-y-4 text-center shadow-neon-pink">
+      <span class="material-icons text-4xl text-pink-500" id="alert-icon">info</span>
+      <h3 class="text-base font-black uppercase text-slate-100" id="alert-title">Backstage Drama</h3>
+      <p class="text-xs text-slate-300 leading-relaxed" id="alert-msg">Message details go here.</p>
+      <button onclick="closeAlert()" class="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95">Ok</button>
+    </div>
+  </div>
+
+  <!-- ==================== IN-GAME LOGIC (CORE SCRIPT) ==================== -->
+  <script>
+    // Game State Object
+    const state = {
+      name: "Andrew Newman",
+      style: "overseller",
+      pose: "🤸",
+      year: 1,
+      stats: {
+        booker: 50,
+        body: 100,
+        respect: 40,
+        smarks: 20,
+        cash: 200
+      },
+      currentOpponent: null,
+      matchPhase: 1, // 1: Opener, 2: High Spot, 3: Finish
+      matchStars: 0.0,
+      activeGimmick: null,
+      perks: {
+        chiropractorCount: 0,
+        tightsCount: 0,
+        donutsBought: 0
+      }
+    };
+
+    // Opponent Data Bank
+    const opponents = [
+      {
+        id: "beefcake",
+        name: "Beefcake Bill",
+        emoji: "🐂",
+        desc: "320-pound raw powerhouse. Heavy drops, sloppy throws.",
+        payout: 120,
+        statMods: { booker: 12, body: -18, respect: 5, smarks: 10 }
+      },
+      {
+        id: "fantastico",
+        name: "El Fantastico",
+        emoji: "🎭",
+        desc: "Cruiserweight flying hero. High-octane aerial maneuvers.",
+        payout: 150,
+        statMods: { booker: 8, body: -10, respect: 10, smarks: 22 }
+      },
+      {
+        id: "vlad",
+        name: "Vlad the Impaler",
+        emoji: "👹",
+        desc: "Vicious veteran who expects extreme loyalty and hard knocks.",
+        payout: 200,
+        statMods: { booker: 18, body: -22, respect: 15, smarks: 15 }
+      },
+      {
+        id: "chad",
+        name: "Chad Alpha",
+        emoji: "👦",
+        desc: "Overprivileged green rookie with zero ring awareness.",
+        payout: 100,
+        statMods: { booker: 15, body: -12, respect: 12, smarks: 8 }
+      },
+      {
+        id: "sovereign",
+        name: "The Sovereign",
+        emoji: "👑",
+        desc: "The undisputed egomaniac champion. Demands perfect spotlight.",
+        payout: 300,
+        statMods: { booker: 25, body: -25, respect: 10, smarks: 25 }
+      }
+    ];
+
+    // Gimmick Data Bank
+    const gimmickPitches = [
+      {
+        id: "chicken",
+        desc: "Wear a giant feathered chicken suit and squeak when slammed.",
+        acceptedText: "You accepted the Chicken Gimmick. Smarks roll their eyes, but promoter is thrilled!",
+        bookerMod: 20,
+        smarkMod: -15,
+        cashMod: 120
+      },
+      {
+        id: "gladiator",
+        desc: "Enter with a tiny wooden sword and paper helmet, acting as 'The Doomed Squire'.",
+        acceptedText: "You accepted the Squire Gimmick. The live crowd laughs and smarks kind of appreciate the irony!",
+        bookerMod: 15,
+        smarkMod: 5,
+        cashMod: 100
+      },
+      {
+        id: "mime",
+        desc: "Work the entire match in silent white-face makeup, miming your bumps.",
+        acceptedText: "You accepted the Mime Gimmick! Smarks are absolute ecstatic with this underground absurdity!",
+        bookerMod: 5,
+        smarkMod: 25,
+        cashMod: 80
+      }
+    ];
+
+    // Alert Dialog Utility
+    function showAlert(title, text, icon = "info") {
+      document.getElementById('alert-title').innerText = title;
+      document.getElementById('alert-msg').innerText = text;
+      document.getElementById('alert-icon').innerText = icon;
+      document.getElementById('custom-alert').classList.remove('hidden');
+    }
+
+    function closeAlert() {
+      audio.playClick();
+      document.getElementById('custom-alert').classList.add('hidden');
+    }
+
+    // Initialize Game & Screen Transitions
+    function showScreen(screenId) {
+      document.getElementById('screen-welcome').classList.add('hidden');
+      document.getElementById('screen-hub').classList.add('hidden');
+      document.getElementById('screen-match').classList.add('hidden');
+      document.getElementById('screen-report').classList.add('hidden');
+      document.getElementById('screen-gameover').classList.add('hidden');
+
+      document.getElementById(screenId).classList.remove('hidden');
+
+      // Control Global Stat Bar visibility
+      if (screenId === 'screen-welcome' || screenId === 'screen-gameover') {
+        document.getElementById('global-stats-bar').classList.add('hidden');
+      } else {
+        document.getElementById('global-stats-bar').classList.remove('hidden');
+      }
+    }
+
+    // Launch Game Setup
+    function startGame() {
+      audio.playClick();
+      
+      // Capture custom names
+      state.name = document.getElementById('input-name').value.trim() || "Andrew Newman";
+      state.style = document.getElementById('input-style').value;
+      state.pose = document.getElementById('input-pose').value;
+
+      // Inject Name into in-ring displays
+      document.getElementById('ring-player-name').innerText = state.name.split(' ')[0];
+      document.getElementById('player-avatar-pose').innerText = state.pose;
+
+      // Update badge in Hub
+      const styleBadges = {
+        overseller: "Dramatic Overseller",
+        sturdy: "Indestructible Neck",
+        polite: "Backstage Diplomat"
+      };
+      document.getElementById('hub-style-badge').innerText = styleBadges[state.style] || "Classic Jobber";
+
+      // Reset state values
+      state.year = 1;
+      state.stats = { booker: 50, body: 100, respect: 40, smarks: 20, cash: 200 };
+      
+      updateGlobalUI();
+      loadHub();
+      showScreen('screen-hub');
+      showAlert("Contract Signed!", `Welcome to the company, ${state.name}. Your goal is to keep your Booker's trust high while preserving your spine. Good luck!`, "edit_document");
+    }
+
+    // Refresh core layout details
+    function updateGlobalUI() {
+      document.getElementById('header-year').innerText = `Year ${state.year} / 15`;
+      
+      // Value clamping and updating progress meters
+      for (let stat in state.stats) {
+        if (stat !== 'cash') {
+          state.stats[stat] = Math.max(0, Math.min(100, state.stats[stat]));
+          document.getElementById(`val-${stat}`).innerText = `${state.stats[stat]}%`;
+          document.getElementById(`bar-${stat}`).style.width = `${state.stats[stat]}%`;
+        } else {
+          document.getElementById('val-cash').innerText = `$${state.stats.cash}`;
+        }
+      }
+
+      // Check Fail / Game Over Conditions
+      if (state.stats.body <= 0) {
+        triggerGameOver("forced_retirement");
+      } else if (state.stats.booker <= 0) {
+        triggerGameOver("fired");
+      } else if (state.stats.respect <= 0) {
+        triggerGameOver("blacklisted");
+      }
+    }
+
+    // Populate Hub / Locker room options
+    function loadHub() {
+      updateGlobalUI();
+
+      // Trigger potential pitch gimmick (45% chance per year, if not active)
+      const gimmickCard = document.getElementById('gimmick-pitch-card');
+      if (!state.activeGimmick && Math.random() < 0.45) {
+        const selectedGimmick = gimmickPitches[Math.floor(Math.random() * gimmickPitches.length)];
+        state.activeGimmick = selectedGimmick;
+        document.getElementById('gimmick-description').innerText = `"${selectedGimmick.desc}"`;
+        gimmickCard.classList.remove('hidden');
+      } else {
+        gimmickCard.classList.add('hidden');
+      }
+
+      // Render Opponent Roster for selection
+      const listContainer = document.getElementById('opponents-list');
+      listContainer.innerHTML = '';
+
+      opponents.forEach((opponent) => {
+        const card = document.createElement('div');
+        card.className = "bg-slate-900 border border-slate-800/80 hover:border-pink-500/40 p-3.5 rounded-xl flex justify-between items-center transition duration-200 cursor-pointer active:scale-[0.98]";
+        card.onclick = () => selectMatch(opponent);
+
+        card.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="text-3xl">${opponent.emoji}</span>
+            <div>
+              <h4 class="font-bold text-slate-100 flex items-center gap-1.5">
+                ${opponent.name}
+              </h4>
+              <p class="text-[11px] text-slate-400 max-w-[180px] leading-snug mt-0.5">${opponent.desc}</p>
+            </div>
+          </div>
+          <div class="text-right flex flex-col items-end gap-1">
+            <span class="bg-yellow-950 text-yellow-300 font-black text-[10px] px-2 py-0.5 rounded border border-yellow-800/40">$${opponent.payout}</span>
+            <span class="text-[9px] text-slate-500 uppercase tracking-wider">Tap to Book</span>
+          </div>
+        `;
+        listContainer.appendChild(card);
+      });
+    }
+
+    // Acceptance logic for Gimmicks
+    function acceptGimmick() {
+      audio.playClick();
+      if (!state.activeGimmick) return;
+
+      const gim = state.activeGimmick;
+      state.stats.booker += gim.bookerMod;
+      state.stats.smarks += gim.smarkMod;
+      state.stats.cash += gim.cashMod;
+
+      showAlert("Gimmick Adopted!", gim.acceptedText, "celebration");
+      
+      state.activeGimmick = null; 
+      loadHub();
+    }
+
+    function declineGimmick() {
+      audio.playClick();
+      showAlert("Gimmick Declined", "The writers are annoyed that you refuse to wear the outfit, but the underground smarks admire your absolute integrity.", "thumb_down");
+      state.stats.booker -= 10;
+      state.stats.smarks += 10;
+      state.activeGimmick = null;
+      loadHub();
+    }
+
+    // Purchase Upgrades
+    function buyUpgrade(type, price) {
+      if (state.stats.cash < price) {
+        audio.playClick();
+        showAlert("Insufficient Cash", "You don't have enough greenbacks to purchase this. Put on more matches first!", "warning");
+        return;
+      }
+
+      state.stats.cash -= price;
+      audio.playFanfare();
+
+      if (type === 'chiropractor') {
+        state.stats.body = Math.min(100, state.stats.body + 25);
+        state.perks.chiropractorCount++;
+        showAlert("Chiropractic Session", "Your neck is realigned, and your spine can handle some heavy drops again. (+25 Body)", "medical_services");
+      } else if (type === 'donuts') {
+        state.stats.respect = Math.min(100, state.stats.respect + 20);
+        state.perks.donutsBought++;
+        showAlert("Donut Platter", "You brought sweet pastries into the active roster's locker room. They respect you deeply for this gesture! (+20 Respect)", "handshake");
+      } else if (type === 'tights') {
+        state.stats.smarks = Math.min(100, state.stats.smarks + 25);
+        state.perks.tightsCount++;
+        showAlert("Polished Tights", "Neon colors and fresh designs catch the internet smarks' attention. High style points! (+25 Smarks)", "checkroom");
+      }
+
+      loadHub();
+    }
+
+    // Match Engine Initialization
+    function selectMatch(opponent) {
+      audio.playBell();
+      state.currentOpponent = opponent;
+      state.matchPhase = 1;
+      state.matchStars = 1.0;
+
+      // Update Screen layout Details
+      document.getElementById('match-opponent-name').innerText = opponent.name;
+      document.getElementById('match-opponent-desc').innerText = opponent.desc;
+      document.getElementById('ring-opponent-name').innerText = opponent.name.split(' ')[0];
+      document.getElementById('opponent-avatar-emoji').innerText = opponent.emoji;
+
+      loadMatchRound();
+      showScreen('screen-match');
+    }
+
+    // Star Rating Display Utility
+    function generateStarsString(stars) {
+      let fullStars = Math.floor(stars);
+      let remainder = stars - fullStars;
+      let starsStr = "★".repeat(fullStars);
+      if (remainder >= 0.5) {
+        starsStr += "½";
+      }
+      while (starsStr.replace("½", " ").length < 5) {
+        starsStr += "☆";
+      }
+      return `${starsStr} (${stars.toFixed(1)})`;
+    }
+
+    // Load dynamic spots inside match screen
+    function loadMatchRound() {
+      const ringText = document.getElementById('live-match-log');
+      const starDisplay = document.getElementById('match-stars');
+      const roundTitle = document.getElementById('match-round-title');
+      const choiceList = document.getElementById('match-choices-list');
+
+      starDisplay.innerHTML = generateStarsString(state.matchStars);
+      choiceList.innerHTML = '';
+
+      // Reset animation classes
+      document.getElementById('player-avatar').className = "flex flex-col items-center transition-all duration-300 relative";
+      document.getElementById('opponent-avatar').className = "flex flex-col items-center transition-all duration-300 relative";
+
+      // Phase Definition
+      if (state.matchPhase === 1) {
+        roundTitle.innerText = "Round 1: The Opener";
+        ringText.innerText = `"${state.currentOpponent.name} demands a lockup. Crowd is shouting!"`;
+        
+        createChoiceOption("Oversell the Collar-and-Elbow", "Get flung right across the canvas, making him look super powerful.", { booker: 8, smarks: 10, body: -10, respect: 2 }, "oversell");
+        createChoiceOption("Execute Standard Safe Lock", "Tuck your chin, lock hips, and keep it extremely technical.", { booker: 2, smarks: -5, body: 0, respect: 5 }, "safe");
+        createChoiceOption("Sandbag & Stare Down", "Refuse to budge because he skipped catering etiquette backstage.", { booker: -15, smarks: 12, body: 5, respect: 15 }, "sandbag");
+
+      } else if (state.matchPhase === 2) {
+        roundTitle.innerText = "Round 2: The Signature High Spot";
+        ringText.innerText = `"${state.currentOpponent.name} gets you in an Irish Whip to the ropes!"`;
+
+        createChoiceOption("Airborne Helix Flip", "Bounce off the top rope and fold directly on your back. High impact!", { booker: 12, smarks: 18, body: -15, respect: 5 }, "oversell");
+        createChoiceOption("Standard Flat-Back Slam", "Slide safely under his clothesline, take a gentle mat bump.", { booker: 5, smarks: -5, body: 5, respect: 0 }, "safe");
+        createChoiceOption("The Deadweight Flop", "Drop directly into dead weight so he has to work twice as hard to lift you.", { booker: -20, smarks: 15, body: 10, respect: 10 }, "sandbag");
+
+      } else if (state.matchPhase === 3) {
+        roundTitle.innerText = "Round 3: The Pinfall Finish";
+        ringText.innerText = `"${state.currentOpponent.name} signals for his devastating Finisher!"`;
+
+        createChoiceOption("Oversell & Land Vertically", "Fold up perfectly, landing directly on your neck to look slaughtered.", { booker: 18, smarks: 22, body: -20, respect: 8 }, "oversell");
+        createChoiceOption("Standard Roll-Up Cover", "Directly collapse into a safe roll-up cover, keeping your head tucked.", { booker: 6, smarks: -8, body: 10, respect: -2 }, "safe");
+        createChoiceOption("Kick Out at 1.5 & Complain", "Anger the Booker, blow up the spot, but stand up for yourself.", { booker: -25, smarks: 15, body: 15, respect: 12 }, "sandbag");
+      }
+    }
+
+    // Helper to generate styled HTML action buttons
+    function createChoiceOption(title, description, changes, styleType) {
+      const btn = document.createElement('button');
+      btn.className = "w-full text-left bg-slate-900/90 border border-slate-800 p-3 rounded-xl hover:border-pink-500/40 transition active:scale-[0.98] flex justify-between items-center gap-2.5";
+      
+      let badgeColor = "bg-purple-950 text-purple-300 border-purple-800/40";
+      if (styleType === 'safe') badgeColor = "bg-emerald-950 text-emerald-300 border-emerald-800/40";
+      if (styleType === 'sandbag') badgeColor = "bg-amber-950 text-amber-300 border-amber-800/40";
+
+      // Build modifier hints
+      const modHints = [];
+      if (changes.booker !== 0) modHints.push(`Booker ${changes.booker > 0 ? '+' : ''}${changes.booker}`);
+      if (changes.body !== 0) modHints.push(`Body ${changes.body > 0 ? '+' : ''}${changes.body}`);
+      if (changes.respect !== 0) modHints.push(`Respect ${changes.respect > 0 ? '+' : ''}${changes.respect}`);
+      if (changes.smarks !== 0) modHints.push(`Smarks ${changes.smarks > 0 ? '+' : ''}${changes.smarks}`);
+
+      btn.innerHTML = `
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-black uppercase tracking-wider text-slate-100">${title}</span>
+            <span class="text-[8px] font-black uppercase px-2 py-0.5 rounded border ${badgeColor}">${styleType}</span>
+          </div>
+          <p class="text-[10px] text-slate-400 mt-0.5 leading-snug">${description}</p>
+        </div>
+        <div class="text-right shrink-0">
+          <span class="text-[9px] font-bold text-pink-400 block">${modHints.slice(0, 2).join(' | ')}</span>
+          <span class="text-[9px] font-bold text-cyan-400 block">${modHints.slice(2).join(' | ')}</span>
+        </div>
+      `;
+
+      btn.onclick = () => selectAction(changes, styleType);
+      document.getElementById('match-choices-list').appendChild(btn);
+    }
+
+    // Action Resolution inside Match Simulator
+    function selectAction(changes, styleType) {
+      // Apply specialized character perks
+      let adjustedChanges = { ...changes };
+      
+      if (state.style === 'overseller' && adjustedChanges.smarks > 0) {
+        adjustedChanges.smarks = Math.floor(adjustedChanges.smarks * 1.15);
+      }
+      if (state.style === 'sturdy' && adjustedChanges.body < 0) {
+        adjustedChanges.body = Math.floor(adjustedChanges.body * 0.85);
+      }
+      if (state.style === 'polite' && adjustedChanges.respect > 0) {
+        adjustedChanges.respect = Math.floor(adjustedChanges.respect * 1.15);
+      }
+
+      // Execute Ring Visuals and SFX based on choice
+      const ring = document.getElementById('wrestling-ring');
+      const playerAv = document.getElementById('player-avatar');
+      const opponentAv = document.getElementById('opponent-avatar');
+      const bubble = document.getElementById('player-status-bubble');
+
+      // Play specific synthesized audio effects
+      if (styleType === 'oversell') {
+        audio.playBump();
+        ring.classList.add('ring-shake');
+        playerAv.classList.add('sell-flip');
+        bubble.innerText = "OVERSELL!";
+        bubble.className = "absolute -top-6 bg-pink-500 text-slate-100 text-[9px] font-black uppercase px-1.5 py-0.5 rounded shadow-neon-pink animate-bounce";
+        bubble.classList.remove('hidden');
+        state.matchStars += 0.8 + (Math.random() * 0.4);
+      } else if (styleType === 'safe') {
+        audio.playClick();
+        playerAv.classList.add('safe-slide');
+        bubble.innerText = "TUCK & ROLL";
+        bubble.className = "absolute -top-6 bg-emerald-500 text-slate-100 text-[9px] font-black uppercase px-1.5 py-0.5 rounded shadow";
+        bubble.classList.remove('hidden');
+        state.matchStars += 0.2 + (Math.random() * 0.2);
+      } else if (styleType === 'sandbag') {
+        audio.playClick();
+        opponentAv.classList.add('sandbag-stubborn');
+        bubble.innerText = "DEAD WEIGHT!";
+        bubble.className = "absolute -top-6 bg-amber-500 text-slate-100 text-[9px] font-black uppercase px-1.5 py-0.5 rounded shadow";
+        bubble.classList.remove('hidden');
+        state.matchStars -= 0.5 + (Math.random() * 0.3);
+      }
+
+      // Live match commentary logs update dynamically
+      const activeSpotLogs = {
+        oversell: [
+          `"Absolute poetry! ${state.name} folds into a brutal scorpion shape!"`,
+          `"Smarks on Twitter are losing their absolute minds over that flip!"`,
+          `"Boom! What a magnificent landing by ${state.name}!"`
+        ],
+        safe: [
+          `"${state.name} rolls off the canvas safely. Tucked standard work."`,
+          `"A smooth flatback bump. Solid, safe, protecting the spine."`,
+          `"Clean mechanics, but the crowd is looking around for the popcorn."`
+        ],
+        sandbag: [
+          `"Ouch! ${state.name} turns into a literal concrete slab. Total drama!"`,
+          `"${state.currentOpponent.name} looks furious at that lack of cooperation!"`,
+          `"Total deadweight! Backstage politics translated perfectly in the ring."`
+        ]
+      };
+
+      const selectedLogs = activeSpotLogs[styleType];
+      document.getElementById('live-match-log').innerText = selectedLogs[Math.floor(Math.random() * selectedLogs.length)];
+
+      // Apply modifications to permanent stats
+      for (let s in adjustedChanges) {
+        state.stats[s] += adjustedChanges[s];
+      }
+
+      // Star-rating clamping
+      state.matchStars = Math.max(0.0, Math.min(5.0, state.matchStars));
+
+      // Remove animations after brief delay
+      setTimeout(() => {
+        ring.classList.remove('ring-shake');
+        playerAv.classList.remove('sell-flip', 'safe-slide');
+        opponentAv.classList.remove('sandbag-stubborn');
+        bubble.classList.add('hidden');
+
+        // Progress Match phase
+        if (state.matchPhase < 3) {
+          state.matchPhase++;
+          loadMatchRound();
+        } else {
+          audio.playBell();
+          audio.playCrowd(state.matchStars >= 3.0);
+          concludeMatch();
+        }
+      }, 900);
+    }
+
+    // Build Match wrap up statistics
+    function concludeMatch() {
+      // Set UI modifiers to show on report card
+      document.getElementById('report-star-display').innerText = generateStarsString(state.matchStars);
+
+      // Simple paydays
+      let cashPayout = state.currentOpponent.payout;
+      if (state.matchStars >= 4.0) {
+        cashPayout += 50; // Bonus for high quality loss
+        document.getElementById('report-payout-explanation').innerText = "Premium Quality Loser Bonus!";
+      } else {
+        document.getElementById('report-payout-explanation').innerText = "Regular contract scale flat fee.";
+      }
+      state.stats.cash += cashPayout;
+      document.getElementById('report-cash').innerText = `+$${cashPayout}`;
+
+      // Populate Report Display Numbers
+      const formatMod = (val) => `${val >= 0 ? '+' : ''}${val}`;
+      document.getElementById('mod-booker').innerText = formatMod(state.currentOpponent.statMods.booker);
+      document.getElementById('mod-body').innerText = formatMod(state.currentOpponent.statMods.body);
+      document.getElementById('mod-respect').innerText = formatMod(state.currentOpponent.statMods.respect);
+      document.getElementById('mod-smarks').innerText = formatMod(state.currentOpponent.statMods.smarks);
+
+      // Apply Base Opponent modifications
+      for (let s in state.currentOpponent.statMods) {
+        state.stats[s] += state.currentOpponent.statMods[s];
+      }
+
+      // Generate dynamic forum logs based on match star ratings
+      const highRatingSmarks = [
+        `"Andrew Newman is an absolute national treasure. That bump on the concrete? True work rate masterclass."`,
+        `"I don't care if Andrew never wins a belt. That 4-star loss made the champion look like a lethal tank."`
+      ];
+      const lowRatingSmarks = [
+        `"Absolute trash match. Andrew was clearly sandbagging out there. You love to see the locker room heat."`,
+        `"Boring, basic, sluggish. Looks like Andrew is just trying to collect his checks and save his neck."`
+      ];
+
+      const chosenForum = state.matchStars >= 3.0 ? highRatingSmarks : lowRatingSmarks;
+      document.getElementById('report-fan-comment-1').innerText = chosenForum[Math.floor(Math.random() * chosenForum.length)];
+
+      updateGlobalUI();
+      showScreen('screen-report');
+    }
+
+    // Year-over-year progression loop
+    function nextYear() {
+      audio.playClick();
+      state.year++;
+
+      if (state.year > 15) {
+        triggerGameOver("legendary_ending");
+      } else {
+        loadHub();
+        showScreen('screen-hub');
+      }
+    }
+
+    // Endings calculations based on performance metrics
+    function triggerGameOver(type) {
+      const title = document.getElementById('ending-name');
+      const desc = document.getElementById('ending-description');
+      const icon = document.getElementById('ending-trophy-icon');
+
+      document.getElementById('final-years').innerText = `${state.year - 1} Years`;
+      document.getElementById('final-cash').innerText = `$${state.stats.cash}`;
+      document.getElementById('final-smarks').innerText = `${state.stats.smarks}%`;
+      document.getElementById('final-respect').innerText = `${state.stats.respect}%`;
+
+      if (type === 'forced_retirement') {
+        document.getElementById('gameover-title').innerText = "Career Over";
+        document.getElementById('gameover-subtitle').innerText = "Your body finally gave out after too many high impact bumps.";
+        icon.innerText = "healing";
+        title.innerText = "The Medical Bankruptcy Ending";
+        desc.innerText = `You took way too many spectacular flips directly on your neck. You had to retire early, spending every single cent of your match paydays on chiropractor bills and metal plates in your cervical spine. Smarks salute you, but your back will never be the same.`;
+      } else if (type === 'fired') {
+        document.getElementById('gameover-title').innerText = "Terminated";
+        document.getElementById('gameover-subtitle').innerText = "You pushed your creative disputes way too far.";
+        icon.innerText = "gavel";
+        title.innerText = "The Forgotten Indie Jobber";
+        desc.innerText = `You repeatedly sandbagged the golden boys and refused to accept the chicken costumes. The Booker completely lost trust in your ring cooperation and terminated your contract. You spend the rest of your days losing to rookies on untelevised dark matches in local high school gyms for hotdogs.`;
+      } else if (type === 'blacklisted') {
+        document.getElementById('gameover-title').innerText = "Blacklisted";
+        document.getElementById('gameover-subtitle').innerText = "The active locker room completely rejected you.";
+        icon.innerText = "group_remove";
+        title.innerText = "The Isolated Castout";
+        desc.innerText = `You sandbagged your opponents and failed to maintain locker room respect. The active roster refused to walk out to the ring with you, rendering you completely unusable to management. You've been blacklisted from all major promotions.`;
+      } else {
+        // Successful 15-year career retirement endings
+        document.getElementById('gameover-title').innerText = "Happy Retirement!";
+        document.getElementById('gameover-subtitle').innerText = "You survived 15 grueling years of professional ring jobbing!";
+
+        if (state.stats.smarks >= 80) {
+          icon.innerText = "workspace_premium";
+          title.innerText = "The Retro Action Figure Endorsement";
+          desc.innerText = `You never won a championship belt, but your spectacular sells and cult-like internet following made you an iconic meme hero. Years later, fans launched a massive viral petition, forcing the company to release a vintage, highly articulated retro action figure in your image. Your royalty checks are massive!`;
+        } else if (state.stats.respect >= 80) {
+          icon.innerText = "co_present";
+          title.innerText = "The Backstage Producer / Player-Coach";
+          desc.innerText = `Your absolute safe-hands work inside the ring won the hearts of the entire active roster. Upon your retirement, management instantly hired you as a top Backstage Producer. You now write the scripts and guide the next generation on how to lose elegantly.`;
+        } else if (state.stats.booker >= 85) {
+          icon.innerText = "trending_up";
+          title.innerText = "The Accidental Comedic Title Push";
+          desc.innerText = `Your Booker trusted you so thoroughly that they decided to reward your immense loyalty. Due to a series of comedic botches, you were accidentally booked to win the 24/7 TV Championship for a glorious 24-hour run! Your name is officially written in the historic record books!`;
+        } else {
+          icon.innerText = "local_hospital";
+          title.innerText = "The Healthy Retirement";
+          desc.innerText = `You played the game exceptionally safely, rarely taking oversold bumps. You retired comfortably with a highly robust bank account, minimal joint pain, and the simple honor of a legendary ring technician.`;
+        }
+      }
+
+      showScreen('screen-gameover');
+    }
+
+    // Reset game handler
+    function resetGame() {
+      audio.playClick();
+      showScreen('screen-welcome');
+    }
+  </script>
+
+  <!-- ==================== FOOTER / ATTRIBUTION ==================== -->
+  <footer class="bg-slate-950 border-t border-slate-900 px-4 py-3 text-center text-[10px] text-slate-500 font-semibold tracking-wider uppercase mt-auto">
+    Enhancement Talent • Created by Retro Arts Group Inc.
+  </footer>
+
+</body>
+</html>
+
