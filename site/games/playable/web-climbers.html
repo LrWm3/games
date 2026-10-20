@@ -193,6 +193,9 @@
         .lobby-button.secondary {
             border-color: #334155; background: rgba(30, 41, 59, 0.7);
         }
+        .lobby-button:disabled {
+            border-color: #475569; background: #334155; color: #94a3b8; cursor: not-allowed;
+        }
         #room-list { margin-top: 12px; display: grid; gap: 8px; }
         .room-item {
             display: flex; justify-content: space-between; align-items: center; padding: 8px 10px;
@@ -209,20 +212,30 @@
 <body>
     <div id="lobby">
         <div id="lobby-card">
-            <h1>Multiplayer Lobby</h1>
-            <p>Create a new room or join an existing one before launching into the city.</p>
-            <div class="lobby-row">
-                <input id="room-input" class="lobby-input" placeholder="Room name (letters, numbers, - or _)" />
-                <input id="name-input" class="lobby-input" placeholder="Name (optional)" />
-                <button id="create-room" class="lobby-button">Create</button>
-                <button id="join-room" class="lobby-button secondary">Join</button>
-                <button id="refresh-rooms" class="lobby-button secondary">Refresh</button>
-                <button id="play-offline" class="lobby-button secondary">Play Offline</button>
-                <button id="enable-voice" class="lobby-button secondary">Enable Mic</button>
+            <div id="mode-menu">
+                <h1>Web Climbers</h1>
+                <p>Climb solo or join friends in the city.</p>
+                <div class="lobby-row">
+                    <button id="single-player" class="lobby-button">Single Player</button>
+                    <button id="multiplayer" class="lobby-button" disabled aria-live="polite">Multiplayer unavailable</button>
+                </div>
             </div>
-            <div id="room-list"></div>
-            <div id="lobby-status"></div>
-            <div id="voice-status">Voice: Off</div>
+            <div id="multiplayer-lobby" hidden>
+                <h1>Multiplayer Lobby</h1>
+                <p>Create a new room or join an existing one before launching into the city.</p>
+                <div class="lobby-row">
+                    <input id="room-input" class="lobby-input" placeholder="Room name (letters, numbers, - or _)" />
+                    <input id="name-input" class="lobby-input" placeholder="Name (optional)" />
+                    <button id="create-room" class="lobby-button">Create</button>
+                    <button id="join-room" class="lobby-button secondary">Join</button>
+                    <button id="refresh-rooms" class="lobby-button secondary">Refresh</button>
+                    <button id="back-to-menu" class="lobby-button secondary">Back</button>
+                    <button id="enable-voice" class="lobby-button secondary">Enable Mic</button>
+                </div>
+                <div id="room-list"></div>
+                <div id="lobby-status"></div>
+                <div id="voice-status">Voice: Off</div>
+            </div>
         </div>
     </div>
     <div id="ui">
@@ -437,6 +450,9 @@
         let welcomeChunksApplied = false;
 
         const lobbyEl = document.getElementById('lobby');
+        const modeMenuEl = document.getElementById('mode-menu');
+        const multiplayerLobbyEl = document.getElementById('multiplayer-lobby');
+        const multiplayerButtonEl = document.getElementById('multiplayer');
         const lobbyStatusEl = document.getElementById('lobby-status');
         const voiceStatusEl = document.getElementById('voice-status');
         const roomInputEl = document.getElementById('room-input');
@@ -662,6 +678,14 @@
         }
 
         let lobbyPollId = null;
+        let roomListLoading = false;
+
+        function setMultiplayerAvailable(available) {
+            multiplayerButtonEl.disabled = !available;
+            multiplayerButtonEl.textContent = available ? 'Multiplayer' : 'Multiplayer unavailable';
+            document.getElementById('create-room').disabled = !available;
+            document.getElementById('join-room').disabled = !available;
+        }
 
         function setGameVisible(isVisible) {
             uiEl.style.display = isVisible ? 'block' : 'none';
@@ -889,39 +913,48 @@
             }
         }
 
-        function listRooms() {
-            if (offlineMode) {
-                roomListEl.innerHTML = '<div class="room-item"><span>Offline mode enabled.</span></div>';
-                return;
-            }
-            fetch(`/rooms?gameId=${encodeURIComponent(GAME_ID)}`)
-                .then((res) => res.json())
-                .then((data) => {
-                    roomListEl.innerHTML = '';
-                    if (!Array.isArray(data) || data.length === 0) {
-                        roomListEl.innerHTML = '<div class="room-item"><span>No rooms yet.</span></div>';
-                        return;
-                    }
-                    data.forEach((room) => {
-                        const item = document.createElement('div');
-                        item.className = 'room-item';
-                        const name = document.createElement('span');
-                        name.innerText = `${room.roomId} (${room.players}/4)`;
-                        const btn = document.createElement('button');
-                        btn.className = 'lobby-button secondary';
-                        btn.innerText = 'Join';
-                        btn.addEventListener('click', () => {
-                            roomInputEl.value = room.roomId;
-                            joinRoom(room.roomId);
-                        });
-                        item.appendChild(name);
-                        item.appendChild(btn);
-                        roomListEl.appendChild(item);
-                    });
-                })
-                .catch(() => {
-                    roomListEl.innerHTML = '<div class="room-item"><span>Failed to load rooms.</span></div>';
+        async function listRooms() {
+            if (offlineMode || !inLobby || roomListLoading) return;
+            roomListLoading = true;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000);
+            try {
+                const res = await fetch(`/rooms?gameId=${encodeURIComponent(GAME_ID)}`, {
+                    cache: 'no-store',
+                    signal: controller.signal,
                 });
+                if (!res.ok) throw new Error('Room server unavailable');
+                const data = await res.json();
+                if (!Array.isArray(data)) throw new Error('Invalid room list');
+                setMultiplayerAvailable(true);
+                roomListEl.innerHTML = '';
+                if (data.length === 0) {
+                    roomListEl.innerHTML = '<div class="room-item"><span>No rooms yet.</span></div>';
+                    return;
+                }
+                data.forEach((room) => {
+                    const item = document.createElement('div');
+                    item.className = 'room-item';
+                    const name = document.createElement('span');
+                    name.innerText = `${room.roomId} (${room.players}/4)`;
+                    const btn = document.createElement('button');
+                    btn.className = 'lobby-button secondary';
+                    btn.innerText = 'Join';
+                    btn.addEventListener('click', () => {
+                        roomInputEl.value = room.roomId;
+                        joinRoom(room.roomId);
+                    });
+                    item.appendChild(name);
+                    item.appendChild(btn);
+                    roomListEl.appendChild(item);
+                });
+            } catch {
+                setMultiplayerAvailable(false);
+                roomListEl.innerHTML = '<div class="room-item"><span>Multiplayer unavailable</span></div>';
+            } finally {
+                clearTimeout(timeoutId);
+                roomListLoading = false;
+            }
         }
 
         function rebuildAllBuildings() {
@@ -3338,8 +3371,23 @@
             }
             initVoice();
         });
-        document.getElementById('play-offline').addEventListener('click', () => {
-            startOffline();
+        document.getElementById('single-player').addEventListener('click', startOffline);
+        multiplayerButtonEl.addEventListener('click', () => {
+            modeMenuEl.hidden = true;
+            multiplayerLobbyEl.hidden = false;
+            listRooms();
+        });
+        document.getElementById('back-to-menu').addEventListener('click', () => {
+            if (socket) {
+                socket.onopen = null;
+                socket.onmessage = null;
+                socket.onerror = null;
+                socket.close();
+                socket = null;
+            }
+            lobbyStatusEl.textContent = '';
+            multiplayerLobbyEl.hidden = true;
+            modeMenuEl.hidden = false;
         });
         document.getElementById('join-room').addEventListener('click', () => {
             joinRoom(roomInputEl.value);
