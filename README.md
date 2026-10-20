@@ -3,6 +3,8 @@
 Static hub for lightweight HTML games, prototypes, and short guides. The site is
 intentionally simple: open a page, play, and move on.
 
+Available at [lrwm3g.pages.dev](https://lrwm3g.pages.dev)
+
 ## Project layout
 
 - `site/index.html`: Home page with featured games, demos, and guides.
