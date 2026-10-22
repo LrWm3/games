@@ -1,7 +1,6 @@
 # LRWM3 Games
 
-Static hub for lightweight HTML games, prototypes, and short guides. The site is
-intentionally simple: open a page, play, and move on.
+Some games I've made for fun.
 
 Available at [lrwm3g.pages.dev](https://lrwm3g.pages.dev)
 
