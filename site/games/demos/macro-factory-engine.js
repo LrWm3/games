@@ -27,16 +27,16 @@ const DB = {
     'smelt_iron':    { id: 'smelt_iron', name: 'Smelt Iron', inputs: {'iron_ore': 1}, outputs: {'iron_plate': 1}, time: 20, buildingType: 'factory_0' },
     'smelt_copper':  { id: 'smelt_copper', name: 'Smelt Copper', inputs: {'copper_ore': 1}, outputs: {'copper_wire': 2}, time: 20, buildingType: 'factory_0' },
     'craft_circuit': { id: 'craft_circuit', name: 'Basic Circuit', inputs: {'iron_plate': 1, 'copper_wire': 2}, outputs: {'circuit': 1}, time: 40, buildingType: 'factory_0' },
-    
+
     'smelt_titanium':{ id: 'smelt_titanium', name: 'Forge Plasteel', inputs: {'titanium': 2, 'iron_plate': 2}, outputs: {'plasteel': 1}, time: 60, buildingType: 'factory_1' },
     'craft_micro':   { id: 'craft_micro', name: 'Adv. Microchip', inputs: {'circuit': 4, 'plasteel': 1}, outputs: {'microchip': 1}, time: 80, buildingType: 'factory_1' },
-    
+
     'craft_quantum': { id: 'craft_quantum', name: 'Quantum Core', inputs: {'uranium': 5, 'microchip': 5}, outputs: {'quantum_core': 1}, time: 150, buildingType: 'factory_2' },
   },
 
   BUILDINGS: {
     'hub': { id: 'hub', name: 'Central Command', type: 'depot', scale: 0, size: 60, color: '#34495e', cost: {} },
-    
+
     'miner_0':   { id: 'miner_0', name: 'Micro Miner', type: 'miner', scale: 0, size: 30, color: '#e67e22', cost: {'iron_plate': 10}, extracts: 0 },
     'factory_0': { id: 'factory_0', name: 'Micro Assembler', type: 'factory', scale: 0, size: 35, color: '#e74c3c', cost: {'iron_plate': 20, 'copper_wire': 10} },
     'depot_0':   { id: 'depot_0', name: 'Micro Depot', type: 'depot', scale: 0, size: 40, color: '#2c3e50', cost: {'iron_plate': 30} },
