@@ -24,6 +24,19 @@ python3 -m http.server --directory site 8000
 
 Then visit `http://localhost:8000/`.
 
+## MacroFactory demo
+
+Open `site/games/demos/macro-factory.html` to mine resources, route materials,
+and grow from Micro factories to Mega forges. The demo uses local JavaScript
+and CSS, with no install or build step. Drag to pan, scroll or pinch to zoom,
+and open Help for the starter production chain. Progress resets on reload.
+
+Run its simulation regression checks with Node.js:
+
+```bash
+node --test tests/macro-factory.test.cjs
+```
+
 ## Adding games or guides
 
 1. Drop a new HTML file into:
