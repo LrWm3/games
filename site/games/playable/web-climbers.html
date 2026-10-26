@@ -204,6 +204,35 @@
         .room-item span { color: #d5e6ff; }
         #lobby-status { margin-top: 10px; color: #fcd34d; min-height: 1.2em; }
         #voice-status { margin-top: 6px; color: #93c5fd; min-height: 1.2em; font-size: 0.9em; }
+        #onboarding {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            box-sizing: border-box; width: min(760px, calc(100vw - 40px)); padding: 26px 30px;
+            color: #f1f5f9; background: rgba(6, 10, 24, 0.82);
+            border: 1px solid rgba(148, 163, 184, 0.4); border-radius: 16px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+            font-size: clamp(20px, 2.3vw, 32px); line-height: 1.35;
+            pointer-events: none; user-select: none; z-index: 13;
+            transition: top 800ms ease, left 800ms ease, transform 800ms ease,
+                width 800ms ease, padding 800ms ease, font-size 800ms ease;
+        }
+        #onboarding h2 { margin: 0 0 16px; font-size: 0.65em; letter-spacing: 0.12em; text-transform: uppercase; color: #93c5fd; }
+        .onboarding-list { display: grid; gap: 16px; list-style: none; padding: 0; margin: 0; }
+        .onboarding-list li { display: flex; align-items: flex-start; gap: 12px; font-weight: 600; transition: color 180ms ease; }
+        .onboarding-check { flex: 0 0 1.1em; text-align: center; color: #94a3b8; }
+        .onboarding-list li.completed, .onboarding-list li.completed .onboarding-check { color: #4ade80; }
+        #onboarding.docked {
+            top: calc(100% - 64px); left: calc(100% - 16px); transform: translate(-100%, -100%);
+            width: min(300px, calc(100vw - 32px)); padding: 16px; font-size: 14px;
+        }
+        #onboarding.docked h2 { font-size: 12px; margin-bottom: 12px; }
+        #onboarding.docked .onboarding-list { gap: 10px; }
+        @media (max-height: 600px) {
+            #onboarding { padding: 16px 20px; font-size: 20px; }
+            .onboarding-list { gap: 10px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #onboarding, .onboarding-list li { transition: none; }
+        }
         @media (max-width: 720px) {
             #lobby-card { padding: 18px; }
         }
@@ -239,15 +268,15 @@
         </div>
     </div>
     <div id="ui">
-        <div id="controls-header"><b>Controls:</b></div>
-        <div id="controls-body">
+        <div id="controls-header"><b>Controls:</b> Tab to open</div>
+        <div id="controls-body" style="display: none;">
             <div><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> - Move</div>
             <div><span class="key">Space (hold)</span> - Charge Jump (on ground)</div>
             <div><span class="key">L-Click</span> - Left Web</div>
             <div><span class="key">R-Click</span> - Right Web</div>
             <div><span class="key">Shift</span> - Boost on Downswing</div>
             <div><span class="key">F</span> - Point</div>
-            <div><span class="key">R</span> - Restart</div>
+            <div><span class="key">R</span> - Reset to last save</div>
             <div><span class="key">Tab</span> - Hide Controls</div>
             <div id="control-reel-left" style="display: none;"><span class="key">Q</span>- Reel Left Web</div>
             <div id="control-reel-right" style="display: none;"><span class="key">E</span>- Reel Right Web</div>
@@ -267,6 +296,26 @@
             <div id="charge-bar"></div>
         </div>
     </div>
+    <section id="onboarding" aria-label="Tutorial and goals" aria-live="polite" hidden>
+        <div id="tutorial-panel">
+            <h2>Learn to swing</h2>
+            <ul class="onboarding-list">
+                <li id="tutorial-move"><span class="onboarding-check" aria-hidden="true">○</span><span>WASD to move</span></li>
+                <li id="tutorial-charge"><span class="onboarding-check" aria-hidden="true">○</span><span>Hold space to charge jump</span></li>
+                <li id="tutorial-swing"><span class="onboarding-check" aria-hidden="true">○</span><span>Left or Right click a building in the air to swing</span></li>
+                <li id="tutorial-boost"><span class="onboarding-check" aria-hidden="true">○</span><span>Hold shift on downswing to build speed</span></li>
+            </ul>
+        </div>
+        <div id="goals-panel" hidden>
+            <h2>Goals</h2>
+            <ul class="onboarding-list">
+                <li id="goal-save"><span class="onboarding-check" aria-hidden="true">○</span><span>Stand atop a building to save progress</span></li>
+                <li id="goal-reset"><span class="onboarding-check" aria-hidden="true">○</span><span>R to reset to last save</span></li>
+                <li id="goal-save5000"><span class="onboarding-check" aria-hidden="true">○</span><span>Earn a save by reaching 5000m and standing on a tall building</span></li>
+                <li id="goal-reach20000"><span class="onboarding-check" aria-hidden="true">○</span><span>Reach 20000m</span></li>
+            </ul>
+        </div>
+    </section>
     <div id="crosshair"></div>
     <div id="player-reticles"></div>
     <div id="player-altitudes">P1: 0m</div>
@@ -478,6 +527,61 @@
 
         const NAME_STORAGE_KEY = 'web-climbers.nickname';
 
+        const onboardingEl = document.getElementById('onboarding');
+        const tutorialPanelEl = document.getElementById('tutorial-panel');
+        const goalsPanelEl = document.getElementById('goals-panel');
+        const tutorialSteps = ['move', 'charge', 'swing', 'boost'];
+        const completedTutorialSteps = new Set();
+        const completedGoals = new Set();
+        let onboardingPhase = 'tutorial';
+        let onboardingElapsed = 0;
+        let requestedCheckpointReset = false;
+
+        function gameplayInputActive() {
+            return !inLobby && !chatOpen && configModalEl.style.display !== 'flex'
+                && winModalEl.style.display !== 'flex'
+                && !document.activeElement?.matches('input, textarea, select, [contenteditable="true"]');
+        }
+
+        function completeOnboardingItem(kind, id) {
+            const completed = kind === 'tutorial' ? completedTutorialSteps : completedGoals;
+            if (completed.has(id)) return;
+            completed.add(id);
+            const row = document.getElementById(`${kind}-${id}`);
+            row.classList.add('completed');
+            row.querySelector('.onboarding-check').textContent = '✓';
+            row.setAttribute('aria-label', `${row.lastElementChild.textContent} — complete`);
+        }
+
+        function updateOnboarding(dt) {
+            if (inLobby) return;
+            // Track goals even during the tutorial, and keep them through respawns.
+            if (game.saveKey && game.spawnPos) {
+                completeOnboardingItem('goal', 'save');
+                if (hasEarnedSaveHeight(5000) && game.spawnPos.y >= 5000) {
+                    completeOnboardingItem('goal', 'save5000');
+                }
+            }
+            if (player.position.y >= 20000) completeOnboardingItem('goal', 'reach20000');
+            if (!gameplayInputActive() || document.hidden) return;
+            if (onboardingPhase === 'tutorial' && tutorialSteps.every(step => completedTutorialSteps.has(step))) {
+                onboardingElapsed += dt;
+                // Leave the final green check visible before introducing the goals.
+                if (onboardingElapsed >= 1.2) {
+                    tutorialPanelEl.hidden = true;
+                    goalsPanelEl.hidden = false;
+                    onboardingPhase = 'goals';
+                    onboardingElapsed = 0;
+                }
+            } else if (onboardingPhase === 'goals') {
+                onboardingElapsed += dt;
+                if (onboardingElapsed >= 7) {
+                    onboardingEl.classList.add('docked');
+                    onboardingPhase = 'docked';
+                }
+            }
+        }
+
         const requestFreeplay = throttle(() => {
             if (!game.freePlay) {
                 eventBus.emit('game.freeplay.request', { playerId: peerId }, { source: 'game' });
@@ -486,6 +590,7 @@
 
         const requestRespawn = throttle(() => {
             if (peerId) {
+                requestedCheckpointReset = Boolean(game.saveKey);
                 eventBus.emit('game.respawn.request', { playerId: peerId }, { source: 'game' });
             }
         }, 2000);
@@ -501,7 +606,7 @@
                 end: { x: target.end.x, y: target.end.y, z: target.end.z },
             }, { source: 'game' });
         }, config.pointerThrottleMs);
-        let controlsVisible = true;
+        let controlsVisible = false;
         const controlsHeaderEl = document.getElementById('controls-header');
         const controlsBodyEl = document.getElementById('controls-body');
         const toggleControls = throttle(() => {
@@ -598,8 +703,10 @@
             }, true);
 
             window.addEventListener('keydown', e => {
-                keys[e.code] = true;
-                if (e.code === 'Space' && (isGrounded || isClimbing)) {
+                const active = gameplayInputActive();
+                if (active) keys[e.code] = true;
+                if (active && e.code === 'Space') e.preventDefault();
+                if (active && e.code === 'Space' && (isGrounded || isClimbing)) {
                     isChargingJump = true;
                     document.getElementById('charge-container').style.display = 'block';
                 }
@@ -645,6 +752,7 @@
             });
 
             window.addEventListener('mousedown', e => {
+                if (!gameplayInputActive()) return;
                 if (e.button === 0) tryAttachWeb(webL);
                 if (e.button === 2) tryAttachWeb(webR);
             });
@@ -696,6 +804,7 @@
             chatFeedEl.style.display = isVisible && !chatOpen ? 'grid' : 'none';
             lobbyEl.style.display = isVisible ? 'none' : 'flex';
             inLobby = !isVisible;
+            onboardingEl.hidden = !isVisible;
             if (isVisible && lobbyPollId) {
                 clearInterval(lobbyPollId);
                 lobbyPollId = null;
@@ -1676,7 +1785,10 @@
                 const data = targetMeshes.get(hit.object);
                 const type = data?.type || 'standard';
                 const handler = webTargetHandlers[type] || webTargetHandlers.standard;
-                if (handler) handler(webObj, dir, hit, data);
+                const wasAirborne = !isGrounded && !isClimbing;
+                if (handler && handler(webObj, dir, hit, data) && wasAirborne) {
+                    completeOnboardingItem('tutorial', 'swing');
+                }
             }
         }
 
@@ -1705,7 +1817,16 @@
 
         function handleMovement(dt) {
             prevPlayerPos.copy(player.position);
+            if (!gameplayInputActive()) {
+                Object.keys(keys).forEach(key => { keys[key] = false; });
+                isChargingJump = false;
+                jumpChargeTime = 0;
+                document.getElementById('charge-container').style.display = 'none';
+            }
             if (isChargingJump) jumpChargeTime += dt;
+            if (isChargingJump && (isGrounded || isClimbing) && jumpChargeTime >= 0.25) {
+                completeOnboardingItem('tutorial', 'charge');
+            }
             document.getElementById('charge-bar').style.width = Math.min((jumpChargeTime / config.maxJumpChargeTime) * 100, 100) + '%';
             if (isClimbing && !unlocks.has('climb')) isClimbing = false;
             if (isStuck) {
@@ -1817,8 +1938,10 @@
                         }
 
                         // Pumping energy while swinging
-                        if ((keys['ShiftLeft'] || keys['Space']) && isDownswing(playerVelocity)) {
+                        const shiftHeld = keys['ShiftLeft'] || keys['ShiftRight'];
+                        if ((shiftHeld || keys['Space']) && isDownswing(playerVelocity)) {
                             playerVelocity.add(playerVelocity.clone().normalize().multiplyScalar(config.webAcceleration * dt));
+                            if (shiftHeld && config.webAcceleration > 0) completeOnboardingItem('tutorial', 'boost');
                         }
                     }
                 };
@@ -1901,6 +2024,9 @@
                 player.position.add(playerVelocity.clone().multiplyScalar(dt));
             }
             checkCollisions();
+            if (input.lengthSq() > 0 && Math.hypot(player.position.x - prevPlayerPos.x, player.position.z - prevPlayerPos.z) > 0.01) {
+                completeOnboardingItem('tutorial', 'move');
+            }
             const horizontalSpeed = Math.hypot(playerVelocity.x, playerVelocity.z);
             const isWebbed = webL.active || webR.active;
             if (!isGrounded && !isWebbed && horizontalSpeed >= 50) {
@@ -2937,6 +3063,8 @@
             }
             if (payload.respawnAt) {
                 resetPlayerToSpawn();
+                if (requestedCheckpointReset && game.saveKey) completeOnboardingItem('goal', 'reset');
+                requestedCheckpointReset = false;
                 respawnRequests.clear();
                 addChatMessage('System', 'Respawn vote passed. Resetting players.');
             }
@@ -3349,6 +3477,7 @@
                 checkSaveTokens();
             }
             checkWinCondition();
+            updateOnboarding(dt);
             if (now - lastTimeSyncAt >= TIME_SYNC_INTERVAL_MS) {
                 lastTimeSyncAt = now;
                 sendTimeSync();
