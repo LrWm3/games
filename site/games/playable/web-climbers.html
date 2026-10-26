@@ -313,6 +313,7 @@
                 <li id="goal-reset"><span class="onboarding-check" aria-hidden="true">○</span><span>R to reset to last save</span></li>
                 <li id="goal-save5000"><span class="onboarding-check" aria-hidden="true">○</span><span>Earn a save by reaching 5000m and standing on a tall building</span></li>
                 <li id="goal-reach20000"><span class="onboarding-check" aria-hidden="true">○</span><span>Reach 20000m</span></li>
+                <li id="goal-controls"><span class="onboarding-check" aria-hidden="true">○</span><span>Press Tab to toggle seeing controls</span></li>
             </ul>
         </div>
     </section>
@@ -613,6 +614,7 @@
             controlsVisible = !controlsVisible;
             controlsBodyEl.style.display = controlsVisible ? 'block' : 'none';
             controlsHeaderEl.innerHTML = controlsVisible ? '<b>Controls:</b>' : '<b>Controls:</b> Tab to open';
+            completeOnboardingItem('goal', 'controls');
         }, 50);
         const toggleConfigModal = throttle(() => {
             const isOpen = configModalEl.style.display === 'flex';
